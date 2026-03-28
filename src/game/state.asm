@@ -14,6 +14,25 @@ rng_state    dw 0ACE1h
 last_tick    dw 0
 anim_phase   db 0
 splash_ticks db 0
+key_extended db 0
+any_key_pending db 0
+input_event_count db 0
+input_last_code db 0
+input_check_count db 0
+input_poll_count db 0
+input_last_polled db 0
+pressed_enter db 0
+pressed_w db 0
+pressed_a db 0
+pressed_s db 0
+pressed_d db 0
+pressed_c db 0
+pressed_up db 0
+pressed_left db 0
+pressed_right db 0
+pressed_down db 0
+key_down db 256 dup (0)
+key_pressed db 256 dup (0)
 
 text_cursor_x  dw 0
 text_cursor_y  dw 0
@@ -63,6 +82,10 @@ title_line_2  db 'TURN BASED INFILTRATION IN RAW VGA.', 0
 title_line_3  db 'TAKE 4 SHARDS. OPEN THE GATE. REPEAT.', 0
 title_line_4  db 'PRESS ANY KEY TO JACK IN.', 0
 title_prompt  db 'BOOTED DIRECT TO THE RUN.', 0
+debug_keys_text db 'KEYS', 0
+debug_enter_text db 'ENTR', 0
+debug_check_text db 'CHCK', 0
+debug_poll_text db 'POLL', 0
 
 win_line_1    db 'VAULT', 0
 win_line_2    db 'ALL THREE SECTORS FELL TO THE RUN.', 0

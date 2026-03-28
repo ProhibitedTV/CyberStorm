@@ -5,6 +5,8 @@ start:
     mov ax, 0013h
     int 10h
     call init_palette
+    call reset_keyboard_state
+    call install_keyboard_handler
 
     xor ah, ah
     int 1Ah
@@ -26,27 +28,33 @@ main_loop:
     call wait_frame_tick
     call update_frontend_state
     call render_screen
-    call poll_key_event
-    jnc main_loop
-
     cmp byte ptr [game_state], STATE_PLAYING
     je handle_play_input
 
     cmp byte ptr [game_state], STATE_SPLASH
     je handle_splash_input
 
+    cmp byte ptr [any_key_pending], 0
+    je main_loop
+    mov byte ptr [any_key_pending], 0
     call start_new_run
     jmp main_loop
 
 handle_splash_input:
-    call is_enter_key
-    jnc skip_splash
+    cmp byte ptr [pressed_enter], 0
+    je splash_check_skip
+    mov byte ptr [pressed_enter], 0
+    mov byte ptr [any_key_pending], 0
     call start_new_run
     jmp main_loop
 
+splash_check_skip:
+    cmp byte ptr [any_key_pending], 0
+    je main_loop
+    mov byte ptr [any_key_pending], 0
+
 skip_splash:
     mov byte ptr [game_state], STATE_TITLE
-    call flush_key_buffer
     jmp main_loop
 
 handle_play_input:
@@ -83,5 +91,4 @@ start_new_run:
     mov byte ptr [kill_count], 0
     call load_sector
     mov byte ptr [message_id], MSG_SECTOR
-    call flush_key_buffer
     ret

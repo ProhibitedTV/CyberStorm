@@ -212,6 +212,55 @@ title_line_ready:
     mov ah, PAL_CYAN
     call draw_text_small
 
+    mov bx, 42
+    mov dx, 166
+    mov si, offset debug_keys_text
+    mov ah, PAL_AMBER
+    call draw_text_small
+
+    mov al, [input_event_count]
+    mov ah, PAL_WHITE
+    mov bx, 68
+    mov dx, 166
+    call draw_two_digit_small
+
+    mov bx, 92
+    mov dx, 166
+    mov si, offset debug_enter_text
+    mov ah, PAL_AMBER
+    call draw_text_small
+
+    xor al, al
+    mov al, [pressed_enter]
+    mov ah, PAL_WHITE
+    mov bx, 118
+    mov dx, 166
+    call draw_digit_small
+
+    mov bx, 142
+    mov dx, 166
+    mov si, offset debug_check_text
+    mov ah, PAL_AMBER
+    call draw_text_small
+
+    mov al, [input_check_count]
+    mov ah, PAL_WHITE
+    mov bx, 168
+    mov dx, 166
+    call draw_two_digit_small
+
+    mov bx, 186
+    mov dx, 166
+    mov si, offset debug_poll_text
+    mov ah, PAL_AMBER
+    call draw_text_small
+
+    mov al, [input_poll_count]
+    mov ah, PAL_WHITE
+    mov bx, 212
+    mov dx, 166
+    call draw_two_digit_small
+
     test byte ptr [anim_phase], 1
     jz title_cursor_off
     mov bx, 216

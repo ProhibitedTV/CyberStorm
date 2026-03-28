@@ -1,46 +1,67 @@
 process_play_input:
     mov byte ptr [action_taken], 0
 
-    call is_enter_key
-    jnc check_pulse_lower
+    cmp byte ptr [pressed_enter], 0
+    je check_pulse_lower
+    mov byte ptr [pressed_enter], 0
+    mov byte ptr [any_key_pending], 0
     call start_new_run
     ret
 
 check_pulse_lower:
-    cmp al, 'c'
-    je do_pulse
-    cmp al, 'C'
-    je do_pulse
+    cmp byte ptr [pressed_c], 0
+    jne consume_pulse
 
-    cmp al, 'a'
-    je move_left
-    cmp al, 'A'
-    je move_left
-    cmp ah, 4Bh
-    je move_left
+    cmp byte ptr [pressed_a], 0
+    jne consume_left
+    cmp byte ptr [pressed_left], 0
+    jne consume_left
 
-    cmp al, 'd'
-    je move_right
-    cmp al, 'D'
-    je move_right
-    cmp ah, 4Dh
-    je move_right
+    cmp byte ptr [pressed_d], 0
+    jne consume_right
+    cmp byte ptr [pressed_right], 0
+    jne consume_right
 
-    cmp al, 'w'
-    je move_up
-    cmp al, 'W'
-    je move_up
-    cmp ah, 48h
-    je move_up
+    cmp byte ptr [pressed_w], 0
+    jne consume_up
+    cmp byte ptr [pressed_up], 0
+    jne consume_up
 
-    cmp al, 's'
-    je move_down
-    cmp al, 'S'
-    je move_down
-    cmp ah, 50h
-    je move_down
+    cmp byte ptr [pressed_s], 0
+    jne consume_down
+    cmp byte ptr [pressed_down], 0
+    jne consume_down
 
     ret
+
+consume_pulse:
+    mov byte ptr [pressed_c], 0
+    mov byte ptr [any_key_pending], 0
+    jmp do_pulse
+
+consume_left:
+    mov byte ptr [pressed_a], 0
+    mov byte ptr [pressed_left], 0
+    mov byte ptr [any_key_pending], 0
+    jmp move_left
+
+consume_right:
+    mov byte ptr [pressed_d], 0
+    mov byte ptr [pressed_right], 0
+    mov byte ptr [any_key_pending], 0
+    jmp move_right
+
+consume_up:
+    mov byte ptr [pressed_w], 0
+    mov byte ptr [pressed_up], 0
+    mov byte ptr [any_key_pending], 0
+    jmp move_up
+
+consume_down:
+    mov byte ptr [pressed_s], 0
+    mov byte ptr [pressed_down], 0
+    mov byte ptr [any_key_pending], 0
+    jmp move_down
 
 move_left:
     mov bl, [player_x]

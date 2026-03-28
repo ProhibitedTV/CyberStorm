@@ -8,6 +8,18 @@ SPLASH_DURATION equ 54
 
 KEY_ENTER      equ 0Dh
 SCAN_ENTER     equ 1Ch
+SCAN_W         equ 11h
+SCAN_A         equ 1Eh
+SCAN_S         equ 1Fh
+SCAN_D         equ 20h
+SCAN_C         equ 2Eh
+SCAN_EXT_FLAG  equ 80h
+SCAN_UP_EXT    equ 0C8h
+SCAN_LEFT_EXT  equ 0CBh
+SCAN_RIGHT_EXT equ 0CDh
+SCAN_DOWN_EXT  equ 0D0h
+KEY_QUEUE_SIZE equ 16
+KEY_QUEUE_MASK equ 0Fh
 
 MSG_SECTOR     equ 0
 MSG_BLOCK      equ 1

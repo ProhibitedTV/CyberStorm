@@ -6,6 +6,14 @@ STATE_SPLASH   equ 4
 
 SPLASH_DURATION equ 54
 
+SCREEN_W      equ 320
+SCREEN_H      equ 200
+SCREEN_PIXELS equ SCREEN_W * SCREEN_H
+SCREEN_WORDS  equ SCREEN_PIXELS / 2
+
+TILE_SIZE     equ 8
+TILE_SHIFT    equ 3
+
 KEY_ENTER      equ 0Dh
 SCAN_ENTER     equ 1Ch
 SCAN_W         equ 11h
@@ -20,6 +28,8 @@ SCAN_RIGHT_EXT equ 0CDh
 SCAN_DOWN_EXT  equ 0D0h
 KEY_QUEUE_SIZE equ 16
 KEY_QUEUE_MASK equ 0Fh
+KEY_STATE_TABLE_BYTES  equ 256
+KEY_STATE_REGION_BYTES equ KEY_STATE_TABLE_BYTES * 2
 
 MSG_SECTOR     equ 0
 MSG_BLOCK      equ 1
@@ -41,13 +51,27 @@ MAP_H         equ 15
 MAP_SIZE      equ 420
 MAP_PIXEL_X   equ 20
 MAP_PIXEL_Y   equ 44
+PLAY_MIN_X    equ 1
+PLAY_MIN_Y    equ 1
+PLAY_MAX_X    equ MAP_W - 2
+PLAY_MAX_Y    equ MAP_H - 2
 
 START_X       equ 2
 START_Y       equ 13
 EXIT_COL      equ 25
 EXIT_ROW      equ 1
 
+TOTAL_SECTORS     equ 3
+START_SHIELDS     equ 5
+START_PULSES      equ 3
+MAX_PULSES        equ 5
+ENEMY_SPAWN_STEP  equ 2
+ENEMY_SPAWN_BASE  equ 3
+
 MAX_ENEMIES   equ 10
+ENEMY_ALIVE   equ 0
+ENEMY_X       equ 1
+ENEMY_Y       equ 2
 ENEMY_SIZE    equ 3
 SHARD_COUNT   equ 4
 

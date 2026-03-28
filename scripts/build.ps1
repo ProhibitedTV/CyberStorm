@@ -1,24 +1,45 @@
-param()
+param(
+    [string]$MasmPath
+)
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-$root = Split-Path -Parent $PSScriptRoot
+$root = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $srcDir = Join-Path $root 'src'
 $buildDir = Join-Path $root 'build'
 
-New-Item -ItemType Directory -Force -Path $buildDir | Out-Null
+$layout = [pscustomobject]@{
+    BootSectorBytes      = 512
+    BootCodeLimitBytes   = 510
+    FloppyBytes          = 1474560
+    FloppySectors        = 2880
+    Stage2LoadSegment    = 0x1000
+    Stage2LoadOffset     = 0x0000
+    Stage2LoadLimitBytes = 0x10000
+    Stage2StartLba       = 1
+}
 
-$mlCandidates = @(
-    'C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.40.33807\bin\Hostx64\x86\ml.exe',
-    'C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.40.33807\bin\Hostx86\x86\ml.exe',
-    'C:\Program Files (x86)\Microsoft Visual Studio\2019\BuildTools\VC\Tools\MSVC\14.29.30133\bin\Hostx64\x86\ml.exe',
-    'C:\Program Files (x86)\Microsoft Visual Studio\2019\BuildTools\VC\Tools\MSVC\14.29.30133\bin\Hostx86\x86\ml.exe'
-)
+$bootWarningBytes = 480
+$stage2WarningBytes = 57344
+$imageWarningPercent = 80
 
-$ml = $mlCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1
-if (-not $ml) {
-    throw 'Could not find ml.exe. Install MASM via Visual Studio Build Tools or update scripts/build.ps1.'
+function Write-Section {
+    param([string]$Title)
+
+    Write-Host ""
+    Write-Host ("== {0} ==" -f $Title)
+}
+
+function Assert-PathExists {
+    param(
+        [string]$Path,
+        [string]$Label
+    )
+
+    if (-not (Test-Path -LiteralPath $Path)) {
+        throw ("Missing {0}: {1}" -f $Label, $Path)
+    }
 }
 
 function Read-UInt16Le {
@@ -38,8 +59,158 @@ function Read-UInt32Le {
 
 function Write-UInt16Le {
     param([byte[]]$Bytes, [int]$Offset, [int]$Value)
+
     $Bytes[$Offset] = [byte]($Value -band 0xFF)
     $Bytes[$Offset + 1] = [byte](($Value -shr 8) -band 0xFF)
+}
+
+function Format-Hex16 {
+    param([int]$Value)
+    return ("0x{0:X4}" -f ($Value -band 0xFFFF))
+}
+
+function Format-Hex32 {
+    param([int]$Value)
+    return ("0x{0:X8}" -f ($Value -band 0xFFFFFFFF))
+}
+
+function Get-PhysicalAddress {
+    param(
+        [int]$Segment,
+        [int]$Offset
+    )
+
+    return (($Segment -shl 4) + $Offset)
+}
+
+function Get-VsWherePath {
+    $candidates = @(
+        'C:\Program Files (x86)\Microsoft Visual Studio\Installer\vswhere.exe',
+        'C:\Program Files\Microsoft Visual Studio\Installer\vswhere.exe'
+    )
+
+    foreach ($candidate in $candidates) {
+        if (Test-Path -LiteralPath $candidate) {
+            return $candidate
+        }
+    }
+
+    return $null
+}
+
+function Add-MasmCandidate {
+    param(
+        [System.Collections.Generic.List[object]]$Candidates,
+        [string]$Path,
+        [string]$Source
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Path)) {
+        return
+    }
+
+    if (-not (Test-Path -LiteralPath $Path)) {
+        return
+    }
+
+    $resolved = (Resolve-Path -LiteralPath $Path).Path
+    if ($Candidates | Where-Object { $_.Path -eq $resolved }) {
+        return
+    }
+
+    $Candidates.Add([pscustomobject]@{
+        Path = $resolved
+        Source = $Source
+    })
+}
+
+function Resolve-MasmTool {
+    param([string]$RequestedPath)
+
+    $candidates = New-Object 'System.Collections.Generic.List[object]'
+
+    if ($RequestedPath) {
+        if (-not (Test-Path -LiteralPath $RequestedPath)) {
+            throw ("The requested MASM path does not exist: {0}" -f $RequestedPath)
+        }
+
+        Add-MasmCandidate -Candidates $candidates -Path $RequestedPath -Source 'parameter'
+    }
+
+    Add-MasmCandidate -Candidates $candidates -Path $env:ML_EXE -Source 'ML_EXE'
+
+    $mlCommand = Get-Command ml.exe -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
+    if ($mlCommand) {
+        Add-MasmCandidate -Candidates $candidates -Path $mlCommand.Source -Source 'PATH'
+    }
+
+    if ($env:VCToolsInstallDir) {
+        foreach ($relative in @('bin\Hostx64\x86\ml.exe', 'bin\Hostx86\x86\ml.exe')) {
+            Add-MasmCandidate -Candidates $candidates -Path (Join-Path $env:VCToolsInstallDir $relative) -Source 'VCToolsInstallDir'
+        }
+    }
+
+    $vswhere = Get-VsWherePath
+    if ($vswhere) {
+        foreach ($pattern in @(
+            'VC\Tools\MSVC\**\bin\Hostx64\x86\ml.exe',
+            'VC\Tools\MSVC\**\bin\Hostx86\x86\ml.exe'
+        )) {
+            $found = & $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -find $pattern 2>$null | Select-Object -First 1
+            if ($LASTEXITCODE -eq 0 -and $found) {
+                Add-MasmCandidate -Candidates $candidates -Path $found -Source 'vswhere'
+            }
+        }
+    }
+
+    if ($candidates.Count -gt 0) {
+        return $candidates[0]
+    }
+
+    throw @"
+Could not find ml.exe for the MASM build.
+
+Discovery order:
+  1. -MasmPath
+  2. ML_EXE environment variable
+  3. PATH
+  4. VCToolsInstallDir
+  5. vswhere (Visual Studio / Build Tools)
+
+Setup expectation:
+  Install Visual Studio or Build Tools with the MSVC x86/x64 toolset that includes MASM.
+
+Quick workaround:
+  powershell -ExecutionPolicy Bypass -File .\scripts\build.ps1 -MasmPath 'C:\path\to\ml.exe'
+"@
+}
+
+function Invoke-ExternalTool {
+    param(
+        [string]$Executable,
+        [string[]]$Arguments
+    )
+
+    $captured = New-Object 'System.Collections.Generic.List[string]'
+    & $Executable @Arguments 2>&1 | ForEach-Object {
+        $line = $_.ToString()
+        $captured.Add($line)
+        Write-Host $line
+    }
+
+    return [pscustomobject]@{
+        ExitCode = $LASTEXITCODE
+        Output = $captured.ToArray()
+    }
+}
+
+function Get-MasmDiagnosticSummary {
+    param([string[]]$Output)
+
+    return [pscustomobject]@{
+        WarningCount = @($Output | Where-Object { $_ -match ':\s*warning\s' }).Count
+        ErrorCount = @($Output | Where-Object { $_ -match ':\s*error\s' }).Count
+    }
 }
 
 function Read-CoffName {
@@ -53,8 +224,16 @@ function Read-CoffName {
     $secondDword = Read-UInt32Le $Bytes ($Offset + 4)
 
     if ($firstDword -eq 0 -and $secondDword -ne 0) {
-        $nameBytes = New-Object System.Collections.Generic.List[byte]
+        if ($StringTableOffset -lt 0 -or $StringTableOffset -ge $Bytes.Length) {
+            throw 'COFF string table offset was outside the object file.'
+        }
+
         $cursor = $StringTableOffset + $secondDword
+        if ($cursor -ge $Bytes.Length) {
+            throw ("COFF string table reference {0} ran past the end of the object." -f $secondDword)
+        }
+
+        $nameBytes = New-Object 'System.Collections.Generic.List[byte]'
         while ($cursor -lt $Bytes.Length -and $Bytes[$cursor] -ne 0) {
             $nameBytes.Add($Bytes[$cursor])
             $cursor++
@@ -72,19 +251,35 @@ function Read-CoffName {
     return [Text.Encoding]::ASCII.GetString($raw, 0, $end)
 }
 
-function Get-CoffFlatBinary {
-    param(
-        [string]$ObjectPath,
-        [string]$SectionPrefix = '.text'
-    )
+function Get-CoffObjectModel {
+    param([string]$ObjectPath)
 
+    Assert-PathExists -Path $ObjectPath -Label 'object file'
     $bytes = [IO.File]::ReadAllBytes($ObjectPath)
+
+    if ($bytes.Length -lt 20) {
+        throw ("COFF object is too small to contain a valid header: {0}" -f $ObjectPath)
+    }
+
     $sectionCount = Read-UInt16Le $bytes 2
     $symbolTableOffset = [int](Read-UInt32Le $bytes 8)
     $symbolCount = [int](Read-UInt32Le $bytes 12)
     $optionalHeaderSize = Read-UInt16Le $bytes 16
     $sectionTableOffset = 20 + $optionalHeaderSize
+    $sectionTableBytes = $sectionCount * 40
     $stringTableOffset = $symbolTableOffset + ($symbolCount * 18)
+
+    if (($sectionTableOffset + $sectionTableBytes) -gt $bytes.Length) {
+        throw ("Section table ran past the end of the object file: {0}" -f $ObjectPath)
+    }
+
+    if ($symbolTableOffset -gt $bytes.Length) {
+        throw ("Symbol table offset was outside the object file: {0}" -f $ObjectPath)
+    }
+
+    if ($stringTableOffset -gt $bytes.Length) {
+        throw ("String table offset was outside the object file: {0}" -f $ObjectPath)
+    }
 
     $sections = @()
     for ($i = 0; $i -lt $sectionCount; $i++) {
@@ -99,12 +294,8 @@ function Get-CoffFlatBinary {
         }
     }
 
-    $targetSection = $sections | Where-Object { $_.Name.StartsWith($SectionPrefix) } | Select-Object -First 1
-    if (-not $targetSection) {
-        throw "Could not find a section starting with '$SectionPrefix' in $ObjectPath."
-    }
-
     $symbolsByIndex = @{}
+    $symbolsByName = @{}
     $symbolIndex = 0
     while ($symbolIndex -lt $symbolCount) {
         $offset = $symbolTableOffset + ($symbolIndex * 18)
@@ -117,96 +308,444 @@ function Get-CoffFlatBinary {
         }
 
         $symbolsByIndex[$symbolIndex] = $symbol
+        if (-not $symbolsByName.ContainsKey($symbol.Name)) {
+            $symbolsByName[$symbol.Name] = $symbol
+        }
+
         $symbolIndex += 1 + $symbol.AuxCount
     }
 
+    return [pscustomobject]@{
+        Path = $ObjectPath
+        Bytes = $bytes
+        Sections = $sections
+        SymbolsByIndex = $symbolsByIndex
+        SymbolsByName = $symbolsByName
+    }
+}
+
+function Get-CoffFlatBinary {
+    param(
+        [string]$ObjectPath,
+        [string]$SectionPrefix = '.text'
+    )
+
+    $objectModel = Get-CoffObjectModel -ObjectPath $ObjectPath
+    $targetSection = $objectModel.Sections | Where-Object { $_.Name.StartsWith($SectionPrefix) } | Select-Object -First 1
+
+    if (-not $targetSection) {
+        $available = ($objectModel.Sections | ForEach-Object { $_.Name }) -join ', '
+        throw ("Could not find a section starting with '{0}' in {1}. Available sections: {2}" -f $SectionPrefix, $ObjectPath, $available)
+    }
+
+    if (($targetSection.PointerToRawData + $targetSection.SizeOfRawData) -gt $objectModel.Bytes.Length) {
+        throw ("Target section '{0}' ran past the end of {1}" -f $targetSection.Name, $ObjectPath)
+    }
+
     $flat = New-Object byte[] $targetSection.SizeOfRawData
-    [Array]::Copy($bytes, $targetSection.PointerToRawData, $flat, 0, $targetSection.SizeOfRawData)
+    [Array]::Copy($objectModel.Bytes, $targetSection.PointerToRawData, $flat, 0, $targetSection.SizeOfRawData)
 
     for ($i = 0; $i -lt $targetSection.NumberOfRelocations; $i++) {
         $offset = $targetSection.PointerToRelocations + ($i * 10)
-        $virtualAddress = [int](Read-UInt32Le $bytes $offset)
-        $symbolIndex = [int](Read-UInt32Le $bytes ($offset + 4))
-        $relocationType = Read-UInt16Le $bytes ($offset + 8)
-
-        if (-not $symbolsByIndex.ContainsKey($symbolIndex)) {
-            throw "Relocation referenced missing symbol index $symbolIndex in $ObjectPath."
+        if (($offset + 10) -gt $objectModel.Bytes.Length) {
+            throw ("Relocation table for '{0}' ran past the end of {1}" -f $targetSection.Name, $ObjectPath)
         }
 
-        $symbol = $symbolsByIndex[$symbolIndex]
+        $virtualAddress = [int](Read-UInt32Le $objectModel.Bytes $offset)
+        $symbolIndex = [int](Read-UInt32Le $objectModel.Bytes ($offset + 4))
+        $relocationType = Read-UInt16Le $objectModel.Bytes ($offset + 8)
+
+        if ($virtualAddress -lt 0 -or ($virtualAddress + 2) -gt $flat.Length) {
+            throw ("Relocation at RVA {0} was outside flattened section '{1}' in {2}" -f (Format-Hex32 $virtualAddress), $targetSection.Name, $ObjectPath)
+        }
+
+        if (-not $objectModel.SymbolsByIndex.ContainsKey($symbolIndex)) {
+            throw ("Relocation referenced missing symbol index {0} in {1}" -f $symbolIndex, $ObjectPath)
+        }
+
+        $symbol = $objectModel.SymbolsByIndex[$symbolIndex]
         switch ($relocationType) {
             0x0001 {
                 $current = Read-UInt16Le $flat $virtualAddress
                 Write-UInt16Le $flat $virtualAddress ($current + $symbol.Value)
             }
             default {
-                throw ("Unsupported relocation type 0x{0:X4} for symbol '{1}' in {2}" -f $relocationType, $symbol.Name, $ObjectPath)
+                throw ("Unsupported relocation type {0} for symbol '{1}' in {2}" -f (Format-Hex16 $relocationType), $symbol.Name, $ObjectPath)
             }
         }
     }
 
-    return $flat
+    return [pscustomobject]@{
+        FlatBytes = $flat
+        ObjectModel = $objectModel
+        TargetSection = $targetSection
+        AppliedRelocations = $targetSection.NumberOfRelocations
+    }
+}
+
+function Get-SymbolValue {
+    param(
+        $ObjectModel,
+        [string[]]$Names
+    )
+
+    foreach ($name in $Names) {
+        if ($ObjectModel.SymbolsByName.ContainsKey($name)) {
+            return $ObjectModel.SymbolsByName[$name].Value
+        }
+    }
+
+    return $null
 }
 
 function Invoke-Masm {
     param(
         [string]$SourcePath,
         [string]$ObjectPath,
-        [string[]]$IncludePaths = @()
+        [string]$ListPath,
+        [string[]]$IncludePaths = @(),
+        [string]$ToolPath
     )
 
-    $args = @('/nologo', '/c', '/coff', '/Fo', $ObjectPath)
+    Assert-PathExists -Path $SourcePath -Label 'assembly source'
     foreach ($includePath in $IncludePaths) {
-        $args += "/I$includePath"
+        Assert-PathExists -Path $includePath -Label 'include directory'
     }
-    $args += $SourcePath
 
-    & $ml @args
-    if ($LASTEXITCODE -ne 0) {
-        throw "MASM failed for $SourcePath"
+    $arguments = @('/nologo', '/c', '/coff', "/Fo$ObjectPath", "/Fl$ListPath")
+    foreach ($includePath in $IncludePaths) {
+        $arguments += "/I$includePath"
+    }
+    $arguments += $SourcePath
+
+    $result = Invoke-ExternalTool -Executable $ToolPath -Arguments $arguments
+    $diagnostics = Get-MasmDiagnosticSummary -Output $result.Output
+
+    if ($result.ExitCode -ne 0) {
+        throw @"
+MASM failed.
+  Source : $SourcePath
+  Tool   : $ToolPath
+  Object : $ObjectPath
+  Listing: $ListPath
+"@
+    }
+
+    Assert-PathExists -Path $ObjectPath -Label 'assembled object'
+    Assert-PathExists -Path $ListPath -Label 'assembly listing'
+
+    return [pscustomobject]@{
+        Output = $result.Output
+        WarningCount = $diagnostics.WarningCount
+        ErrorCount = $diagnostics.ErrorCount
+        ObjectPath = $ObjectPath
+        ListPath = $ListPath
     }
 }
+
+function Validate-Stage2Layout {
+    param(
+        [int]$Stage2Bytes,
+        [int]$Stage2Sectors,
+        $Layout
+    )
+
+    if ($Stage2Bytes -lt 1) {
+        throw 'Stage two was empty.'
+    }
+
+    if ($Stage2Bytes -gt $Layout.Stage2LoadLimitBytes) {
+        throw @"
+Stage two is too large for the current boot contract.
+  Size      : $Stage2Bytes bytes
+  Limit     : $($Layout.Stage2LoadLimitBytes) bytes
+  Load addr : $(Format-Hex16 $Layout.Stage2LoadSegment):$(Format-Hex16 $Layout.Stage2LoadOffset)
+
+The current bootloader reads stage two into a single 64 KiB segment.
+"@
+    }
+
+    if ($Stage2Sectors -gt ($Layout.FloppySectors - 1)) {
+        throw ("Stage two requires {0} sectors, but only {1} sectors are available after the boot sector." -f $Stage2Sectors, ($Layout.FloppySectors - 1))
+    }
+
+    $stage2EndOffset = $Layout.BootSectorBytes + $Stage2Bytes
+    if ($stage2EndOffset -gt $Layout.FloppyBytes) {
+        throw ("Boot + stage two would overflow the floppy image: end offset {0}, image size {1}." -f $stage2EndOffset, $Layout.FloppyBytes)
+    }
+
+    $stage2PaddedBytes = $Stage2Sectors * $Layout.BootSectorBytes
+    if ($stage2PaddedBytes -gt $Layout.Stage2LoadLimitBytes) {
+        throw ("Stage two padded size ({0} bytes) exceeds the loader's 64 KiB destination window." -f $stage2PaddedBytes)
+    }
+}
+
+function Validate-ImageLayout {
+    param(
+        [int]$BootBytes,
+        [int]$Stage2Bytes,
+        [int]$Stage2Sectors,
+        $Layout
+    )
+
+    if ($BootBytes -lt 1) {
+        throw 'Boot sector payload was empty.'
+    }
+
+    if ($BootBytes -gt $Layout.BootCodeLimitBytes) {
+        throw ("Bootloader is too large: {0} bytes (limit {1})." -f $BootBytes, $Layout.BootCodeLimitBytes)
+    }
+
+    Validate-Stage2Layout -Stage2Bytes $Stage2Bytes -Stage2Sectors $Stage2Sectors -Layout $Layout
+}
+
+function Get-BuildWarnings {
+    param(
+        [int]$BootBytes,
+        [int]$Stage2Bytes,
+        [int]$Stage2Sectors,
+        [int]$ImageBytesUsed,
+        $Layout
+    )
+
+    $warnings = New-Object 'System.Collections.Generic.List[string]'
+
+    if ($BootBytes -ge $bootWarningBytes) {
+        $warnings.Add(("Boot code is within {0} bytes of the 510-byte limit." -f ($Layout.BootCodeLimitBytes - $BootBytes)))
+    }
+
+    if ($Stage2Bytes -ge $stage2WarningBytes) {
+        $warnings.Add(("Stage two is within {0} bytes of the 64 KiB load limit." -f ($Layout.Stage2LoadLimitBytes - $Stage2Bytes)))
+    }
+
+    $imagePercent = [math]::Round(($ImageBytesUsed / $Layout.FloppyBytes) * 100, 2)
+    if ($imagePercent -ge $imageWarningPercent) {
+        $warnings.Add(("Image is using {0}% of the floppy capacity." -f $imagePercent))
+    }
+
+    if ($Stage2Sectors -ge 120) {
+        $warnings.Add(("Stage two uses {0} sectors; that is close to the 128-sector single-segment load limit." -f $Stage2Sectors))
+    }
+
+    return $warnings.ToArray()
+}
+
+function Write-BuildReport {
+    param(
+        [string]$ReportPath,
+        [string]$ToolPath,
+        [string]$ToolSource,
+        [int]$BootBytes,
+        [int]$Stage2Bytes,
+        [int]$Stage2Sectors,
+        [int]$Stage2PaddedBytes,
+        [int]$ImageBytesUsed,
+        [int]$BootWarnings,
+        [int]$StageWarnings,
+        [int]$BootRelocations,
+        [int]$StageRelocations,
+        [string]$BootSectionName,
+        [string]$StageSectionName,
+        [Nullable[int]]$BootStartOffset,
+        [Nullable[int]]$StageStartOffset,
+        [string[]]$Warnings,
+        [string[]]$ArtifactPaths,
+        $Layout
+    )
+
+    $bootPhysical = Get-PhysicalAddress -Segment 0 -Offset 0x7C00
+    $stagePhysical = Get-PhysicalAddress -Segment $Layout.Stage2LoadSegment -Offset $Layout.Stage2LoadOffset
+    $bootFreeBytes = $Layout.BootCodeLimitBytes - $BootBytes
+    $stage2FreeBytes = $Layout.Stage2LoadLimitBytes - $Stage2Bytes
+    $imageFreeBytes = $Layout.FloppyBytes - $ImageBytesUsed
+    $stage2EndLba = $Layout.Stage2StartLba + $Stage2Sectors - 1
+
+    [array]$warningList = @()
+    if ($null -ne $Warnings) {
+        $warningList = @($Warnings) | Where-Object { $null -ne $_ -and $_ -ne '' }
+    }
+
+    [array]$artifactList = @()
+    if ($null -ne $ArtifactPaths) {
+        $artifactList = @($ArtifactPaths) | Where-Object { $null -ne $_ -and $_ -ne '' }
+    }
+
+    $lines = @(
+        'CyberStorm Build Report'
+        ("Generated: {0}" -f (Get-Date -Format 'yyyy-MM-dd HH:mm:ss K'))
+        ''
+        'Toolchain'
+        ("  MASM path: {0}" -f $ToolPath)
+        ("  Discovered via: {0}" -f $ToolSource)
+        ''
+        'Layout'
+        ("  Boot code bytes: {0} / {1}" -f $BootBytes, $Layout.BootCodeLimitBytes)
+        ("  Boot code free bytes: {0}" -f $bootFreeBytes)
+        ("  Stage2 bytes: {0}" -f $Stage2Bytes)
+        ("  Stage2 free bytes before 64 KiB limit: {0}" -f $stage2FreeBytes)
+        ("  Stage2 padded bytes: {0}" -f $Stage2PaddedBytes)
+        ("  Stage2 sectors: {0}" -f $Stage2Sectors)
+        ("  Image bytes used: {0} / {1}" -f $ImageBytesUsed, $Layout.FloppyBytes)
+        ("  Image free bytes: {0}" -f $imageFreeBytes)
+        ("  Boot load address: 0000:7C00 (phys {0})" -f (Format-Hex32 $bootPhysical))
+        ("  Stage2 load address: {0}:{1} (phys {2})" -f (Format-Hex16 $Layout.Stage2LoadSegment), (Format-Hex16 $Layout.Stage2LoadOffset), (Format-Hex32 $stagePhysical))
+        ("  Boot signature: 0x55AA @ byte 510")
+        ("  Stage2 LBA range: {0}..{1}" -f $Layout.Stage2StartLba, $stage2EndLba)
+        ("  Boot section: {0} (relocations applied: {1})" -f $BootSectionName, $BootRelocations)
+        ("  Stage2 section: {0} (relocations applied: {1})" -f $StageSectionName, $StageRelocations)
+        ("  MASM warnings: boot={0}, stage2={1}" -f $BootWarnings, $StageWarnings)
+    )
+
+    if ($BootStartOffset -ne $null) {
+        $lines += ("  Boot 'start' symbol offset: {0}" -f (Format-Hex16 $BootStartOffset))
+    }
+
+    if ($StageStartOffset -ne $null) {
+        $lines += ("  Stage2 'start' symbol offset: {0}" -f (Format-Hex16 $StageStartOffset))
+    }
+
+    $lines += ''
+    $lines += 'Artifacts'
+    foreach ($artifactPath in $artifactList) {
+        $lines += ("  {0}" -f $artifactPath)
+    }
+
+    $lines += ''
+    $lines += 'Warnings'
+    if ($warningList.Length -eq 0) {
+        $lines += '  none'
+    } else {
+        foreach ($warning in $warningList) {
+            $lines += ("  {0}" -f $warning)
+        }
+    }
+
+    Set-Content -LiteralPath $ReportPath -Encoding ascii -Value $lines
+}
+
+Assert-PathExists -Path $srcDir -Label 'source directory'
+New-Item -ItemType Directory -Force -Path $buildDir | Out-Null
+
+$masm = Resolve-MasmTool -RequestedPath $MasmPath
 
 $gameAsm = Join-Path $srcDir 'game.asm'
 $bootAsm = Join-Path $srcDir 'boot.asm'
 $gameObj = Join-Path $buildDir 'game.obj'
 $bootObj = Join-Path $buildDir 'boot.obj'
-
-Invoke-Masm -SourcePath $gameAsm -ObjectPath $gameObj
-$gameBin = Get-CoffFlatBinary -ObjectPath $gameObj
-[IO.File]::WriteAllBytes((Join-Path $buildDir 'cyberstorm-stage2.bin'), $gameBin)
-
-$gameSectorCount = [int][Math]::Ceiling($gameBin.Length / 512.0)
-if ($gameSectorCount -lt 1) {
-    throw 'Stage two was empty.'
-}
-
+$gameList = Join-Path $buildDir 'game.lst'
+$bootList = Join-Path $buildDir 'boot.lst'
 $bootConfig = Join-Path $buildDir 'boot_config.inc'
-Set-Content -Path $bootConfig -Encoding ascii -NoNewline -Value ("GAME_SECTORS EQU {0}`r`n" -f $gameSectorCount)
+$stage2BinPath = Join-Path $buildDir 'cyberstorm-stage2.bin'
+$bootBinPath = Join-Path $buildDir 'cyberstorm-boot.bin'
+$imgPath = Join-Path $buildDir 'cyberstorm.img'
+$vfdPath = Join-Path $buildDir 'cyberstorm.vfd'
+$reportPath = Join-Path $buildDir 'cyberstorm-build-report.txt'
 
-Invoke-Masm -SourcePath $bootAsm -ObjectPath $bootObj -IncludePaths @($buildDir)
-$bootBin = Get-CoffFlatBinary -ObjectPath $bootObj
-if ($bootBin.Length -gt 510) {
-    throw "Bootloader is too large: $($bootBin.Length) bytes."
-}
+Write-Section -Title 'Toolchain'
+Write-Host ("MASM: {0}" -f $masm.Path)
+Write-Host ("Discovery: {0}" -f $masm.Source)
 
-$bootSector = New-Object byte[] 512
+Write-Section -Title 'Stage Two'
+$gameBuild = Invoke-Masm -SourcePath $gameAsm -ObjectPath $gameObj -ListPath $gameList -ToolPath $masm.Path
+$gameFlat = Get-CoffFlatBinary -ObjectPath $gameObj
+$gameBin = $gameFlat.FlatBytes
+[IO.File]::WriteAllBytes($stage2BinPath, $gameBin)
+
+$gameSectorCount = [int][Math]::Ceiling($gameBin.Length / $layout.BootSectorBytes)
+Validate-Stage2Layout -Stage2Bytes $gameBin.Length -Stage2Sectors $gameSectorCount -Layout $layout
+
+Set-Content -LiteralPath $bootConfig -Encoding ascii -Value ("GAME_SECTORS EQU {0}" -f $gameSectorCount)
+Assert-PathExists -Path $bootConfig -Label 'generated boot config'
+
+Write-Section -Title 'Boot Sector'
+$bootBuild = Invoke-Masm -SourcePath $bootAsm -ObjectPath $bootObj -ListPath $bootList -IncludePaths @($buildDir) -ToolPath $masm.Path
+$bootFlat = Get-CoffFlatBinary -ObjectPath $bootObj
+$bootBin = $bootFlat.FlatBytes
+
+Validate-ImageLayout -BootBytes $bootBin.Length -Stage2Bytes $gameBin.Length -Stage2Sectors $gameSectorCount -Layout $layout
+
+$bootSector = New-Object byte[] $layout.BootSectorBytes
 [Array]::Copy($bootBin, 0, $bootSector, 0, $bootBin.Length)
 $bootSector[510] = 0x55
 $bootSector[511] = 0xAA
 
-[IO.File]::WriteAllBytes((Join-Path $buildDir 'cyberstorm-boot.bin'), $bootSector)
+if ($bootSector[510] -ne 0x55 -or $bootSector[511] -ne 0xAA) {
+    throw 'Boot signature validation failed before image write.'
+}
 
-$floppy = New-Object byte[] 1474560
+[IO.File]::WriteAllBytes($bootBinPath, $bootSector)
+
+$imageBytesUsed = $layout.BootSectorBytes + $gameBin.Length
+$stage2PaddedBytes = $gameSectorCount * $layout.BootSectorBytes
+$warnings = Get-BuildWarnings -BootBytes $bootBin.Length -Stage2Bytes $gameBin.Length -Stage2Sectors $gameSectorCount -ImageBytesUsed $imageBytesUsed -Layout $layout
+
+$floppy = New-Object byte[] $layout.FloppyBytes
 [Array]::Copy($bootSector, 0, $floppy, 0, $bootSector.Length)
-[Array]::Copy($gameBin, 0, $floppy, 512, $gameBin.Length)
+[Array]::Copy($gameBin, 0, $floppy, $layout.BootSectorBytes, $gameBin.Length)
 
-$imgPath = Join-Path $buildDir 'cyberstorm.img'
-$vfdPath = Join-Path $buildDir 'cyberstorm.vfd'
 [IO.File]::WriteAllBytes($imgPath, $floppy)
 [IO.File]::WriteAllBytes($vfdPath, $floppy)
 
+if ((Get-Item -LiteralPath $imgPath).Length -ne $layout.FloppyBytes) {
+    throw ("Image size mismatch after write: {0}" -f $imgPath)
+}
+
+if ((Get-Item -LiteralPath $vfdPath).Length -ne $layout.FloppyBytes) {
+    throw ("Image size mismatch after write: {0}" -f $vfdPath)
+}
+
+$bootStartOffset = Get-SymbolValue -ObjectModel $bootFlat.ObjectModel -Names @('start', '_start')
+$stageStartOffset = Get-SymbolValue -ObjectModel $gameFlat.ObjectModel -Names @('start', '_start')
+
+Write-BuildReport `
+    -ReportPath $reportPath `
+    -ToolPath $masm.Path `
+    -ToolSource $masm.Source `
+    -BootBytes $bootBin.Length `
+    -Stage2Bytes $gameBin.Length `
+    -Stage2Sectors $gameSectorCount `
+    -Stage2PaddedBytes $stage2PaddedBytes `
+    -ImageBytesUsed $imageBytesUsed `
+    -BootWarnings $bootBuild.WarningCount `
+    -StageWarnings $gameBuild.WarningCount `
+    -BootRelocations $bootFlat.AppliedRelocations `
+    -StageRelocations $gameFlat.AppliedRelocations `
+    -BootSectionName $bootFlat.TargetSection.Name `
+    -StageSectionName $gameFlat.TargetSection.Name `
+    -BootStartOffset $bootStartOffset `
+    -StageStartOffset $stageStartOffset `
+    -Warnings $warnings `
+    -ArtifactPaths @($bootBinPath, $stage2BinPath, $bootList, $gameList, $imgPath, $vfdPath, $reportPath) `
+    -Layout $layout
+
+Write-Section -Title 'Artifacts'
 Write-Host ("Built {0}" -f $imgPath)
 Write-Host ("Built {0}" -f $vfdPath)
-Write-Host ("Boot sector: {0} bytes" -f $bootBin.Length)
-Write-Host ("Stage two:  {0} bytes ({1} sectors)" -f $gameBin.Length, $gameSectorCount)
+Write-Host ("Listing {0}" -f $bootList)
+Write-Host ("Listing {0}" -f $gameList)
+Write-Host ("Report  {0}" -f $reportPath)
+
+Write-Section -Title 'Layout Summary'
+Write-Host ("Boot code : {0} bytes ({1} bytes free)" -f $bootBin.Length, ($layout.BootCodeLimitBytes - $bootBin.Length))
+Write-Host ("Stage2    : {0} bytes ({1} bytes free), {2} sectors, padded to {3} bytes" -f $gameBin.Length, ($layout.Stage2LoadLimitBytes - $gameBin.Length), $gameSectorCount, $stage2PaddedBytes)
+Write-Host ("Image     : {0} / {1} bytes used ({2} bytes free)" -f $imageBytesUsed, $layout.FloppyBytes, ($layout.FloppyBytes - $imageBytesUsed))
+Write-Host ("Boot load : 0000:7C00 (phys {0})" -f (Format-Hex32 (Get-PhysicalAddress -Segment 0 -Offset 0x7C00)))
+Write-Host ("Stage2    : {0}:{1} (phys {2})" -f (Format-Hex16 $layout.Stage2LoadSegment), (Format-Hex16 $layout.Stage2LoadOffset), (Format-Hex32 (Get-PhysicalAddress -Segment $layout.Stage2LoadSegment -Offset $layout.Stage2LoadOffset)))
+Write-Host ("Stage2 LBA: {0}..{1}" -f $layout.Stage2StartLba, ($layout.Stage2StartLba + $gameSectorCount - 1))
+Write-Host ("Signature : 0x55AA @ byte 510")
+Write-Host ("Warnings  : boot={0}, stage2={1}" -f $bootBuild.WarningCount, $gameBuild.WarningCount)
+
+if ($bootStartOffset -ne $null) {
+    Write-Host ("Boot start symbol : {0}" -f (Format-Hex16 $bootStartOffset))
+}
+
+if ($stageStartOffset -ne $null) {
+    Write-Host ("Stage2 start symbol: {0}" -f (Format-Hex16 $stageStartOffset))
+}
+
+if (@($warnings).Count -gt 0) {
+    Write-Section -Title 'Warnings'
+    foreach ($warning in @($warnings)) {
+        Write-Warning $warning
+    }
+}

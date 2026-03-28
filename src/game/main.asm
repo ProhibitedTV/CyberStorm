@@ -1,4 +1,6 @@
 start:
+    ; Stage two stays in a single tiny-model segment: code, data, and the IRQ1
+    ; handler all expect DS = CS. SS:SP still points at the boot stack.
     push cs
     pop ds
 
@@ -25,6 +27,8 @@ seed_ready:
     mov byte ptr [message_id], MSG_SECTOR
 
 main_loop:
+    ; One BIOS timer tick drives animation, rendering, and then one round of
+    ; state/input handling.
     call wait_frame_tick
     call update_frontend_state
     call render_screen
@@ -63,6 +67,7 @@ handle_play_input:
 
 wait_frame_tick:
 wait_frame_tick_loop:
+    ; BIOS tick count (~18.2 Hz) is the only global clock in the runtime.
     xor ah, ah
     int 1Ah
     cmp dx, [last_tick]
@@ -85,8 +90,8 @@ frontend_state_done:
 start_new_run:
     mov byte ptr [game_state], STATE_PLAYING
     mov byte ptr [sector_num], 1
-    mov byte ptr [shield_count], 5
-    mov byte ptr [pulse_count], 3
+    mov byte ptr [shield_count], START_SHIELDS
+    mov byte ptr [pulse_count], START_PULSES
     mov byte ptr [data_count], 0
     mov byte ptr [kill_count], 0
     call load_sector

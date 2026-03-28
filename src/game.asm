@@ -2,6 +2,8 @@
 .code
 org 0
 
+; boot.asm far-returns to 1000:0000, so stage two must begin with executable
+; code at byte 0 regardless of how the modules below are reorganized.
 jmp start
 
 include game\constants.inc

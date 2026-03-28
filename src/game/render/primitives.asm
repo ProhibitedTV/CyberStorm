@@ -63,7 +63,7 @@ fill_rect_row:
     mov cx, si
     rep stosb
     pop di
-    add di, 320
+    add di, SCREEN_W
     sub di, si
     dec bp
     jmp fill_rect_row
@@ -90,6 +90,7 @@ put_pixel:
     ret
 
 compute_offset:
+    ; Map (bx, dx) onto the current linear framebuffer selected in ES.
     push ax
     mov ax, dx
     shl ax, 6

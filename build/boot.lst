@@ -1,0 +1,149 @@
+Microsoft (R) Macro Assembler Version 14.40.33812.0	    03/28/26 11:13:28
+C:\Users\RhythmicCarnage\Desktop\CyberStorm\src\boot.asm     Page 1 - 1
+
+
+				.model tiny
+ 0000				.code
+				org 0
+				
+				include boot_config.inc
+ = 0013			      C GAME_SECTORS EQU 19
+			      C 
+				
+ = 1000				GAME_SEGMENT equ 1000h
+ = 7C00				BOOT_STACK_TOP           equ 7C00h
+ = 07C0				BOOT_DATA_SEG            equ 07C0h
+ = 0200				FLOPPY_SECTOR_SIZE       equ 0200h
+ = 0012				FLOPPY_SECTORS_PER_TRACK equ 18
+ = 0002				FLOPPY_HEADS             equ 2
+ = 0002				STAGE2_START_SECTOR      equ 2
+ = 0003				TEXT_MODE_80X25          equ 0003h
+				
+ 0000				start:
+ 0000  FA			    cli
+ 0001  33 C0			    xor ax, ax
+ 0003  8E D0			    mov ss, ax
+ 0005  BC 7C00			    mov sp, BOOT_STACK_TOP
+ 0008  B8 07C0			    mov ax, BOOT_DATA_SEG
+ 000B  8E D8			    mov ds, ax
+ 000D  FB			    sti
+				    ; Stage two inherits the boot stack and the cleared direction flag.
+ 000E  FC			    cld
+				
+ 000F  2E: 88 16 006D R		    mov [boot_drive], dl
+				
+				    ; The flattened stage-two payload is written immediately after the boot
+				    ; sector and must fit in one segment; scripts/build.ps1 validates both.
+ 0014  B8 1000			    mov ax, GAME_SEGMENT
+ 0017  8E C0			    mov es, ax
+ 0019  33 DB			    xor bx, bx
+ 001B  B5 00			    mov ch, 0
+ 001D  B6 00			    mov dh, 0
+ 001F  B1 02			    mov cl, STAGE2_START_SECTOR
+ 0021  BE 0013			    mov si, GAME_SECTORS
+				
+ 0024				load_loop:
+ 0024  B4 02			    mov ah, 02h
+ 0026  B0 01			    mov al, 01h
+ 0028  2E: 8A 16 006D R		    mov dl, [boot_drive]
+ 002D  CD 13			    int 13h
+ 002F  72 21			    jc disk_error
+				
+ 0031  81 C3 0200		    add bx, FLOPPY_SECTOR_SIZE
+ 0035  FE C1			    inc cl
+ 0037  80 F9 13			    cmp cl, FLOPPY_SECTORS_PER_TRACK + 1
+ 003A  72 0D			    jb next_sector
+ 003C  B1 01			    mov cl, 1
+ 003E  FE C6			    inc dh
+ 0040  80 FE 02			    cmp dh, FLOPPY_HEADS
+ 0043  72 04			    jb next_sector
+ 0045  B6 00			    mov dh, 0
+ 0047  FE C5			    inc ch
+				
+ 0049				next_sector:
+ 0049  4E			    dec si
+ 004A  75 D8			    jnz load_loop
+				
+				    ; The boot contract is a far return to stage two offset 0000, so the first
+				    ; byte of src\game.asm must stay executable.
+ 004C  68 1000			    push GAME_SEGMENT
+ 004F  6A 00			    push 0000h
+ 0051  CB			    retf
+				
+ 0052				disk_error:
+ 0052  B8 0003			    mov ax, TEXT_MODE_80X25
+ 0055  CD 10			    int 10h
+ 0057  BE 006E R		    mov si, offset disk_error_text
+				
+ 005A				print_error:
+ 005A  AC			    lodsb
+ 005B  0A C0			    or al, al
+ 005D  74 0A			    jz halt
+ 005F  B4 0E			    mov ah, 0Eh
+ 0061  B7 00			    mov bh, 00h
+ 0063  B3 0C			    mov bl, 0Ch
+ 0065  CD 10			    int 10h
+ 0067  EB F1			    jmp print_error
+				
+ 0069				halt:
+ 0069  FA			    cli
+ 006A				hang:
+ 006A  F4			    hlt
+ 006B  EB FD			    jmp hang
+				
+ 006D 00			boot_drive db 0
+ 006E 43 59 42 45 52 53		disk_error_text db 'CYBERSTORM BOOT ERROR', 0
+       54 4F 52 4D 20 42
+       4F 4F 54 20 45 52
+       52 4F 52 00
+				
+				end start
+C:\Users\RhythmicCarnage\Desktop\CyberStorm\src\boot.asm(91) : warning A4023:with /coff switch, leading underscore required for start address : start
+Microsoft (R) Macro Assembler Version 14.40.33812.0	    03/28/26 11:13:28
+C:\Users\RhythmicCarnage\Desktop\CyberStorm\src\boot.asm     Symbols 2 - 1
+
+
+
+
+Segments and Groups:
+
+                N a m e                 Size     Length   Align   Combine Class
+
+_DATA  . . . . . . . . . . . . .	16 Bit	 0000	  Word	  Public  'DATA'	
+_TEXT  . . . . . . . . . . . . .	16 Bit	 0084	  Word	  Public  'CODE'	
+
+
+Symbols:
+
+                N a m e                 Type     Value    Attr
+
+@CodeSize  . . . . . . . . . . .	Number	 0000h	 
+@DataSize  . . . . . . . . . . .	Number	 0000h	 
+@Interface . . . . . . . . . . .	Number	 0000h	 
+@Model . . . . . . . . . . . . .	Number	 0001h	 
+@code  . . . . . . . . . . . . .	Text   	 DGROUP
+@data  . . . . . . . . . . . . .	Text   	 DGROUP
+@fardata?  . . . . . . . . . . .	Text   	 FAR_BSS
+@fardata . . . . . . . . . . . .	Text   	 FAR_DATA
+@stack . . . . . . . . . . . . .	Text   	 DGROUP
+BOOT_DATA_SEG  . . . . . . . . .	Number	 07C0h	 
+BOOT_STACK_TOP . . . . . . . . .	Number	 7C00h	 
+FLOPPY_HEADS . . . . . . . . . .	Number	 0002h	 
+FLOPPY_SECTORS_PER_TRACK . . . .	Number	 0012h	 
+FLOPPY_SECTOR_SIZE . . . . . . .	Number	 0200h	 
+GAME_SECTORS . . . . . . . . . .	Number	 0013h	 
+GAME_SEGMENT . . . . . . . . . .	Number	 1000h	 
+STAGE2_START_SECTOR  . . . . . .	Number	 0002h	 
+TEXT_MODE_80X25  . . . . . . . .	Number	 0003h	 
+boot_drive . . . . . . . . . . .	Byte	 006D	  _TEXT	
+disk_error_text  . . . . . . . .	Byte	 006E	  _TEXT	
+disk_error . . . . . . . . . . .	L Near	 0052	  _TEXT	
+halt . . . . . . . . . . . . . .	L Near	 0069	  _TEXT	
+hang . . . . . . . . . . . . . .	L Near	 006A	  _TEXT	
+load_loop  . . . . . . . . . . .	L Near	 0024	  _TEXT	
+next_sector  . . . . . . . . . .	L Near	 0049	  _TEXT	
+print_error  . . . . . . . . . .	L Near	 005A	  _TEXT	
+start  . . . . . . . . . . . . .	L Near	 0000	  _TEXT	Public
+
+	   1 Warnings
+	   0 Errors

@@ -14,12 +14,12 @@ render_map_col:
     push si
     xor ax, ax
     mov al, bl
-    shl ax, 3
+    shl ax, TILE_SHIFT
     add ax, MAP_PIXEL_X
     mov bx, ax
     xor ax, ax
     mov al, bh
-    shl ax, 3
+    shl ax, TILE_SHIFT
     add ax, MAP_PIXEL_Y
     mov dx, ax
     mov al, [si]

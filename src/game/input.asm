@@ -1,4 +1,6 @@
 install_keyboard_handler:
+    ; The game owns the machine once stage two starts, so IRQ1 is redirected to
+    ; a private handler instead of chaining through BIOS keyboard services.
     push ax
     push es
     cli
@@ -36,7 +38,8 @@ reset_keyboard_state:
     push ds
     pop es
     mov di, offset key_down
-    mov cx, 512
+    ; key_down and key_pressed are cleared together and must remain adjacent.
+    mov cx, KEY_STATE_REGION_BYTES
     xor al, al
     rep stosb
     pop es
@@ -46,6 +49,8 @@ reset_keyboard_state:
     ret
 
 poll_key_event:
+    ; The main loop consumes pressed_* latches directly. This translator remains
+    ; available for diagnostics and any future BIOS-style callers.
     cmp byte ptr [input_check_count], 99
     jae poll_check_ready
     inc byte ptr [input_check_count]
@@ -236,6 +241,8 @@ enter_key_true:
     ret
 
 keyboard_irq_handler:
+    ; Latch one-shot press events on make codes and ignore typematic repeats
+    ; until the corresponding break code arrives.
     push ax
     push bx
     push cx

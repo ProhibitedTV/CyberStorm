@@ -21,15 +21,15 @@ render_enemies:
     mov cx, MAX_ENEMIES
 
 render_enemy_loop:
-    cmp byte ptr [si], 0
+    cmp byte ptr [si + ENEMY_ALIVE], 0
     je render_enemy_next
     xor bx, bx
-    mov bl, [si + 1]
-    shl bx, 3
+    mov bl, [si + ENEMY_X]
+    shl bx, TILE_SHIFT
     add bx, MAP_PIXEL_X
     xor dx, dx
-    mov dl, [si + 2]
-    shl dx, 3
+    mov dl, [si + ENEMY_Y]
+    shl dx, TILE_SHIFT
     add dx, MAP_PIXEL_Y
     test byte ptr [anim_phase], 1
     jz enemy_bob_ready
@@ -48,11 +48,11 @@ render_enemy_next:
 render_player:
     xor bx, bx
     mov bl, [player_x]
-    shl bx, 3
+    shl bx, TILE_SHIFT
     add bx, MAP_PIXEL_X
     xor dx, dx
     mov dl, [player_y]
-    shl dx, 3
+    shl dx, TILE_SHIFT
     add dx, MAP_PIXEL_Y
     test byte ptr [anim_phase], 1
     jz player_bob_ready

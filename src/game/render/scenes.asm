@@ -1,4 +1,6 @@
 render_screen:
+    ; Most render helpers write through ES and expect it to stay pointed at the
+    ; backbuffer for the duration of the frame.
     mov ax, BACKBUFFER_SEG
     mov es, ax
     call clear_backbuffer

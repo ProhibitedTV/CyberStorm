@@ -4,7 +4,7 @@ clear_backbuffer:
     push di
     xor di, di
     mov ax, PAL_BG0 + (PAL_BG0 shl 8)
-    mov cx, 32000
+    mov cx, SCREEN_WORDS
     rep stosw
     pop di
     pop cx
@@ -76,7 +76,7 @@ present_frame:
     mov es, ax
     xor si, si
     xor di, di
-    mov cx, 32000
+    mov cx, SCREEN_WORDS
     rep movsw
     pop ds
     pop di

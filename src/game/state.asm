@@ -1,7 +1,9 @@
+; Core run state. Most symbols are referenced directly, so only the documented
+; adjacency assumptions below matter to the runtime.
 game_state   db STATE_TITLE
 sector_num   db 1
-shield_count db 5
-pulse_count  db 3
+shield_count db START_SHIELDS
+pulse_count  db START_PULSES
 data_count   db 0
 kill_count   db 0
 message_id   db MSG_SECTOR
@@ -31,8 +33,11 @@ pressed_up db 0
 pressed_left db 0
 pressed_right db 0
 pressed_down db 0
-key_down db 256 dup (0)
-key_pressed db 256 dup (0)
+; key_down and key_pressed must stay adjacent because reset_keyboard_state
+; clears one contiguous KEY_STATE_REGION_BYTES block starting here.
+key_down db KEY_STATE_TABLE_BYTES dup (0)
+; Reserved for future/diagnostic per-scan bookkeeping.
+key_pressed db KEY_STATE_TABLE_BYTES dup (0)
 
 text_cursor_x  dw 0
 text_cursor_y  dw 0
@@ -43,14 +48,17 @@ rect_h         dw 0
 text_color     db 0
 glyph_row_bits db 0
 
+; Enemy slot layout: [alive, x, y].
 enemies db MAX_ENEMIES * ENEMY_SIZE dup (0)
 map_tiles db MAP_SIZE dup (0)
 
+; map_index depends on these row bases matching MAP_W exactly.
 map_row_offsets dw 0, 28, 56, 84, 112, 140, 168, 196, 224, 252, 280, 308, 336, 364, 392
 
 message_table dw offset text_msg_sector, offset text_msg_block, offset text_msg_shard, offset text_msg_gate
               dw offset text_msg_hit, offset text_msg_kill, offset text_msg_pulse, offset text_msg_nopulse
 
+; sector_num is 1-based; load_sector indexes this table with sector_num - 1.
 template_table dw offset sector1_map, offset sector2_map, offset sector3_map
 
 hud_title     db 'CYBERSTORM', 0
@@ -82,6 +90,7 @@ title_line_2  db 'TURN BASED INFILTRATION IN RAW VGA.', 0
 title_line_3  db 'TAKE 4 SHARDS. OPEN THE GATE. REPEAT.', 0
 title_line_4  db 'PRESS ANY KEY TO JACK IN.', 0
 title_prompt  db 'BOOTED DIRECT TO THE RUN.', 0
+; Temporary title-scene diagnostics used while hardening keyboard support.
 debug_keys_text db 'KEYS', 0
 debug_enter_text db 'ENTR', 0
 debug_check_text db 'CHCK', 0

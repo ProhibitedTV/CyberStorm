@@ -1,4 +1,6 @@
 process_play_input:
+    ; Only consumed actions set action_taken; that flag is what grants hunters
+    ; exactly one responding turn.
     mov byte ptr [action_taken], 0
 
     cmp byte ptr [pressed_enter], 0
@@ -65,7 +67,7 @@ consume_down:
 
 move_left:
     mov bl, [player_x]
-    cmp bl, 1
+    cmp bl, PLAY_MIN_X
     jbe blocked_move
     dec bl
     mov bh, [player_y]
@@ -74,7 +76,7 @@ move_left:
 
 move_right:
     mov bl, [player_x]
-    cmp bl, 26
+    cmp bl, PLAY_MAX_X
     jae blocked_move
     inc bl
     mov bh, [player_y]
@@ -84,7 +86,7 @@ move_right:
 move_up:
     mov bl, [player_x]
     mov bh, [player_y]
-    cmp bh, 1
+    cmp bh, PLAY_MIN_Y
     jbe blocked_move
     dec bh
     call attempt_move_to
@@ -93,7 +95,7 @@ move_up:
 move_down:
     mov bl, [player_x]
     mov bh, [player_y]
-    cmp bh, 13
+    cmp bh, PLAY_MAX_Y
     jae blocked_move
     inc bh
     call attempt_move_to
@@ -145,7 +147,7 @@ move_blocked:
 
 stepped_into_enemy:
     pop bx
-    mov byte ptr [si], 0
+    mov byte ptr [si + ENEMY_ALIVE], 0
     call award_kill
     mov [player_x], bl
     mov [player_y], bh
@@ -174,8 +176,8 @@ shard_message:
 move_use_exit:
     inc byte ptr [sector_num]
     mov al, [sector_num]
-    cmp al, 4
-    jb advance_sector
+    cmp al, TOTAL_SECTORS
+    jbe advance_sector
     mov byte ptr [game_state], STATE_WIN
     ret
 
@@ -198,10 +200,10 @@ pulse_live:
     mov cx, MAX_ENEMIES
 
 pulse_loop:
-    cmp byte ptr [si], 0
+    cmp byte ptr [si + ENEMY_ALIVE], 0
     je pulse_next
 
-    mov al, [si + 1]
+    mov al, [si + ENEMY_X]
     mov bl, [player_x]
     cmp al, bl
     je pulse_x_ok
@@ -218,7 +220,7 @@ pulse_x_left:
     ja pulse_next
 
 pulse_x_ok:
-    mov al, [si + 2]
+    mov al, [si + ENEMY_Y]
     mov bl, [player_y]
     cmp al, bl
     je pulse_hit
@@ -235,7 +237,7 @@ pulse_y_up:
     ja pulse_next
 
 pulse_hit:
-    mov byte ptr [si], 0
+    mov byte ptr [si + ENEMY_ALIVE], 0
     call award_kill
 
 pulse_next:
@@ -248,7 +250,7 @@ enemy_turn:
     mov cx, MAX_ENEMIES
 
 enemy_turn_loop:
-    cmp byte ptr [si], 0
+    cmp byte ptr [si + ENEMY_ALIVE], 0
     je enemy_turn_next
     push cx
     call move_enemy
@@ -264,8 +266,8 @@ enemy_turn_done:
     ret
 
 move_enemy:
-    mov al, [si + 1]
-    mov ah, [si + 2]
+    mov al, [si + ENEMY_X]
+    mov ah, [si + ENEMY_Y]
 
     mov bl, [player_x]
     cmp al, bl
@@ -294,15 +296,15 @@ enemy_try_vertical:
     jb enemy_try_down
 
 enemy_try_up:
-    mov dl, [si + 1]
-    mov dh, [si + 2]
+    mov dl, [si + ENEMY_X]
+    mov dh, [si + ENEMY_Y]
     dec dh
     call try_enemy_step
     jmp enemy_done
 
 enemy_try_down:
-    mov dl, [si + 1]
-    mov dh, [si + 2]
+    mov dl, [si + ENEMY_X]
+    mov dh, [si + ENEMY_Y]
     inc dh
     call try_enemy_step
 
@@ -317,7 +319,7 @@ try_enemy_step:
     cmp dh, bl
     jne step_not_player
     dec byte ptr [shield_count]
-    mov byte ptr [si], 0
+    mov byte ptr [si + ENEMY_ALIVE], 0
     mov byte ptr [message_id], MSG_HIT
     cmp byte ptr [shield_count], 0
     jne step_success
@@ -343,8 +345,8 @@ step_not_player:
     call find_enemy_at
     jc step_fail
 
-    mov [si + 1], dl
-    mov [si + 2], dh
+    mov [si + ENEMY_X], dl
+    mov [si + ENEMY_Y], dh
     stc
     ret
 
@@ -355,7 +357,7 @@ step_fail:
 load_sector:
     cmp byte ptr [sector_num], 1
     je keep_pulse_count
-    cmp byte ptr [pulse_count], 5
+    cmp byte ptr [pulse_count], MAX_PULSES
     jae keep_pulse_count
     inc byte ptr [pulse_count]
 
@@ -385,6 +387,8 @@ clear_enemy_loop:
     ret
 
 copy_sector_layout:
+    ; Sector templates are MAP_H rows of MAP_W ASCII bytes. Only '#'
+    ; survives as a wall; everything else is normalized to floor here.
     mov al, [sector_num]
     dec al
     xor ah, ah
@@ -436,22 +440,23 @@ place_shard_loop:
 
 place_enemies:
     mov al, [sector_num]
-    add al, al
-    add al, 3
+    mov bl, ENEMY_SPAWN_STEP
+    mul bl
+    add al, ENEMY_SPAWN_BASE
     mov cl, al
     mov si, offset enemies
 
 place_enemy_find_slot:
-    cmp byte ptr [si], 0
+    cmp byte ptr [si + ENEMY_ALIVE], 0
     je place_enemy_here
     add si, ENEMY_SIZE
     jmp place_enemy_find_slot
 
 place_enemy_here:
     call random_enemy_position
-    mov byte ptr [si], 1
-    mov [si + 1], bl
-    mov [si + 2], bh
+    mov byte ptr [si + ENEMY_ALIVE], 1
+    mov [si + ENEMY_X], bl
+    mov [si + ENEMY_Y], bh
     add si, ENEMY_SIZE
     dec cl
     jnz place_enemy_find_slot
@@ -496,7 +501,7 @@ rand_enemy_space_ok:
 
 random_x:
     call random_word
-    mov bl, 26
+    mov bl, PLAY_MAX_X
     div bl
     mov al, ah
     inc al
@@ -504,7 +509,7 @@ random_x:
 
 random_y:
     call random_word
-    mov bl, 13
+    mov bl, PLAY_MAX_Y
     div bl
     mov al, ah
     inc al
@@ -534,14 +539,14 @@ find_enemy_at:
     mov cx, MAX_ENEMIES
 
 find_enemy_loop:
-    cmp byte ptr [si], 0
+    cmp byte ptr [si + ENEMY_ALIVE], 0
     je find_enemy_next
     cmp si, di
     je find_enemy_next
-    mov al, [si + 1]
+    mov al, [si + ENEMY_X]
     cmp al, bl
     jne find_enemy_next
-    mov al, [si + 2]
+    mov al, [si + ENEMY_Y]
     cmp al, bh
     jne find_enemy_next
     pop cx

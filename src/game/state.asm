@@ -55,7 +55,7 @@ text_msg_nopulse db 'NO EMP CHARGES LEFT.', 0
 splash_brand    db 'BITRIVER', 0
 splash_subtitle db 'SOFTWARE', 0
 splash_tagline  db 'BOOTSTRAPPING WORLDS FROM BARE METAL.', 0
-splash_skip     db 'ANY KEY TO SKIP', 0
+splash_skip     db 'ENTER TO RUN  ANY KEY TO SKIP', 0
 
 title_logo    db 'CYBERSTORM', 0
 title_line_1  db 'NO OS. NO SHELL. JUST THE BREACH.', 0

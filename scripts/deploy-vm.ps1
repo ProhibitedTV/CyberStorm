@@ -20,8 +20,15 @@ if (-not (Test-Path $floppy)) {
 
 New-Item -ItemType Directory -Force -Path $base | Out-Null
 
-& $vbox showvminfo $VmName 2>$null | Out-Null
-if ($LASTEXITCODE -eq 0) {
+$vmExists = $false
+try {
+    & $vbox showvminfo $VmName 2>$null | Out-Null
+    $vmExists = ($LASTEXITCODE -eq 0)
+} catch {
+    $vmExists = $false
+}
+
+if ($vmExists) {
     & $vbox unregistervm $VmName --delete | Out-Null
 }
 

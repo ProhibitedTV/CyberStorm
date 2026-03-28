@@ -36,10 +36,16 @@ main_loop:
     je handle_play_input
 
     cmp byte ptr [game_state], STATE_SPLASH
-    je skip_splash
+    je handle_splash_input
 
     cmp al, 0Dh
     jne main_loop
+    call start_new_run
+    jmp main_loop
+
+handle_splash_input:
+    cmp al, 0Dh
+    jne skip_splash
     call start_new_run
     jmp main_loop
 

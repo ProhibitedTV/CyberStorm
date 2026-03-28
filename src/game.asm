@@ -2,6 +2,8 @@
 .code
 org 0
 
+jmp start
+
 include game\constants.inc
 include game\input.asm
 include game\main.asm

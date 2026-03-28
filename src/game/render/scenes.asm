@@ -214,6 +214,7 @@ title_line_ready:
     mov ah, PAL_CYAN
     call draw_text_small
 
+IF DEBUG_BUILD
     mov bx, 42
     mov dx, 166
     mov si, offset debug_keys_text
@@ -271,6 +272,7 @@ title_line_ready:
     mov bp, 2
     mov al, PAL_AMBER
     call fill_rect
+ENDIF
 
 title_cursor_off:
     ret

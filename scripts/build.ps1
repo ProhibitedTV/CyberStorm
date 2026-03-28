@@ -1,5 +1,13 @@
 param(
-    [string]$MasmPath
+    [ValidateSet('masm', 'uasm', 'jwasm')]
+    [string]$Assembler = 'masm',
+    [string]$AssemblerPath,
+    [string]$MasmPath,
+    [switch]$DebugBuild,
+    [Nullable[int]]$DebugSeed,
+    [switch]$DebugOverlay,
+    [switch]$DebugStartInGame,
+    [Nullable[int]]$DebugStartSector
 )
 
 Set-StrictMode -Version Latest
@@ -74,6 +82,11 @@ function Format-Hex32 {
     return ("0x{0:X8}" -f ($Value -band 0xFFFFFFFF))
 }
 
+function Format-Hex16Literal {
+    param([int]$Value)
+    return ("{0:X4}h" -f ($Value -band 0xFFFF))
+}
+
 function Get-PhysicalAddress {
     param(
         [int]$Segment,
@@ -96,6 +109,28 @@ function Get-VsWherePath {
     }
 
     return $null
+}
+
+function Get-AssemblerCliName {
+    param([string]$Kind)
+
+    switch ($Kind) {
+        'masm' { return 'ml.exe' }
+        'uasm' { return 'uasm.exe' }
+        'jwasm' { return 'jwasm.exe' }
+        default { throw ("Unsupported assembler kind: {0}" -f $Kind) }
+    }
+}
+
+function Get-AssemblerDisplayName {
+    param([string]$Kind)
+
+    switch ($Kind) {
+        'masm' { return 'MASM' }
+        'uasm' { return 'UASM (experimental)' }
+        'jwasm' { return 'JWasm (experimental)' }
+        default { return $Kind }
+    }
 }
 
 function Add-MasmCandidate {
@@ -124,64 +159,124 @@ function Add-MasmCandidate {
     })
 }
 
-function Resolve-MasmTool {
-    param([string]$RequestedPath)
+function Resolve-AssemblerTool {
+    param(
+        [string]$Kind,
+        [string]$RequestedPath,
+        [string]$LegacyMasmPath
+    )
 
     $candidates = New-Object 'System.Collections.Generic.List[object]'
+    $cliName = Get-AssemblerCliName -Kind $Kind
+    $displayName = Get-AssemblerDisplayName -Kind $Kind
 
     if ($RequestedPath) {
         if (-not (Test-Path -LiteralPath $RequestedPath)) {
-            throw ("The requested MASM path does not exist: {0}" -f $RequestedPath)
+            throw ("The requested {0} path does not exist: {1}" -f $displayName, $RequestedPath)
         }
 
         Add-MasmCandidate -Candidates $candidates -Path $RequestedPath -Source 'parameter'
     }
 
-    Add-MasmCandidate -Candidates $candidates -Path $env:ML_EXE -Source 'ML_EXE'
-
-    $mlCommand = Get-Command ml.exe -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
-    if ($mlCommand) {
-        Add-MasmCandidate -Candidates $candidates -Path $mlCommand.Source -Source 'PATH'
-    }
-
-    if ($env:VCToolsInstallDir) {
-        foreach ($relative in @('bin\Hostx64\x86\ml.exe', 'bin\Hostx86\x86\ml.exe')) {
-            Add-MasmCandidate -Candidates $candidates -Path (Join-Path $env:VCToolsInstallDir $relative) -Source 'VCToolsInstallDir'
+    if ($LegacyMasmPath) {
+        if ($Kind -ne 'masm') {
+            throw "-MasmPath can only be used with -Assembler masm. Use -AssemblerPath for alternate assemblers."
         }
+
+        if (-not (Test-Path -LiteralPath $LegacyMasmPath)) {
+            throw ("The requested MASM path does not exist: {0}" -f $LegacyMasmPath)
+        }
+
+        Add-MasmCandidate -Candidates $candidates -Path $LegacyMasmPath -Source 'MasmPath'
     }
 
-    $vswhere = Get-VsWherePath
-    if ($vswhere) {
-        foreach ($pattern in @(
-            'VC\Tools\MSVC\**\bin\Hostx64\x86\ml.exe',
-            'VC\Tools\MSVC\**\bin\Hostx86\x86\ml.exe'
-        )) {
-            $found = & $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -find $pattern 2>$null | Select-Object -First 1
-            if ($LASTEXITCODE -eq 0 -and $found) {
-                Add-MasmCandidate -Candidates $candidates -Path $found -Source 'vswhere'
+    switch ($Kind) {
+        'masm' {
+            Add-MasmCandidate -Candidates $candidates -Path $env:ML_EXE -Source 'ML_EXE'
+
+            $toolCommand = Get-Command $cliName -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
+            if ($toolCommand) {
+                Add-MasmCandidate -Candidates $candidates -Path $toolCommand.Source -Source 'PATH'
+            }
+
+            if ($env:VCToolsInstallDir) {
+                foreach ($relative in @('bin\Hostx64\x86\ml.exe', 'bin\Hostx86\x86\ml.exe')) {
+                    Add-MasmCandidate -Candidates $candidates -Path (Join-Path $env:VCToolsInstallDir $relative) -Source 'VCToolsInstallDir'
+                }
+            }
+
+            $vswhere = Get-VsWherePath
+            if ($vswhere) {
+                foreach ($pattern in @(
+                    'VC\Tools\MSVC\**\bin\Hostx64\x86\ml.exe',
+                    'VC\Tools\MSVC\**\bin\Hostx86\x86\ml.exe'
+                )) {
+                    $found = & $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -find $pattern 2>$null | Select-Object -First 1
+                    if ($LASTEXITCODE -eq 0 -and $found) {
+                        Add-MasmCandidate -Candidates $candidates -Path $found -Source 'vswhere'
+                    }
+                }
+            }
+        }
+        'uasm' {
+            Add-MasmCandidate -Candidates $candidates -Path $env:UASM_EXE -Source 'UASM_EXE'
+            $toolCommand = Get-Command $cliName -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
+            if ($toolCommand) {
+                Add-MasmCandidate -Candidates $candidates -Path $toolCommand.Source -Source 'PATH'
+            }
+        }
+        'jwasm' {
+            Add-MasmCandidate -Candidates $candidates -Path $env:JWASM_EXE -Source 'JWASM_EXE'
+            $toolCommand = Get-Command $cliName -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
+            if ($toolCommand) {
+                Add-MasmCandidate -Candidates $candidates -Path $toolCommand.Source -Source 'PATH'
             }
         }
     }
 
     if ($candidates.Count -gt 0) {
-        return $candidates[0]
+        return [pscustomobject]@{
+            Kind = $Kind
+            Name = $displayName
+            Path = $candidates[0].Path
+            Source = $candidates[0].Source
+            Experimental = ($Kind -ne 'masm')
+        }
     }
 
-    throw @"
+    if ($Kind -eq 'masm') {
+        throw @"
 Could not find ml.exe for the MASM build.
 
 Discovery order:
   1. -MasmPath
-  2. ML_EXE environment variable
-  3. PATH
-  4. VCToolsInstallDir
-  5. vswhere (Visual Studio / Build Tools)
+  2. -AssemblerPath
+  3. ML_EXE environment variable
+  4. PATH
+  5. VCToolsInstallDir
+  6. vswhere (Visual Studio / Build Tools)
 
 Setup expectation:
   Install Visual Studio or Build Tools with the MSVC x86/x64 toolset that includes MASM.
 
 Quick workaround:
   powershell -ExecutionPolicy Bypass -File .\scripts\build.ps1 -MasmPath 'C:\path\to\ml.exe'
+"@
+    }
+
+    throw @"
+Could not find $cliName for the experimental $displayName build path.
+
+Discovery order:
+  1. -AssemblerPath
+  2. $($Kind.ToUpperInvariant())_EXE environment variable
+  3. PATH
+
+Expectation:
+  Install a MASM-compatible assembler that can accept `/coff` output and MASM-style source syntax.
+
+Example:
+  powershell -ExecutionPolicy Bypass -File .\scripts\build.ps1 -Assembler $Kind -AssemblerPath 'C:\path\to\$cliName'
 "@
 }
 
@@ -204,7 +299,7 @@ function Invoke-ExternalTool {
     }
 }
 
-function Get-MasmDiagnosticSummary {
+function Get-AssemblerDiagnosticSummary {
     param([string[]]$Output)
 
     return [pscustomobject]@{
@@ -398,13 +493,14 @@ function Get-SymbolValue {
     return $null
 }
 
-function Invoke-Masm {
+function Invoke-Assembler {
     param(
         [string]$SourcePath,
         [string]$ObjectPath,
         [string]$ListPath,
         [string[]]$IncludePaths = @(),
-        [string]$ToolPath
+        [string]$ToolPath,
+        [string]$AssemblerName
     )
 
     Assert-PathExists -Path $SourcePath -Label 'assembly source'
@@ -419,11 +515,11 @@ function Invoke-Masm {
     $arguments += $SourcePath
 
     $result = Invoke-ExternalTool -Executable $ToolPath -Arguments $arguments
-    $diagnostics = Get-MasmDiagnosticSummary -Output $result.Output
+    $diagnostics = Get-AssemblerDiagnosticSummary -Output $result.Output
 
     if ($result.ExitCode -ne 0) {
         throw @"
-MASM failed.
+$AssemblerName failed.
   Source : $SourcePath
   Tool   : $ToolPath
   Object : $ObjectPath
@@ -533,8 +629,14 @@ function Get-BuildWarnings {
 function Write-BuildReport {
     param(
         [string]$ReportPath,
+        [string]$AssemblerName,
         [string]$ToolPath,
         [string]$ToolSource,
+        [string]$BuildMode,
+        [string]$DeterministicSeed,
+        [string]$OverlayMode,
+        [string]$StartMode,
+        [string]$StartSector,
         [int]$BootBytes,
         [int]$Stage2Bytes,
         [int]$Stage2Sectors,
@@ -575,8 +677,16 @@ function Write-BuildReport {
         ("Generated: {0}" -f (Get-Date -Format 'yyyy-MM-dd HH:mm:ss K'))
         ''
         'Toolchain'
-        ("  MASM path: {0}" -f $ToolPath)
+        ("  Assembler: {0}" -f $AssemblerName)
+        ("  Assembler path: {0}" -f $ToolPath)
         ("  Discovered via: {0}" -f $ToolSource)
+        ''
+        'Build Profile'
+        ("  Mode: {0}" -f $BuildMode)
+        ("  Deterministic seed: {0}" -f $DeterministicSeed)
+        ("  Debug overlay: {0}" -f $OverlayMode)
+        ("  Startup mode: {0}" -f $StartMode)
+        ("  Run start sector: {0}" -f $StartSector)
         ''
         'Layout'
         ("  Boot code bytes: {0} / {1}" -f $BootBytes, $Layout.BootCodeLimitBytes)
@@ -593,7 +703,7 @@ function Write-BuildReport {
         ("  Stage2 LBA range: {0}..{1}" -f $Layout.Stage2StartLba, $stage2EndLba)
         ("  Boot section: {0} (relocations applied: {1})" -f $BootSectionName, $BootRelocations)
         ("  Stage2 section: {0} (relocations applied: {1})" -f $StageSectionName, $StageRelocations)
-        ("  MASM warnings: boot={0}, stage2={1}" -f $BootWarnings, $StageWarnings)
+        ("  Assembler warnings: boot={0}, stage2={1}" -f $BootWarnings, $StageWarnings)
     )
 
     if ($BootStartOffset -ne $null) {
@@ -626,7 +736,15 @@ function Write-BuildReport {
 Assert-PathExists -Path $srcDir -Label 'source directory'
 New-Item -ItemType Directory -Force -Path $buildDir | Out-Null
 
-$masm = Resolve-MasmTool -RequestedPath $MasmPath
+if ($DebugSeed -ne $null -and ($DebugSeed -lt 0 -or $DebugSeed -gt 0xFFFF)) {
+    throw ("Debug seed must be a 16-bit value between 0 and 65535. Received: {0}" -f $DebugSeed)
+}
+
+if ($DebugStartSector -ne $null -and ($DebugStartSector -lt 1 -or $DebugStartSector -gt 255)) {
+    throw ("Debug start sector must fit in one byte (1-255). Received: {0}" -f $DebugStartSector)
+}
+
+$assemblerTool = Resolve-AssemblerTool -Kind $Assembler -RequestedPath $AssemblerPath -LegacyMasmPath $MasmPath
 
 $gameAsm = Join-Path $srcDir 'game.asm'
 $bootAsm = Join-Path $srcDir 'boot.asm'
@@ -635,18 +753,51 @@ $bootObj = Join-Path $buildDir 'boot.obj'
 $gameList = Join-Path $buildDir 'game.lst'
 $bootList = Join-Path $buildDir 'boot.lst'
 $bootConfig = Join-Path $buildDir 'boot_config.inc'
+$debugConfig = Join-Path $buildDir 'debug_config.inc'
 $stage2BinPath = Join-Path $buildDir 'cyberstorm-stage2.bin'
 $bootBinPath = Join-Path $buildDir 'cyberstorm-boot.bin'
 $imgPath = Join-Path $buildDir 'cyberstorm.img'
 $vfdPath = Join-Path $buildDir 'cyberstorm.vfd'
 $reportPath = Join-Path $buildDir 'cyberstorm-build-report.txt'
 
+$seedProvided = $null -ne $DebugSeed
+$startSectorProvided = $null -ne $DebugStartSector
+$debugProfile = $DebugBuild.IsPresent -or $seedProvided -or $DebugOverlay.IsPresent -or $DebugStartInGame.IsPresent -or $startSectorProvided
+$debugSeedValue = if ($seedProvided) { [int]$DebugSeed } else { 0xACE1 }
+$debugStartSectorValue = if ($startSectorProvided) { [int]$DebugStartSector } else { 1 }
+$debugConfigLines = @(
+    '; generated by scripts/build.ps1'
+    ("DEBUG_BUILD EQU {0}" -f ([int]$debugProfile))
+    ("DEBUG_FORCE_SEED EQU {0}" -f ([int]$seedProvided))
+    ("DEBUG_SEED_VALUE EQU {0}" -f (Format-Hex16Literal $debugSeedValue))
+    ("DEBUG_OVERLAY EQU {0}" -f ([int]$DebugOverlay.IsPresent))
+    ("DEBUG_START_IN_GAME EQU {0}" -f ([int]$DebugStartInGame.IsPresent))
+    ("DEBUG_START_SECTOR EQU {0}" -f $debugStartSectorValue)
+)
+Set-Content -LiteralPath $debugConfig -Encoding ascii -Value $debugConfigLines
+Assert-PathExists -Path $debugConfig -Label 'generated debug config'
+
+$buildMode = if ($debugProfile) { 'debug' } else { 'release' }
+$deterministicSeedText = if ($seedProvided) { (Format-Hex16 $debugSeedValue) } else { 'off' }
+$overlayModeText = if ($DebugOverlay.IsPresent) { 'enabled' } else { 'off' }
+$startModeText = if ($DebugStartInGame.IsPresent) { 'direct-to-game' } else { 'normal splash/title flow' }
+$startSectorText = if ($startSectorProvided) { $debugStartSectorValue.ToString() } else { '1 (default)' }
+
 Write-Section -Title 'Toolchain'
-Write-Host ("MASM: {0}" -f $masm.Path)
-Write-Host ("Discovery: {0}" -f $masm.Source)
+Write-Host ("Assembler: {0}" -f $assemblerTool.Name)
+Write-Host ("Path     : {0}" -f $assemblerTool.Path)
+Write-Host ("Discovery: {0}" -f $assemblerTool.Source)
+if ($assemblerTool.Experimental) {
+    Write-Host "Status   : experimental MASM-compatible path"
+}
+Write-Host ("Profile: {0}" -f $buildMode)
+Write-Host ("Seed   : {0}" -f $deterministicSeedText)
+Write-Host ("Overlay: {0}" -f $overlayModeText)
+Write-Host ("Startup: {0}" -f $startModeText)
+Write-Host ("Sector : {0}" -f $startSectorText)
 
 Write-Section -Title 'Stage Two'
-$gameBuild = Invoke-Masm -SourcePath $gameAsm -ObjectPath $gameObj -ListPath $gameList -ToolPath $masm.Path
+$gameBuild = Invoke-Assembler -SourcePath $gameAsm -ObjectPath $gameObj -ListPath $gameList -IncludePaths @($buildDir) -ToolPath $assemblerTool.Path -AssemblerName $assemblerTool.Name
 $gameFlat = Get-CoffFlatBinary -ObjectPath $gameObj
 $gameBin = $gameFlat.FlatBytes
 [IO.File]::WriteAllBytes($stage2BinPath, $gameBin)
@@ -658,7 +809,7 @@ Set-Content -LiteralPath $bootConfig -Encoding ascii -Value ("GAME_SECTORS EQU {
 Assert-PathExists -Path $bootConfig -Label 'generated boot config'
 
 Write-Section -Title 'Boot Sector'
-$bootBuild = Invoke-Masm -SourcePath $bootAsm -ObjectPath $bootObj -ListPath $bootList -IncludePaths @($buildDir) -ToolPath $masm.Path
+$bootBuild = Invoke-Assembler -SourcePath $bootAsm -ObjectPath $bootObj -ListPath $bootList -IncludePaths @($buildDir) -ToolPath $assemblerTool.Path -AssemblerName $assemblerTool.Name
 $bootFlat = Get-CoffFlatBinary -ObjectPath $bootObj
 $bootBin = $bootFlat.FlatBytes
 
@@ -699,8 +850,14 @@ $stageStartOffset = Get-SymbolValue -ObjectModel $gameFlat.ObjectModel -Names @(
 
 Write-BuildReport `
     -ReportPath $reportPath `
-    -ToolPath $masm.Path `
-    -ToolSource $masm.Source `
+    -AssemblerName $assemblerTool.Name `
+    -ToolPath $assemblerTool.Path `
+    -ToolSource $assemblerTool.Source `
+    -BuildMode $buildMode `
+    -DeterministicSeed $deterministicSeedText `
+    -OverlayMode $overlayModeText `
+    -StartMode $startModeText `
+    -StartSector $startSectorText `
     -BootBytes $bootBin.Length `
     -Stage2Bytes $gameBin.Length `
     -Stage2Sectors $gameSectorCount `
@@ -715,7 +872,7 @@ Write-BuildReport `
     -BootStartOffset $bootStartOffset `
     -StageStartOffset $stageStartOffset `
     -Warnings $warnings `
-    -ArtifactPaths @($bootBinPath, $stage2BinPath, $bootList, $gameList, $imgPath, $vfdPath, $reportPath) `
+    -ArtifactPaths @($bootBinPath, $stage2BinPath, $bootList, $gameList, $bootConfig, $debugConfig, $imgPath, $vfdPath, $reportPath) `
     -Layout $layout
 
 Write-Section -Title 'Artifacts'
@@ -723,6 +880,7 @@ Write-Host ("Built {0}" -f $imgPath)
 Write-Host ("Built {0}" -f $vfdPath)
 Write-Host ("Listing {0}" -f $bootList)
 Write-Host ("Listing {0}" -f $gameList)
+Write-Host ("Config  {0}" -f $debugConfig)
 Write-Host ("Report  {0}" -f $reportPath)
 
 Write-Section -Title 'Layout Summary'

@@ -8,6 +8,8 @@ The current target is BIOS-compatible x86 hardware and Oracle VirtualBox. The im
 
 The runtime contracts and memory/layout assumptions are documented in [docs/architecture.md](docs/architecture.md). Read that before changing boot flow, segment setup, input handling, or the state layout.
 
+Assembler/build portability notes live in [docs/assembler-paths.md](docs/assembler-paths.md).
+
 ## What The Game Is
 
 CyberStorm is a turn-based terminal-styled infiltration run:
@@ -25,13 +27,14 @@ CyberStorm is a turn-based terminal-styled infiltration run:
 - Windows PowerShell
 - MASM `ml.exe` from Visual Studio or Visual Studio Build Tools with the MSVC x86/x64 toolset
 
-The build script discovers `ml.exe` in this order:
+The stable default is the MASM path:
 
 1. `-MasmPath`
-2. `ML_EXE`
-3. `PATH`
-4. `VCToolsInstallDir`
-5. `vswhere`
+2. `-AssemblerPath`
+3. `ML_EXE`
+4. `PATH`
+5. `VCToolsInstallDir`
+6. `vswhere`
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\build.ps1
@@ -43,6 +46,14 @@ If MASM is installed somewhere unusual, you can override discovery explicitly:
 powershell -ExecutionPolicy Bypass -File .\scripts\build.ps1 -MasmPath 'C:\path\to\ml.exe'
 ```
 
+There is also an experimental MASM-compatible assembler path for tools like `UASM` or `JWasm`:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\build.ps1 -Assembler uasm -AssemblerPath 'C:\path\to\uasm.exe'
+```
+
+That path is intentionally not the default. It reuses the same source and COFF-flattening pipeline, so it is only expected to work with assemblers that accept MASM-style source and emit compatible 16-bit COFF output.
+
 The build writes:
 
 - `build\cyberstorm.img`
@@ -51,16 +62,43 @@ The build writes:
 - `build\cyberstorm-stage2.bin`
 - `build\boot.lst`
 - `build\game.lst`
+- `build\debug_config.inc`
 - `build\cyberstorm-build-report.txt`
 
 The console summary now includes:
 
-- MASM discovery path and source
+- assembler discovery path and source
+- active assembler path
 - boot code size and remaining slack before the 510-byte limit
 - stage-two size, padded size, sector count, and remaining slack before the 64 KiB load limit
 - floppy usage
 - key addresses used by the current boot contract
-- relocation counts and MASM warning counts
+- relocation counts and assembler warning counts
+
+### Deterministic Debug Builds
+
+The default build is a release image. Debug/testability features are only enabled when you pass explicit debug flags:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\build.ps1 `
+  -DebugBuild `
+  -DebugSeed 4660 `
+  -DebugOverlay `
+  -DebugStartInGame `
+  -DebugStartSector 2
+```
+
+What those flags do:
+
+- `-DebugSeed <0..65535>` forces the same 16-bit RNG seed on every new run, including `Enter` resets. This is the key switch for reproducible gameplay bugs.
+- `-DebugOverlay` adds a compact in-game state strip showing sector, player `X/Y`, shield, pulse, shard count, and live enemy count.
+- `-DebugStartInGame` skips the splash/title flow and boots directly into a run.
+- `-DebugStartSector <n>` makes every new run start from that sector instead of sector `1`.
+- `-DebugBuild` enables the debug profile and keeps title-screen diagnostics available when you need them.
+
+The generated `build\debug_config.inc` and `build\cyberstorm-build-report.txt` record which debug options were compiled into the current image.
+
+To return to the normal release image, run the build script again without any debug flags.
 
 ### Build Validation
 
@@ -75,10 +113,13 @@ The build validates the layout assumptions before writing the floppy image:
 
 If a build fails or boots unexpectedly, these artifacts are the fastest things to inspect:
 
-- `build\boot.lst`: MASM listing for the bootloader
-- `build\game.lst`: MASM listing for stage two
+- `build\boot.lst`: assembler listing for the bootloader
+- `build\game.lst`: assembler listing for stage two
+- `build\debug_config.inc`: generated compile-time debug flags for the current image
 - `build\cyberstorm-build-report.txt`: layout summary, addresses, relocation counts, warnings, and artifact paths
 - `build\cyberstorm-stage2.bin`: flattened stage-two payload exactly as written after the boot sector
+
+For a comparison of MASM, MASM-compatible experimental paths, and why NASM is not currently a low-risk drop-in, see [docs/assembler-paths.md](docs/assembler-paths.md).
 
 ## Run In VirtualBox
 

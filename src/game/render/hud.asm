@@ -5,6 +5,9 @@ render_game_screen:
     call render_enemies
     call render_player
     call render_game_effects
+IF DEBUG_OVERLAY
+    call render_debug_overlay
+ENDIF
     ret
 
 draw_game_panels:
@@ -267,3 +270,123 @@ gate_closed_base:
 gate_meter_ready:
     call fill_rect
     ret
+
+IF DEBUG_OVERLAY
+render_debug_overlay:
+    mov bx, 16
+    mov dx, 38
+    mov cx, 224
+    mov bp, 10
+    mov al, PAL_PANEL2
+    call fill_rect
+
+    mov bx, 18
+    mov dx, 40
+    mov si, offset debug_tag_text
+    mov ah, PAL_AMBER
+    call draw_text_small
+
+    mov bx, 42
+    mov dx, 40
+    mov si, offset debug_sector_tag
+    mov ah, PAL_CYAN
+    call draw_text_small
+
+    mov al, [sector_num]
+    mov ah, PAL_WHITE
+    mov bx, 48
+    mov dx, 40
+    call draw_digit_small
+
+    mov bx, 60
+    mov dx, 40
+    mov si, offset debug_x_tag
+    mov ah, PAL_CYAN
+    call draw_text_small
+
+    mov al, [player_x]
+    mov ah, PAL_WHITE
+    mov bx, 66
+    mov dx, 40
+    call draw_two_digit_small
+
+    mov bx, 84
+    mov dx, 40
+    mov si, offset debug_y_tag
+    mov ah, PAL_CYAN
+    call draw_text_small
+
+    mov al, [player_y]
+    mov ah, PAL_WHITE
+    mov bx, 90
+    mov dx, 40
+    call draw_two_digit_small
+
+    mov bx, 108
+    mov dx, 40
+    mov si, offset debug_shield_tag
+    mov ah, PAL_CYAN
+    call draw_text_small
+
+    mov al, [shield_count]
+    mov ah, PAL_WHITE
+    mov bx, 114
+    mov dx, 40
+    call draw_digit_small
+
+    mov bx, 126
+    mov dx, 40
+    mov si, offset debug_pulse_tag
+    mov ah, PAL_CYAN
+    call draw_text_small
+
+    mov al, [pulse_count]
+    mov ah, PAL_WHITE
+    mov bx, 132
+    mov dx, 40
+    call draw_digit_small
+
+    mov bx, 144
+    mov dx, 40
+    mov si, offset debug_data_tag
+    mov ah, PAL_CYAN
+    call draw_text_small
+
+    mov al, [data_count]
+    mov ah, PAL_WHITE
+    mov bx, 150
+    mov dx, 40
+    call draw_digit_small
+
+    mov bx, 162
+    mov dx, 40
+    mov si, offset debug_enemy_tag
+    mov ah, PAL_CYAN
+    call draw_text_small
+
+    call count_live_enemies
+    mov ah, PAL_WHITE
+    mov bx, 168
+    mov dx, 40
+    call draw_two_digit_small
+    ret
+
+count_live_enemies:
+    push si
+    push cx
+    xor al, al
+    mov si, offset enemies
+    mov cx, MAX_ENEMIES
+
+count_live_enemy_loop:
+    cmp byte ptr [si + ENEMY_ALIVE], 0
+    je count_live_enemy_next
+    inc al
+
+count_live_enemy_next:
+    add si, ENEMY_SIZE
+    loop count_live_enemy_loop
+    pop cx
+    pop si
+    ret
+ENDIF

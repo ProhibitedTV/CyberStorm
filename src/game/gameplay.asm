@@ -134,6 +134,8 @@ attempt_move_to:
     je move_collect_shard
     cmp al, TILE_EXIT_OPEN
     je move_use_exit
+    cmp al, TILE_SURGE
+    je move_trigger_surge
 
 move_floor:
     mov [player_x], bl
@@ -181,6 +183,21 @@ move_use_exit:
     mov byte ptr [game_state], STATE_WIN
     ret
 
+move_trigger_surge:
+    mov dl, TILE_FLOOR
+    call set_tile
+    mov [player_x], bl
+    mov [player_y], bh
+    mov byte ptr [action_taken], 1
+    sub byte ptr [shield_count], SURGE_PLAYER_DAMAGE
+    mov byte ptr [message_id], MSG_SURGE
+    cmp byte ptr [shield_count], 0
+    jne surge_done
+    mov byte ptr [game_state], STATE_LOSE
+
+surge_done:
+    ret
+
 advance_sector:
     call load_sector
     mov byte ptr [message_id], MSG_SECTOR
@@ -198,6 +215,7 @@ pulse_live:
     mov byte ptr [action_taken], 1
     mov si, offset enemies
     mov cx, MAX_ENEMIES
+    xor di, di
 
 pulse_loop:
     cmp byte ptr [si + ENEMY_ALIVE], 0
@@ -209,14 +227,14 @@ pulse_loop:
     je pulse_x_ok
     jb pulse_x_left
     sub al, bl
-    cmp al, 1
+    cmp al, PULSE_RADIUS
     ja pulse_next
     jmp pulse_x_ok
 
 pulse_x_left:
     mov dl, bl
     sub dl, al
-    cmp dl, 1
+    cmp dl, PULSE_RADIUS
     ja pulse_next
 
 pulse_x_ok:
@@ -226,23 +244,32 @@ pulse_x_ok:
     je pulse_hit
     jb pulse_y_up
     sub al, bl
-    cmp al, 1
+    cmp al, PULSE_RADIUS
     ja pulse_next
     jmp pulse_hit
 
 pulse_y_up:
     mov dl, bl
     sub dl, al
-    cmp dl, 1
+    cmp dl, PULSE_RADIUS
     ja pulse_next
 
 pulse_hit:
     mov byte ptr [si + ENEMY_ALIVE], 0
     call award_kill
+    inc di
 
 pulse_next:
     add si, ENEMY_SIZE
     loop pulse_loop
+    cmp di, PULSE_RECHARGE_KILLS
+    jb pulse_done
+    cmp byte ptr [pulse_count], MAX_PULSES
+    jae pulse_done
+    inc byte ptr [pulse_count]
+    mov byte ptr [message_id], MSG_RECHARGE
+
+pulse_done:
     ret
 
 enemy_turn:
@@ -329,24 +356,41 @@ step_success:
     ret
 
 step_not_player:
+    mov di, si
     mov bl, dl
     mov bh, dh
+    push si
     call get_tile
+    pop si
     cmp al, TILE_WALL
     je step_fail
     cmp al, TILE_EXIT_LOCKED
     je step_fail
     cmp al, TILE_EXIT_OPEN
     je step_fail
+    cmp al, TILE_SURGE
+    je step_hit_surge
 
     mov bl, dl
     mov bh, dh
-    mov di, si
     call find_enemy_at
     jc step_fail
 
+    mov si, di
     mov [si + ENEMY_X], dl
     mov [si + ENEMY_Y], dh
+    stc
+    ret
+
+step_hit_surge:
+    mov bl, dl
+    mov bh, dh
+    mov dl, TILE_FLOOR
+    call set_tile
+    mov si, di
+    mov byte ptr [si + ENEMY_ALIVE], 0
+    call award_kill
+    mov byte ptr [message_id], MSG_TRAP
     stc
     ret
 
@@ -372,6 +416,7 @@ keep_pulse_count:
     mov byte ptr [exit_y], EXIT_ROW
     call set_exit_locked
     call place_shards
+    call place_surge_fields
     call place_enemies
     ret
 
@@ -438,11 +483,29 @@ place_shard_loop:
     loop place_shard_loop
     ret
 
+place_surge_fields:
+    mov al, [sector_num]
+    cmp al, SURGE_START_SECTOR
+    jb place_surge_done
+    sub al, SURGE_START_SECTOR - 1
+    xor cx, cx
+    mov cl, al
+
+place_surge_loop:
+    call random_floor_position
+    mov dl, TILE_SURGE
+    call set_tile
+    loop place_surge_loop
+
+place_surge_done:
+    ret
+
 place_enemies:
     mov al, [sector_num]
     mov bl, ENEMY_SPAWN_STEP
     mul bl
     add al, ENEMY_SPAWN_BASE
+    xor cx, cx
     mov cl, al
     mov si, offset enemies
 

@@ -10,6 +10,9 @@ start:
     call reset_keyboard_state
     call install_keyboard_handler
 
+IF DEBUG_FORCE_SEED
+    mov word ptr [rng_state], DEBUG_SEED_VALUE
+ELSE
     xor ah, ah
     int 1Ah
     mov [rng_state], dx
@@ -18,13 +21,18 @@ start:
     mov word ptr [rng_state], 0ACE1h
 
 seed_ready:
+ENDIF
     xor ah, ah
     int 1Ah
     mov [last_tick], dx
     mov byte ptr [anim_phase], 0
     mov byte ptr [splash_ticks], 0
+IF DEBUG_START_IN_GAME
+    call start_new_run
+ELSE
     mov byte ptr [game_state], STATE_SPLASH
     mov byte ptr [message_id], MSG_SECTOR
+ENDIF
 
 main_loop:
     ; One BIOS timer tick drives animation, rendering, and then one round of
@@ -88,12 +96,29 @@ frontend_state_done:
     ret
 
 start_new_run:
+IF DEBUG_FORCE_SEED
+    mov word ptr [rng_state], DEBUG_SEED_VALUE
+ENDIF
     mov byte ptr [game_state], STATE_PLAYING
     mov byte ptr [sector_num], 1
     mov byte ptr [shield_count], START_SHIELDS
     mov byte ptr [pulse_count], START_PULSES
     mov byte ptr [data_count], 0
     mov byte ptr [kill_count], 0
+IF DEBUG_START_SECTOR GT 1
+    mov al, DEBUG_START_SECTOR
+    cmp al, TOTAL_SECTORS
+    jbe debug_start_sector_ready
+    mov al, TOTAL_SECTORS
+debug_start_sector_ready:
+    mov byte ptr [sector_num], al
+    add al, START_PULSES - 2
+    cmp al, MAX_PULSES
+    jbe debug_start_pulses_ready
+    mov al, MAX_PULSES
+debug_start_pulses_ready:
+    mov byte ptr [pulse_count], al
+ENDIF
     call load_sector
     mov byte ptr [message_id], MSG_SECTOR
     ret

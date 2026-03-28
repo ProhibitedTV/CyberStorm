@@ -7,6 +7,7 @@ org 0
 jmp start
 
 include game\constants.inc
+include debug_config.inc
 include game\input.asm
 include game\main.asm
 include game\gameplay.asm

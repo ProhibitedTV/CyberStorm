@@ -39,12 +39,16 @@ MSG_HIT        equ 4
 MSG_KILL       equ 5
 MSG_PULSE      equ 6
 MSG_NOPULSE    equ 7
+MSG_SURGE      equ 8
+MSG_TRAP       equ 9
+MSG_RECHARGE   equ 10
 
 TILE_FLOOR        equ 0
 TILE_WALL         equ 1
 TILE_SHARD        equ 2
 TILE_EXIT_LOCKED  equ 3
 TILE_EXIT_OPEN    equ 4
+TILE_SURGE        equ 5
 
 MAP_W         equ 28
 MAP_H         equ 15
@@ -67,6 +71,10 @@ START_PULSES      equ 3
 MAX_PULSES        equ 5
 ENEMY_SPAWN_STEP  equ 2
 ENEMY_SPAWN_BASE  equ 3
+PULSE_RADIUS         equ 1
+PULSE_RECHARGE_KILLS equ 2
+SURGE_START_SECTOR   equ 2
+SURGE_PLAYER_DAMAGE  equ 1
 
 MAX_ENEMIES   equ 10
 ENEMY_ALIVE   equ 0

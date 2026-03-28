@@ -44,6 +44,8 @@ draw_tile:
     je draw_locked_tile
     cmp al, TILE_EXIT_OPEN
     je draw_open_tile
+    cmp al, TILE_SURGE
+    je draw_surge_tile
     jmp draw_floor_tile
 
 draw_floor_tile:
@@ -69,6 +71,11 @@ draw_locked_tile:
 
 draw_open_tile:
     call get_open_tile_frame
+    call draw_bitmap8
+    ret
+
+draw_surge_tile:
+    call get_surge_tile_frame
     call draw_bitmap8
     ret
 
@@ -106,6 +113,15 @@ get_open_tile_frame:
     ret
 get_open_tile_a:
     mov si, offset tile_open_a
+    ret
+
+get_surge_tile_frame:
+    test byte ptr [anim_phase], 1
+    jz get_surge_tile_a
+    mov si, offset tile_surge_b
+    ret
+get_surge_tile_a:
+    mov si, offset tile_surge_a
     ret
 
 get_shard_sprite:

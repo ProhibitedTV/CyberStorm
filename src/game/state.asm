@@ -57,6 +57,7 @@ map_row_offsets dw 0, 28, 56, 84, 112, 140, 168, 196, 224, 252, 280, 308, 336, 3
 
 message_table dw offset text_msg_sector, offset text_msg_block, offset text_msg_shard, offset text_msg_gate
               dw offset text_msg_hit, offset text_msg_kill, offset text_msg_pulse, offset text_msg_nopulse
+              dw offset text_msg_surge, offset text_msg_trap, offset text_msg_recharge
 
 ; sector_num is 1-based; load_sector indexes this table with sector_num - 1.
 template_table dw offset sector1_map, offset sector2_map, offset sector3_map
@@ -78,6 +79,9 @@ text_msg_hit     db 'HUNTER HIT. SHIELD LOST.', 0
 text_msg_kill    db 'HUNTER PURGED.', 0
 text_msg_pulse   db 'EMP DETONATED.', 0
 text_msg_nopulse db 'NO EMP CHARGES LEFT.', 0
+text_msg_surge   db 'SURGE NODE BURNED YOUR SHIELD.', 0
+text_msg_trap    db 'SURGE NODE FRIED A HUNTER.', 0
+text_msg_recharge db 'CHAIN EMP RECHARGED 1 PULSE.', 0
 
 splash_brand    db 'BITRIVER', 0
 splash_subtitle db 'SOFTWARE', 0
@@ -90,11 +94,24 @@ title_line_2  db 'TURN BASED INFILTRATION IN RAW VGA.', 0
 title_line_3  db 'TAKE 4 SHARDS. OPEN THE GATE. REPEAT.', 0
 title_line_4  db 'PRESS ANY KEY TO JACK IN.', 0
 title_prompt  db 'BOOTED DIRECT TO THE RUN.', 0
+IF DEBUG_BUILD
 ; Temporary title-scene diagnostics used while hardening keyboard support.
 debug_keys_text db 'KEYS', 0
 debug_enter_text db 'ENTR', 0
 debug_check_text db 'CHCK', 0
 debug_poll_text db 'POLL', 0
+ENDIF
+
+IF DEBUG_OVERLAY
+debug_tag_text   db 'DBG', 0
+debug_sector_tag db 'S', 0
+debug_x_tag      db 'X', 0
+debug_y_tag      db 'Y', 0
+debug_shield_tag db 'H', 0
+debug_pulse_tag  db 'P', 0
+debug_data_tag   db 'D', 0
+debug_enemy_tag  db 'E', 0
+ENDIF
 
 win_line_1    db 'VAULT', 0
 win_line_2    db 'ALL THREE SECTORS FELL TO THE RUN.', 0

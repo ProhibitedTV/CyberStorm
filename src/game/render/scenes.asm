@@ -1,0 +1,192 @@
+render_screen:
+    mov ax, BACKBUFFER_SEG
+    mov es, ax
+    call clear_backbuffer
+    call draw_starfield
+
+    cmp byte ptr [game_state], STATE_TITLE
+    je render_title_screen
+    cmp byte ptr [game_state], STATE_WIN
+    je render_win_screen
+    cmp byte ptr [game_state], STATE_LOSE
+    je render_lose_screen
+    call render_game_screen
+    jmp render_present
+
+render_title_screen:
+    call draw_title_scene
+    jmp render_present
+
+render_win_screen:
+    call draw_win_scene
+    jmp render_present
+
+render_lose_screen:
+    call draw_lose_scene
+
+render_present:
+    call present_frame
+    ret
+
+draw_title_scene:
+    mov bx, 24
+    mov dx, 26
+    mov cx, 272
+    mov bp, 132
+    mov al, PAL_PANEL
+    call fill_rect
+
+    mov bx, 20
+    mov dx, 22
+    mov cx, 280
+    mov bp, 140
+    test byte ptr [anim_phase], 1
+    jz title_frame_dim
+    mov al, PAL_CYAN2
+    jmp title_frame_ready
+
+title_frame_dim:
+    mov al, PAL_CYAN
+
+title_frame_ready:
+    call draw_rect_outline
+
+    mov bx, 34
+    mov dx, 42
+    mov si, offset title_logo
+    mov ah, PAL_CYAN2
+    call draw_text_big
+
+    mov bx, 42
+    mov dx, 84
+    mov si, offset title_line_1
+    mov ah, PAL_WHITE
+    call draw_text_small
+
+    mov bx, 42
+    mov dx, 96
+    mov si, offset title_line_2
+    mov ah, PAL_WHITE
+    call draw_text_small
+
+    mov bx, 42
+    mov dx, 108
+    mov si, offset title_line_3
+    mov ah, PAL_WHITE
+    call draw_text_small
+
+    mov bx, 62
+    mov dx, 132
+    mov si, offset title_line_4
+    test byte ptr [anim_phase], 2
+    jz title_prompt_amber
+    mov ah, PAL_WHITE
+    jmp title_line_ready
+
+title_prompt_amber:
+    mov ah, PAL_AMBER
+
+title_line_ready:
+    call draw_text_small
+
+    mov bx, 74
+    mov dx, 150
+    mov si, offset title_prompt
+    mov ah, PAL_CYAN
+    call draw_text_small
+
+    test byte ptr [anim_phase], 1
+    jz title_cursor_off
+    mov bx, 216
+    mov dx, 157
+    mov cx, 10
+    mov bp, 2
+    mov al, PAL_AMBER
+    call fill_rect
+
+title_cursor_off:
+    ret
+
+draw_win_scene:
+    mov bx, 30
+    mov dx, 34
+    mov cx, 260
+    mov bp, 120
+    mov al, PAL_PANEL
+    call fill_rect
+
+    mov bx, 26
+    mov dx, 30
+    mov cx, 268
+    mov bp, 128
+    mov al, PAL_CYAN
+    call draw_rect_outline
+
+    mov bx, 78
+    mov dx, 54
+    mov si, offset win_line_1
+    mov ah, PAL_CYAN2
+    call draw_text_big
+
+    mov bx, 52
+    mov dx, 100
+    mov si, offset win_line_2
+    mov ah, PAL_WHITE
+    call draw_text_small
+
+    mov bx, 70
+    mov dx, 132
+    mov si, offset replay_prompt
+    test byte ptr [anim_phase], 1
+    jz win_prompt_dim
+    mov ah, PAL_WHITE
+    jmp win_prompt_ready
+
+win_prompt_dim:
+    mov ah, PAL_AMBER
+
+win_prompt_ready:
+    call draw_text_small
+    ret
+
+draw_lose_scene:
+    mov bx, 30
+    mov dx, 34
+    mov cx, 260
+    mov bp, 120
+    mov al, PAL_PANEL
+    call fill_rect
+
+    mov bx, 26
+    mov dx, 30
+    mov cx, 268
+    mov bp, 128
+    mov al, PAL_RED
+    call draw_rect_outline
+
+    mov bx, 82
+    mov dx, 54
+    mov si, offset lose_line_1
+    mov ah, PAL_RED2
+    call draw_text_big
+
+    mov bx, 46
+    mov dx, 100
+    mov si, offset lose_line_2
+    mov ah, PAL_WHITE
+    call draw_text_small
+
+    mov bx, 70
+    mov dx, 132
+    mov si, offset replay_prompt
+    test byte ptr [anim_phase], 1
+    jz lose_prompt_dim
+    mov ah, PAL_WHITE
+    jmp lose_prompt_ready
+
+lose_prompt_dim:
+    mov ah, PAL_AMBER
+
+lose_prompt_ready:
+    call draw_text_small
+    ret

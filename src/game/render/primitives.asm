@@ -1,39 +1,3 @@
-clear_backbuffer:
-    push ax
-    push cx
-    push di
-    xor di, di
-    mov ax, PAL_BG0 + (PAL_BG0 shl 8)
-    mov cx, 32000
-    rep stosw
-    pop di
-    pop cx
-    pop ax
-    ret
-
-draw_starfield:
-    push ax
-    push bx
-    push cx
-    push dx
-    push si
-    mov si, offset starfield
-    mov cx, STAR_COUNT
-
-draw_star_loop:
-    mov bx, [si]
-    mov dx, [si + 2]
-    mov al, byte ptr [si + 4]
-    call put_pixel
-    add si, 6
-    loop draw_star_loop
-    pop si
-    pop dx
-    pop cx
-    pop bx
-    pop ax
-    ret
-
 draw_rect_outline:
     push ax
     push bx
@@ -134,26 +98,5 @@ compute_offset:
     shl ax, 8
     add di, ax
     add di, bx
-    pop ax
-    ret
-
-present_frame:
-    push ax
-    push cx
-    push si
-    push di
-    push ds
-    mov ax, BACKBUFFER_SEG
-    mov ds, ax
-    mov ax, VGA_SEG
-    mov es, ax
-    xor si, si
-    xor di, di
-    mov cx, 32000
-    rep movsw
-    pop ds
-    pop di
-    pop si
-    pop cx
     pop ax
     ret

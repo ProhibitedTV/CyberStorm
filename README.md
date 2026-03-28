@@ -32,6 +32,20 @@ The build writes:
 3. Attach `build\cyberstorm.vfd` as the floppy disk.
 4. Boot the VM.
 
+## Deploy A Reusable VM
+
+To register a ready-to-boot VirtualBox VM named `CyberStorm` in this workspace:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\deploy-vm.ps1
+```
+
+To launch it:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\start-vm.ps1
+```
+
 ## Notes
 
 - This is OS-independent in the sense that it boots directly on the machine or VM and does not rely on a host kernel, filesystem, or runtime.

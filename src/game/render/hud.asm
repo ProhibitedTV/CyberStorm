@@ -1,153 +1,3 @@
-render_screen:
-    mov ax, BACKBUFFER_SEG
-    mov es, ax
-    call clear_backbuffer
-    call draw_starfield
-
-    cmp byte ptr [game_state], STATE_TITLE
-    je render_title_screen
-    cmp byte ptr [game_state], STATE_WIN
-    je render_win_screen
-    cmp byte ptr [game_state], STATE_LOSE
-    je render_lose_screen
-    call render_game_screen
-    jmp render_present
-
-render_title_screen:
-    call draw_title_scene
-    jmp render_present
-
-render_win_screen:
-    call draw_win_scene
-    jmp render_present
-
-render_lose_screen:
-    call draw_lose_scene
-
-render_present:
-    call present_frame
-    ret
-
-draw_title_scene:
-    mov bx, 24
-    mov dx, 26
-    mov cx, 272
-    mov bp, 132
-    mov al, PAL_PANEL
-    call fill_rect
-
-    mov bx, 20
-    mov dx, 22
-    mov cx, 280
-    mov bp, 140
-    mov al, PAL_CYAN
-    call draw_rect_outline
-
-    mov bx, 34
-    mov dx, 42
-    mov si, offset title_logo
-    mov ah, PAL_CYAN2
-    call draw_text_big
-
-    mov bx, 42
-    mov dx, 84
-    mov si, offset title_line_1
-    mov ah, PAL_WHITE
-    call draw_text_small
-
-    mov bx, 42
-    mov dx, 96
-    mov si, offset title_line_2
-    mov ah, PAL_WHITE
-    call draw_text_small
-
-    mov bx, 42
-    mov dx, 108
-    mov si, offset title_line_3
-    mov ah, PAL_WHITE
-    call draw_text_small
-
-    mov bx, 62
-    mov dx, 132
-    mov si, offset title_line_4
-    mov ah, PAL_AMBER
-    call draw_text_small
-
-    mov bx, 74
-    mov dx, 150
-    mov si, offset title_prompt
-    mov ah, PAL_CYAN
-    call draw_text_small
-    ret
-
-draw_win_scene:
-    mov bx, 30
-    mov dx, 34
-    mov cx, 260
-    mov bp, 120
-    mov al, PAL_PANEL
-    call fill_rect
-
-    mov bx, 26
-    mov dx, 30
-    mov cx, 268
-    mov bp, 128
-    mov al, PAL_CYAN
-    call draw_rect_outline
-
-    mov bx, 78
-    mov dx, 54
-    mov si, offset win_line_1
-    mov ah, PAL_CYAN2
-    call draw_text_big
-
-    mov bx, 52
-    mov dx, 100
-    mov si, offset win_line_2
-    mov ah, PAL_WHITE
-    call draw_text_small
-
-    mov bx, 70
-    mov dx, 132
-    mov si, offset replay_prompt
-    mov ah, PAL_AMBER
-    call draw_text_small
-    ret
-
-draw_lose_scene:
-    mov bx, 30
-    mov dx, 34
-    mov cx, 260
-    mov bp, 120
-    mov al, PAL_PANEL
-    call fill_rect
-
-    mov bx, 26
-    mov dx, 30
-    mov cx, 268
-    mov bp, 128
-    mov al, PAL_RED
-    call draw_rect_outline
-
-    mov bx, 82
-    mov dx, 54
-    mov si, offset lose_line_1
-    mov ah, PAL_RED2
-    call draw_text_big
-
-    mov bx, 46
-    mov dx, 100
-    mov si, offset lose_line_2
-    mov ah, PAL_WHITE
-    call draw_text_small
-
-    mov bx, 70
-    mov dx, 132
-    mov si, offset replay_prompt
-    mov ah, PAL_AMBER
-    call draw_text_small
-    ret
-
 render_game_screen:
     call draw_game_panels
     call render_game_status
@@ -322,7 +172,17 @@ shield_meter_loop:
     push dx
     mov cx, 12
     mov bp, 8
+    cmp byte ptr [shield_count], 1
+    jne shield_meter_safe
+    test byte ptr [anim_phase], 1
+    jz shield_meter_safe
+    mov al, PAL_WHITE
+    jmp shield_meter_color_ready
+
+shield_meter_safe:
     mov al, PAL_CYAN2
+
+shield_meter_color_ready:
     call fill_rect
     pop dx
     pop bx
@@ -382,15 +242,28 @@ draw_gate_meter:
     mov dx, 144
     mov cx, 36
     mov bp, 6
-    mov al, PAL_CYAN2
-    call fill_rect
-    ret
+    test byte ptr [anim_phase], 1
+    jz gate_open_base
+    mov al, PAL_WHITE
+    jmp gate_meter_ready
+
+gate_open_base:
+    mov al, PAL_GATE
+    jmp gate_meter_ready
 
 gate_closed:
     mov bx, 260
     mov dx, 144
     mov cx, 36
     mov bp, 6
+    test byte ptr [anim_phase], 1
+    jz gate_closed_base
+    mov al, PAL_RED2
+    jmp gate_meter_ready
+
+gate_closed_base:
     mov al, PAL_RED
+
+gate_meter_ready:
     call fill_rect
     ret

@@ -148,7 +148,15 @@ wall_pulse_ready:
 draw_shard_tile:
     call draw_floor_tile
     call get_shard_sprite
+    test byte ptr [anim_phase], 1
+    jz shard_sprite_ready
+    mov al, PAL_WHITE
+    jmp shard_color_ready
+
+shard_sprite_ready:
     mov al, PAL_AMBER
+
+shard_color_ready:
     call draw_sprite8
     ret
 
@@ -212,7 +220,7 @@ draw_open_tile:
     mov al, PAL_WHITE
     jmp open_gate_color_ready
 open_gate_dim:
-    mov al, PAL_CYAN2
+    mov al, PAL_GATE
 open_gate_color_ready:
     call fill_rect
     pop dx
@@ -228,7 +236,7 @@ open_gate_color_ready:
     mov al, PAL_WHITE
     jmp open_gate_color_ready2
 open_gate_dim2:
-    mov al, PAL_CYAN2
+    mov al, PAL_GATE
 open_gate_color_ready2:
     call fill_rect
     pop dx
@@ -239,7 +247,7 @@ open_gate_color_ready2:
     mov al, PAL_WHITE
     jmp open_gate_sprite_ready
 open_gate_sprite_dim:
-    mov al, PAL_CYAN2
+    mov al, PAL_GATE
 open_gate_sprite_ready:
     call draw_sprite8
     ret
@@ -260,105 +268,4 @@ get_gate_sprite:
     ret
 get_gate_sprite_a:
     mov si, offset sprite_gate_a
-    ret
-
-get_enemy_sprite:
-    test byte ptr [anim_phase], 1
-    jz get_enemy_sprite_a
-    mov si, offset sprite_enemy_b
-    ret
-get_enemy_sprite_a:
-    mov si, offset sprite_enemy_a
-    ret
-
-get_player_sprite:
-    test byte ptr [anim_phase], 1
-    jz get_player_sprite_a
-    mov si, offset sprite_player_b
-    ret
-get_player_sprite_a:
-    mov si, offset sprite_player_a
-    ret
-
-render_enemies:
-    mov si, offset enemies
-    mov cx, MAX_ENEMIES
-
-render_enemy_loop:
-    cmp byte ptr [si], 0
-    je render_enemy_next
-    xor bx, bx
-    mov bl, [si + 1]
-    shl bx, 3
-    add bx, MAP_PIXEL_X
-    xor dx, dx
-    mov dl, [si + 2]
-    shl dx, 3
-    add dx, MAP_PIXEL_Y
-    test byte ptr [anim_phase], 1
-    jz enemy_bob_ready
-    inc dx
-enemy_bob_ready:
-    push si
-    call get_enemy_sprite
-    mov al, PAL_RED
-    call draw_sprite8
-    pop si
-
-render_enemy_next:
-    add si, ENEMY_SIZE
-    loop render_enemy_loop
-    ret
-
-render_player:
-    xor bx, bx
-    mov bl, [player_x]
-    shl bx, 3
-    add bx, MAP_PIXEL_X
-    xor dx, dx
-    mov dl, [player_y]
-    shl dx, 3
-    add dx, MAP_PIXEL_Y
-    test byte ptr [anim_phase], 1
-    jz player_bob_ready
-    dec dx
-player_bob_ready:
-    call get_player_sprite
-    mov al, PAL_CYAN2
-    call draw_sprite8
-    ret
-
-render_game_effects:
-    cmp byte ptr [message_id], MSG_PULSE
-    jne check_hit_effect
-    call draw_pulse_effect
-
-check_hit_effect:
-    cmp byte ptr [message_id], MSG_HIT
-    jne effects_done
-    mov bx, 4
-    mov dx, 4
-    mov cx, 312
-    mov bp, 192
-    mov al, PAL_RED
-    call draw_rect_outline
-
-effects_done:
-    ret
-
-draw_pulse_effect:
-    xor bx, bx
-    mov bl, [player_x]
-    shl bx, 3
-    add bx, MAP_PIXEL_X
-    sub bx, 4
-    xor dx, dx
-    mov dl, [player_y]
-    shl dx, 3
-    add dx, MAP_PIXEL_Y
-    sub dx, 4
-    mov cx, 16
-    mov bp, 16
-    mov al, PAL_CYAN2
-    call draw_rect_outline
     ret

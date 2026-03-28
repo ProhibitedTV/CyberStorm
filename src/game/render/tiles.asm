@@ -148,15 +148,6 @@ wall_pulse_ready:
 draw_shard_tile:
     call draw_floor_tile
     call get_shard_sprite
-    test byte ptr [anim_phase], 1
-    jz shard_sprite_ready
-    mov al, PAL_WHITE
-    jmp shard_color_ready
-
-shard_sprite_ready:
-    mov al, PAL_AMBER
-
-shard_color_ready:
     call draw_sprite8
     ret
 
@@ -242,13 +233,6 @@ open_gate_color_ready2:
     pop dx
     pop bx
     call get_gate_sprite
-    test byte ptr [anim_phase], 1
-    jz open_gate_sprite_dim
-    mov al, PAL_WHITE
-    jmp open_gate_sprite_ready
-open_gate_sprite_dim:
-    mov al, PAL_GATE
-open_gate_sprite_ready:
     call draw_sprite8
     ret
 

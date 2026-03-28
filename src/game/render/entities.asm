@@ -37,7 +37,6 @@ render_enemy_loop:
 enemy_bob_ready:
     push si
     call get_enemy_sprite
-    mov al, PAL_ENEMY
     call draw_sprite8
     pop si
 
@@ -60,6 +59,5 @@ render_player:
     dec dx
 player_bob_ready:
     call get_player_sprite
-    mov al, PAL_PLAYER
     call draw_sprite8
     ret

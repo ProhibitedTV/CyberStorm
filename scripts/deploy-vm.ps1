@@ -20,7 +20,11 @@ if (-not (Test-Path $floppy)) {
 
 New-Item -ItemType Directory -Force -Path $base | Out-Null
 
-& $vbox unregistervm $VmName --delete 2>$null | Out-Null
+& $vbox showvminfo $VmName 2>$null | Out-Null
+if ($LASTEXITCODE -eq 0) {
+    & $vbox unregistervm $VmName --delete | Out-Null
+}
+
 & $vbox createvm --name $VmName --basefolder $base --ostype Other --register
 & $vbox modifyvm $VmName --memory 32 --vram 8 --boot1 floppy --boot2 none --boot3 none --boot4 none --audio-driver none
 & $vbox storagectl $VmName --name Floppy --add floppy

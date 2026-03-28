@@ -3,6 +3,7 @@
 org 0
 
 include game\constants.inc
+include game\input.asm
 include game\main.asm
 include game\gameplay.asm
 include game\render\framebuffer.asm

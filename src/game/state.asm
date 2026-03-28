@@ -61,11 +61,11 @@ title_logo    db 'CYBERSTORM', 0
 title_line_1  db 'NO OS. NO SHELL. JUST THE BREACH.', 0
 title_line_2  db 'TURN BASED INFILTRATION IN RAW VGA.', 0
 title_line_3  db 'TAKE 4 SHARDS. OPEN THE GATE. REPEAT.', 0
-title_line_4  db 'PRESS ENTER TO JACK IN.', 0
+title_line_4  db 'PRESS ANY KEY TO JACK IN.', 0
 title_prompt  db 'BOOTED DIRECT TO THE RUN.', 0
 
 win_line_1    db 'VAULT', 0
 win_line_2    db 'ALL THREE SECTORS FELL TO THE RUN.', 0
 lose_line_1   db 'SEVERED', 0
 lose_line_2   db 'THE STORM CLOSED BEFORE THE BREACH.', 0
-replay_prompt db 'PRESS ENTER TO RUN AGAIN.', 0
+replay_prompt db 'PRESS ANY KEY TO RUN AGAIN.', 0

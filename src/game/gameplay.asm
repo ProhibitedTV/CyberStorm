@@ -1,8 +1,8 @@
 process_play_input:
     mov byte ptr [action_taken], 0
 
-    cmp al, 0Dh
-    jne check_pulse_lower
+    call is_enter_key
+    jnc check_pulse_lower
     call start_new_run
     ret
 

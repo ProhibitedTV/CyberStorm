@@ -26,11 +26,8 @@ main_loop:
     call wait_frame_tick
     call update_frontend_state
     call render_screen
-    mov ah, 01h
-    int 16h
-    jz main_loop
-    xor ax, ax
-    int 16h
+    call poll_key_event
+    jnc main_loop
 
     cmp byte ptr [game_state], STATE_PLAYING
     je handle_play_input
@@ -38,19 +35,18 @@ main_loop:
     cmp byte ptr [game_state], STATE_SPLASH
     je handle_splash_input
 
-    cmp al, 0Dh
-    jne main_loop
     call start_new_run
     jmp main_loop
 
 handle_splash_input:
-    cmp al, 0Dh
-    jne skip_splash
+    call is_enter_key
+    jnc skip_splash
     call start_new_run
     jmp main_loop
 
 skip_splash:
     mov byte ptr [game_state], STATE_TITLE
+    call flush_key_buffer
     jmp main_loop
 
 handle_play_input:
@@ -87,4 +83,5 @@ start_new_run:
     mov byte ptr [kill_count], 0
     call load_sector
     mov byte ptr [message_id], MSG_SECTOR
+    call flush_key_buffer
     ret

@@ -6,6 +6,9 @@ STATE_SPLASH   equ 4
 
 SPLASH_DURATION equ 54
 
+KEY_ENTER      equ 0Dh
+SCAN_ENTER     equ 1Ch
+
 MSG_SECTOR     equ 0
 MSG_BLOCK      equ 1
 MSG_SHARD      equ 2

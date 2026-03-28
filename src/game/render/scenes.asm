@@ -4,6 +4,8 @@ render_screen:
     call clear_backbuffer
     call draw_starfield
 
+    cmp byte ptr [game_state], STATE_SPLASH
+    je render_splash_screen
     cmp byte ptr [game_state], STATE_TITLE
     je render_title_screen
     cmp byte ptr [game_state], STATE_WIN
@@ -11,6 +13,10 @@ render_screen:
     cmp byte ptr [game_state], STATE_LOSE
     je render_lose_screen
     call render_game_screen
+    jmp render_present
+
+render_splash_screen:
+    call draw_splash_scene
     jmp render_present
 
 render_title_screen:
@@ -26,6 +32,146 @@ render_lose_screen:
 
 render_present:
     call present_frame
+    ret
+
+draw_splash_scene:
+    mov bx, 48
+    mov dx, 34
+    mov cx, 224
+    mov bp, 124
+    mov al, PAL_PANEL
+    call fill_rect
+
+    mov bx, 44
+    mov dx, 30
+    mov cx, 232
+    mov bp, 132
+    test byte ptr [anim_phase], 1
+    jz splash_frame_base
+    mov al, PAL_CYAN2
+    jmp splash_frame_ready
+
+splash_frame_base:
+    mov al, PAL_CYAN
+
+splash_frame_ready:
+    call draw_rect_outline
+
+    mov bx, 60
+    mov dx, 54
+    mov cx, 52
+    mov bp, 52
+    mov al, PAL_PANEL2
+    call fill_rect
+
+    mov bx, 58
+    mov dx, 52
+    mov cx, 56
+    mov bp, 56
+    mov al, PAL_CYAN
+    call draw_rect_outline
+
+    mov bx, 68
+    mov dx, 64
+    mov cx, 30
+    mov bp, 4
+    mov al, PAL_GATE
+    call fill_rect
+
+    mov bx, 64
+    mov dx, 76
+    mov cx, 38
+    mov bp, 4
+    mov al, PAL_CYAN2
+    call fill_rect
+
+    mov bx, 70
+    mov dx, 88
+    mov cx, 26
+    mov bp, 4
+    mov al, PAL_WHITE
+    call fill_rect
+
+    xor ax, ax
+    mov al, [anim_phase]
+    and al, 03h
+    shl ax, 1
+    shl ax, 1
+    mov bx, 64
+    add bx, ax
+    mov dx, 62
+    mov cx, 6
+    mov bp, 32
+    mov al, PAL_AMBER
+    call fill_rect
+
+    mov bx, 126
+    mov dx, 62
+    mov si, offset splash_brand
+    mov ah, PAL_CYAN2
+    call draw_text_big
+
+    mov bx, 148
+    mov dx, 92
+    mov si, offset splash_subtitle
+    mov ah, PAL_WHITE
+    call draw_text_small
+
+    mov bx, 66
+    mov dx, 122
+    mov si, offset splash_tagline
+    mov ah, PAL_CYAN
+    call draw_text_small
+
+    mov bx, 78
+    mov dx, 142
+    mov cx, 164
+    mov bp, 8
+    mov al, PAL_PANEL2
+    call fill_rect
+
+    mov bx, 76
+    mov dx, 140
+    mov cx, 168
+    mov bp, 12
+    mov al, PAL_CYAN
+    call draw_rect_outline
+
+    xor ax, ax
+    mov al, [splash_ticks]
+    mov cx, ax
+    shl ax, 1
+    add ax, cx
+    mov cx, ax
+    jcxz splash_bar_done
+    mov bx, 80
+    mov dx, 144
+    mov bp, 4
+    test byte ptr [anim_phase], 1
+    jz splash_bar_base
+    mov al, PAL_WHITE
+    jmp splash_bar_ready
+
+splash_bar_base:
+    mov al, PAL_GATE
+
+splash_bar_ready:
+    call fill_rect
+
+splash_bar_done:
+    mov bx, 114
+    mov dx, 158
+    mov si, offset splash_skip
+    test byte ptr [anim_phase], 1
+    jz splash_skip_dim
+    mov ah, PAL_WHITE
+    jmp splash_skip_ready
+
+splash_skip_dim:
+    mov ah, PAL_AMBER
+
+splash_skip_ready:
+    call draw_text_small
     ret
 
 draw_title_scene:

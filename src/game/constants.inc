@@ -2,6 +2,9 @@ STATE_TITLE    equ 0
 STATE_PLAYING  equ 1
 STATE_WIN      equ 2
 STATE_LOSE     equ 3
+STATE_SPLASH   equ 4
+
+SPLASH_DURATION equ 54
 
 MSG_SECTOR     equ 0
 MSG_BLOCK      equ 1

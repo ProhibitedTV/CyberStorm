@@ -13,6 +13,7 @@ exit_y       db EXIT_ROW
 rng_state    dw 0ACE1h
 last_tick    dw 0
 anim_phase   db 0
+splash_ticks db 0
 
 text_cursor_x  dw 0
 text_cursor_y  dw 0
@@ -50,6 +51,11 @@ text_msg_hit     db 'HUNTER HIT. SHIELD LOST.', 0
 text_msg_kill    db 'HUNTER PURGED.', 0
 text_msg_pulse   db 'EMP DETONATED.', 0
 text_msg_nopulse db 'NO EMP CHARGES LEFT.', 0
+
+splash_brand    db 'BITRIVER', 0
+splash_subtitle db 'SOFTWARE', 0
+splash_tagline  db 'BOOTSTRAPPING WORLDS FROM BARE METAL.', 0
+splash_skip     db 'ANY KEY TO SKIP', 0
 
 title_logo    db 'CYBERSTORM', 0
 title_line_1  db 'NO OS. NO SHELL. JUST THE BREACH.', 0

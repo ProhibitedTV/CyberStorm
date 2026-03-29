@@ -8,6 +8,8 @@ set_message_event:
     ret
 
 get_message_feedback_ticks:
+    cmp al, MSG_SECTOR
+    je feedback_major
     cmp al, MSG_BLOCK
     je feedback_minor
     cmp al, MSG_NOPULSE
@@ -16,7 +18,11 @@ get_message_feedback_ticks:
     je feedback_major
     cmp al, MSG_HIT
     je feedback_major
+    cmp al, MSG_KILL
+    je feedback_major
     cmp al, MSG_SURGE
+    je feedback_major
+    cmp al, MSG_TRAP
     je feedback_major
     cmp al, MSG_RECHARGE
     je feedback_major
@@ -110,7 +116,7 @@ runtime_tick_done:
     dec byte ptr [feedback_timer]
 
 runtime_feedback_done:
-    call update_sfx
+    call update_audio
     pop ax
     ret
 

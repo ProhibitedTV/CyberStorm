@@ -7,7 +7,7 @@ start:
     mov ax, 0013h
     int 10h
     call init_palette
-    call stop_sfx
+    call init_audio
     call reset_keyboard_state
     mov byte ptr [last_game_state], 0FFh
     mov byte ptr [feedback_timer], 0

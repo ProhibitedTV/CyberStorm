@@ -19,9 +19,25 @@ splash_ticks db 0
 state_ticks  db 0
 last_game_state db 0FFh
 feedback_timer db 0
+; The runner's last committed step lets flanking hunters aim one tile ahead
+; without any hidden extra turns or non-deterministic guesses.
+last_player_dx db 0
+last_player_dy db 0
+; threat_level and threat/effect tiles are render hints only; they telegraph
+; danger and localize flashes without changing the rules.
+threat_level db THREAT_NONE
+threat_x     db START_X
+threat_y     db START_Y
+effect_x     db START_X
+effect_y     db START_Y
+; One-shot SFX owns the speaker; music state tracks the looping theme beneath it.
 sound_id     db SFX_NONE
 sound_timer  db 0
 sound_phase  db 0
+music_theme  db MUSIC_THEME_NONE
+music_ticks  db 0
+music_note   db MUSIC_NOTE_REST
+music_ptr    dw 0
 key_extended db 0
 any_key_pending db 0
 input_event_count db 0
@@ -72,6 +88,10 @@ sector_template_count db SECTOR1_TEMPLATE_COUNT, SECTOR2_TEMPLATE_COUNT, SECTOR3
 template_table dw offset sector1_map_a, offset sector1_map_b, offset sector1_map_c
               dw offset sector2_map_a, offset sector2_map_b, offset sector2_map_c
               dw offset sector3_map_a, offset sector3_map_b, offset sector3_map_c
+; HUD and sector-entry feedback share these tables so each run can name the
+; current breach zone without adding new state or bespoke scene code.
+sector_name_table dw offset sector1_name, offset sector2_name, offset sector3_name
+sector_intro_table dw offset sector1_intro, offset sector2_intro, offset sector3_intro
 
 hud_title     db 'CYBERSTORM', 0
 sector_text   db 'SECTOR', 0
@@ -81,6 +101,9 @@ shield_text   db 'SHIELD', 0
 pulse_text    db 'PULSE', 0
 gate_text     db 'GATE', 0
 controls_text db 'MOVE WASD OR ARROWS  C EMP  ENTER RESET', 0
+sector1_name  db 'SCOUT', 0
+sector2_name  db 'SURGE', 0
+sector3_name  db 'WARDEN', 0
 
 text_msg_sector   db 'SECTOR LIVE. LIFT 4 SHARDS TO CRACK THE GATE.', 0
 text_msg_block    db 'BLACK ICE HOLDS. CUT A DIFFERENT LINE.', 0
@@ -93,6 +116,9 @@ text_msg_nopulse  db 'EMP DRY. NO CHARGES IN THE BANK.', 0
 text_msg_surge    db 'SURGE ARC BURNED A SHIELD.', 0
 text_msg_trap     db 'SURGE TRAP LANDED. HUNTER BURNT OUT.', 0
 text_msg_recharge db 'CHAIN BREAK. EMP CHARGE RESTORED.', 0
+sector1_intro     db 'SCOUT GRID LIVE. OPEN LANES FAVOR CLEAN CHASES.', 0
+sector2_intro     db 'SURGE FURNACE LIVE. ARC NODES BITE BOTH SIDES.', 0
+sector3_intro     db 'WARDEN LOCK LIVE. EXTRA HUNTERS CROWD THE EXIT.', 0
 
 splash_brand    db 'BITRIVER', 0
 splash_subtitle db 'SOFTWARE', 0

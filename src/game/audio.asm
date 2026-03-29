@@ -6,6 +6,198 @@ SPEAKER_DIV_UP     equ 1400
 SPEAKER_DIV_HIGH   equ 1100
 SPEAKER_DIV_CHIME  equ 900
 
+MUSIC_THEME_SPLASH equ 0
+MUSIC_THEME_TITLE  equ 1
+MUSIC_THEME_RUN    equ 2
+MUSIC_THEME_WIN    equ 3
+MUSIC_THEME_LOSE   equ 4
+MUSIC_THEME_NONE   equ 0FFh
+
+; Music note ids index music_note_divisors. Themes are 2-byte cells:
+;   <note id>, <duration in BIOS ticks>
+; NOTE_REST mutes the speaker for that duration.
+; MUSIC_NOTE_LOOP rewinds to the current theme start and keeps looping.
+; The PC speaker is single-voice, so active SFX always own the channel. While a
+; one-shot SFX is active, theme timing pauses and resumes on the same note.
+MUSIC_NOTE_REST equ 0
+MUSIC_NOTE_A3   equ 1
+MUSIC_NOTE_C4   equ 2
+MUSIC_NOTE_D4   equ 3
+MUSIC_NOTE_E4   equ 4
+MUSIC_NOTE_G4   equ 5
+MUSIC_NOTE_A4   equ 6
+MUSIC_NOTE_B4   equ 7
+MUSIC_NOTE_C5   equ 8
+MUSIC_NOTE_D5   equ 9
+MUSIC_NOTE_E5   equ 10
+MUSIC_NOTE_G5   equ 11
+MUSIC_NOTE_LOOP equ 0FFh
+
+init_audio:
+    call stop_sfx
+    mov byte ptr [music_theme], MUSIC_THEME_NONE
+    mov byte ptr [music_ticks], 0
+    mov byte ptr [music_note], MUSIC_NOTE_REST
+    mov word ptr [music_ptr], 0
+    ret
+
+update_audio:
+    call sync_music_theme
+    cmp byte ptr [sound_timer], 0
+    jne update_audio_sfx
+    call update_music
+    ret
+
+update_audio_sfx:
+    call update_sfx
+    ret
+
+sync_music_theme:
+    call get_music_theme_for_state
+    cmp al, [music_theme]
+    je sync_music_done
+    call start_music_theme
+
+sync_music_done:
+    ret
+
+get_music_theme_for_state:
+    mov al, [game_state]
+    cmp al, STATE_SPLASH
+    je music_theme_state_splash
+    cmp al, STATE_TITLE
+    je music_theme_state_title
+    cmp al, STATE_PLAYING
+    je music_theme_state_run
+    cmp al, STATE_WIN
+    je music_theme_state_win
+    cmp al, STATE_LOSE
+    je music_theme_state_lose
+    mov al, MUSIC_THEME_NONE
+    ret
+
+music_theme_state_splash:
+    mov al, MUSIC_THEME_SPLASH
+    ret
+
+music_theme_state_title:
+    mov al, MUSIC_THEME_TITLE
+    ret
+
+music_theme_state_run:
+    mov al, MUSIC_THEME_RUN
+    ret
+
+music_theme_state_win:
+    mov al, MUSIC_THEME_WIN
+    ret
+
+music_theme_state_lose:
+    mov al, MUSIC_THEME_LOSE
+    ret
+
+start_music_theme:
+    cmp al, MUSIC_THEME_NONE
+    jne start_music_apply
+    call stop_music
+    ret
+
+start_music_apply:
+    mov [music_theme], al
+    call reset_music_pointer
+    mov byte ptr [music_ticks], 0
+    mov byte ptr [music_note], MUSIC_NOTE_REST
+    ret
+
+stop_music:
+    mov byte ptr [music_theme], MUSIC_THEME_NONE
+    mov byte ptr [music_ticks], 0
+    mov byte ptr [music_note], MUSIC_NOTE_REST
+    mov word ptr [music_ptr], 0
+    call stop_speaker_output
+    ret
+
+reset_music_pointer:
+    push ax
+    push bx
+    mov al, [music_theme]
+    xor ah, ah
+    shl ax, 1
+    mov bx, ax
+    mov ax, word ptr [music_theme_table + bx]
+    mov word ptr [music_ptr], ax
+    pop bx
+    pop ax
+    ret
+
+update_music:
+    push ax
+    cmp byte ptr [music_theme], MUSIC_THEME_NONE
+    jne update_music_check
+    call stop_speaker_output
+    jmp update_music_done
+
+update_music_check:
+    cmp byte ptr [music_ticks], 0
+    jne update_music_play
+    call load_music_event
+
+update_music_play:
+    cmp byte ptr [music_ticks], 0
+    je update_music_done
+    cmp byte ptr [music_note], MUSIC_NOTE_REST
+    je update_music_rest
+    call play_music_note
+    jmp update_music_tick
+
+update_music_rest:
+    call stop_speaker_output
+
+update_music_tick:
+    dec byte ptr [music_ticks]
+
+update_music_done:
+    pop ax
+    ret
+
+load_music_event:
+    push ax
+    push si
+    mov si, word ptr [music_ptr]
+
+load_music_event_retry:
+    mov al, [si]
+    cmp al, MUSIC_NOTE_LOOP
+    jne load_music_event_apply
+    call reset_music_pointer
+    mov si, word ptr [music_ptr]
+    jmp load_music_event_retry
+
+load_music_event_apply:
+    mov [music_note], al
+    mov al, [si + 1]
+    mov [music_ticks], al
+    add si, 2
+    mov word ptr [music_ptr], si
+    pop si
+    pop ax
+    ret
+
+play_music_note:
+    push ax
+    push bx
+    push si
+    mov al, [music_note]
+    xor ah, ah
+    shl ax, 1
+    mov si, ax
+    mov bx, word ptr [music_note_divisors + si]
+    call speaker_play_divisor
+    pop si
+    pop bx
+    pop ax
+    ret
+
 start_sfx:
     push ax
     push bx
@@ -316,3 +508,92 @@ stop_sfx:
     mov byte ptr [sound_phase], 0
     call stop_speaker_output
     ret
+
+music_note_divisors dw 0
+                    dw 5424
+                    dw 4560
+                    dw 4063
+                    dw 3620
+                    dw 3044
+                    dw 2712
+                    dw 2416
+                    dw 2280
+                    dw 2032
+                    dw 1810
+                    dw 1522
+
+music_theme_table dw offset music_theme_splash_data
+                  dw offset music_theme_title_data
+                  dw offset music_theme_run_data
+                  dw offset music_theme_win_data
+                  dw offset music_theme_lose_data
+
+music_theme_splash_data db MUSIC_NOTE_A3, 6
+                        db MUSIC_NOTE_C4, 4
+                        db MUSIC_NOTE_E4, 6
+                        db MUSIC_NOTE_REST, 2
+                        db MUSIC_NOTE_G4, 4
+                        db MUSIC_NOTE_E4, 4
+                        db MUSIC_NOTE_C4, 6
+                        db MUSIC_NOTE_REST, 4
+                        db MUSIC_NOTE_LOOP, 0
+
+music_theme_title_data  db MUSIC_NOTE_C4, 2
+                        db MUSIC_NOTE_E4, 2
+                        db MUSIC_NOTE_G4, 2
+                        db MUSIC_NOTE_A4, 4
+                        db MUSIC_NOTE_G4, 2
+                        db MUSIC_NOTE_E4, 2
+                        db MUSIC_NOTE_D4, 4
+                        db MUSIC_NOTE_REST, 2
+                        db MUSIC_NOTE_C4, 2
+                        db MUSIC_NOTE_E4, 2
+                        db MUSIC_NOTE_G4, 2
+                        db MUSIC_NOTE_C5, 4
+                        db MUSIC_NOTE_B4, 2
+                        db MUSIC_NOTE_G4, 2
+                        db MUSIC_NOTE_E4, 4
+                        db MUSIC_NOTE_REST, 2
+                        db MUSIC_NOTE_LOOP, 0
+
+music_theme_run_data    db MUSIC_NOTE_A3, 2
+                        db MUSIC_NOTE_REST, 1
+                        db MUSIC_NOTE_A3, 1
+                        db MUSIC_NOTE_C4, 2
+                        db MUSIC_NOTE_E4, 2
+                        db MUSIC_NOTE_REST, 1
+                        db MUSIC_NOTE_D4, 1
+                        db MUSIC_NOTE_C4, 2
+                        db MUSIC_NOTE_A3, 2
+                        db MUSIC_NOTE_REST, 1
+                        db MUSIC_NOTE_A3, 1
+                        db MUSIC_NOTE_D4, 2
+                        db MUSIC_NOTE_E4, 2
+                        db MUSIC_NOTE_REST, 1
+                        db MUSIC_NOTE_C4, 1
+                        db MUSIC_NOTE_A3, 4
+                        db MUSIC_NOTE_REST, 2
+                        db MUSIC_NOTE_LOOP, 0
+
+music_theme_win_data    db MUSIC_NOTE_E4, 2
+                        db MUSIC_NOTE_G4, 2
+                        db MUSIC_NOTE_A4, 2
+                        db MUSIC_NOTE_C5, 4
+                        db MUSIC_NOTE_E5, 4
+                        db MUSIC_NOTE_G5, 4
+                        db MUSIC_NOTE_REST, 2
+                        db MUSIC_NOTE_C5, 2
+                        db MUSIC_NOTE_E5, 2
+                        db MUSIC_NOTE_G5, 6
+                        db MUSIC_NOTE_REST, 4
+                        db MUSIC_NOTE_LOOP, 0
+
+music_theme_lose_data   db MUSIC_NOTE_E4, 4
+                        db MUSIC_NOTE_D4, 4
+                        db MUSIC_NOTE_C4, 4
+                        db MUSIC_NOTE_A3, 6
+                        db MUSIC_NOTE_REST, 2
+                        db MUSIC_NOTE_C4, 2
+                        db MUSIC_NOTE_A3, 6
+                        db MUSIC_NOTE_REST, 4
+                        db MUSIC_NOTE_LOOP, 0

@@ -10,6 +10,10 @@ The runtime contracts and memory/layout assumptions are documented in [docs/arch
 
 Assembler/build portability notes live in [docs/assembler-paths.md](docs/assembler-paths.md).
 
+Sector design goals and the current three-zone identity pass live in [docs/sector-identity.md](docs/sector-identity.md).
+
+Hunter behavior and balance notes for the latest drama/telegraph pass live in [docs/enemy-drama.md](docs/enemy-drama.md).
+
 ## What The Game Is
 
 CyberStorm is a turn-based terminal-styled infiltration run:
@@ -19,6 +23,14 @@ CyberStorm is a turn-based terminal-styled infiltration run:
 - Hunter programs move after every action.
 - EMP pulses can clear nearby threats, but charges are limited.
 - The run ends in victory only if you breach all three sectors.
+
+## Screenshots
+
+The build keeps a small rolling screenshot pool in `build\` and rewrites these stable README slots on each build so the gallery stays fresh without accumulating every debug capture forever.
+
+![CyberStorm Screenshot 1](build/readme-shot-1.png)
+![CyberStorm Screenshot 2](build/readme-shot-2.png)
+![CyberStorm Screenshot 3](build/readme-shot-3.png)
 
 ## Build
 
@@ -60,6 +72,10 @@ The build writes:
 - `build\cyberstorm.vfd`
 - `build\cyberstorm-boot.bin`
 - `build\cyberstorm-stage2.bin`
+- `build\generated_art.inc`
+- `build\readme-shot-1.png`
+- `build\readme-shot-2.png`
+- `build\readme-shot-3.png`
 - `build\boot.lst`
 - `build\game.lst`
 - `build\debug_config.inc`
@@ -74,6 +90,27 @@ The console summary now includes:
 - floppy usage
 - key addresses used by the current boot contract
 - relocation counts and assembler warning counts
+
+### Editing Sprites And Tiles
+
+Sprite and tile bitmaps now come from [assets\visuals.psd1](assets/visuals.psd1). The build generates `build\generated_art.inc`, and [src\game\art.asm](src/game/art.asm) includes that file at assembly time.
+
+That means future visual edits usually happen in the asset source instead of raw `db` rows. The format is intentionally small:
+
+- `Legend` maps one-character pixels to assembly palette symbols such as `PAL_CYAN2` or `0`
+- each asset keeps its runtime label name, plus an explicit `Width`, `Height`, and `Rows`
+- the build validates unknown legend keys, row width mismatches, and declared size mismatches before MASM runs
+
+Example row source:
+
+```powershell
+Rows = @(
+    '..pppp..'
+    '.pCCCCp.'
+)
+```
+
+The generated-art console/report section shows the source file, generated include path, asset count, byte footprint, and size buckets so visual-data changes are easy to sanity-check.
 
 ### Deterministic Debug Builds
 
@@ -115,6 +152,8 @@ If a build fails or boots unexpectedly, these artifacts are the fastest things t
 
 - `build\boot.lst`: assembler listing for the bootloader
 - `build\game.lst`: assembler listing for stage two
+- `build\generated_art.inc`: generated sprite/tile `db` rows exactly as seen by MASM
+- `build\readme-shot-*.png`: stable README gallery images rotated from the newest kept screenshot captures
 - `build\debug_config.inc`: generated compile-time debug flags for the current image
 - `build\cyberstorm-build-report.txt`: layout summary, addresses, relocation counts, warnings, and artifact paths
 - `build\cyberstorm-stage2.bin`: flattened stage-two payload exactly as written after the boot sector

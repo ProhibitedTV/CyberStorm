@@ -289,6 +289,16 @@ draw_win_scene:
     mov dx, 30
     mov cx, 268
     mov bp, 128
+    cmp byte ptr [sound_id], SFX_WIN
+    jne win_frame_anim
+    cmp byte ptr [sound_timer], 0
+    je win_frame_anim
+    test byte ptr [sound_phase], 1
+    jz win_frame_base
+    mov al, PAL_WHITE
+    jmp win_frame_ready
+
+win_frame_anim:
     test byte ptr [anim_phase], 1
     jz win_frame_base
     mov al, PAL_WHITE
@@ -314,8 +324,36 @@ win_bar_ready:
     mov bx, 60
     mov dx, 88
     mov bp, 4
+    cmp byte ptr [sound_id], SFX_WIN
+    jne win_bar_anim
+    cmp byte ptr [sound_timer], 0
+    je win_bar_anim
+    test byte ptr [sound_phase], 1
+    jz win_bar_base
+    mov al, PAL_WHITE
+    jmp win_bar_color_ready
+
+win_bar_anim:
+    test byte ptr [anim_phase], 1
+    jz win_bar_base
+    mov al, PAL_WHITE
+    jmp win_bar_color_ready
+
+win_bar_base:
     mov al, PAL_GATE
+win_bar_color_ready:
     call fill_rect
+    mov bx, 60
+    mov dx, 80
+    mov bp, 2
+    call fill_rect
+    mov dx, 96
+    call fill_rect
+
+    ; End scenes now reveal in headline/body/stats/prompt phases so the sound
+    ; and accent bars land before the replay prompt appears.
+    cmp byte ptr [state_ticks], END_REVEAL_HEADLINE
+    jb win_scene_done
 
     mov bx, 78
     mov dx, 54
@@ -337,6 +375,13 @@ win_bar_ready:
     call draw_text_small
     cmp byte ptr [state_ticks], END_REVEAL_STATS
     jb win_scene_done
+
+    mov bx, 52
+    mov dx, 122
+    mov cx, 196
+    mov bp, 12
+    mov al, PAL_GATE
+    call draw_rect_outline
 
     mov bx, 60
     mov dx, 126
@@ -373,6 +418,28 @@ win_bar_ready:
     cmp byte ptr [state_ticks], END_REVEAL_PROMPT
     jb win_scene_done
 
+    mov bx, 64
+    mov dx, 142
+    mov cx, 156
+    mov bp, 10
+    mov al, PAL_PANEL2
+    call fill_rect
+
+    mov bx, 62
+    mov dx, 140
+    mov cx, 160
+    mov bp, 14
+    test byte ptr [anim_phase], 1
+    jz win_prompt_frame_base
+    mov al, PAL_WHITE
+    jmp win_prompt_frame_ready
+
+win_prompt_frame_base:
+    mov al, PAL_GATE
+
+win_prompt_frame_ready:
+    call draw_rect_outline
+
     mov bx, 70
     mov dx, 146
     mov si, offset replay_prompt
@@ -401,6 +468,16 @@ draw_lose_scene:
     mov dx, 30
     mov cx, 268
     mov bp, 128
+    cmp byte ptr [sound_id], SFX_LOSE
+    jne lose_frame_anim
+    cmp byte ptr [sound_timer], 0
+    je lose_frame_anim
+    test byte ptr [sound_phase], 1
+    jz lose_frame_base
+    mov al, PAL_WHITE
+    jmp lose_frame_ready
+
+lose_frame_anim:
     test byte ptr [anim_phase], 1
     jz lose_frame_base
     mov al, PAL_RED2
@@ -426,8 +503,34 @@ lose_bar_ready:
     mov bx, 60
     mov dx, 88
     mov bp, 4
+    cmp byte ptr [sound_id], SFX_LOSE
+    jne lose_bar_anim
+    cmp byte ptr [sound_timer], 0
+    je lose_bar_anim
+    test byte ptr [sound_phase], 1
+    jz lose_bar_base
+    mov al, PAL_WHITE
+    jmp lose_bar_color_ready
+
+lose_bar_anim:
+    test byte ptr [anim_phase], 1
+    jz lose_bar_base
+    mov al, PAL_WHITE
+    jmp lose_bar_color_ready
+
+lose_bar_base:
     mov al, PAL_RED2
+lose_bar_color_ready:
     call fill_rect
+    mov bx, 60
+    mov dx, 80
+    mov bp, 2
+    call fill_rect
+    mov dx, 96
+    call fill_rect
+
+    cmp byte ptr [state_ticks], END_REVEAL_HEADLINE
+    jb lose_scene_done
 
     mov bx, 82
     mov dx, 54
@@ -449,6 +552,13 @@ lose_bar_ready:
     call draw_text_small
     cmp byte ptr [state_ticks], END_REVEAL_STATS
     jb lose_scene_done
+
+    mov bx, 56
+    mov dx, 122
+    mov cx, 192
+    mov bp, 12
+    mov al, PAL_RED2
+    call draw_rect_outline
 
     mov bx, 64
     mov dx, 126
@@ -484,6 +594,28 @@ lose_bar_ready:
     call draw_digit_small
     cmp byte ptr [state_ticks], END_REVEAL_PROMPT
     jb lose_scene_done
+
+    mov bx, 64
+    mov dx, 142
+    mov cx, 156
+    mov bp, 10
+    mov al, PAL_PANEL2
+    call fill_rect
+
+    mov bx, 62
+    mov dx, 140
+    mov cx, 160
+    mov bp, 14
+    test byte ptr [anim_phase], 1
+    jz lose_prompt_frame_base
+    mov al, PAL_WHITE
+    jmp lose_prompt_frame_ready
+
+lose_prompt_frame_base:
+    mov al, PAL_RED2
+
+lose_prompt_frame_ready:
+    call draw_rect_outline
 
     mov bx, 70
     mov dx, 146

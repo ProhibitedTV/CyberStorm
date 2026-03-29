@@ -40,7 +40,8 @@ Register assumptions that matter:
 
 - The first byte must remain executable because boot jumps to offset `0`.
 - [src/game/state.asm](../src/game/state.asm) owns the global state layout.
-- [src/game/art.asm](../src/game/art.asm) and [src/game/maps.asm](../src/game/maps.asm) are data-only tails of the flat image.
+- [src/game/art.asm](../src/game/art.asm) is the visual-data wrapper and includes the build-generated sprite/tile bitmap include before the hand-authored palette/font data.
+- [src/game/maps.asm](../src/game/maps.asm) is the authored sector-layout tail of the flat image.
 
 ## 4. Core State Layout
 

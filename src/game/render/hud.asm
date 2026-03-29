@@ -39,51 +39,59 @@ draw_game_panels:
     mov al, PAL_PANEL
     call fill_rect
 
+    call get_sector_accent_color
     mov bx, 10
     mov dx, 8
     mov cx, 300
     mov bp, 22
-    mov al, PAL_CYAN
     call draw_rect_outline
 
     mov bx, 10
     mov dx, 34
     mov cx, 236
     mov bp, 132
-    mov al, PAL_CYAN
     call draw_rect_outline
 
     mov bx, 250
     mov dx, 34
     mov cx, 60
     mov bp, 132
-    mov al, PAL_CYAN
     call draw_rect_outline
 
     mov bx, 10
     mov dx, 168
     mov cx, 300
     mov bp, 24
-    mov al, PAL_CYAN
     call draw_rect_outline
+
+    mov bx, 14
+    mov dx, 29
+    mov cx, 292
+    mov bp, 1
+    call fill_rect
+
+    mov dx, 169
+    call fill_rect
     ret
 
 render_game_status:
     mov bx, 18
     mov dx, 15
     mov si, offset hud_title
-    mov ah, PAL_CYAN2
+    call get_sector_title_color
+    mov ah, al
     call draw_text_small
 
-    mov bx, 116
+    mov bx, 104
     mov dx, 15
-    mov si, offset sector_text
-    mov ah, PAL_WHITE
+    call get_sector_name_ptr
+    call get_sector_accent_color
+    mov ah, al
     call draw_text_small
 
     mov al, [sector_num]
-    mov ah, PAL_AMBER
-    mov bx, 154
+    mov ah, PAL_WHITE
+    mov bx, 146
     mov dx, 15
     call draw_digit_small
 
@@ -134,11 +142,7 @@ render_game_status:
     call draw_gate_meter
 
     call draw_message_banner
-    xor ax, ax
-    mov al, [message_id]
-    shl ax, 1
-    mov bx, ax
-    mov si, word ptr [message_table + bx]
+    call get_message_text_ptr
     mov bx, 18
     mov dx, 175
     call get_message_text_color
@@ -148,8 +152,77 @@ render_game_status:
     mov bx, 18
     mov dx, 184
     mov si, offset controls_text
-    mov ah, PAL_CYAN
+    call get_sector_accent_color
+    mov ah, al
     call draw_text_small
+    ret
+
+get_sector_name_ptr:
+    xor ax, ax
+    mov al, [sector_num]
+    dec al
+    xor ah, ah
+    shl ax, 1
+    mov bx, ax
+    mov si, word ptr [sector_name_table + bx]
+    ret
+
+get_sector_intro_ptr:
+    xor ax, ax
+    mov al, [sector_num]
+    dec al
+    xor ah, ah
+    shl ax, 1
+    mov bx, ax
+    mov si, word ptr [sector_intro_table + bx]
+    ret
+
+get_message_text_ptr:
+    mov al, [message_id]
+    cmp al, MSG_SECTOR
+    je message_text_ptr_sector
+    xor ah, ah
+    shl ax, 1
+    mov bx, ax
+    mov si, word ptr [message_table + bx]
+    ret
+
+message_text_ptr_sector:
+    call get_sector_intro_ptr
+    ret
+
+get_sector_accent_color:
+    mov al, [sector_num]
+    cmp al, 2
+    je sector_accent_furnace
+    cmp al, 3
+    je sector_accent_lock
+    mov al, PAL_CYAN
+    ret
+
+sector_accent_furnace:
+    mov al, PAL_AMBER
+    ret
+
+sector_accent_lock:
+    mov al, PAL_RED2
+    ret
+
+get_sector_title_color:
+    mov al, [sector_num]
+    cmp al, 2
+    je sector_title_furnace
+    cmp al, 3
+    je sector_title_lock
+    mov al, PAL_CYAN2
+    ret
+
+sector_title_furnace:
+    mov al, PAL_AMBER
+    ret
+
+sector_title_lock:
+    mov al, PAL_WHITE
     ret
 
 draw_shield_meter:
@@ -359,12 +432,42 @@ draw_message_banner:
     mov bp, 8
     call get_message_banner_color
     call fill_rect
+    ; The banner glint rides either the active SFX phase or the idle animation
+    ; phase so major messages feel tied to the same beat as the speaker.
+    call draw_message_banner_glint
 
 message_banner_done:
     ret
 
+draw_message_banner_glint:
+    cmp byte ptr [sound_timer], 0
+    jne banner_glint_sound
+    xor bx, bx
+    mov bl, [anim_phase]
+    and bl, 0Fh
+    shl bx, 4
+    add bx, 20
+    jmp banner_glint_ready
+
+banner_glint_sound:
+    xor bx, bx
+    mov bl, [sound_phase]
+    and bl, 07h
+    shl bx, 5
+    add bx, 24
+
+banner_glint_ready:
+    mov dx, 173
+    mov cx, 18
+    mov bp, 1
+    mov al, PAL_WHITE
+    call fill_rect
+    ret
+
 get_message_banner_color:
     mov al, [message_id]
+    cmp al, MSG_SECTOR
+    je message_banner_sector
     cmp al, MSG_HIT
     je message_banner_danger
     cmp al, MSG_SURGE
@@ -378,6 +481,10 @@ get_message_banner_color:
     cmp al, MSG_NOPULSE
     je message_banner_warn
     mov al, PAL_CYAN
+    ret
+
+message_banner_sector:
+    call get_sector_accent_color
     ret
 
 message_banner_gate:
@@ -396,6 +503,8 @@ get_message_text_color:
     cmp byte ptr [feedback_timer], 0
     je message_text_default
     mov al, [message_id]
+    cmp al, MSG_SECTOR
+    je message_text_sector
     cmp al, MSG_HIT
     je message_text_danger
     cmp al, MSG_SURGE
@@ -411,6 +520,16 @@ get_message_text_color:
     test byte ptr [anim_phase], 1
     jz message_text_cyan
     mov al, PAL_WHITE
+    ret
+
+message_text_sector:
+    test byte ptr [anim_phase], 1
+    jz message_text_sector_base
+    mov al, PAL_WHITE
+    ret
+
+message_text_sector_base:
+    call get_sector_title_color
     ret
 
 message_text_cyan:

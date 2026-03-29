@@ -71,6 +71,30 @@ enemy_bob_flanker:
     dec dx
 
 enemy_bob_ready:
+    cmp al, ENEMY_WARDEN
+    jne enemy_draw_ready
+    cmp byte ptr [sector_num], 3
+    jne enemy_draw_ready
+    push ax
+    push bx
+    push dx
+    mov cx, 10
+    mov bp, 10
+    test byte ptr [anim_phase], 1
+    jz elite_warden_aura_base
+    mov al, PAL_WHITE
+    jmp elite_warden_aura_ready
+
+elite_warden_aura_base:
+    mov al, PAL_GATE
+
+elite_warden_aura_ready:
+    call draw_rect_outline
+    pop dx
+    pop bx
+    pop ax
+
+enemy_draw_ready:
     push si
     call get_enemy_sprite
     call draw_sprite8

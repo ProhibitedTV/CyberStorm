@@ -139,9 +139,7 @@ attempt_move_to:
     je move_trigger_surge
 
 move_floor:
-    mov [player_x], bl
-    mov [player_y], bh
-    mov byte ptr [action_taken], 1
+    call commit_player_move
     ret
 
 move_blocked:
@@ -151,22 +149,19 @@ move_blocked:
 
 stepped_into_enemy:
     pop bx
+    call set_effect_focus_tile
     mov byte ptr [si + ENEMY_ALIVE], 0
     call award_kill
-    mov [player_x], bl
-    mov [player_y], bh
+    call commit_player_move
     mov al, MSG_KILL
     call set_message_event
-    mov byte ptr [action_taken], 1
     ret
 
 move_collect_shard:
     mov dl, TILE_FLOOR
     call set_tile
-    mov [player_x], bl
-    mov [player_y], bh
+    call commit_player_move
     inc byte ptr [data_count]
-    mov byte ptr [action_taken], 1
     mov al, [data_count]
     cmp al, SHARD_COUNT
     jb shard_message
@@ -191,9 +186,8 @@ move_use_exit:
 move_trigger_surge:
     mov dl, TILE_FLOOR
     call set_tile
-    mov [player_x], bl
-    mov [player_y], bh
-    mov byte ptr [action_taken], 1
+    call set_effect_focus_tile
+    call commit_player_move
     sub byte ptr [shield_count], SURGE_PLAYER_DAMAGE
     mov al, MSG_SURGE
     call set_message_event
@@ -264,6 +258,9 @@ pulse_y_up:
     ja pulse_next
 
 pulse_hit:
+    mov bl, [si + ENEMY_X]
+    mov bh, [si + ENEMY_Y]
+    call set_effect_focus_tile
     mov byte ptr [si + ENEMY_ALIVE], 0
     call award_kill
     inc di
@@ -283,6 +280,7 @@ pulse_done:
     ret
 
 enemy_turn:
+    call clear_enemy_pressure
     mov si, offset enemies
     mov cx, MAX_ENEMIES
 
@@ -300,6 +298,11 @@ enemy_turn_next:
     loop enemy_turn_loop
 
 enemy_turn_done:
+    cmp byte ptr [game_state], STATE_PLAYING
+    jne enemy_turn_done_skip
+    call update_enemy_pressure
+
+enemy_turn_done_skip:
     ret
 
 move_enemy:
@@ -311,66 +314,99 @@ move_enemy:
     jmp enemy_player_horizontal_first
 
 move_enemy_flanker:
-    call get_enemy_player_delta
+    ; Flankers do not get extra movement; they simply aim one tile ahead of the
+    ; runner's last committed step so they produce cleaner cut-offs.
+    call get_projected_player_target
+    call get_enemy_target_delta
 move_enemy_flanker_ready:
     cmp ch, cl
-    jae enemy_player_vertical_first
-    jmp enemy_player_horizontal_first
+    jae enemy_target_vertical_first
+    jmp enemy_target_horizontal_first
 
 move_enemy_warden:
     call get_enemy_player_delta
     mov al, cl
     add al, ch
-    cmp al, WARDEN_ENGAGE_DISTANCE
-    jbe move_enemy_flanker_ready
+    mov bl, al
+    call get_sector_warden_engage_distance
+    cmp bl, al
+    jbe move_enemy_warden_hunt
     call get_enemy_exit_delta
     cmp ch, cl
-    jae enemy_exit_vertical_first
-    jmp enemy_exit_horizontal_first
+    jae enemy_target_vertical_first
+    jmp enemy_target_horizontal_first
+
+move_enemy_warden_hunt:
+    cmp byte ptr [sector_num], 3
+    jne move_enemy_warden_direct
+    call get_projected_player_target
+    call get_enemy_target_delta
+    cmp ch, cl
+    jae enemy_target_vertical_first
+    jmp enemy_target_horizontal_first
+
+move_enemy_warden_direct:
+    mov bl, [player_x]
+    mov bh, [player_y]
+    call get_enemy_target_delta
+    cmp ch, cl
+    jae enemy_target_vertical_first
+    jmp enemy_target_horizontal_first
 
 enemy_player_horizontal_first:
     mov bl, [player_x]
-    call enemy_try_horizontal_to_target
-    jc enemy_done
     mov bh, [player_y]
-    call enemy_try_vertical_to_target
-    jmp enemy_done
+    jmp enemy_target_horizontal_first
 
 enemy_player_vertical_first:
-    mov bh, [player_y]
-    call enemy_try_vertical_to_target
-    jc enemy_done
+    ; Vertical-first paths are used when the target delta is taller than it is
+    ; wide, which keeps hunter intent readable without pathfinding.
     mov bl, [player_x]
-    call enemy_try_horizontal_to_target
-    jmp enemy_done
+    mov bh, [player_y]
+    jmp enemy_target_vertical_first
 
 enemy_exit_horizontal_first:
     mov bl, [exit_x]
-    call enemy_try_horizontal_to_target
-    jc enemy_done
     mov bh, [exit_y]
-    call enemy_try_vertical_to_target
-    jmp enemy_done
+    jmp enemy_target_horizontal_first
 
 enemy_exit_vertical_first:
-    mov bh, [exit_y]
-    call enemy_try_vertical_to_target
-    jc enemy_done
     mov bl, [exit_x]
+    mov bh, [exit_y]
+    jmp enemy_target_vertical_first
+
+enemy_target_horizontal_first:
     call enemy_try_horizontal_to_target
+    jc enemy_done
+    call enemy_try_vertical_to_target
 
 enemy_done:
     ret
 
+enemy_target_vertical_first:
+    call enemy_try_vertical_to_target
+    jc enemy_done
+    call enemy_try_horizontal_to_target
+    jmp enemy_done
+
 get_enemy_player_delta:
-    mov al, [player_x]
+    mov bl, [player_x]
+    mov bh, [player_y]
+    jmp get_enemy_target_delta
+
+get_enemy_exit_delta:
+    mov bl, [exit_x]
+    mov bh, [exit_y]
+
+get_enemy_target_delta:
+    mov al, bl
     sub al, [si + ENEMY_X]
     jns enemy_player_dx_ready
     neg al
 
 enemy_player_dx_ready:
     mov cl, al
-    mov al, [player_y]
+    mov al, bh
     sub al, [si + ENEMY_Y]
     jns enemy_player_dy_ready
     neg al
@@ -379,21 +415,41 @@ enemy_player_dy_ready:
     mov ch, al
     ret
 
-get_enemy_exit_delta:
-    mov al, [exit_x]
-    sub al, [si + ENEMY_X]
-    jns enemy_exit_dx_ready
-    neg al
+get_projected_player_target:
+    mov bl, [player_x]
+    mov bh, [player_y]
+    mov al, [last_player_dx]
+    or al, [last_player_dy]
+    jz projected_target_ready
 
-enemy_exit_dx_ready:
-    mov cl, al
-    mov al, [exit_y]
-    sub al, [si + ENEMY_Y]
-    jns enemy_exit_dy_ready
-    neg al
+    mov al, [last_player_dx]
+    or al, al
+    jz projected_target_y
+    add bl, al
+    cmp bl, PLAY_MIN_X
+    jb projected_target_reset_x
+    cmp bl, PLAY_MAX_X
+    ja projected_target_reset_x
+    jmp projected_target_y
 
-enemy_exit_dy_ready:
-    mov ch, al
+projected_target_reset_x:
+    mov bl, [player_x]
+
+projected_target_y:
+    mov al, [last_player_dy]
+    or al, al
+    jz projected_target_ready
+    add bh, al
+    cmp bh, PLAY_MIN_Y
+    jb projected_target_reset_y
+    cmp bh, PLAY_MAX_Y
+    ja projected_target_reset_y
+    ret
+
+projected_target_reset_y:
+    mov bh, [player_y]
+
+projected_target_ready:
     ret
 
 enemy_try_horizontal_to_target:
@@ -447,6 +503,9 @@ try_enemy_step:
     mov bl, [player_y]
     cmp dh, bl
     jne step_not_player
+    mov bl, dl
+    mov bh, dh
+    call set_effect_focus_tile
     dec byte ptr [shield_count]
     mov byte ptr [si + ENEMY_ALIVE], 0
     mov al, MSG_HIT
@@ -491,6 +550,7 @@ step_hit_surge:
     mov dl, TILE_FLOOR
     call set_tile
     mov si, di
+    call set_effect_focus_tile
     mov byte ptr [si + ENEMY_ALIVE], 0
     call award_kill
     mov al, MSG_TRAP
@@ -512,6 +572,9 @@ load_sector:
 keep_pulse_count:
     mov byte ptr [data_count], 0
     mov byte ptr [action_taken], 0
+    mov byte ptr [last_player_dx], 0
+    mov byte ptr [last_player_dy], 0
+    call clear_enemy_pressure
     call clear_enemy_table
     call copy_sector_layout
     mov byte ptr [player_x], START_X
@@ -607,13 +670,53 @@ place_shard_loop:
     loop place_shard_loop
     ret
 
-place_surge_fields:
+get_sector_surge_count:
+    xor cx, cx
     mov al, [sector_num]
-    cmp al, SURGE_START_SECTOR
-    jb place_surge_done
-    sub al, SURGE_START_SECTOR - 1
+    cmp al, 2
+    je sector_surge_furnace
+    cmp al, 3
+    je sector_surge_lock
+    ret
+
+sector_surge_furnace:
+    mov cl, SECTOR2_SURGE_COUNT
+    ret
+
+sector_surge_lock:
+    mov cl, SECTOR3_SURGE_COUNT
+    ret
+
+get_sector_enemy_count:
+    mov al, [sector_num]
+    mov bl, ENEMY_SPAWN_STEP
+    mul bl
+    add al, ENEMY_SPAWN_BASE
+    cmp byte ptr [sector_num], 3
+    jne sector_enemy_count_ready
+    add al, SECTOR3_ENEMY_BONUS
+
+sector_enemy_count_ready:
     xor cx, cx
     mov cl, al
+    ret
+
+get_sector_warden_engage_distance:
+    mov al, [sector_num]
+    cmp al, 3
+    je sector_warden_lock
+    mov al, WARDEN_ENGAGE_DISTANCE
+    ret
+
+sector_warden_lock:
+    mov al, SECTOR3_WARDEN_ENGAGE_DISTANCE
+    ret
+
+place_surge_fields:
+    ; Sector hazards stay table-free and tiny here: sector 2 is dense with arc
+    ; nodes, while sector 3 turns the same system into a harsher lockout field.
+    call get_sector_surge_count
+    jcxz place_surge_done
 
 place_surge_loop:
     call random_floor_position
@@ -625,12 +728,7 @@ place_surge_done:
     ret
 
 place_enemies:
-    mov al, [sector_num]
-    mov bl, ENEMY_SPAWN_STEP
-    mul bl
-    add al, ENEMY_SPAWN_BASE
-    xor cx, cx
-    mov cl, al
+    call get_sector_enemy_count
     mov si, offset enemies
 
 place_enemy_find_slot:
@@ -755,6 +853,89 @@ random_word:
 
 random_store:
     mov [rng_state], ax
+    ret
+
+commit_player_move:
+    mov al, bl
+    sub al, [player_x]
+    mov [last_player_dx], al
+    mov al, bh
+    sub al, [player_y]
+    mov [last_player_dy], al
+    mov [player_x], bl
+    mov [player_y], bh
+    mov byte ptr [action_taken], 1
+    ret
+
+set_effect_focus_tile:
+    mov [effect_x], bl
+    mov [effect_y], bh
+    ret
+
+clear_enemy_pressure:
+    mov byte ptr [threat_level], THREAT_NONE
+    ret
+
+update_enemy_pressure:
+    ; Pressure telegraphing is read-only state: it highlights the most dangerous
+    ; hunter after their turn so deaths stay explainable on the next input.
+    push si
+    push cx
+    mov si, offset enemies
+    mov cx, MAX_ENEMIES
+
+pressure_loop:
+    cmp byte ptr [si + ENEMY_ALIVE], 0
+    je pressure_next
+    call evaluate_enemy_threat
+    cmp al, [threat_level]
+    jbe pressure_next
+    mov [threat_level], al
+    mov al, [si + ENEMY_X]
+    mov [threat_x], al
+    mov al, [si + ENEMY_Y]
+    mov [threat_y], al
+    cmp byte ptr [threat_level], THREAT_ELITE
+    je pressure_done
+
+pressure_next:
+    add si, ENEMY_SIZE
+    loop pressure_loop
+
+pressure_done:
+    pop cx
+    pop si
+    ret
+
+evaluate_enemy_threat:
+    call get_enemy_player_delta
+    mov al, cl
+    add al, ch
+    cmp al, NEAR_THREAT_DISTANCE
+    jbe threat_is_near
+    cmp byte ptr [si + ENEMY_KIND], ENEMY_WARDEN
+    jne enemy_threat_none
+    cmp byte ptr [sector_num], 3
+    jne enemy_threat_none
+    cmp al, ELITE_THREAT_DISTANCE
+    ja enemy_threat_none
+    mov al, THREAT_ELITE
+    ret
+
+threat_is_near:
+    mov al, THREAT_NEAR
+    cmp byte ptr [si + ENEMY_KIND], ENEMY_WARDEN
+    jne threat_ready
+    cmp byte ptr [sector_num], 3
+    jne threat_ready
+    mov al, THREAT_ELITE
+    ret
+
+threat_ready:
+    ret
+
+enemy_threat_none:
+    mov al, THREAT_NONE
     ret
 
 award_kill:

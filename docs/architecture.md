@@ -20,7 +20,7 @@ Practical consequences:
 
 | Region | Purpose | Notes |
 | --- | --- | --- |
-| `0000:0000-0000:03FF` | Interrupt vector table | Stage two overwrites the INT `09h` entry here for keyboard IRQ1. |
+| `0000:0000-0000:03FF` | Interrupt vector table | Left under BIOS ownership in the default runtime. |
 | `0000:0400-0000:04FF` | BIOS data area | Must remain untouched. |
 | `0000:7C00` downward | Active stack | Created by the boot sector and still used by stage two and the keyboard ISR. |
 | `1000:0000` upward | Stage two code + data | `DS` is set to `CS` on entry and the whole game assumes one shared segment. |
@@ -32,7 +32,7 @@ Register assumptions that matter:
 - `DS = CS` before any stage-two code touches globals.
 - `ES = BACKBUFFER_SEG` for most rendering helpers.
 - String operations assume `DF = 0`.
-- The keyboard ISR saves registers, then does `push cs / pop ds` so it can safely touch stage-two globals.
+- The default runtime leaves BIOS keyboard services installed and polls `INT 16h` once per frame.
 
 ## 3. Stage-Two Composition
 
@@ -73,10 +73,10 @@ That ordering is intentional: non-playing screens are drawn first, then keypress
 
 Input flow:
 
-- [src/game/input.asm](../src/game/input.asm) installs a custom IRQ1 handler on INT `09h`.
-- The handler latches one-shot make events into `pressed_enter`, `pressed_w`, and so on.
-- Typematic repeats are suppressed with `key_down[]` until the matching break code clears the entry.
-- The gameplay loop consumes the `pressed_*` latches directly. `poll_key_event` is secondary/diagnostic code, not the hot path.
+- [src/game/input.asm](../src/game/input.asm) polls BIOS keyboard services through `INT 16h`.
+- Each frame drains the BIOS key queue and latches recognized controls into `pressed_enter`, `pressed_w`, and so on.
+- The gameplay loop consumes the `pressed_*` latches directly.
+- The older raw IRQ1 hook is still present as a legacy path, but it is not the default runtime behavior.
 
 Render flow:
 

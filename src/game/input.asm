@@ -1,6 +1,6 @@
 install_keyboard_handler:
-    ; The game owns the machine once stage two starts, so IRQ1 is redirected to
-    ; a private handler instead of chaining through BIOS keyboard services.
+    ; Legacy raw IRQ1 hook retained for experiments. The default runtime now
+    ; leaves the BIOS handler installed and polls INT 16h for compatibility.
     push ax
     push es
     cli
@@ -42,10 +42,121 @@ reset_keyboard_state:
     mov cx, KEY_STATE_REGION_BYTES
     xor al, al
     rep stosb
+    call drain_bios_keyboard_buffer
     pop es
     pop di
     pop cx
     pop ax
+    ret
+
+drain_bios_keyboard_buffer:
+    push ax
+
+drain_bios_keyboard_loop:
+    mov ah, 01h
+    int 16h
+    jz drain_bios_keyboard_done
+    xor ah, ah
+    int 16h
+    jmp drain_bios_keyboard_loop
+
+drain_bios_keyboard_done:
+    pop ax
+    ret
+
+poll_bios_keyboard:
+    push ax
+    cmp byte ptr [input_check_count], 99
+    jae poll_bios_keyboard_loop
+    inc byte ptr [input_check_count]
+
+poll_bios_keyboard_loop:
+    mov ah, 01h
+    int 16h
+    jz poll_bios_keyboard_done
+    xor ah, ah
+    int 16h
+    mov [input_last_polled], ah
+    mov [input_last_code], ah
+    mov byte ptr [any_key_pending], 1
+    cmp byte ptr [input_event_count], 99
+    jae bios_event_count_ready
+    inc byte ptr [input_event_count]
+
+bios_event_count_ready:
+    cmp byte ptr [input_poll_count], 99
+    jae bios_poll_count_ready
+    inc byte ptr [input_poll_count]
+
+bios_poll_count_ready:
+    call latch_bios_key
+    jmp poll_bios_keyboard_loop
+
+poll_bios_keyboard_done:
+    pop ax
+    ret
+
+latch_bios_key:
+    cmp ah, SCAN_ENTER
+    je bios_key_enter
+    cmp ah, SCAN_W
+    je bios_key_w
+    cmp ah, SCAN_A
+    je bios_key_a
+    cmp ah, SCAN_S
+    je bios_key_s
+    cmp ah, SCAN_D
+    je bios_key_d
+    cmp ah, SCAN_C
+    je bios_key_c
+    cmp ah, BIOS_SCAN_UP
+    je bios_key_up
+    cmp ah, BIOS_SCAN_LEFT
+    je bios_key_left
+    cmp ah, BIOS_SCAN_RIGHT
+    je bios_key_right
+    cmp ah, BIOS_SCAN_DOWN
+    je bios_key_down
+    ret
+
+bios_key_enter:
+    mov byte ptr [pressed_enter], 1
+    ret
+
+bios_key_w:
+    mov byte ptr [pressed_w], 1
+    ret
+
+bios_key_a:
+    mov byte ptr [pressed_a], 1
+    ret
+
+bios_key_s:
+    mov byte ptr [pressed_s], 1
+    ret
+
+bios_key_d:
+    mov byte ptr [pressed_d], 1
+    ret
+
+bios_key_c:
+    mov byte ptr [pressed_c], 1
+    ret
+
+bios_key_up:
+    mov byte ptr [pressed_up], 1
+    ret
+
+bios_key_left:
+    mov byte ptr [pressed_left], 1
+    ret
+
+bios_key_right:
+    mov byte ptr [pressed_right], 1
+    ret
+
+bios_key_down:
+    mov byte ptr [pressed_down], 1
     ret
 
 poll_key_event:

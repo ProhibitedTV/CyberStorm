@@ -549,6 +549,8 @@ rand_floor_tile:
     ret
 
 random_enemy_position:
+    ; Callers expect the active enemy slot to stay live in SI while we search.
+    push si
 rand_enemy_retry:
     call random_floor_position
     cmp bl, SAFE_X_MAX
@@ -560,11 +562,15 @@ rand_enemy_space_ok:
     mov di, 0FFFFh
     call find_enemy_at
     jc rand_enemy_retry
+    pop si
     ret
 
 random_x:
     call random_word
     mov bl, PLAY_MAX_X
+    ; Use the low byte as the bounded dividend so the 8-bit divide cannot
+    ; trap while we map RNG output into the playable column range.
+    xor ah, ah
     div bl
     mov al, ah
     inc al
@@ -573,6 +579,7 @@ random_x:
 random_y:
     call random_word
     mov bl, PLAY_MAX_Y
+    xor ah, ah
     div bl
     mov al, ah
     inc al

@@ -8,7 +8,6 @@ start:
     int 10h
     call init_palette
     call reset_keyboard_state
-    call install_keyboard_handler
 
 IF DEBUG_FORCE_SEED
     mov word ptr [rng_state], DEBUG_SEED_VALUE
@@ -38,6 +37,7 @@ main_loop:
     ; One BIOS timer tick drives animation, rendering, and then one round of
     ; state/input handling.
     call wait_frame_tick
+    call poll_bios_keyboard
     call update_frontend_state
     call render_screen
     cmp byte ptr [game_state], STATE_PLAYING
@@ -45,6 +45,9 @@ main_loop:
 
     cmp byte ptr [game_state], STATE_SPLASH
     je handle_splash_input
+
+    cmp byte ptr [game_state], STATE_TITLE
+    je handle_frontend_start_input
 
     cmp byte ptr [any_key_pending], 0
     je main_loop
@@ -66,7 +69,38 @@ splash_check_skip:
     mov byte ptr [any_key_pending], 0
 
 skip_splash:
+    call reset_keyboard_state
     mov byte ptr [game_state], STATE_TITLE
+    jmp main_loop
+
+handle_frontend_start_input:
+    ; Title/start flow consumes the same explicit latches as gameplay first,
+    ; then falls back to the generic any-key flag for unknown BIOS keys.
+    cmp byte ptr [pressed_enter], 0
+    jne frontend_start_now
+    cmp byte ptr [pressed_w], 0
+    jne frontend_start_now
+    cmp byte ptr [pressed_a], 0
+    jne frontend_start_now
+    cmp byte ptr [pressed_s], 0
+    jne frontend_start_now
+    cmp byte ptr [pressed_d], 0
+    jne frontend_start_now
+    cmp byte ptr [pressed_c], 0
+    jne frontend_start_now
+    cmp byte ptr [pressed_up], 0
+    jne frontend_start_now
+    cmp byte ptr [pressed_left], 0
+    jne frontend_start_now
+    cmp byte ptr [pressed_right], 0
+    jne frontend_start_now
+    cmp byte ptr [pressed_down], 0
+    jne frontend_start_now
+    cmp byte ptr [any_key_pending], 0
+    je main_loop
+
+frontend_start_now:
+    call start_new_run
     jmp main_loop
 
 handle_play_input:
@@ -96,6 +130,7 @@ frontend_state_done:
     ret
 
 start_new_run:
+    call reset_keyboard_state
 IF DEBUG_FORCE_SEED
     mov word ptr [rng_state], DEBUG_SEED_VALUE
 ENDIF

@@ -178,6 +178,22 @@
         }
         @{
             Section = 'Sprites'
+            Name = 'sprite_shard_c'
+            Width = 8
+            Height = 8
+            Rows = @(
+                '....w...'
+                '...CwC..'
+                '..CaaaC.'
+                '.CawwaC.'
+                '..CaaaC.'
+                '...CwC..'
+                '....c...'
+                '........'
+            )
+        }
+        @{
+            Section = 'Sprites'
             Name = 'sprite_gate_a'
             Width = 8
             Height = 8
@@ -206,6 +222,22 @@
                 '..pggp..'
                 '...pp...'
                 '........'
+            )
+        }
+        @{
+            Section = 'Sprites'
+            Name = 'sprite_gate_c'
+            Width = 8
+            Height = 8
+            Rows = @(
+                '..pCCp..'
+                '.pCwwCp.'
+                'pCwggwCp'
+                'CCgppgCC'
+                'pCwggwCp'
+                '.pCwwCp.'
+                '..pCCp..'
+                '...gg...'
             )
         }
         @{
@@ -293,6 +325,134 @@
                 'MpmCMpmM'
                 'MmpmpcMM'
                 'MpCpmpmM'
+                'MMMMMMMM'
+            )
+        }
+        @{
+            Section = 'Tiles'
+            Name = 'tile_floor_furnace_a'
+            Width = 8
+            Height = 8
+            Rows = @(
+                'fRaffaRf'
+                'aFfpafFa'
+                'fpaRrafp'
+                'RfafFafr'
+                'rfFaafFr'
+                'pafRrafp'
+                'aFfpafFa'
+                'fRaffaRf'
+            )
+        }
+        @{
+            Section = 'Tiles'
+            Name = 'tile_floor_furnace_b'
+            Width = 8
+            Height = 8
+            Rows = @(
+                'faRffRaf'
+                'pFafraFp'
+                'FpraarFp'
+                'aRfFfFra'
+                'aRfFfFra'
+                'FpraarFp'
+                'pFafraFp'
+                'faRffRaf'
+            )
+        }
+        @{
+            Section = 'Tiles'
+            Name = 'tile_floor_lock_a'
+            Width = 8
+            Height = 8
+            Rows = @(
+                'FCpffpCF'
+                'CwCppCwC'
+                'pCpCCpCp'
+                'fpcwwcpf'
+                'fpcwwcpf'
+                'pCpCCpCp'
+                'CwCppCwC'
+                'FCpffpCF'
+            )
+        }
+        @{
+            Section = 'Tiles'
+            Name = 'tile_floor_lock_b'
+            Width = 8
+            Height = 8
+            Rows = @(
+                'fCpCCpCf'
+                'CpCwwCpC'
+                'pccppccp'
+                'FpcCCcpF'
+                'FpcCCcpF'
+                'pccppccp'
+                'CpCwwCpC'
+                'fCpCCpCf'
+            )
+        }
+        @{
+            Section = 'Tiles'
+            Name = 'tile_wall_furnace_a'
+            Width = 8
+            Height = 8
+            Rows = @(
+                'MMMMMMMM'
+                'MmRmmRmM'
+                'MRMaaMRM'
+                'MmMRmRmM'
+                'MMrMmRMM'
+                'MaMRRMaM'
+                'MmRmmRmM'
+                'MMMMMMMM'
+            )
+        }
+        @{
+            Section = 'Tiles'
+            Name = 'tile_wall_furnace_b'
+            Width = 8
+            Height = 8
+            Rows = @(
+                'MMMMMMMM'
+                'MRmMMmRM'
+                'MmRaaRmM'
+                'MMmRRmMM'
+                'MRmMMmRM'
+                'MmRaaRmM'
+                'MRmMMmRM'
+                'MMMMMMMM'
+            )
+        }
+        @{
+            Section = 'Tiles'
+            Name = 'tile_wall_lock_a'
+            Width = 8
+            Height = 8
+            Rows = @(
+                'MMMMMMMM'
+                'MwMpMpwM'
+                'MpCMMCpM'
+                'MMpwwpMM'
+                'MMpwwpMM'
+                'MpCMMCpM'
+                'MwMpMpwM'
+                'MMMMMMMM'
+            )
+        }
+        @{
+            Section = 'Tiles'
+            Name = 'tile_wall_lock_b'
+            Width = 8
+            Height = 8
+            Rows = @(
+                'MMMMMMMM'
+                'MpwwwwpM'
+                'MCpMMpCM'
+                'MwMppMwM'
+                'MwMppMwM'
+                'MCpMMpCM'
+                'MpwwwwpM'
                 'MMMMMMMM'
             )
         }
@@ -390,6 +550,38 @@
                 'RFCwwCFR'
                 'pCFRRFCp'
                 'fpRffRpf'
+            )
+        }
+        @{
+            Section = 'Tiles'
+            Name = 'tile_terminal_a'
+            Width = 8
+            Height = 8
+            Rows = @(
+                'fpCCCCpf'
+                'pCwppwCp'
+                'CwCCCCwC'
+                'CcppppcC'
+                'CcfaaFcC'
+                'CcppppcC'
+                'pCwCCwCp'
+                'fpCCCCpf'
+            )
+        }
+        @{
+            Section = 'Tiles'
+            Name = 'tile_terminal_b'
+            Width = 8
+            Height = 8
+            Rows = @(
+                'fCpwwpCf'
+                'pCwCCwCp'
+                'CcppppcC'
+                'CCfaafCC'
+                'CcppppcC'
+                'CwCCCCwC'
+                'pCwppwCp'
+                'fCpwwpCf'
             )
         }
     )

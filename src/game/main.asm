@@ -3,6 +3,8 @@ start:
     ; handler all expect DS = CS. SS:SP still points at the boot stack.
     push cs
     pop ds
+    mov [boot_drive], dl
+    call load_required_asset_banks
 
     mov ax, 0013h
     int 10h

@@ -133,6 +133,8 @@ attempt_move_to:
     je move_blocked
     cmp al, TILE_SHARD
     je move_collect_shard
+    cmp al, TILE_TERMINAL
+    je move_trigger_terminal
     cmp al, TILE_EXIT_OPEN
     je move_use_exit
     cmp al, TILE_SURGE
@@ -172,6 +174,17 @@ move_collect_shard:
 
 shard_message:
     mov al, MSG_SHARD
+    call set_message_event
+    ret
+
+move_trigger_terminal:
+    mov dl, TILE_FLOOR
+    call set_tile
+    call set_effect_focus_tile
+    call commit_player_move
+    call set_spoof_anchor
+    mov byte ptr [spoof_timer], SPOOF_TURNS
+    mov al, MSG_SPOOF
     call set_message_event
     ret
 
@@ -301,17 +314,30 @@ enemy_turn_done:
     cmp byte ptr [game_state], STATE_PLAYING
     jne enemy_turn_done_skip
     call update_enemy_pressure
+    cmp byte ptr [spoof_timer], 0
+    je enemy_turn_done_skip
+    dec byte ptr [spoof_timer]
 
 enemy_turn_done_skip:
     ret
 
 move_enemy:
+    cmp byte ptr [spoof_timer], 0
+    jne move_enemy_spoof
     mov al, [si + ENEMY_KIND]
     cmp al, ENEMY_FLANKER
     je move_enemy_flanker
     cmp al, ENEMY_WARDEN
     je move_enemy_warden
     jmp enemy_player_horizontal_first
+
+move_enemy_spoof:
+    ; A live spoof route only changes the hunters' target beacon. They still
+    ; take one normal step, but the redirected line can bunch up near the gate.
+    call get_enemy_exit_delta
+    cmp ch, cl
+    jae enemy_target_vertical_first
+    jmp enemy_target_horizontal_first
 
 move_enemy_flanker:
     ; Flankers do not get extra movement; they simply aim one tile ahead of the
@@ -574,6 +600,9 @@ keep_pulse_count:
     mov byte ptr [action_taken], 0
     mov byte ptr [last_player_dx], 0
     mov byte ptr [last_player_dy], 0
+    mov byte ptr [spoof_timer], 0
+    mov byte ptr [spoof_x], START_X
+    mov byte ptr [spoof_y], START_Y
     call clear_enemy_pressure
     call clear_enemy_table
     call copy_sector_layout
@@ -582,6 +611,7 @@ keep_pulse_count:
     mov byte ptr [exit_x], EXIT_COL
     mov byte ptr [exit_y], EXIT_ROW
     call set_exit_locked
+    call place_terminals
     call place_shards
     call place_surge_fields
     call place_enemies
@@ -599,14 +629,19 @@ clear_enemy_loop:
     ret
 
 copy_sector_layout:
-    ; Sector templates are MAP_H rows of MAP_W ASCII bytes. Only '#'
-    ; survives as a wall; everything else is normalized to floor here.
+    ; Sector templates are raw ASCII bytes inside the read-only map bank loaded
+    ; to MAP_BANK_SEG. Only '#' survives as a wall; everything else becomes
+    ; floor before dynamic objects are placed.
     call select_sector_template
+    push es
+    mov ax, MAP_BANK_SEG
+    mov es, ax
     mov di, offset map_tiles
     mov cx, MAP_SIZE
 
 copy_layout_loop:
-    lodsb
+    mov al, es:[si]
+    inc si
     cmp al, '#'
     je copy_wall
     mov al, TILE_FLOOR
@@ -619,13 +654,11 @@ copy_store:
     mov [di], al
     inc di
     loop copy_layout_loop
+    pop es
     ret
 
 select_sector_template:
-    mov al, [sector_num]
-    dec al
-    xor ah, ah
-    mov bx, ax
+    call get_sector_rule_index
     mov ch, [sector_template_start + bx]
     mov cl, [sector_template_count + bx]
     mov al, ch
@@ -643,7 +676,16 @@ template_index_ready:
     xor ah, ah
     shl ax, 1
     mov bx, ax
-    mov si, word ptr [template_table + bx]
+    mov si, word ptr [template_offset_table + bx]
+    ret
+
+get_sector_rule_index:
+    ; Sector rule and template tables are all 0-based arrays keyed from the
+    ; 1-based sector_num runtime state.
+    mov al, [sector_num]
+    dec al
+    xor ah, ah
+    mov bx, ax
     ret
 
 set_exit_locked:
@@ -672,19 +714,14 @@ place_shard_loop:
 
 get_sector_surge_count:
     xor cx, cx
-    mov al, [sector_num]
-    cmp al, 2
-    je sector_surge_furnace
-    cmp al, 3
-    je sector_surge_lock
+    call get_sector_rule_index
+    mov cl, [sector_rule_surge_count + bx]
     ret
 
-sector_surge_furnace:
-    mov cl, SECTOR2_SURGE_COUNT
-    ret
-
-sector_surge_lock:
-    mov cl, SECTOR3_SURGE_COUNT
+get_sector_terminal_count:
+    xor cx, cx
+    call get_sector_rule_index
+    mov cl, [sector_rule_terminal_count + bx]
     ret
 
 get_sector_enemy_count:
@@ -692,24 +729,17 @@ get_sector_enemy_count:
     mov bl, ENEMY_SPAWN_STEP
     mul bl
     add al, ENEMY_SPAWN_BASE
-    cmp byte ptr [sector_num], 3
-    jne sector_enemy_count_ready
-    add al, SECTOR3_ENEMY_BONUS
-
-sector_enemy_count_ready:
+    mov dl, al
+    call get_sector_rule_index
     xor cx, cx
+    mov al, dl
+    add al, [sector_rule_enemy_bonus + bx]
     mov cl, al
     ret
 
 get_sector_warden_engage_distance:
-    mov al, [sector_num]
-    cmp al, 3
-    je sector_warden_lock
-    mov al, WARDEN_ENGAGE_DISTANCE
-    ret
-
-sector_warden_lock:
-    mov al, SECTOR3_WARDEN_ENGAGE_DISTANCE
+    call get_sector_rule_index
+    mov al, [sector_rule_warden_engage_distance + bx]
     ret
 
 place_surge_fields:
@@ -725,6 +755,19 @@ place_surge_loop:
     loop place_surge_loop
 
 place_surge_done:
+    ret
+
+place_terminals:
+    call get_sector_terminal_count
+    jcxz place_terminals_done
+
+place_terminal_loop:
+    call random_terminal_position
+    mov dl, TILE_TERMINAL
+    call set_tile
+    loop place_terminal_loop
+
+place_terminals_done:
     ret
 
 place_enemies:
@@ -750,27 +793,18 @@ place_enemy_here:
     ret
 
 roll_enemy_kind:
-    mov al, [sector_num]
-    cmp al, 1
-    je roll_enemy_kind_sector1
-    cmp al, 2
-    je roll_enemy_kind_sector2
     call random_word
-    cmp al, SECTOR3_WARDEN_THRESHOLD
+    mov dl, al
+    call get_sector_rule_index
+    mov al, [sector_rule_warden_threshold + bx]
+    or al, al
+    jz roll_enemy_kind_check_flanker
+    cmp dl, al
     jb roll_enemy_kind_warden
-    cmp al, SECTOR3_FLANKER_THRESHOLD
-    jb roll_enemy_kind_flanker
-    jmp roll_enemy_kind_rusher
 
-roll_enemy_kind_sector1:
-    call random_word
-    cmp al, SECTOR1_FLANKER_THRESHOLD
-    jb roll_enemy_kind_flanker
-    jmp roll_enemy_kind_rusher
-
-roll_enemy_kind_sector2:
-    call random_word
-    cmp al, SECTOR2_FLANKER_THRESHOLD
+roll_enemy_kind_check_flanker:
+    mov al, [sector_rule_flanker_threshold + bx]
+    cmp dl, al
     jb roll_enemy_kind_flanker
 
 roll_enemy_kind_rusher:
@@ -806,6 +840,17 @@ rand_floor_tile:
     call get_tile
     cmp al, TILE_FLOOR
     jne rand_floor_retry
+    ret
+
+random_terminal_position:
+rand_terminal_retry:
+    call random_floor_position
+    cmp bl, SAFE_X_MAX
+    ja rand_terminal_ready
+    cmp bh, SAFE_Y_MIN
+    jae rand_terminal_retry
+
+rand_terminal_ready:
     ret
 
 random_enemy_position:
@@ -870,6 +915,11 @@ commit_player_move:
 set_effect_focus_tile:
     mov [effect_x], bl
     mov [effect_y], bh
+    ret
+
+set_spoof_anchor:
+    mov [spoof_x], bl
+    mov [spoof_y], bh
     ret
 
 clear_enemy_pressure:

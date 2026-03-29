@@ -10,6 +10,12 @@ SCREEN_W      equ 320
 SCREEN_H      equ 200
 SCREEN_PIXELS equ SCREEN_W * SCREEN_H
 SCREEN_WORDS  equ SCREEN_PIXELS / 2
+TEXT_MODE_80X25 equ 0003h
+
+; Stage two mirrors the bootloader's floppy geometry for post-boot bank reads.
+FLOPPY_SECTOR_BYTES       equ 0200h
+FLOPPY_SECTORS_PER_TRACK  equ 18
+FLOPPY_HEADS              equ 2
 
 TILE_SIZE     equ 8
 TILE_SHIFT    equ 3
@@ -46,6 +52,7 @@ MSG_NOPULSE    equ 7
 MSG_SURGE      equ 8
 MSG_TRAP       equ 9
 MSG_RECHARGE   equ 10
+MSG_SPOOF      equ 11
 
 THREAT_NONE    equ 0
 THREAT_NEAR    equ 1
@@ -81,6 +88,7 @@ TILE_SHARD        equ 2
 TILE_EXIT_LOCKED  equ 3
 TILE_EXIT_OPEN    equ 4
 TILE_SURGE        equ 5
+TILE_TERMINAL     equ 6
 
 MAP_W         equ 28
 MAP_H         equ 15
@@ -98,34 +106,18 @@ EXIT_COL      equ 25
 EXIT_ROW      equ 1
 
 TOTAL_SECTORS     equ 3
-SECTOR1_TEMPLATE_COUNT equ 3
-SECTOR2_TEMPLATE_COUNT equ 3
-SECTOR3_TEMPLATE_COUNT equ 3
-SECTOR1_TEMPLATE_BASE  equ 0
-SECTOR2_TEMPLATE_BASE  equ SECTOR1_TEMPLATE_BASE + SECTOR1_TEMPLATE_COUNT
-SECTOR3_TEMPLATE_BASE  equ SECTOR2_TEMPLATE_BASE + SECTOR2_TEMPLATE_COUNT
-; Sector identity knobs stay centralized so HUD, hazards, and hunter pressure
-; can evolve together without scattering one-off rules.
-SECTOR2_SURGE_COUNT equ 3
-SECTOR3_SURGE_COUNT equ 4
-SECTOR3_ENEMY_BONUS equ 1
 START_SHIELDS     equ 5
 START_PULSES      equ 3
 MAX_PULSES        equ 5
+SPOOF_TURNS       equ 3
 ENEMY_SPAWN_STEP  equ 2
 ENEMY_SPAWN_BASE  equ 3
 PULSE_RADIUS         equ 1
 PULSE_RECHARGE_KILLS equ 2
 SURGE_START_SECTOR   equ 2
 SURGE_PLAYER_DAMAGE  equ 1
-WARDEN_ENGAGE_DISTANCE equ 6
-SECTOR3_WARDEN_ENGAGE_DISTANCE equ 10
 NEAR_THREAT_DISTANCE equ 1
 ELITE_THREAT_DISTANCE equ 4
-SECTOR1_FLANKER_THRESHOLD equ 48
-SECTOR2_FLANKER_THRESHOLD equ 112
-SECTOR3_WARDEN_THRESHOLD  equ 80
-SECTOR3_FLANKER_THRESHOLD equ 176
 
 MAX_ENEMIES   equ 10
 ENEMY_ALIVE   equ 0
@@ -141,6 +133,9 @@ SHARD_COUNT   equ 4
 SAFE_X_MAX    equ 6
 SAFE_Y_MIN    equ 10
 
+; Phase-1 asset banks load into a separate conventional-memory segment so
+; stage two can keep its original 64 KiB boot contract unchanged.
+MAP_BANK_SEG   equ 7000h
 BACKBUFFER_SEG equ 9000h
 VGA_SEG        equ 0A000h
 

@@ -12,6 +12,9 @@ player_x     db START_X
 player_y     db START_Y
 exit_x       db EXIT_COL
 exit_y       db EXIT_ROW
+; Boot drive is captured from DL on stage-two entry so post-boot bank reads do
+; not depend on the boot sector staying resident.
+boot_drive   db 0
 rng_state    dw 0ACE1h
 last_tick    dw 0
 anim_phase   db 0
@@ -23,6 +26,11 @@ feedback_timer db 0
 ; without any hidden extra turns or non-deterministic guesses.
 last_player_dx db 0
 last_player_dy db 0
+; Spoof terminals briefly reroute hunters toward the gate. The timer is counted
+; in enemy response phases, and spoof_x/y anchor the active route effect.
+spoof_timer  db 0
+spoof_x      db START_X
+spoof_y      db START_Y
 ; threat_level and threat/effect tiles are render hints only; they telegraph
 ; danger and localize flashes without changing the rules.
 threat_level db THREAT_NONE
@@ -79,31 +87,21 @@ map_row_offsets dw 0, 28, 56, 84, 112, 140, 168, 196, 224, 252, 280, 308, 336, 3
 
 message_table dw offset text_msg_sector, offset text_msg_block, offset text_msg_shard, offset text_msg_gate
               dw offset text_msg_hit, offset text_msg_kill, offset text_msg_pulse, offset text_msg_nopulse
-              dw offset text_msg_surge, offset text_msg_trap, offset text_msg_recharge
-
-; sector_num is 1-based; load_sector uses these base/count tables to choose one
-; authored layout from each sector's template pool.
-sector_template_start db SECTOR1_TEMPLATE_BASE, SECTOR2_TEMPLATE_BASE, SECTOR3_TEMPLATE_BASE
-sector_template_count db SECTOR1_TEMPLATE_COUNT, SECTOR2_TEMPLATE_COUNT, SECTOR3_TEMPLATE_COUNT
-template_table dw offset sector1_map_a, offset sector1_map_b, offset sector1_map_c
-              dw offset sector2_map_a, offset sector2_map_b, offset sector2_map_c
-              dw offset sector3_map_a, offset sector3_map_b, offset sector3_map_c
-; HUD and sector-entry feedback share these tables so each run can name the
-; current breach zone without adding new state or bespoke scene code.
-sector_name_table dw offset sector1_name, offset sector2_name, offset sector3_name
-sector_intro_table dw offset sector1_intro, offset sector2_intro, offset sector3_intro
+              dw offset text_msg_surge, offset text_msg_trap, offset text_msg_recharge, offset text_msg_spoof
 
 hud_title     db 'CYBERSTORM', 0
 sector_text   db 'SECTOR', 0
 data_text     db 'DATA', 0
 kills_text    db 'KILLS', 0
+spoof_text    db 'SPOOF', 0
 shield_text   db 'SHIELD', 0
 pulse_text    db 'PULSE', 0
 gate_text     db 'GATE', 0
 controls_text db 'MOVE WASD OR ARROWS  C EMP  ENTER RESET', 0
-sector1_name  db 'SCOUT', 0
-sector2_name  db 'SURGE', 0
-sector3_name  db 'WARDEN', 0
+
+; Sector template pools, authored rule tables, and sector-facing copy are
+; generated from assets\sectors.psd1 at build time.
+include generated_sector_content.inc
 
 text_msg_sector   db 'SECTOR LIVE. LIFT 4 SHARDS TO CRACK THE GATE.', 0
 text_msg_block    db 'BLACK ICE HOLDS. CUT A DIFFERENT LINE.', 0
@@ -116,9 +114,7 @@ text_msg_nopulse  db 'EMP DRY. NO CHARGES IN THE BANK.', 0
 text_msg_surge    db 'SURGE ARC BURNED A SHIELD.', 0
 text_msg_trap     db 'SURGE TRAP LANDED. HUNTER BURNT OUT.', 0
 text_msg_recharge db 'CHAIN BREAK. EMP CHARGE RESTORED.', 0
-sector1_intro     db 'SCOUT GRID LIVE. OPEN LANES FAVOR CLEAN CHASES.', 0
-sector2_intro     db 'SURGE FURNACE LIVE. ARC NODES BITE BOTH SIDES.', 0
-sector3_intro     db 'WARDEN LOCK LIVE. EXTRA HUNTERS CROWD THE EXIT.', 0
+text_msg_spoof    db 'TERMINAL SPOOF LIVE. HUNTERS PULL TO THE GATE.', 0
 
 splash_brand    db 'BITRIVER', 0
 splash_subtitle db 'SOFTWARE', 0

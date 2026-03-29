@@ -42,6 +42,38 @@ palette_data db 0,0,0
              db 18,60,56
 PALETTE_BYTES equ ($ - palette_data)
 
+; Only the environment-facing DAC entries breathe at runtime. Player/enemy/UI
+; colors stay stable so the board remains easy to read while sectors feel live.
+palette_scout_cycle db 12,16,22, 20,28,38, 6,12,16, 10,20,24
+                    db 13,18,24, 22,30,40, 7,14,18, 12,22,28
+                    db 11,15,20, 18,26,36, 5,11,15, 9,18,22
+                    db 13,19,25, 24,32,42, 7,15,19, 12,24,30
+
+palette_furnace_cycle db 16,12,10, 24,18,12, 10,8,7, 16,10,8
+                      db 18,13,10, 28,20,12, 12,8,6, 20,12,8
+                      db 14,10,8, 22,16,10, 8,7,6, 14,9,7
+                      db 20,14,10, 30,22,12, 12,9,7, 22,13,8
+
+palette_lock_cycle db 12,14,18, 22,24,30, 7,10,13, 12,16,20
+                   db 14,16,20, 26,28,34, 8,11,14, 14,18,22
+                   db 11,13,16, 20,22,28, 6,9,12, 10,14,18
+                   db 15,17,21, 28,30,36, 8,12,15, 15,19,23
+
+palette_gate_locked_cycle db 16,52,50
+                          db 18,58,56
+                          db 22,63,60
+                          db 18,58,56
+
+palette_gate_primed_cycle db 28,44,18
+                          db 36,52,20
+                          db 46,60,24
+                          db 36,52,20
+
+palette_gate_open_cycle db 20,56,52
+                        db 30,62,58
+                        db 44,63,63
+                        db 30,62,58
+
 font5x7 db 0Eh,11h,11h,1Fh,11h,11h,11h
         db 1Eh,11h,11h,1Eh,11h,11h,1Eh
         db 0Eh,11h,10h,10h,10h,11h,0Eh

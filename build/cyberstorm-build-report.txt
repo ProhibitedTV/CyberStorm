@@ -1,5 +1,5 @@
 CyberStorm Build Report
-Generated: 2026-03-29 11:19:46 -06:00
+Generated: 2026-03-29 15:07:28 -06:00
 
 Toolchain
   Assembler: MASM
@@ -16,37 +16,62 @@ Build Profile
 Generated Art
   Source file: C:\Users\RhythmicCarnage\Desktop\CyberStorm\assets\visuals.psd1
   Generated include: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\generated_art.inc
-  Bitmap count: 23
-  Pixel data bytes: 1664
-  Sizes: 16x16 x1, 8x8 x22
+  Bitmap count: 35
+  Pixel data bytes: 2432
+  Sizes: 16x16 x1, 8x8 x34
+
+Generated Content
+  Sector source: C:\Users\RhythmicCarnage\Desktop\CyberStorm\assets\sectors.psd1
+  Sector include: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\generated_sector_content.inc
+  Maps include: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\generated_maps.inc
+  Sectors: 3
+  Maps: 9 (28x15 each, 3780 bytes total)
+  Templates: S1 x3, S2 x3, S3 x3
+  Rules: S1: surge=0 terminal=1 bonus=0 flank<48 warden<0 | S2: surge=3 terminal=2 bonus=0 flank<112 warden<0 | S3: surge=4 terminal=2 bonus=1 flank<176 warden<80
+  Music source: C:\Users\RhythmicCarnage\Desktop\CyberStorm\assets\music.psd1
+  Music include: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\generated_music.inc
+  Themes: 5
+  Theme events: 65
+  Theme summary: splash x9, title x17, run x18, win x12, lose x9
+
+Asset Banks
+  Layout include: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\generated_bank_layout.inc
+  Map bank: 3780 bytes (4096 padded), 8 sectors, LBA 34..41, load 0x7000:0000, payload C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-map-bank.bin
 
 Screenshots
   Housekeeping: kept 6 source screenshots, removed 0, rotated 3 README slots
-  readme-shot-1.png <- cyberstorm-sector-layouts-boot.png
-  readme-shot-2.png <- cyberstorm-music-boot.png
-  readme-shot-3.png <- cyberstorm-asset-pipeline-boot.png
+  readme-shot-1.png <- cyberstorm-music-boot.png
+  readme-shot-2.png <- cyberstorm-asset-pipeline-boot.png
+  readme-shot-3.png <- cyberstorm-sector-layouts-boot.png
 
 Layout
   Boot code bytes: 132 / 510
   Boot code free bytes: 378
-  Stage2 bytes: 17653
-  Stage2 free bytes before 64 KiB limit: 47883
-  Stage2 padded bytes: 17920
-  Stage2 sectors: 35
-  Image bytes used: 18165 / 1474560
-  Image free bytes: 1456395
+  Stage2 bytes: 16385
+  Stage2 free bytes before 64 KiB limit: 49151
+  Stage2 padded bytes: 16896
+  Stage2 sectors: 33
+  Image bytes used: 20677 / 1474560
+  Image free bytes: 1453883
+  Disk footprint bytes: 21504 / 1474560
+  Disk footprint free bytes: 1453056
   Boot load address: 0000:7C00 (phys 0x00007C00)
   Stage2 load address: 0x1000:0x0000 (phys 0x00010000)
   Boot signature: 0x55AA @ byte 510
-  Stage2 LBA range: 1..35
+  Stage2 LBA range: 1..33
   Boot section: .text$mn (relocations applied: 3)
-  Stage2 section: .text$mn (relocations applied: 629)
+  Stage2 section: .text$mn (relocations applied: 681)
   Assembler warnings: boot=1, stage2=1
   Boot 'start' symbol offset: 0x0000
-  Stage2 'start' symbol offset: 0x0917
+  Stage2 'start' symbol offset: 0x09C0
 
 Artifacts
   C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\generated_art.inc
+  C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\generated_sector_content.inc
+  C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\generated_maps.inc
+  C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\generated_music.inc
+  C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\generated_bank_layout.inc
+  C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-map-bank.bin
   C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-boot.bin
   C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-stage2.bin
   C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\boot.lst

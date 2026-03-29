@@ -2,6 +2,9 @@ render_game_screen:
     call draw_game_panels
     call render_game_status
     call render_map
+    ; Ambient overlays sit between tiles and entities so the sectors feel
+    ; alive without drawing over hunters, the runner, or threat telegraphs.
+    call draw_sector_ambient
     call render_enemies
     call render_player
     call render_game_effects
@@ -119,6 +122,8 @@ render_game_status:
     mov dx, 15
     call draw_two_digit_small
 
+    call draw_spoof_status
+
     mov bx, 258
     mov dx, 46
     mov si, offset shield_text
@@ -155,6 +160,41 @@ render_game_status:
     call get_sector_accent_color
     mov ah, al
     call draw_text_small
+    ret
+
+draw_spoof_status:
+    mov bx, 258
+    mov dx, 15
+    mov si, offset spoof_text
+    cmp byte ptr [spoof_timer], 0
+    je spoof_status_idle
+    test byte ptr [anim_phase], 1
+    jz spoof_status_live_base
+    mov ah, PAL_WHITE
+    jmp spoof_status_text_ready
+
+spoof_status_live_base:
+    mov ah, PAL_CYAN2
+    jmp spoof_status_text_ready
+
+spoof_status_idle:
+    mov ah, PAL_PANEL2
+
+spoof_status_text_ready:
+    call draw_text_small
+    mov al, [spoof_timer]
+    cmp al, 0
+    jne spoof_status_digit_live
+    mov ah, PAL_PANEL2
+    jmp spoof_status_digit_ready
+
+spoof_status_digit_live:
+    mov ah, PAL_WHITE
+
+spoof_status_digit_ready:
+    mov bx, 294
+    mov dx, 15
+    call draw_digit_small
     ret
 
 get_sector_name_ptr:
@@ -415,6 +455,18 @@ gate_meter_partial_flash:
     jmp gate_meter_ready
 
 gate_meter_partial_ready:
+    cmp byte ptr [data_count], SHARD_COUNT - 1
+    jne gate_meter_partial_base
+    test byte ptr [anim_phase], 1
+    jz gate_meter_partial_primed
+    mov al, PAL_WHITE
+    jmp gate_meter_ready
+
+gate_meter_partial_primed:
+    mov al, PAL_GATE
+    jmp gate_meter_ready
+
+gate_meter_partial_base:
     mov al, PAL_CYAN
 
 gate_meter_ready:

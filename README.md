@@ -14,6 +14,12 @@ Sector design goals and the current three-zone identity pass live in [docs/secto
 
 Hunter behavior and balance notes for the latest drama/telegraph pass live in [docs/enemy-drama.md](docs/enemy-drama.md).
 
+The new spoof-terminal tactical system is explained in [docs/spoof-terminals.md](docs/spoof-terminals.md).
+
+The broader authored data workflow is documented in [docs/content-pipeline.md](docs/content-pipeline.md).
+
+The phase-1 banked-content design and runtime contract are documented in [docs/asset-banks.md](docs/asset-banks.md).
+
 ## What The Game Is
 
 CyberStorm is a turn-based terminal-styled infiltration run:
@@ -73,6 +79,11 @@ The build writes:
 - `build\cyberstorm-boot.bin`
 - `build\cyberstorm-stage2.bin`
 - `build\generated_art.inc`
+- `build\generated_sector_content.inc`
+- `build\generated_maps.inc`
+- `build\generated_music.inc`
+- `build\generated_bank_layout.inc`
+- `build\cyberstorm-map-bank.bin`
 - `build\readme-shot-1.png`
 - `build\readme-shot-2.png`
 - `build\readme-shot-3.png`
@@ -87,6 +98,7 @@ The console summary now includes:
 - active assembler path
 - boot code size and remaining slack before the 510-byte limit
 - stage-two size, padded size, sector count, and remaining slack before the 64 KiB load limit
+- asset-bank LBA ranges, payload sizes, and runtime load segments
 - floppy usage
 - key addresses used by the current boot contract
 - relocation counts and assembler warning counts
@@ -111,6 +123,33 @@ Rows = @(
 ```
 
 The generated-art console/report section shows the source file, generated include path, asset count, byte footprint, and size buckets so visual-data changes are easy to sanity-check.
+
+### Editing Sector Content And Music
+
+Authored gameplay content now has the same source-of-truth workflow:
+
+- [assets\sectors.psd1](assets/sectors.psd1) owns sector titles, intro copy, rule tables, and the authored map pools
+- [assets\music.psd1](assets/music.psd1) owns the looping theme note sequences
+
+The build generates:
+
+- `build\generated_sector_content.inc`
+- `build\generated_maps.inc`
+- `build\generated_music.inc`
+- `build\generated_bank_layout.inc`
+- `build\cyberstorm-map-bank.bin`
+
+`build\generated_maps.inc` stays in the repo as a readable review artifact, but phase 1 of the asset-bank system now emits the same map pool as `build\cyberstorm-map-bank.bin` and places it after stage two on disk. The runtime reads that bank into `MAP_BANK_SEG` after stage two starts, using metadata from `build\generated_bank_layout.inc`.
+
+Validation now catches:
+
+- sector count drifting away from `TOTAL_SECTORS`
+- malformed or duplicate map labels
+- wrong map geometry
+- malformed music events or unsupported note names
+- non-ASCII content that would be awkward to emit into MASM includes
+
+The generated-content console/report section summarizes sector count, map count, rule summaries, theme count, and event count so authored data changes are easy to review.
 
 ### Deterministic Debug Builds
 
@@ -143,7 +182,8 @@ The build validates the layout assumptions before writing the floppy image:
 
 - boot code must fit within `510` bytes so the `55 AA` signature still occupies bytes `510-511`
 - stage two must fit in the current single-segment load window at `1000:0000`
-- boot plus stage two must fit in the `1.44MB` floppy image
+- post-boot asset banks must fit in their current single-segment runtime load windows
+- boot, stage two, and asset banks must fit in the `1.44MB` floppy image
 - the final `.img` / `.vfd` must have the exact expected floppy size
 
 ### Inspecting Output
@@ -153,6 +193,8 @@ If a build fails or boots unexpectedly, these artifacts are the fastest things t
 - `build\boot.lst`: assembler listing for the bootloader
 - `build\game.lst`: assembler listing for stage two
 - `build\generated_art.inc`: generated sprite/tile `db` rows exactly as seen by MASM
+- `build\generated_bank_layout.inc`: generated LBA/size metadata for post-boot asset banks
+- `build\cyberstorm-map-bank.bin`: the raw bank payload currently loaded by stage two
 - `build\readme-shot-*.png`: stable README gallery images rotated from the newest kept screenshot captures
 - `build\debug_config.inc`: generated compile-time debug flags for the current image
 - `build\cyberstorm-build-report.txt`: layout summary, addresses, relocation counts, warnings, and artifact paths

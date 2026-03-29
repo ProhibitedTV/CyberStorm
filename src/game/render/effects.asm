@@ -1,11 +1,14 @@
 render_game_effects:
-    call draw_sector_ambient
+    call draw_spoof_route
     call draw_enemy_pressure
+    call draw_gate_tension
     cmp byte ptr [feedback_timer], 0
     je effects_done
     mov al, [message_id]
     cmp al, MSG_SECTOR
     je effect_draw_sector
+    cmp al, MSG_SPOOF
+    je effect_draw_spoof
     cmp al, MSG_PULSE
     je effect_draw_pulse
     cmp al, MSG_HIT
@@ -28,6 +31,10 @@ render_game_effects:
 
 effect_draw_sector:
     call draw_sector_entry_flash
+    jmp effects_done
+
+effect_draw_spoof:
+    call draw_spoof_flash
     jmp effects_done
 
 effect_draw_pulse:
@@ -58,6 +65,88 @@ effect_draw_dry:
     call draw_dry_flash
 
 effects_done:
+    ret
+
+draw_spoof_route:
+    cmp byte ptr [spoof_timer], 0
+    je spoof_route_done
+    test byte ptr [anim_phase], 1
+    jz spoof_route_base
+    mov al, PAL_WHITE
+    jmp spoof_route_color_ready
+
+spoof_route_base:
+    mov al, PAL_CYAN2
+
+spoof_route_color_ready:
+    push ax
+    mov bl, [spoof_x]
+    mov bh, [spoof_y]
+    call draw_tile_outline
+    pop ax
+    mov bx, MAP_PIXEL_X
+    xor dx, dx
+    mov dl, [spoof_y]
+    shl dx, TILE_SHIFT
+    add dx, MAP_PIXEL_Y
+    add dx, 4
+    mov cx, MAP_W * TILE_SIZE
+    mov bp, 1
+    call fill_rect
+    xor bx, bx
+    mov bl, [exit_x]
+    shl bx, TILE_SHIFT
+    add bx, MAP_PIXEL_X
+    add bx, 3
+    mov dx, MAP_PIXEL_Y
+    mov cx, 1
+    mov bp, MAP_H * TILE_SIZE
+    call fill_rect
+
+spoof_route_done:
+    ret
+
+draw_spoof_flash:
+    call draw_spoof_route
+    test byte ptr [anim_phase], 1
+    jz spoof_flash_base
+    mov al, PAL_WHITE
+    jmp spoof_flash_ready
+
+spoof_flash_base:
+    mov al, PAL_CYAN
+
+spoof_flash_ready:
+    mov bx, 8
+    mov dx, 32
+    mov cx, 240
+    mov bp, 136
+    call draw_rect_outline
+    call get_major_feedback_stage
+    cmp al, 3
+    jb spoof_flash_done
+    mov bx, MAP_PIXEL_X
+    xor dx, dx
+    mov dl, [spoof_y]
+    shl dx, TILE_SHIFT
+    add dx, MAP_PIXEL_Y
+    add dx, 2
+    mov cx, MAP_W * TILE_SIZE
+    mov bp, 4
+    mov al, PAL_WHITE
+    call fill_rect
+    xor bx, bx
+    mov bl, [exit_x]
+    shl bx, TILE_SHIFT
+    add bx, MAP_PIXEL_X
+    sub bx, 2
+    mov dx, MAP_PIXEL_Y
+    mov cx, 6
+    mov bp, MAP_H * TILE_SIZE
+    mov al, PAL_CYAN2
+    call fill_rect
+
+spoof_flash_done:
     ret
 
 draw_enemy_pressure:
@@ -135,6 +224,8 @@ get_major_feedback_stage:
     ret
 
 draw_sector_ambient:
+    ; Ambient marks are intentionally thin and tile-adjacent. They now render
+    ; under entities so sectors can breathe without obscuring threats.
     mov al, [sector_num]
     cmp al, 2
     je sector_ambient_furnace
@@ -143,6 +234,17 @@ draw_sector_ambient:
     jmp sector_ambient_scout
 
 sector_ambient_scout:
+    call get_visual_cycle_phase
+    test al, 1
+    jz sector_scout_base
+    mov al, PAL_WHITE
+    jmp sector_scout_color_ready
+
+sector_scout_base:
+    mov al, PAL_CYAN2
+
+sector_scout_color_ready:
+    push ax
     mov bx, MAP_PIXEL_X
     xor dx, dx
     mov dl, [anim_phase]
@@ -151,7 +253,17 @@ sector_ambient_scout:
     add dx, MAP_PIXEL_Y
     mov cx, MAP_W * TILE_SIZE
     mov bp, 1
-    mov al, PAL_CYAN2
+    call fill_rect
+    pop ax
+    mov bx, MAP_PIXEL_X + 52
+    add dx, 40
+    cmp dx, MAP_PIXEL_Y + (MAP_H * TILE_SIZE)
+    jb sector_scout_packet_ready
+    sub dx, MAP_H * TILE_SIZE
+
+sector_scout_packet_ready:
+    mov cx, 88
+    mov bp, 1
     call fill_rect
     ret
 
@@ -172,6 +284,25 @@ sector_furnace_ready:
     call fill_rect
     mov bx, MAP_PIXEL_X + (MAP_W * TILE_SIZE) + 1
     call fill_rect
+    push ax
+    xor dx, dx
+    mov dl, [anim_phase]
+    and dl, 0Fh
+    shl dx, 3
+    add dx, MAP_PIXEL_Y
+    mov bx, MAP_PIXEL_X + 3
+    mov cx, 2
+    mov bp, 1
+    call fill_rect
+    add dx, 24
+    cmp dx, MAP_PIXEL_Y + (MAP_H * TILE_SIZE)
+    jb sector_furnace_ember_right
+    sub dx, MAP_H * TILE_SIZE
+
+sector_furnace_ember_right:
+    mov bx, MAP_PIXEL_X + (MAP_W * TILE_SIZE) - 5
+    call fill_rect
+    pop ax
     ret
 
 sector_ambient_lock:
@@ -193,6 +324,42 @@ sector_lock_ready:
     mov cx, 1
     mov bp, MAP_H * TILE_SIZE
     call fill_rect
+    push ax
+    xor dx, dx
+    mov dl, [exit_y]
+    shl dx, TILE_SHIFT
+    add dx, MAP_PIXEL_Y
+    add dx, 3
+    mov bx, MAP_PIXEL_X + (MAP_W * TILE_SIZE) - 52
+    mov cx, 48
+    mov bp, 1
+    call fill_rect
+    add dx, 16
+    call fill_rect
+    pop ax
+    ret
+
+draw_gate_tension:
+    ; One shard away from unlock, the exit gets a persistent pulse so the board
+    ; starts telegraphing the coming route change before the final pickup lands.
+    cmp byte ptr [game_state], STATE_PLAYING
+    jne gate_tension_done
+    cmp byte ptr [data_count], SHARD_COUNT - 1
+    jne gate_tension_done
+    test byte ptr [anim_phase], 1
+    jz gate_tension_base
+    mov al, PAL_WHITE
+    jmp gate_tension_ready
+
+gate_tension_base:
+    mov al, PAL_GATE
+
+gate_tension_ready:
+    mov bl, [exit_x]
+    mov bh, [exit_y]
+    call draw_tile_outline
+
+gate_tension_done:
     ret
 
 draw_sector_entry_flash:
@@ -345,6 +512,8 @@ shard_flash_base:
 
 shard_flash_ready:
     call draw_rect_outline
+    mov al, PAL_WHITE
+    call draw_effect_focus_outline
     ret
 
 draw_gate_flash:
@@ -508,12 +677,14 @@ draw_pulse_effect:
     mov bl, [player_x]
     shl bx, 3
     add bx, MAP_PIXEL_X
-    sub bx, 4
     xor dx, dx
     mov dl, [player_y]
     shl dx, 3
     add dx, MAP_PIXEL_Y
-    sub dx, 4
+    xor ah, ah
+    mov al, FEEDBACK_TICKS_STANDARD
+    sub al, [feedback_timer]
+    mov si, ax
     mov cx, 16
     mov bp, 16
     test byte ptr [anim_phase], 1
@@ -525,23 +696,77 @@ pulse_effect_base:
     mov al, PAL_CYAN2
 
 pulse_effect_ready:
-    call draw_rect_outline
-    cmp byte ptr [feedback_timer], 3
-    jb pulse_effect_done
-    add bx, 2
-    add dx, 2
-    mov cx, 12
-    mov bp, 12
-    mov al, PAL_CYAN
-    call draw_rect_outline
-    cmp byte ptr [feedback_timer], 5
-    jb pulse_effect_done
+    push bx
+    push dx
     sub bx, 4
     sub dx, 4
+    call draw_rect_outline
+    pop dx
+    pop bx
+    cmp si, 1
+    jb pulse_effect_done
+    call get_sector_accent_color
+    push bx
+    push dx
+    sub bx, 6
+    add dx, 3
     mov cx, 20
+    mov bp, 1
+    call fill_rect
+    pop dx
+    pop bx
+    push bx
+    push dx
+    add bx, 3
+    sub dx, 6
+    mov cx, 1
     mov bp, 20
+    call fill_rect
+    pop dx
+    pop bx
+    cmp si, 3
+    jb pulse_effect_done
+    push bx
+    push dx
+    sub bx, 8
+    sub dx, 8
+    mov cx, 24
+    mov bp, 24
     mov al, PAL_WHITE
     call draw_rect_outline
+    pop dx
+    pop bx
+    cmp si, 5
+    jb pulse_effect_done
+    call get_sector_accent_color
+    push bx
+    push dx
+    sub bx, 10
+    add dx, 3
+    mov cx, 28
+    mov bp, 1
+    call fill_rect
+    pop dx
+    pop bx
+    push bx
+    push dx
+    add bx, 3
+    sub dx, 10
+    mov cx, 1
+    mov bp, 28
+    call fill_rect
+    pop dx
+    pop bx
+    push bx
+    push dx
+    sub bx, 12
+    sub dx, 12
+    mov cx, 32
+    mov bp, 32
+    mov al, PAL_WHITE
+    call draw_rect_outline
+    pop dx
+    pop bx
 
 pulse_effect_done:
     ret

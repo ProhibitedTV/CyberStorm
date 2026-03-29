@@ -35,8 +35,8 @@ if ($vmExists) {
 }
 
 & $vbox createvm --name $VmName --basefolder $base --ostype Other --register
-# Keep the VM audible by default so PC-speaker output can reach the host audio
-# stack instead of being routed into VirtualBox's null sink.
+# Keep the VM audible by default and expose a guest-visible legacy sound device
+# that the bare-metal runtime can program directly.
 & $vbox modifyvm $VmName `
     --memory 32 `
     --vram 8 `
@@ -45,8 +45,8 @@ if ($vmExists) {
     --boot3 none `
     --boot4 none `
     --audio-enabled on `
-    --audio-controller ac97 `
-    --audio-codec stac9700 `
+    --audio-controller sb16 `
+    --audio-codec sb16 `
     --audio-driver $AudioDriver `
     --audio-in off `
     --audio-out on

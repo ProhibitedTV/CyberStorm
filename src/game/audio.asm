@@ -6,6 +6,31 @@ SPEAKER_DIV_UP     equ 1400
 SPEAKER_DIV_HIGH   equ 1100
 SPEAKER_DIV_CHIME  equ 900
 
+AUDIO_BACKEND_PCSPEAKER equ 0
+AUDIO_BACKEND_SB16      equ 1
+
+SB16_BASE              equ 0220h
+SB16_RESET_PORT        equ SB16_BASE + 6
+SB16_READ_DATA_PORT    equ SB16_BASE + 0Ah
+SB16_WRITE_DATA_PORT   equ SB16_BASE + 0Ch
+SB16_WRITE_STATUS_PORT equ SB16_BASE + 0Ch
+SB16_READ_STATUS_PORT  equ SB16_BASE + 0Eh
+
+DMA1_MASK_PORT         equ 0Ah
+DMA1_MODE_PORT         equ 0Bh
+DMA1_CLEAR_PORT        equ 0Ch
+DMA1_CH1_ADDR_PORT     equ 02h
+DMA1_CH1_COUNT_PORT    equ 03h
+DMA1_CH1_PAGE_PORT     equ 083h
+DMA1_MASK_CHANNEL_1    equ 05h
+DMA1_UNMASK_CHANNEL_1  equ 01h
+DMA1_MODE_SINGLE_WRITE equ 049h
+
+SB16_TIME_CONSTANT     equ 166
+AUDIO_BLOCK_SAMPLES    equ 606
+AUDIO_SAMPLE_CENTER    equ 128
+AUDIO_SAMPLE_AMPLITUDE equ 36
+
 MUSIC_THEME_SPLASH equ 0
 MUSIC_THEME_TITLE  equ 1
 MUSIC_THEME_RUN    equ 2
@@ -34,6 +59,11 @@ MUSIC_NOTE_G5   equ 11
 MUSIC_NOTE_LOOP equ 0FFh
 
 init_audio:
+    mov byte ptr [audio_backend], AUDIO_BACKEND_PCSPEAKER
+    mov byte ptr [audio_half_period], 0
+    mov byte ptr [audio_phase_count], 1
+    mov byte ptr [audio_wave_high], 1
+    call init_sb16_backend
     call stop_sfx
     mov byte ptr [music_theme], MUSIC_THEME_NONE
     mov byte ptr [music_ticks], 0
@@ -46,10 +76,13 @@ update_audio:
     cmp byte ptr [sound_timer], 0
     jne update_audio_sfx
     call update_music
-    ret
+    jmp update_audio_commit
 
 update_audio_sfx:
     call update_sfx
+
+update_audio_commit:
+    call commit_audio_output
     ret
 
 sync_music_theme:
@@ -475,6 +508,8 @@ update_sfx_done:
 speaker_play_divisor:
     push ax
     push dx
+    cmp byte ptr [audio_backend], AUDIO_BACKEND_SB16
+    je speaker_route_sb16
     mov dx, 43h
     mov al, 0B6h
     out dx, al
@@ -487,11 +522,35 @@ speaker_play_divisor:
     in al, dx
     or al, 03h
     out dx, al
+    jmp speaker_play_done
+
+speaker_route_sb16:
+    call map_divisor_to_half_period
+    mov [audio_half_period], al
+    cmp al, 0
+    jne speaker_sb16_active
+    mov byte ptr [audio_phase_count], 1
+    mov byte ptr [audio_wave_high], 1
+    jmp speaker_play_done
+
+speaker_sb16_active:
+    mov [audio_phase_count], al
+    mov byte ptr [audio_wave_high], 1
+
+speaker_play_done:
     pop dx
     pop ax
     ret
 
 stop_speaker_output:
+    cmp byte ptr [audio_backend], AUDIO_BACKEND_SB16
+    jne stop_pc_speaker_output
+    mov byte ptr [audio_half_period], 0
+    mov byte ptr [audio_phase_count], 1
+    mov byte ptr [audio_wave_high], 1
+    ret
+
+stop_pc_speaker_output:
     push ax
     push dx
     mov dx, 61h
@@ -507,6 +566,308 @@ stop_sfx:
     mov byte ptr [sound_timer], 0
     mov byte ptr [sound_phase], 0
     call stop_speaker_output
+    ret
+
+init_sb16_backend:
+    call sb16_reset
+    jc init_sb16_done
+    mov byte ptr [audio_backend], AUDIO_BACKEND_SB16
+    mov al, 040h
+    call sb16_write_dsp
+    mov al, SB16_TIME_CONSTANT
+    call sb16_write_dsp
+    mov al, 0D1h
+    call sb16_write_dsp
+
+init_sb16_done:
+    ret
+
+commit_audio_output:
+    cmp byte ptr [audio_backend], AUDIO_BACKEND_SB16
+    jne commit_audio_done
+    call fill_sb16_buffer
+    call play_sb16_buffer
+
+commit_audio_done:
+    ret
+
+fill_sb16_buffer:
+    push ax
+    push bx
+    push cx
+    push dx
+    push di
+    mov di, offset sb16_audio_buffer
+    mov cx, AUDIO_BLOCK_SAMPLES
+    mov bl, [audio_half_period]
+    cmp bl, 0
+    jne fill_sb16_tone
+    mov al, AUDIO_SAMPLE_CENTER
+    rep stosb
+    jmp fill_sb16_done
+
+fill_sb16_tone:
+    mov dl, [audio_phase_count]
+    mov ah, [audio_wave_high]
+
+fill_sb16_loop:
+    cmp ah, 0
+    je fill_sb16_low
+    mov al, AUDIO_SAMPLE_CENTER + AUDIO_SAMPLE_AMPLITUDE
+    jmp fill_sb16_store
+
+fill_sb16_low:
+    mov al, AUDIO_SAMPLE_CENTER - AUDIO_SAMPLE_AMPLITUDE
+
+fill_sb16_store:
+    stosb
+    dec dl
+    jne fill_sb16_next
+    mov dl, bl
+    xor ah, 1
+
+fill_sb16_next:
+    loop fill_sb16_loop
+    mov [audio_phase_count], dl
+    mov [audio_wave_high], ah
+
+fill_sb16_done:
+    pop di
+    pop dx
+    pop cx
+    pop bx
+    pop ax
+    ret
+
+play_sb16_buffer:
+    push ax
+    push bx
+    push dx
+    call program_dma1_for_sb16
+    mov al, 014h
+    call sb16_write_dsp
+    mov ax, AUDIO_BLOCK_SAMPLES - 1
+    call sb16_write_block_length
+    pop dx
+    pop bx
+    pop ax
+    ret
+
+program_dma1_for_sb16:
+    push ax
+    push bx
+    push cx
+    push dx
+    mov ax, ds
+    mov bx, ax
+    shl ax, 1
+    shl ax, 1
+    shl ax, 1
+    shl ax, 1
+    shr bx, 1
+    shr bx, 1
+    shr bx, 1
+    shr bx, 1
+    shr bx, 1
+    shr bx, 1
+    shr bx, 1
+    shr bx, 1
+    shr bx, 1
+    shr bx, 1
+    shr bx, 1
+    shr bx, 1
+    add ax, offset sb16_audio_buffer
+    adc bl, 0
+    mov cx, ax
+
+    mov dx, DMA1_MASK_PORT
+    mov al, DMA1_MASK_CHANNEL_1
+    out dx, al
+    mov dx, DMA1_CLEAR_PORT
+    xor al, al
+    out dx, al
+    mov dx, DMA1_MODE_PORT
+    mov al, DMA1_MODE_SINGLE_WRITE
+    out dx, al
+    mov dx, DMA1_CH1_ADDR_PORT
+    mov al, cl
+    out dx, al
+    mov al, ch
+    out dx, al
+    mov dx, DMA1_CH1_PAGE_PORT
+    mov al, bl
+    out dx, al
+    mov dx, DMA1_CLEAR_PORT
+    xor al, al
+    out dx, al
+    mov dx, DMA1_CH1_COUNT_PORT
+    mov ax, AUDIO_BLOCK_SAMPLES - 1
+    out dx, al
+    mov al, ah
+    out dx, al
+    mov dx, DMA1_MASK_PORT
+    mov al, DMA1_UNMASK_CHANNEL_1
+    out dx, al
+    pop dx
+    pop cx
+    pop bx
+    pop ax
+    ret
+
+sb16_reset:
+    push ax
+    push cx
+    push dx
+    mov dx, SB16_RESET_PORT
+    mov al, 1
+    out dx, al
+    mov cx, 256
+
+sb16_reset_delay:
+    loop sb16_reset_delay
+    xor al, al
+    out dx, al
+    mov dx, SB16_READ_STATUS_PORT
+    mov cx, 0FFFFh
+
+sb16_wait_ready:
+    in al, dx
+    test al, 080h
+    jnz sb16_check_ack
+    loop sb16_wait_ready
+    stc
+    jmp sb16_reset_done
+
+sb16_check_ack:
+    mov dx, SB16_READ_DATA_PORT
+    in al, dx
+    cmp al, 0AAh
+    jne sb16_reset_fail
+    clc
+    jmp sb16_reset_done
+
+sb16_reset_fail:
+    stc
+
+sb16_reset_done:
+    pop dx
+    pop cx
+    pop ax
+    ret
+
+sb16_write_dsp:
+    push ax
+    push cx
+    push dx
+    mov ah, al
+    mov dx, SB16_WRITE_STATUS_PORT
+    mov cx, 0FFFFh
+
+sb16_write_wait:
+    in al, dx
+    test al, 080h
+    jz sb16_write_ready
+    loop sb16_write_wait
+
+sb16_write_ready:
+    mov dx, SB16_WRITE_DATA_PORT
+    mov al, ah
+    out dx, al
+    pop dx
+    pop cx
+    pop ax
+    ret
+
+sb16_write_block_length:
+    push ax
+    mov al, al
+    call sb16_write_dsp
+    mov al, ah
+    call sb16_write_dsp
+    pop ax
+    ret
+
+map_divisor_to_half_period:
+    mov al, 0
+    cmp bx, SPEAKER_DIV_DRY
+    je map_divisor_17
+    cmp bx, SPEAKER_DIV_LOW
+    je map_divisor_14
+    cmp bx, SPEAKER_DIV_WARN
+    je map_divisor_11
+    cmp bx, SPEAKER_DIV_MID
+    je map_divisor_8
+    cmp bx, SPEAKER_DIV_UP
+    je map_divisor_6
+    cmp bx, SPEAKER_DIV_HIGH
+    je map_divisor_5
+    cmp bx, SPEAKER_DIV_CHIME
+    je map_divisor_4
+    cmp bx, 5424
+    je map_divisor_25
+    cmp bx, 4560
+    je map_divisor_21
+    cmp bx, 4063
+    je map_divisor_19
+    cmp bx, 3620
+    je map_divisor_17
+    cmp bx, 3044
+    je map_divisor_14
+    cmp bx, 2712
+    je map_divisor_13
+    cmp bx, 2416
+    je map_divisor_11
+    cmp bx, 2280
+    je map_divisor_10
+    cmp bx, 2032
+    je map_divisor_9
+    cmp bx, 1810
+    je map_divisor_8
+    cmp bx, 1522
+    je map_divisor_7
+    ret
+
+map_divisor_25:
+    mov al, 25
+    ret
+map_divisor_21:
+    mov al, 21
+    ret
+map_divisor_19:
+    mov al, 19
+    ret
+map_divisor_17:
+    mov al, 17
+    ret
+map_divisor_14:
+    mov al, 14
+    ret
+map_divisor_13:
+    mov al, 13
+    ret
+map_divisor_11:
+    mov al, 11
+    ret
+map_divisor_10:
+    mov al, 10
+    ret
+map_divisor_9:
+    mov al, 9
+    ret
+map_divisor_8:
+    mov al, 8
+    ret
+map_divisor_7:
+    mov al, 7
+    ret
+map_divisor_6:
+    mov al, 6
+    ret
+map_divisor_5:
+    mov al, 5
+    ret
+map_divisor_4:
+    mov al, 4
     ret
 
 music_note_divisors dw 0
@@ -525,3 +886,9 @@ music_note_divisors dw 0
 ; Theme tables are generated from assets\music.psd1 so content iteration does
 ; not require hand-editing long note lists in assembly.
 include generated_music.inc
+
+audio_backend db AUDIO_BACKEND_PCSPEAKER
+audio_half_period db 0
+audio_phase_count db 1
+audio_wave_high db 1
+sb16_audio_buffer db AUDIO_BLOCK_SAMPLES dup (AUDIO_SAMPLE_CENTER)

@@ -19,22 +19,12 @@ reset_keyboard_state:
     push di
     push es
     mov byte ptr [key_extended], 0
-    mov byte ptr [any_key_pending], 0
     mov byte ptr [input_event_count], 0
     mov byte ptr [input_last_code], 0
     mov byte ptr [input_check_count], 0
     mov byte ptr [input_poll_count], 0
     mov byte ptr [input_last_polled], 0
-    mov byte ptr [pressed_enter], 0
-    mov byte ptr [pressed_w], 0
-    mov byte ptr [pressed_a], 0
-    mov byte ptr [pressed_s], 0
-    mov byte ptr [pressed_d], 0
-    mov byte ptr [pressed_c], 0
-    mov byte ptr [pressed_up], 0
-    mov byte ptr [pressed_left], 0
-    mov byte ptr [pressed_right], 0
-    mov byte ptr [pressed_down], 0
+    call clear_pressed_latches
     push ds
     pop es
     mov di, offset key_down
@@ -46,6 +36,22 @@ reset_keyboard_state:
     pop es
     pop di
     pop cx
+    pop ax
+    ret
+
+clear_pressed_latches:
+    push ax
+    mov byte ptr [any_key_pending], 0
+    mov byte ptr [pressed_enter], 0
+    mov byte ptr [pressed_w], 0
+    mov byte ptr [pressed_a], 0
+    mov byte ptr [pressed_s], 0
+    mov byte ptr [pressed_d], 0
+    mov byte ptr [pressed_c], 0
+    mov byte ptr [pressed_up], 0
+    mov byte ptr [pressed_left], 0
+    mov byte ptr [pressed_right], 0
+    mov byte ptr [pressed_down], 0
     pop ax
     ret
 

@@ -6,16 +6,7 @@
 ** Use VBoxManage or the VirtualBox Manager GUI to make changes.
 -->
 <VirtualBox xmlns="http://www.virtualbox.org/" version="1.19-windows">
-  <Machine uuid="{925012c9-5a48-4e0e-9f94-f54ef41b6084}" name="CyberStorm" OSType="Other" snapshotFolder="Snapshots" lastStateChange="2026-03-29T21:08:29Z">
-    <MediaRegistry>
-      <FloppyImages>
-        <Image uuid="{70c8c4b3-026f-4bd8-92ad-b0d0d8d244fd}" location="C:/Users/RhythmicCarnage/Desktop/CyberStorm/build/cyberstorm.vfd"/>
-      </FloppyImages>
-    </MediaRegistry>
-    <ExtraData>
-      <ExtraDataItem name="GUI/LastCloseAction" value="PowerOff"/>
-      <ExtraDataItem name="GUI/LastNormalWindowPosition" value="2560,260,640,440"/>
-    </ExtraData>
+  <Machine uuid="{c4826fc9-d2ec-4b08-af8d-ef3948382b0d}" name="CyberStorm" OSType="Other" snapshotFolder="Snapshots" lastStateChange="2026-03-29T22:25:06Z">
     <Hardware>
       <CPU>
         <PAE enabled="true"/>
@@ -33,21 +24,14 @@
         <SmbiosUuidLittleEndian enabled="true"/>
       </BIOS>
       <Network>
-        <Adapter slot="0" enabled="true" MACAddress="080027C9F868">
+        <Adapter slot="0" enabled="true" MACAddress="0800277F768D">
           <NAT/>
         </Adapter>
       </Network>
-      <AudioAdapter driver="Null" enabled="true"/>
+      <AudioAdapter useDefault="true" driver="WAS" enabled="true" enabledOut="true"/>
       <Clipboard/>
-      <GuestProperties>
-        <GuestProperty name="/VirtualBox/HostInfo/GUI/LanguageID" value="en_US" timestamp="1774817793322122300" flags="RDONLYGUEST"/>
-      </GuestProperties>
       <StorageControllers>
-        <StorageController name="Floppy" type="I82078" PortCount="1" useHostIOCache="true" Bootable="true">
-          <AttachedDevice type="Floppy" hotpluggable="false" port="0" device="0">
-            <Image uuid="{70c8c4b3-026f-4bd8-92ad-b0d0d8d244fd}"/>
-          </AttachedDevice>
-        </StorageController>
+        <StorageController name="Floppy" type="I82078" PortCount="1" useHostIOCache="true" Bootable="true"/>
       </StorageControllers>
     </Hardware>
   </Machine>

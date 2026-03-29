@@ -5,6 +5,7 @@ STATE_LOSE     equ 3
 STATE_SPLASH   equ 4
 
 SPLASH_DURATION equ 54
+TITLE_ATTRACT_DELAY equ 90
 
 SCREEN_W      equ 320
 SCREEN_H      equ 200
@@ -81,6 +82,16 @@ SFX_TRAP      equ 10
 SFX_RECHARGE  equ 11
 SFX_WIN       equ 12
 SFX_LOSE      equ 13
+
+; Demo scripts are generated as [action, repeat-count] byte pairs and played
+; through the normal pressed_* gameplay latches.
+DEMO_ACTION_END   equ 0
+DEMO_ACTION_WAIT  equ 1
+DEMO_ACTION_LEFT  equ 2
+DEMO_ACTION_RIGHT equ 3
+DEMO_ACTION_UP    equ 4
+DEMO_ACTION_DOWN  equ 5
+DEMO_ACTION_PULSE equ 6
 
 TILE_FLOOR        equ 0
 TILE_WALL         equ 1

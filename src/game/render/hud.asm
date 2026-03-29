@@ -122,6 +122,7 @@ render_game_status:
     call draw_two_digit_small
 
     call draw_spoof_status
+    call draw_demo_status
 
     mov bx, 258
     mov dx, 46
@@ -194,6 +195,26 @@ spoof_status_digit_ready:
     mov bx, 294
     mov dx, 15
     call draw_digit_small
+    ret
+
+draw_demo_status:
+    cmp byte ptr [demo_active], 0
+    je demo_status_done
+    mov bx, 258
+    mov dx, 36
+    mov si, offset demo_text
+    test byte ptr [anim_phase], 1
+    jz demo_status_base
+    mov ah, PAL_WHITE
+    jmp demo_status_draw
+
+demo_status_base:
+    mov ah, PAL_CYAN2
+
+demo_status_draw:
+    call draw_text_small
+
+demo_status_done:
     ret
 
 get_sector_name_ptr:

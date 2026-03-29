@@ -1,5 +1,7 @@
 param(
-    [string]$VmName = 'CyberStorm'
+    [string]$VmName = 'CyberStorm',
+    [ValidateSet('default', 'null', 'dsound', 'was')]
+    [string]$AudioDriver = 'default'
 )
 
 Set-StrictMode -Version Latest
@@ -33,7 +35,21 @@ if ($vmExists) {
 }
 
 & $vbox createvm --name $VmName --basefolder $base --ostype Other --register
-& $vbox modifyvm $VmName --memory 32 --vram 8 --boot1 floppy --boot2 none --boot3 none --boot4 none --audio-driver none
+# Keep the VM audible by default so PC-speaker output can reach the host audio
+# stack instead of being routed into VirtualBox's null sink.
+& $vbox modifyvm $VmName `
+    --memory 32 `
+    --vram 8 `
+    --boot1 floppy `
+    --boot2 none `
+    --boot3 none `
+    --boot4 none `
+    --audio-enabled on `
+    --audio-controller ac97 `
+    --audio-codec stac9700 `
+    --audio-driver $AudioDriver `
+    --audio-in off `
+    --audio-out on
 & $vbox storagectl $VmName --name Floppy --add floppy
 & $vbox storageattach $VmName --storagectl Floppy --port 0 --device 0 --type fdd --medium $floppy
 & $vbox showvminfo $VmName

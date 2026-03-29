@@ -27,6 +27,15 @@ last_tick    dw 0
 anim_phase   db 0
 splash_ticks db 0
 state_ticks  db 0
+title_idle_ticks db 0
+; Demo playback is opt-in attract mode driven by generated [action, ticks]
+; pairs. next_demo_index rotates the title idle cycle through the authored set.
+demo_active  db 0
+demo_index   db 0
+next_demo_index db 0
+demo_action_code db DEMO_ACTION_END
+demo_action_ticks db 0
+demo_script_ptr dw 0
 last_game_state db 0FFh
 feedback_timer db 0
 ; The runner's last committed step lets flanking hunters aim one tile ahead
@@ -102,6 +111,7 @@ score_text    db 'SCORE', 0
 sector_text   db 'SECTOR', 0
 data_text     db 'DATA', 0
 kills_text    db 'KILLS', 0
+demo_text     db 'DEMO', 0
 spoof_text    db 'SPOOF', 0
 shield_text   db 'SHIELD', 0
 pulse_text    db 'PULSE', 0
@@ -119,6 +129,9 @@ rank_d_text db 'RANK D', 0
 ; Sector template pools, authored rule tables, and sector-facing copy are
 ; generated from assets\sectors.psd1 at build time.
 include generated_sector_content.inc
+; Demo scripts are generated from assets\demos.psd1 as compact action/tick
+; pairs so attract-mode content can scale without hand-editing ASM tables.
+include generated_demos.inc
 
 text_msg_sector   db 'SECTOR LIVE. LIFT 4 SHARDS TO CRACK THE GATE.', 0
 text_msg_block    db 'BLACK ICE HOLDS. CUT A DIFFERENT LINE.', 0
@@ -143,7 +156,7 @@ title_line_1  db 'NO OS. NO SHELL. JUST THE BREACH.', 0
 title_line_2  db 'TURN BASED INFILTRATION IN RAW VGA.', 0
 title_line_3  db 'TAKE 4 SHARDS. OPEN THE GATE. REPEAT.', 0
 title_line_4  db 'PRESS ANY KEY TO JACK IN.', 0
-title_prompt  db 'BOOTED DIRECT TO THE RUN.', 0
+title_prompt  db 'IDLE STARTS AN ATTRACT RUN.', 0
 IF DEBUG_BUILD
 ; Temporary title-scene diagnostics used while hardening keyboard support.
 debug_keys_text db 'KEYS', 0

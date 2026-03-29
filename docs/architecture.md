@@ -45,6 +45,7 @@ Register assumptions that matter:
 - [src/game/state.asm](../src/game/state.asm) owns the global state layout.
 - [src/game/art.asm](../src/game/art.asm) is the visual-data wrapper and includes the build-generated sprite/tile bitmap include before the hand-authored palette/font data.
 - [src/game/state.asm](../src/game/state.asm) now includes generated sector metadata/rule tables from the content pipeline.
+- [src/game/state.asm](../src/game/state.asm) also includes generated attract/demo scripts from the content pipeline.
 - [src/game/banks.asm](../src/game/banks.asm) owns the minimal BIOS disk-read helper for post-boot asset banks.
 - [src/game/maps.asm](../src/game/maps.asm) is now documentation only; the authored map pool lives in a bank payload instead of stage two.
 - [src/game/audio.asm](../src/game/audio.asm) keeps the playback logic in-source, but includes generated theme data from the content pipeline.
@@ -53,7 +54,7 @@ Register assumptions that matter:
 
 The runtime state in [src/game/state.asm](../src/game/state.asm) is grouped like this:
 
-- Frontend/game mode state: `game_state`, `sector_num`, resources, player position, exit position, RNG, frame timing.
+- Frontend/game mode state: `game_state`, `sector_num`, resources, player position, exit position, RNG, frame timing, attract/demo timers.
 - Input latches: `pressed_*`, `any_key_pending`, and keyboard debug counters.
 - Rendering scratch: text and rectangle temporaries reused by draw routines.
 - World data: `enemies` and `map_tiles`.
@@ -66,6 +67,7 @@ Important layout contracts:
 - `boot_drive` is initialized from `DL` at stage-two entry and must remain valid for any later `INT 13h` bank reads.
 - `score_total`, `sector_score`, and `sector_score_table` back the mastery layer. The sector counters are reset per zone and the score table is meant to stay comparable on end screens.
 - `spoof_timer` / `spoof_x` / `spoof_y` are gameplay state, not render scratch. Hunter AI reads them during enemy turns and effects/HUD read them during rendering.
+- `title_idle_ticks` is frontend-only state for the attract timer. `demo_active`, `demo_action_*`, and `demo_script_ptr` drive scripted playback through the normal gameplay input path.
 - `key_down` and `key_pressed` must stay adjacent because reset code clears them as one contiguous region.
 - `map_row_offsets` must stay synchronized with `MAP_W`, because `map_index` trusts the table instead of multiplying at runtime.
 - `template_offset_table` is a flat pool of byte offsets into the banked ASCII layout payload at `MAP_BANK_SEG`. `sector_template_start` and `sector_template_count` define which slice belongs to each 1-based sector.
@@ -76,17 +78,20 @@ Important layout contracts:
 The main loop lives in [src/game/main.asm](../src/game/main.asm):
 
 1. Wait for the BIOS tick count to advance.
-2. Update frontend-only timers such as the splash timeout.
-3. Render the current frame.
-4. Consume input for the current `game_state`.
+2. Poll BIOS keyboard input into `pressed_*` latches.
+3. Update frontend-only timers such as the splash timeout and title attract timer.
+4. Advance timed feedback and audio state.
+5. Render the current frame.
+6. Consume input for the current `game_state`.
 
-That ordering is intentional: non-playing screens are drawn first, then keypresses move the runtime into the next state for the following frame.
+That ordering is intentional: the frame reflects the freshly updated frontend/audio state, and then input moves the runtime into the next state for the following frame.
 
 Input flow:
 
 - [src/game/input.asm](../src/game/input.asm) polls BIOS keyboard services through `INT 16h`.
 - Each frame drains the BIOS key queue and latches recognized controls into `pressed_enter`, `pressed_w`, and so on.
 - The gameplay loop consumes the `pressed_*` latches directly.
+- Attract/demo playback does not bypass gameplay. It injects the same `pressed_*` latches the live game uses, so replayed turns stay deterministic and exercise the normal rules.
 - The older raw IRQ1 hook is still present as a legacy path, but it is not the default runtime behavior.
 
 Render flow:
@@ -104,7 +109,7 @@ Map/tile rules:
 - Playable movement stays inside the interior rectangle `x = 1..26`, `y = 1..13`.
 - Tile IDs are semantic: floor, wall, shard, locked exit, open exit, surge, terminal.
 - Sector template source maps are ASCII and only `#` is treated as a wall. Every other byte becomes floor before dynamic objects are placed.
-- The authored sector source now lives outside assembly in `assets\sectors.psd1`, then builds into reviewable `generated_*.inc` files plus a raw map bank before MASM runs.
+- The authored sector source now lives outside assembly in `assets\sectors.psd1`, and attract scripts live in `assets\demos.psd1`. Both build into reviewable `generated_*.inc` files before MASM runs.
 - Each sector now owns a small authored layout family rather than one fixed map. Sector 1 favors open pursuit lanes, sector 2 favors chambers and hinge corridors, and sector 3 favors tighter braided escape routes.
 - Spoof terminals are placed dynamically after the authored layout is copied. They are single-use tiles that redirect hunter targeting toward the exit for a short fixed window.
 

@@ -18,12 +18,13 @@
 - **Readable turn-based tension.** You move once, hunters answer once, and every bad turn is meant to stay understandable.
 - **Tactical systems without control bloat.** EMP pulses, surge nodes, spoof terminals, gate states, and elite hunters all live inside the same compact loop.
 - **A real arcade-style mastery layer.** Runs now track score, sector performance, and final rank without replacing the survival objective.
+- **A real attract mode.** If the title sits idle, CyberStorm boots into deterministic demo runs authored from source data instead of hand-coded one-off logic.
 
 ### For Engine People
 
 - **A real boot path.** The build emits a bootable floppy image, not a host app wrapped in a fake shell.
 - **A compact but structured runtime.** Stage two stays inside a documented single-segment contract while still using modular render, gameplay, audio, and data layers.
-- **Generated content tooling.** Sprites, sectors, rules, and music come from readable source files that generate MASM-friendly data at build time.
+- **Generated content tooling.** Sprites, sectors, rules, demos, and music come from readable source files that generate MASM-friendly data at build time.
 - **Disciplined validation.** The build enforces boot/image layout, generated content shape, deterministic debug options, and a lightweight balance harness.
 
 ## Visual Gallery
@@ -59,7 +60,7 @@ The runtime keeps BIOS-owned low memory untouched, inherits the boot stack at `0
 
 ![CyberStorm asset pipeline](docs/readme/asset-pipeline.svg)
 
-[assets/visuals.psd1](assets/visuals.psd1), [assets/sectors.psd1](assets/sectors.psd1), and [assets/music.psd1](assets/music.psd1) are the readable source of truth. [scripts/build.ps1](scripts/build.ps1) turns them into generated includes and a banked map payload that the runtime can load after boot.
+[assets/visuals.psd1](assets/visuals.psd1), [assets/sectors.psd1](assets/sectors.psd1), [assets/demos.psd1](assets/demos.psd1), and [assets/music.psd1](assets/music.psd1) are the readable source of truth. [scripts/build.ps1](scripts/build.ps1) turns them into generated includes and a banked map payload that the runtime can load after boot.
 
 ## Quickstart
 
@@ -90,6 +91,8 @@ Launch it:
 powershell -ExecutionPolicy Bypass -File .\scripts\start-vm.ps1
 ```
 
+If you leave the title screen alone for a few seconds, CyberStorm now auto-starts an authored attract/demo run. Press any key during the demo to jump into a fresh live run.
+
 ## Technical Facts
 
 These values come from the current [build/cyberstorm-build-report.txt](build/cyberstorm-build-report.txt).
@@ -97,10 +100,10 @@ These values come from the current [build/cyberstorm-build-report.txt](build/cyb
 | Fact | Current build |
 | --- | --- |
 | Boot code | `132 / 510` bytes |
-| Stage two | `17155` bytes across `34` sectors |
+| Stage two | `17767` bytes across `35` sectors |
 | Banked map payload | `3780` bytes across `8` sectors |
-| Bank LBA range | `35..42` |
-| Content set | `3` sectors, `9` maps, `5` music themes |
+| Bank LBA range | `36..43` |
+| Content set | `3` sectors, `9` maps, `3` demos, `5` music themes |
 | Balance sweep | `36` deterministic scenarios |
 | Video target | `320x200x256` in VGA mode `13h` |
 | Runtime model | Single-segment `16-bit` real mode |
@@ -109,7 +112,7 @@ These values come from the current [build/cyberstorm-build-report.txt](build/cyb
 
 CyberStorm is a good AI-assisted project for a specific reason: the repository gives automated iteration clear boundaries. The interesting part is not "AI wrote some assembly." The interesting part is that the repo makes it practical to use AI on a bare-metal codebase without letting that become reckless.
 
-- **The source of truth is readable.** Visuals, sector layouts, sector rules, and music live in compact authored files instead of sprawling raw assembly data.
+- **The source of truth is readable.** Visuals, sector layouts, sector rules, demos, and music live in compact authored files instead of sprawling raw assembly data.
 - **The runtime contracts are explicit.** [docs/architecture.md](docs/architecture.md) spells out the boot handoff, segment assumptions, memory map, state layout, and bank-loading rules.
 - **The build enforces the dangerous constraints.** [scripts/build.ps1](scripts/build.ps1) validates boot-sector size, the single-segment stage-two limit, bank layout, floppy footprint, and generated content shape before writing the image.
 - **Debugging can be reproduced.** Deterministic debug flags can force a known RNG seed, start in a chosen sector, and enable a compact overlay.
@@ -118,8 +121,8 @@ CyberStorm is a good AI-assisted project for a specific reason: the repository g
 
 Repo artifacts that support that claim:
 
-- [assets/visuals.psd1](assets/visuals.psd1), [assets/sectors.psd1](assets/sectors.psd1), and [assets/music.psd1](assets/music.psd1)
-- [build/generated_art.inc](build/generated_art.inc), [build/generated_sector_content.inc](build/generated_sector_content.inc), [build/generated_maps.inc](build/generated_maps.inc), and [build/generated_music.inc](build/generated_music.inc)
+- [assets/visuals.psd1](assets/visuals.psd1), [assets/sectors.psd1](assets/sectors.psd1), [assets/demos.psd1](assets/demos.psd1), and [assets/music.psd1](assets/music.psd1)
+- [build/generated_art.inc](build/generated_art.inc), [build/generated_sector_content.inc](build/generated_sector_content.inc), [build/generated_maps.inc](build/generated_maps.inc), [build/generated_demos.inc](build/generated_demos.inc), and [build/generated_music.inc](build/generated_music.inc)
 - [docs/architecture.md](docs/architecture.md), [docs/sector-identity.md](docs/sector-identity.md), and [docs/enemy-drama.md](docs/enemy-drama.md)
 - [scripts/build.ps1](scripts/build.ps1) and [scripts/balance-harness.ps1](scripts/balance-harness.ps1)
 - [build/cyberstorm-build-report.txt](build/cyberstorm-build-report.txt) and [build/cyberstorm-balance-report.txt](build/cyberstorm-balance-report.txt)
@@ -186,6 +189,7 @@ The harness checks:
 - [build/generated_art.inc](build/generated_art.inc)
 - [build/generated_sector_content.inc](build/generated_sector_content.inc)
 - [build/generated_maps.inc](build/generated_maps.inc)
+- [build/generated_demos.inc](build/generated_demos.inc)
 - [build/generated_music.inc](build/generated_music.inc)
 - [build/generated_bank_layout.inc](build/generated_bank_layout.inc)
 - [build/cyberstorm-map-bank.bin](build/cyberstorm-map-bank.bin)
@@ -200,6 +204,7 @@ The harness checks:
 - [build/boot.lst](build/boot.lst): bootloader assembly listing
 - [build/game.lst](build/game.lst): stage-two assembly listing
 - [build/generated_art.inc](build/generated_art.inc): generated sprite/tile data as MASM sees it
+- [build/generated_demos.inc](build/generated_demos.inc): generated attract-mode scripts as MASM sees them
 - [build/generated_bank_layout.inc](build/generated_bank_layout.inc): runtime bank metadata
 - [build/cyberstorm-map-bank.bin](build/cyberstorm-map-bank.bin): raw post-boot map payload
 - [build/cyberstorm-balance-report.txt](build/cyberstorm-balance-report.txt): fairness and deterministic sweep summary

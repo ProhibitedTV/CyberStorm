@@ -1,5 +1,5 @@
 CyberStorm Build Report
-Generated: 2026-03-28 20:27:54 -06:00
+Generated: 2026-03-28 22:38:08 -06:00
 
 Toolchain
   Assembler: MASM
@@ -7,27 +7,27 @@ Toolchain
   Discovered via: vswhere
 
 Build Profile
-  Mode: debug
+  Mode: release
   Deterministic seed: off
   Debug overlay: off
-  Startup mode: direct-to-game
+  Startup mode: normal splash/title flow
   Run start sector: 1 (default)
 
 Layout
   Boot code bytes: 132 / 510
   Boot code free bytes: 378
-  Stage2 bytes: 12402
-  Stage2 free bytes before 64 KiB limit: 53134
-  Stage2 padded bytes: 12800
-  Stage2 sectors: 25
-  Image bytes used: 12914 / 1474560
-  Image free bytes: 1461646
+  Stage2 bytes: 15367
+  Stage2 free bytes before 64 KiB limit: 50169
+  Stage2 padded bytes: 15872
+  Stage2 sectors: 31
+  Image bytes used: 15879 / 1474560
+  Image free bytes: 1458681
   Boot load address: 0000:7C00 (phys 0x00007C00)
   Stage2 load address: 0x1000:0x0000 (phys 0x00010000)
   Boot signature: 0x55AA @ byte 510
-  Stage2 LBA range: 1..25
+  Stage2 LBA range: 1..31
   Boot section: .text$mn (relocations applied: 3)
-  Stage2 section: .text$mn (relocations applied: 487)
+  Stage2 section: .text$mn (relocations applied: 505)
   Assembler warnings: boot=1, stage2=1
   Boot 'start' symbol offset: 0x0000
   Stage2 'start' symbol offset: 0x0730

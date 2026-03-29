@@ -6,7 +6,12 @@
 ** Use VBoxManage or the VirtualBox Manager GUI to make changes.
 -->
 <VirtualBox xmlns="http://www.virtualbox.org/" version="1.19-windows">
-  <Machine uuid="{61341d6a-8a6c-42e0-9793-98d053b0315e}" name="CyberStorm" OSType="Other" snapshotFolder="Snapshots" lastStateChange="2026-03-29T02:28:00Z">
+  <Machine uuid="{925012c9-5a48-4e0e-9f94-f54ef41b6084}" name="CyberStorm" OSType="Other" snapshotFolder="Snapshots" lastStateChange="2026-03-29T04:43:23Z">
+    <MediaRegistry>
+      <FloppyImages>
+        <Image uuid="{70c8c4b3-026f-4bd8-92ad-b0d0d8d244fd}" location="C:/Users/RhythmicCarnage/Desktop/CyberStorm/build/cyberstorm.vfd"/>
+      </FloppyImages>
+    </MediaRegistry>
     <Hardware>
       <CPU>
         <PAE enabled="true"/>
@@ -24,14 +29,18 @@
         <SmbiosUuidLittleEndian enabled="true"/>
       </BIOS>
       <Network>
-        <Adapter slot="0" enabled="true" MACAddress="080027EEAFE6">
+        <Adapter slot="0" enabled="true" MACAddress="080027C9F868">
           <NAT/>
         </Adapter>
       </Network>
       <AudioAdapter driver="Null" enabled="true"/>
       <Clipboard/>
       <StorageControllers>
-        <StorageController name="Floppy" type="I82078" PortCount="1" useHostIOCache="true" Bootable="true"/>
+        <StorageController name="Floppy" type="I82078" PortCount="1" useHostIOCache="true" Bootable="true">
+          <AttachedDevice type="Floppy" hotpluggable="false" port="0" device="0">
+            <Image uuid="{70c8c4b3-026f-4bd8-92ad-b0d0d8d244fd}"/>
+          </AttachedDevice>
+        </StorageController>
       </StorageControllers>
     </Hardware>
   </Machine>

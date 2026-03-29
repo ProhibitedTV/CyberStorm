@@ -54,11 +54,11 @@ The runtime state in [src/game/state.asm](../src/game/state.asm) is grouped like
 
 Important layout contracts:
 
-- `enemies` is a packed table of `MAX_ENEMIES` records, each `[alive, x, y]`.
+- `enemies` is a packed table of `MAX_ENEMIES` records, each `[alive, x, y, kind]`.
 - `map_tiles` is a linear `MAP_W * MAP_H` tile buffer.
 - `key_down` and `key_pressed` must stay adjacent because reset code clears them as one contiguous region.
 - `map_row_offsets` must stay synchronized with `MAP_W`, because `map_index` trusts the table instead of multiplying at runtime.
-- `template_table` is indexed with `sector_num - 1`, so its entry count must match `TOTAL_SECTORS`.
+- `template_table` is a flat pool of ASCII layouts. `sector_template_start` and `sector_template_count` define which slice belongs to each 1-based sector.
 
 ## 5. Update, Input, And Render Flow
 
@@ -93,6 +93,7 @@ Map/tile rules:
 - Playable movement stays inside the interior rectangle `x = 1..26`, `y = 1..13`.
 - Tile IDs are semantic: floor, wall, shard, locked exit, open exit.
 - Sector template source maps are ASCII and only `#` is treated as a wall. Every other byte becomes floor before dynamic objects are placed.
+- Each sector now owns a small authored layout family rather than one fixed map. Sector 1 favors open pursuit lanes, sector 2 favors chambers and hinge corridors, and sector 3 favors tighter braided escape routes.
 
 Render conventions:
 
@@ -102,9 +103,9 @@ Render conventions:
 
 Entity rules:
 
-- Enemy records use `[alive, x, y]`.
+- Enemy records use `[alive, x, y, kind]`.
 - Player movement or EMP usage sets `action_taken`; only then do hunters get a responding turn.
-- Hunters move greedily toward the player, trying horizontal progress before vertical progress.
+- Rusher hunters move greedily toward the player, flankers prioritize the larger gap axis, and wardens bias toward the exit until the player gets close.
 
 ## 7. Sector Progression And Gameplay Rules
 

@@ -1,10 +1,36 @@
 get_enemy_sprite:
+    mov al, [si + ENEMY_KIND]
+    cmp al, ENEMY_FLANKER
+    je get_enemy_sprite_flanker
+    cmp al, ENEMY_WARDEN
+    je get_enemy_sprite_warden
     test byte ptr [anim_phase], 1
     jz get_enemy_sprite_a
     mov si, offset sprite_enemy_b
     ret
+
+get_enemy_sprite_flanker:
+    test byte ptr [anim_phase], 1
+    jz get_enemy_sprite_flanker_a
+    mov si, offset sprite_enemy_flanker_b
+    ret
+
+get_enemy_sprite_flanker_a:
+    mov si, offset sprite_enemy_flanker_a
+    ret
+
+get_enemy_sprite_warden:
+    test byte ptr [anim_phase], 1
+    jz get_enemy_sprite_warden_a
+    mov si, offset sprite_enemy_warden_b
+    ret
+
 get_enemy_sprite_a:
     mov si, offset sprite_enemy_a
+    ret
+
+get_enemy_sprite_warden_a:
+    mov si, offset sprite_enemy_warden_a
     ret
 
 get_player_sprite:
@@ -31,9 +57,19 @@ render_enemy_loop:
     mov dl, [si + ENEMY_Y]
     shl dx, TILE_SHIFT
     add dx, MAP_PIXEL_Y
+    mov al, [si + ENEMY_KIND]
+    cmp al, ENEMY_WARDEN
+    je enemy_bob_ready
     test byte ptr [anim_phase], 1
     jz enemy_bob_ready
+    cmp al, ENEMY_FLANKER
+    je enemy_bob_flanker
     inc dx
+    jmp enemy_bob_ready
+
+enemy_bob_flanker:
+    dec dx
+
 enemy_bob_ready:
     push si
     call get_enemy_sprite

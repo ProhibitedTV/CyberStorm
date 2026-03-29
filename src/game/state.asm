@@ -54,7 +54,7 @@ rect_h         dw 0
 text_color     db 0
 glyph_row_bits db 0
 
-; Enemy slot layout: [alive, x, y].
+; Enemy slot layout: [alive, x, y, kind].
 enemies db MAX_ENEMIES * ENEMY_SIZE dup (0)
 map_tiles db MAP_SIZE dup (0)
 
@@ -65,8 +65,13 @@ message_table dw offset text_msg_sector, offset text_msg_block, offset text_msg_
               dw offset text_msg_hit, offset text_msg_kill, offset text_msg_pulse, offset text_msg_nopulse
               dw offset text_msg_surge, offset text_msg_trap, offset text_msg_recharge
 
-; sector_num is 1-based; load_sector indexes this table with sector_num - 1.
-template_table dw offset sector1_map, offset sector2_map, offset sector3_map
+; sector_num is 1-based; load_sector uses these base/count tables to choose one
+; authored layout from each sector's template pool.
+sector_template_start db SECTOR1_TEMPLATE_BASE, SECTOR2_TEMPLATE_BASE, SECTOR3_TEMPLATE_BASE
+sector_template_count db SECTOR1_TEMPLATE_COUNT, SECTOR2_TEMPLATE_COUNT, SECTOR3_TEMPLATE_COUNT
+template_table dw offset sector1_map_a, offset sector1_map_b, offset sector1_map_c
+              dw offset sector2_map_a, offset sector2_map_b, offset sector2_map_c
+              dw offset sector3_map_a, offset sector3_map_b, offset sector3_map_c
 
 hud_title     db 'CYBERSTORM', 0
 sector_text   db 'SECTOR', 0

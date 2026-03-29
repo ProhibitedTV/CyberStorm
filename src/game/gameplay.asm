@@ -303,49 +303,141 @@ enemy_turn_done:
     ret
 
 move_enemy:
-    mov al, [si + ENEMY_X]
-    mov ah, [si + ENEMY_Y]
+    mov al, [si + ENEMY_KIND]
+    cmp al, ENEMY_FLANKER
+    je move_enemy_flanker
+    cmp al, ENEMY_WARDEN
+    je move_enemy_warden
+    jmp enemy_player_horizontal_first
 
+move_enemy_flanker:
+    call get_enemy_player_delta
+move_enemy_flanker_ready:
+    cmp ch, cl
+    jae enemy_player_vertical_first
+    jmp enemy_player_horizontal_first
+
+move_enemy_warden:
+    call get_enemy_player_delta
+    mov al, cl
+    add al, ch
+    cmp al, WARDEN_ENGAGE_DISTANCE
+    jbe move_enemy_flanker_ready
+    call get_enemy_exit_delta
+    cmp ch, cl
+    jae enemy_exit_vertical_first
+    jmp enemy_exit_horizontal_first
+
+enemy_player_horizontal_first:
     mov bl, [player_x]
-    cmp al, bl
-    je enemy_try_vertical
-    jb enemy_try_right
-
-enemy_try_left:
-    mov dl, al
-    dec dl
-    mov dh, ah
-    call try_enemy_step
+    call enemy_try_horizontal_to_target
     jc enemy_done
-    jmp enemy_try_vertical
-
-enemy_try_right:
-    mov dl, al
-    inc dl
-    mov dh, ah
-    call try_enemy_step
-    jc enemy_done
-
-enemy_try_vertical:
-    mov bl, [player_y]
-    cmp ah, bl
-    je enemy_done
-    jb enemy_try_down
-
-enemy_try_up:
-    mov dl, [si + ENEMY_X]
-    mov dh, [si + ENEMY_Y]
-    dec dh
-    call try_enemy_step
+    mov bh, [player_y]
+    call enemy_try_vertical_to_target
     jmp enemy_done
 
-enemy_try_down:
-    mov dl, [si + ENEMY_X]
-    mov dh, [si + ENEMY_Y]
-    inc dh
-    call try_enemy_step
+enemy_player_vertical_first:
+    mov bh, [player_y]
+    call enemy_try_vertical_to_target
+    jc enemy_done
+    mov bl, [player_x]
+    call enemy_try_horizontal_to_target
+    jmp enemy_done
+
+enemy_exit_horizontal_first:
+    mov bl, [exit_x]
+    call enemy_try_horizontal_to_target
+    jc enemy_done
+    mov bh, [exit_y]
+    call enemy_try_vertical_to_target
+    jmp enemy_done
+
+enemy_exit_vertical_first:
+    mov bh, [exit_y]
+    call enemy_try_vertical_to_target
+    jc enemy_done
+    mov bl, [exit_x]
+    call enemy_try_horizontal_to_target
 
 enemy_done:
+    ret
+
+get_enemy_player_delta:
+    mov al, [player_x]
+    sub al, [si + ENEMY_X]
+    jns enemy_player_dx_ready
+    neg al
+
+enemy_player_dx_ready:
+    mov cl, al
+    mov al, [player_y]
+    sub al, [si + ENEMY_Y]
+    jns enemy_player_dy_ready
+    neg al
+
+enemy_player_dy_ready:
+    mov ch, al
+    ret
+
+get_enemy_exit_delta:
+    mov al, [exit_x]
+    sub al, [si + ENEMY_X]
+    jns enemy_exit_dx_ready
+    neg al
+
+enemy_exit_dx_ready:
+    mov cl, al
+    mov al, [exit_y]
+    sub al, [si + ENEMY_Y]
+    jns enemy_exit_dy_ready
+    neg al
+
+enemy_exit_dy_ready:
+    mov ch, al
+    ret
+
+enemy_try_horizontal_to_target:
+    mov al, [si + ENEMY_X]
+    cmp al, bl
+    je enemy_axis_fail
+    jb enemy_step_right
+
+enemy_step_left:
+    mov dl, al
+    dec dl
+    mov dh, [si + ENEMY_Y]
+    call try_enemy_step
+    ret
+
+enemy_step_right:
+    mov dl, al
+    inc dl
+    mov dh, [si + ENEMY_Y]
+    call try_enemy_step
+    ret
+
+enemy_try_vertical_to_target:
+    mov al, [si + ENEMY_Y]
+    cmp al, bh
+    je enemy_axis_fail
+    jb enemy_step_down
+
+enemy_step_up:
+    mov dl, [si + ENEMY_X]
+    mov dh, al
+    dec dh
+    call try_enemy_step
+    ret
+
+enemy_step_down:
+    mov dl, [si + ENEMY_X]
+    mov dh, al
+    inc dh
+    call try_enemy_step
+    ret
+
+enemy_axis_fail:
+    clc
     ret
 
 try_enemy_step:
@@ -446,12 +538,7 @@ clear_enemy_loop:
 copy_sector_layout:
     ; Sector templates are MAP_H rows of MAP_W ASCII bytes. Only '#'
     ; survives as a wall; everything else is normalized to floor here.
-    mov al, [sector_num]
-    dec al
-    xor ah, ah
-    shl ax, 1
-    mov bx, ax
-    mov si, word ptr [template_table + bx]
+    call select_sector_template
     mov di, offset map_tiles
     mov cx, MAP_SIZE
 
@@ -469,6 +556,31 @@ copy_store:
     mov [di], al
     inc di
     loop copy_layout_loop
+    ret
+
+select_sector_template:
+    mov al, [sector_num]
+    dec al
+    xor ah, ah
+    mov bx, ax
+    mov ch, [sector_template_start + bx]
+    mov cl, [sector_template_count + bx]
+    mov al, ch
+    cmp cl, 1
+    jbe template_index_ready
+    call random_word
+    xor dx, dx
+    mov bl, cl
+    xor bh, bh
+    div bx
+    mov al, ch
+    add al, dl
+
+template_index_ready:
+    xor ah, ah
+    shl ax, 1
+    mov bx, ax
+    mov si, word ptr [template_table + bx]
     ret
 
 set_exit_locked:
@@ -532,9 +644,47 @@ place_enemy_here:
     mov byte ptr [si + ENEMY_ALIVE], 1
     mov [si + ENEMY_X], bl
     mov [si + ENEMY_Y], bh
+    call roll_enemy_kind
+    mov [si + ENEMY_KIND], al
     add si, ENEMY_SIZE
     dec cl
     jnz place_enemy_find_slot
+    ret
+
+roll_enemy_kind:
+    mov al, [sector_num]
+    cmp al, 1
+    je roll_enemy_kind_sector1
+    cmp al, 2
+    je roll_enemy_kind_sector2
+    call random_word
+    cmp al, SECTOR3_WARDEN_THRESHOLD
+    jb roll_enemy_kind_warden
+    cmp al, SECTOR3_FLANKER_THRESHOLD
+    jb roll_enemy_kind_flanker
+    jmp roll_enemy_kind_rusher
+
+roll_enemy_kind_sector1:
+    call random_word
+    cmp al, SECTOR1_FLANKER_THRESHOLD
+    jb roll_enemy_kind_flanker
+    jmp roll_enemy_kind_rusher
+
+roll_enemy_kind_sector2:
+    call random_word
+    cmp al, SECTOR2_FLANKER_THRESHOLD
+    jb roll_enemy_kind_flanker
+
+roll_enemy_kind_rusher:
+    mov al, ENEMY_RUSHER
+    ret
+
+roll_enemy_kind_flanker:
+    mov al, ENEMY_FLANKER
+    ret
+
+roll_enemy_kind_warden:
+    mov al, ENEMY_WARDEN
     ret
 
 random_floor_position:

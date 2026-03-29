@@ -130,6 +130,24 @@ ENEMY_FLANKER equ 1
 ENEMY_WARDEN  equ 2
 SHARD_COUNT   equ 4
 
+; Mastery scoring stays secondary to survival: most points come from core play,
+; while a few sector-end bonuses reward cleaner and more efficient runs.
+SCORE_SHARD_POINTS          equ 100
+SCORE_KILL_POINTS           equ 30
+SCORE_TRAP_BONUS            equ 40
+SCORE_CHAIN_STEP            equ 25
+SCORE_NO_HIT_BONUS          equ 120
+SCORE_EFFICIENT_PULSE_BONUS equ 60
+SCORE_EFFICIENT_PULSE_LIMIT equ 1
+SCORE_FAST_CLEAR_BASE       equ 120
+SCORE_FAST_CLEAR_STEP       equ 4
+SCORE_WIN_SHIELD_BONUS      equ 25
+SCORE_WIN_PULSE_BONUS       equ 15
+SCORE_RANK_S_THRESHOLD      equ 2200
+SCORE_RANK_A_THRESHOLD      equ 1800
+SCORE_RANK_B_THRESHOLD      equ 1400
+SCORE_RANK_C_THRESHOLD      equ 1000
+
 SAFE_X_MAX    equ 6
 SAFE_Y_MIN    equ 10
 

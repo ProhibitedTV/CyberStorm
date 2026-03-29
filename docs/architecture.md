@@ -64,6 +64,7 @@ Important layout contracts:
 - `enemies` is a packed table of `MAX_ENEMIES` records, each `[alive, x, y, kind]`.
 - `map_tiles` is a linear `MAP_W * MAP_H` tile buffer.
 - `boot_drive` is initialized from `DL` at stage-two entry and must remain valid for any later `INT 13h` bank reads.
+- `score_total`, `sector_score`, and `sector_score_table` back the mastery layer. The sector counters are reset per zone and the score table is meant to stay comparable on end screens.
 - `spoof_timer` / `spoof_x` / `spoof_y` are gameplay state, not render scratch. Hunter AI reads them during enemy turns and effects/HUD read them during rendering.
 - `key_down` and `key_pressed` must stay adjacent because reset code clears them as one contiguous region.
 - `map_row_offsets` must stay synchronized with `MAP_W`, because `map_index` trusts the table instead of multiplying at runtime.
@@ -159,3 +160,17 @@ Before changing the runtime, keep these contracts intact:
 - Do not change enemy record width or field order without updating gameplay and render code together.
 - Do not change map dimensions, row offsets, or tile size in only one module.
 - Do not add OS-style dependencies; the current runtime assumes BIOS + raw hardware only.
+
+## 10. Build-Time Balance Harness
+
+CyberStorm now has a build-time balance harness in [scripts/balance-harness.ps1](../scripts/balance-harness.ps1). This is not part of the runtime contract, but it is part of the content-authoring contract.
+
+The harness reads the authored sector source plus gameplay constants, then validates:
+
+- map reachability from start to exit
+- dynamic placement slack for shards, surges, terminals, and enemies
+- safe-zone spawn constraints
+- sector enemy/rule sanity
+- deterministic spawn behavior across a fixed seed sweep
+
+The build surfaces the results in `build\cyberstorm-balance-report.txt` and echoes a summary into the main build report. When gameplay constants or authored sector content change, this harness is the fastest way to catch balance regressions before a full VM boot.

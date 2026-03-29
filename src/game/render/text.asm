@@ -67,6 +67,67 @@ draw_two_digit_small:
     call draw_char_1x
     ret
 
+draw_word_decimal_small:
+    ; AX is the value, BX/DX are the destination, and CL is the palette index.
+    ; Leading zeros stay hidden so score readouts remain compact and legible.
+    push bx
+    push cx
+    push dx
+    push si
+    mov [text_cursor_x], bx
+    mov [text_cursor_y], dx
+    mov [text_color], cl
+    xor si, si
+    mov bx, 10000
+    call draw_word_divisor_digit
+    mov bx, 1000
+    call draw_word_divisor_digit
+    mov bx, 100
+    call draw_word_divisor_digit
+    mov bx, 10
+    call draw_word_divisor_digit
+    add al, '0'
+    mov bx, [text_cursor_x]
+    mov dx, [text_cursor_y]
+    mov ah, [text_color]
+    call draw_char_1x
+    pop si
+    pop dx
+    pop cx
+    pop bx
+    ret
+
+draw_word_divisor_digit:
+    push bx
+    push cx
+    push dx
+    xor dx, dx
+    div bx
+    mov cx, ax
+    mov ax, dx
+    cmp cx, 0
+    jne draw_word_emit_digit
+    cmp si, 0
+    je draw_word_divisor_done
+
+draw_word_emit_digit:
+    mov si, 1
+    push ax
+    mov al, cl
+    add al, '0'
+    mov ah, [text_color]
+    mov bx, [text_cursor_x]
+    mov dx, [text_cursor_y]
+    call draw_char_1x
+    add word ptr [text_cursor_x], 6
+    pop ax
+
+draw_word_divisor_done:
+    pop dx
+    pop cx
+    pop bx
+    ret
+
 draw_char_1x:
     push ax
     push bx

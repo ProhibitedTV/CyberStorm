@@ -16,9 +16,13 @@ Hunter behavior and balance notes for the latest drama/telegraph pass live in [d
 
 The new spoof-terminal tactical system is explained in [docs/spoof-terminals.md](docs/spoof-terminals.md).
 
+The score and rank rules for the mastery layer live in [docs/mastery-score.md](docs/mastery-score.md).
+
 The broader authored data workflow is documented in [docs/content-pipeline.md](docs/content-pipeline.md).
 
 The phase-1 banked-content design and runtime contract are documented in [docs/asset-banks.md](docs/asset-banks.md).
+
+The new deterministic balance/validation workflow is documented in [docs/balance-harness.md](docs/balance-harness.md).
 
 ## What The Game Is
 
@@ -84,6 +88,7 @@ The build writes:
 - `build\generated_music.inc`
 - `build\generated_bank_layout.inc`
 - `build\cyberstorm-map-bank.bin`
+- `build\cyberstorm-balance-report.txt`
 - `build\readme-shot-1.png`
 - `build\readme-shot-2.png`
 - `build\readme-shot-3.png`
@@ -96,6 +101,7 @@ The console summary now includes:
 
 - assembler discovery path and source
 - active assembler path
+- balance harness seed set, scenario count, and per-sector pressure summary
 - boot code size and remaining slack before the 510-byte limit
 - stage-two size, padded size, sector count, and remaining slack before the 64 KiB load limit
 - asset-bank LBA ranges, payload sizes, and runtime load segments
@@ -176,6 +182,31 @@ The generated `build\debug_config.inc` and `build\cyberstorm-build-report.txt` r
 
 To return to the normal release image, run the build script again without any debug flags.
 
+### Balance Harness
+
+The build now runs a lightweight deterministic balance harness after content generation and before the final image is written:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\balance-harness.ps1
+```
+
+That harness is intentionally simple and Windows-friendly. It does not require an external test framework or emulator plugin. Instead, it validates the authored sector data and runs deterministic spawn sweeps against a fixed seed set so content regressions are easier to catch in normal development.
+
+The main outputs are:
+
+- `build\cyberstorm-balance-report.txt`: static fairness checks, deterministic spawn-sweep summaries, and warnings
+- the `Balance Harness` section in the console/build report: seed set, scenario count, and per-sector summaries
+
+The current harness checks:
+
+- walkable start-to-exit paths for every authored map
+- placement slack for shards, surges, terminals, and enemies
+- safe-zone pressure constraints for terminals and enemy spawns
+- sector rule sanity such as `MAX_ENEMIES` and hunter-threshold ordering
+- deterministic spawn mixes and nearest-enemy pressure across a fixed seed sweep
+
+For interpretation details and extension guidance, see [docs/balance-harness.md](docs/balance-harness.md).
+
 ### Build Validation
 
 The build validates the layout assumptions before writing the floppy image:
@@ -195,6 +226,7 @@ If a build fails or boots unexpectedly, these artifacts are the fastest things t
 - `build\generated_art.inc`: generated sprite/tile `db` rows exactly as seen by MASM
 - `build\generated_bank_layout.inc`: generated LBA/size metadata for post-boot asset banks
 - `build\cyberstorm-map-bank.bin`: the raw bank payload currently loaded by stage two
+- `build\cyberstorm-balance-report.txt`: map fairness checks, deterministic spawn sweeps, and balance warnings
 - `build\readme-shot-*.png`: stable README gallery images rotated from the newest kept screenshot captures
 - `build\debug_config.inc`: generated compile-time debug flags for the current image
 - `build\cyberstorm-build-report.txt`: layout summary, addresses, relocation counts, warnings, and artifact paths

@@ -114,6 +114,7 @@ maybe_enemy_turn:
     jne input_done
     cmp byte ptr [action_taken], 0
     je input_done
+    call record_sector_action
     call enemy_turn
 
 input_done:
@@ -164,6 +165,8 @@ move_collect_shard:
     call set_tile
     call commit_player_move
     inc byte ptr [data_count]
+    mov ax, SCORE_SHARD_POINTS
+    call award_score_ax
     mov al, [data_count]
     cmp al, SHARD_COUNT
     jb shard_message
@@ -189,6 +192,16 @@ move_trigger_terminal:
     ret
 
 move_use_exit:
+    call record_sector_action
+    call finalize_sector_mastery
+    mov al, [sector_num]
+    cmp al, TOTAL_SECTORS
+    jne move_use_exit_advance
+    call award_final_mastery_bonus
+    mov byte ptr [game_state], STATE_WIN
+    ret
+
+move_use_exit_advance:
     inc byte ptr [sector_num]
     mov al, [sector_num]
     cmp al, TOTAL_SECTORS
@@ -201,6 +214,7 @@ move_trigger_surge:
     call set_tile
     call set_effect_focus_tile
     call commit_player_move
+    call record_sector_hit
     sub byte ptr [shield_count], SURGE_PLAYER_DAMAGE
     mov al, MSG_SURGE
     call set_message_event
@@ -226,6 +240,7 @@ use_pulse:
 
 pulse_live:
     dec byte ptr [pulse_count]
+    call record_sector_pulse
     mov al, MSG_PULSE
     call set_message_event
     mov byte ptr [action_taken], 1
@@ -281,6 +296,8 @@ pulse_hit:
 pulse_next:
     add si, ENEMY_SIZE
     loop pulse_loop
+    mov ax, di
+    call award_pulse_chain_bonus
     cmp di, PULSE_RECHARGE_KILLS
     jb pulse_done
     cmp byte ptr [pulse_count], MAX_PULSES
@@ -532,6 +549,7 @@ try_enemy_step:
     mov bl, dl
     mov bh, dh
     call set_effect_focus_tile
+    call record_sector_hit
     dec byte ptr [shield_count]
     mov byte ptr [si + ENEMY_ALIVE], 0
     mov al, MSG_HIT
@@ -579,6 +597,8 @@ step_hit_surge:
     call set_effect_focus_tile
     mov byte ptr [si + ENEMY_ALIVE], 0
     call award_kill
+    mov ax, SCORE_TRAP_BONUS
+    call award_score_ax
     mov al, MSG_TRAP
     call set_message_event
     stc
@@ -603,6 +623,7 @@ keep_pulse_count:
     mov byte ptr [spoof_timer], 0
     mov byte ptr [spoof_x], START_X
     mov byte ptr [spoof_y], START_Y
+    call reset_sector_mastery
     call clear_enemy_pressure
     call clear_enemy_table
     call copy_sector_layout
@@ -988,10 +1009,254 @@ enemy_threat_none:
     mov al, THREAT_NONE
     ret
 
+reset_run_mastery:
+    push ax
+    push cx
+    push di
+    push es
+    mov word ptr [score_total], 0
+    mov word ptr [sector_score], 0
+    mov byte ptr [sector_actions], 0
+    mov byte ptr [sector_hits], 0
+    mov byte ptr [sector_pulses_used], 0
+    push ds
+    pop es
+    mov di, offset sector_score_table
+    mov cx, TOTAL_SECTORS
+    xor ax, ax
+    rep stosw
+    pop es
+    pop di
+    pop cx
+    pop ax
+    ret
+
+reset_sector_mastery:
+    mov word ptr [sector_score], 0
+    mov byte ptr [sector_actions], 0
+    mov byte ptr [sector_hits], 0
+    mov byte ptr [sector_pulses_used], 0
+    call sync_current_sector_score
+    ret
+
+record_sector_action:
+    cmp byte ptr [sector_actions], 255
+    jae record_sector_action_done
+    inc byte ptr [sector_actions]
+record_sector_action_done:
+    ret
+
+record_sector_hit:
+    cmp byte ptr [sector_hits], 255
+    jae record_sector_hit_done
+    inc byte ptr [sector_hits]
+record_sector_hit_done:
+    ret
+
+record_sector_pulse:
+    cmp byte ptr [sector_pulses_used], 255
+    jae record_sector_pulse_done
+    inc byte ptr [sector_pulses_used]
+record_sector_pulse_done:
+    ret
+
+award_pulse_chain_bonus:
+    ; Pulse chains only pay extra for kills beyond the first, so safe single
+    ; clears still feel good while bigger wipes become the stylish score play.
+    cmp ax, 1
+    jbe award_pulse_chain_done
+    dec ax
+    mov bl, SCORE_CHAIN_STEP
+    mul bl
+    call award_score_ax
+award_pulse_chain_done:
+    ret
+
+finalize_sector_mastery:
+    ; Sector-end mastery is intentionally legible: clean sectors, restrained EMP
+    ; use, and faster clears all pay out, but none of them override survival.
+    cmp byte ptr [sector_hits], 0
+    jne sector_mastery_check_pulse
+    mov ax, SCORE_NO_HIT_BONUS
+    call award_score_ax
+
+sector_mastery_check_pulse:
+    mov al, [sector_pulses_used]
+    cmp al, SCORE_EFFICIENT_PULSE_LIMIT
+    ja sector_mastery_fast_clear
+    mov ax, SCORE_EFFICIENT_PULSE_BONUS
+    call award_score_ax
+
+sector_mastery_fast_clear:
+    push bx
+    xor ax, ax
+    mov al, [sector_actions]
+    mov bl, SCORE_FAST_CLEAR_STEP
+    mul bl
+    cmp ax, SCORE_FAST_CLEAR_BASE
+    jae sector_mastery_fast_done
+    mov bx, SCORE_FAST_CLEAR_BASE
+    sub bx, ax
+    mov ax, bx
+    call award_score_ax
+
+sector_mastery_fast_done:
+    pop bx
+    ret
+
+award_final_mastery_bonus:
+    push bx
+    xor ax, ax
+    mov al, [shield_count]
+    mov bl, SCORE_WIN_SHIELD_BONUS
+    mul bl
+    call award_score_ax
+    xor ax, ax
+    mov al, [pulse_count]
+    mov bl, SCORE_WIN_PULSE_BONUS
+    mul bl
+    call award_score_ax
+    pop bx
+    ret
+
+award_score_ax:
+    push bx
+    mov bx, [score_total]
+    add bx, ax
+    jnc award_score_total_ready
+    mov bx, 0FFFFh
+
+award_score_total_ready:
+    mov [score_total], bx
+    mov bx, [sector_score]
+    add bx, ax
+    jnc award_score_sector_ready
+    mov bx, 0FFFFh
+
+award_score_sector_ready:
+    mov [sector_score], bx
+    call sync_current_sector_score
+    pop bx
+    ret
+
+sync_current_sector_score:
+    push ax
+    push bx
+    xor ax, ax
+    mov al, [sector_num]
+    dec al
+    xor ah, ah
+    shl ax, 1
+    mov bx, ax
+    mov ax, [sector_score]
+    mov [sector_score_table + bx], ax
+    pop bx
+    pop ax
+    ret
+
+get_sector_score_ax:
+    xor ah, ah
+    dec al
+    shl ax, 1
+    mov bx, ax
+    mov ax, [sector_score_table + bx]
+    ret
+
+get_score_rank_index:
+    mov ax, [score_total]
+    cmp ax, SCORE_RANK_S_THRESHOLD
+    jae score_rank_index_s
+    cmp ax, SCORE_RANK_A_THRESHOLD
+    jae score_rank_index_a
+    cmp ax, SCORE_RANK_B_THRESHOLD
+    jae score_rank_index_b
+    cmp ax, SCORE_RANK_C_THRESHOLD
+    jae score_rank_index_c
+    mov al, 4
+    ret
+
+score_rank_index_s:
+    mov al, 0
+    ret
+
+score_rank_index_a:
+    mov al, 1
+    ret
+
+score_rank_index_b:
+    mov al, 2
+    ret
+
+score_rank_index_c:
+    mov al, 3
+    ret
+
+get_score_rank_ptr:
+    call get_score_rank_index
+    cmp al, 0
+    je score_rank_ptr_s
+    cmp al, 1
+    je score_rank_ptr_a
+    cmp al, 2
+    je score_rank_ptr_b
+    cmp al, 3
+    je score_rank_ptr_c
+    mov si, offset rank_d_text
+    ret
+
+score_rank_ptr_s:
+    mov si, offset rank_s_text
+    ret
+
+score_rank_ptr_a:
+    mov si, offset rank_a_text
+    ret
+
+score_rank_ptr_b:
+    mov si, offset rank_b_text
+    ret
+
+score_rank_ptr_c:
+    mov si, offset rank_c_text
+    ret
+
+get_score_rank_color:
+    call get_score_rank_index
+    cmp al, 0
+    je score_rank_color_s
+    cmp al, 1
+    je score_rank_color_a
+    cmp al, 2
+    je score_rank_color_b
+    cmp al, 3
+    je score_rank_color_c
+    mov al, PAL_RED2
+    ret
+
+score_rank_color_s:
+    mov al, PAL_WHITE
+    ret
+
+score_rank_color_a:
+    mov al, PAL_CYAN2
+    ret
+
+score_rank_color_b:
+    mov al, PAL_GATE
+    ret
+
+score_rank_color_c:
+    mov al, PAL_AMBER
+    ret
+
 award_kill:
     cmp byte ptr [kill_count], 99
-    jae award_done
+    jae award_kill_score
     inc byte ptr [kill_count]
+
+award_kill_score:
+    mov ax, SCORE_KILL_POINTS
+    call award_score_ax
 award_done:
     ret
 

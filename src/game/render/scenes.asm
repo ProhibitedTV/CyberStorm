@@ -380,42 +380,63 @@ win_bar_color_ready:
     mov bx, 52
     mov dx, 122
     mov cx, 196
-    mov bp, 12
+    mov bp, 22
     mov al, PAL_GATE
     call draw_rect_outline
 
     mov bx, 60
     mov dx, 126
-    mov si, offset sector_text
+    mov si, offset score_text
     mov ah, PAL_WHITE
     call draw_text_small
-    mov al, [sector_num]
-    mov ah, PAL_GATE
-    mov bx, 98
+    mov ax, [score_total]
+    mov bx, 96
     mov dx, 126
-    call draw_digit_small
+    mov cl, PAL_GATE
+    call draw_word_decimal_small
+
+    mov bx, 176
+    mov dx, 126
+    call get_score_rank_ptr
+    call get_score_rank_color
+    mov ah, al
+    call draw_text_small
+
+    mov bx, 60
+    mov dx, 138
+    mov si, offset sector1_short_text
+    mov ah, PAL_WHITE
+    call draw_text_small
+    mov al, 1
+    call get_sector_score_ax
+    mov bx, 74
+    mov dx, 138
+    mov cl, PAL_GATE
+    call draw_word_decimal_small
 
     mov bx, 122
-    mov dx, 126
-    mov si, offset kills_text
+    mov dx, 138
+    mov si, offset sector2_short_text
     mov ah, PAL_WHITE
     call draw_text_small
-    mov al, [kill_count]
-    mov ah, PAL_GATE
-    mov bx, 156
-    mov dx, 126
-    call draw_two_digit_small
+    mov al, 2
+    call get_sector_score_ax
+    mov bx, 136
+    mov dx, 138
+    mov cl, PAL_GATE
+    call draw_word_decimal_small
 
-    mov bx, 188
-    mov dx, 126
-    mov si, offset shield_text
+    mov bx, 184
+    mov dx, 138
+    mov si, offset sector3_short_text
     mov ah, PAL_WHITE
     call draw_text_small
-    mov al, [shield_count]
-    mov ah, PAL_GATE
-    mov bx, 232
-    mov dx, 126
-    call draw_digit_small
+    mov al, 3
+    call get_sector_score_ax
+    mov bx, 198
+    mov dx, 138
+    mov cl, PAL_GATE
+    call draw_word_decimal_small
     cmp byte ptr [state_ticks], END_REVEAL_PROMPT
     jb win_scene_done
 
@@ -557,42 +578,63 @@ lose_bar_color_ready:
     mov bx, 56
     mov dx, 122
     mov cx, 192
-    mov bp, 12
+    mov bp, 22
     mov al, PAL_RED2
     call draw_rect_outline
 
     mov bx, 64
     mov dx, 126
-    mov si, offset sector_text
+    mov si, offset score_text
     mov ah, PAL_WHITE
     call draw_text_small
-    mov al, [sector_num]
-    mov ah, PAL_RED2
-    mov bx, 102
+    mov ax, [score_total]
+    mov bx, 100
     mov dx, 126
-    call draw_digit_small
+    mov cl, PAL_RED2
+    call draw_word_decimal_small
 
-    mov bx, 126
+    mov bx, 182
     mov dx, 126
-    mov si, offset kills_text
-    mov ah, PAL_WHITE
+    call get_score_rank_ptr
+    call get_score_rank_color
+    mov ah, al
     call draw_text_small
-    mov al, [kill_count]
-    mov ah, PAL_RED2
-    mov bx, 160
-    mov dx, 126
-    call draw_two_digit_small
 
-    mov bx, 192
-    mov dx, 126
-    mov si, offset shield_text
+    mov bx, 64
+    mov dx, 138
+    mov si, offset sector1_short_text
     mov ah, PAL_WHITE
     call draw_text_small
-    mov al, [shield_count]
-    mov ah, PAL_RED2
-    mov bx, 236
-    mov dx, 126
-    call draw_digit_small
+    mov al, 1
+    call get_sector_score_ax
+    mov bx, 78
+    mov dx, 138
+    mov cl, PAL_RED2
+    call draw_word_decimal_small
+
+    mov bx, 124
+    mov dx, 138
+    mov si, offset sector2_short_text
+    mov ah, PAL_WHITE
+    call draw_text_small
+    mov al, 2
+    call get_sector_score_ax
+    mov bx, 138
+    mov dx, 138
+    mov cl, PAL_RED2
+    call draw_word_decimal_small
+
+    mov bx, 184
+    mov dx, 138
+    mov si, offset sector3_short_text
+    mov ah, PAL_WHITE
+    call draw_text_small
+    mov al, 3
+    call get_sector_score_ax
+    mov bx, 198
+    mov dx, 138
+    mov cl, PAL_RED2
+    call draw_word_decimal_small
     cmp byte ptr [state_ticks], END_REVEAL_PROMPT
     jb lose_scene_done
 

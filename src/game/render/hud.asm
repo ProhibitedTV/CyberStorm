@@ -80,23 +80,22 @@ draw_game_panels:
 render_game_status:
     mov bx, 18
     mov dx, 15
-    mov si, offset hud_title
+    mov si, offset score_text
+    mov ah, PAL_WHITE
+    call draw_text_small
+
+    mov ax, [score_total]
+    mov bx, 54
+    mov dx, 15
+    mov cl, PAL_AMBER
+    call draw_word_decimal_small
+
+    mov bx, 96
+    mov dx, 15
+    call get_sector_name_ptr
     call get_sector_title_color
     mov ah, al
     call draw_text_small
-
-    mov bx, 104
-    mov dx, 15
-    call get_sector_name_ptr
-    call get_sector_accent_color
-    mov ah, al
-    call draw_text_small
-
-    mov al, [sector_num]
-    mov ah, PAL_WHITE
-    mov bx, 146
-    mov dx, 15
-    call draw_digit_small
 
     mov bx, 174
     mov dx, 15

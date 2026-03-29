@@ -6,6 +6,13 @@ shield_count db START_SHIELDS
 pulse_count  db START_PULSES
 data_count   db 0
 kill_count   db 0
+score_total  dw 0
+sector_score dw 0
+; Sector mastery stays small and explainable: turn count feeds fast-clear bonus,
+; hits gate the clean-sector bonus, and pulse usage gates the efficiency bonus.
+sector_actions     db 0
+sector_hits        db 0
+sector_pulses_used db 0
 message_id   db MSG_SECTOR
 action_taken db 0
 player_x     db START_X
@@ -84,12 +91,14 @@ map_tiles db MAP_SIZE dup (0)
 
 ; map_index depends on these row bases matching MAP_W exactly.
 map_row_offsets dw 0, 28, 56, 84, 112, 140, 168, 196, 224, 252, 280, 308, 336, 364, 392
+sector_score_table dw TOTAL_SECTORS dup (0)
 
 message_table dw offset text_msg_sector, offset text_msg_block, offset text_msg_shard, offset text_msg_gate
               dw offset text_msg_hit, offset text_msg_kill, offset text_msg_pulse, offset text_msg_nopulse
               dw offset text_msg_surge, offset text_msg_trap, offset text_msg_recharge, offset text_msg_spoof
 
 hud_title     db 'CYBERSTORM', 0
+score_text    db 'SCORE', 0
 sector_text   db 'SECTOR', 0
 data_text     db 'DATA', 0
 kills_text    db 'KILLS', 0
@@ -98,6 +107,14 @@ shield_text   db 'SHIELD', 0
 pulse_text    db 'PULSE', 0
 gate_text     db 'GATE', 0
 controls_text db 'MOVE WASD OR ARROWS  C EMP  ENTER RESET', 0
+sector1_short_text db 'S1', 0
+sector2_short_text db 'S2', 0
+sector3_short_text db 'S3', 0
+rank_s_text db 'RANK S', 0
+rank_a_text db 'RANK A', 0
+rank_b_text db 'RANK B', 0
+rank_c_text db 'RANK C', 0
+rank_d_text db 'RANK D', 0
 
 ; Sector template pools, authored rule tables, and sector-facing copy are
 ; generated from assets\sectors.psd1 at build time.

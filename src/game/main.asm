@@ -161,6 +161,7 @@ debug_start_sector_ready:
 debug_start_pulses_ready:
     mov byte ptr [pulse_count], al
 ENDIF
+    call reset_run_mastery
     call load_sector
     mov al, MSG_SECTOR
     call set_message_event

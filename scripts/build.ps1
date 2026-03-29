@@ -1508,6 +1508,7 @@ function Write-BuildReport {
         [int]$GeneratedArtBytes,
         [string]$GeneratedArtSizes,
         [string[]]$GeneratedContentLines,
+        [string[]]$BalanceHarnessLines,
         [string[]]$AssetBankLines,
         [string]$ScreenshotHousekeeping,
         [string[]]$ReadmeScreenshotSlots,
@@ -1580,6 +1581,17 @@ function Write-BuildReport {
 
         foreach ($contentLine in @($GeneratedContentLines)) {
             $lines += ("  {0}" -f $contentLine)
+        }
+    }
+
+    if ($null -ne $BalanceHarnessLines -and @($BalanceHarnessLines).Count -gt 0) {
+        $lines += @(
+            ''
+            'Balance Harness'
+        )
+
+        foreach ($balanceLine in @($BalanceHarnessLines)) {
+            $lines += ("  {0}" -f $balanceLine)
         }
     }
 
@@ -1676,6 +1688,7 @@ $constantsSourcePath = Join-Path $srcDir 'game\constants.inc'
 $artSourcePath = Join-Path $root 'assets\visuals.psd1'
 $sectorSourcePath = Join-Path $root 'assets\sectors.psd1'
 $musicSourcePath = Join-Path $root 'assets\music.psd1'
+$balanceHarnessScript = Join-Path $PSScriptRoot 'balance-harness.ps1'
 $gameObj = Join-Path $buildDir 'game.obj'
 $bootObj = Join-Path $buildDir 'boot.obj'
 $gameList = Join-Path $buildDir 'game.lst'
@@ -1693,6 +1706,7 @@ $bootBinPath = Join-Path $buildDir 'cyberstorm-boot.bin'
 $imgPath = Join-Path $buildDir 'cyberstorm.img'
 $vfdPath = Join-Path $buildDir 'cyberstorm.vfd'
 $reportPath = Join-Path $buildDir 'cyberstorm-build-report.txt'
+$balanceReportPath = Join-Path $buildDir 'cyberstorm-balance-report.txt'
 $readmeScreenshotArtifacts = 1..$readmeScreenshotCount | ForEach-Object {
     Join-Path $buildDir ("{0}{1}.png" -f $readmeScreenshotPrefix, $_)
 }
@@ -1775,6 +1789,22 @@ $generatedContentLines = @(
 Write-Section -Title 'Generated Content'
 foreach ($contentLine in $generatedContentLines) {
     Write-Host $contentLine
+}
+
+$balanceHarness = & $balanceHarnessScript `
+    -SectorSourcePath $sectorSourcePath `
+    -ConstantsSourcePath $constantsSourcePath `
+    -ReportPath $balanceReportPath
+$balanceHarnessLines = @(
+    ("Report: {0}" -f $balanceHarness.ReportPath)
+    ("Seeds: {0}" -f $balanceHarness.SeedSummary)
+    ("Static maps: {0}" -f $balanceHarness.StaticMapCount)
+    ("Scenarios: {0}" -f $balanceHarness.ScenarioCount)
+) + @($balanceHarness.SummaryLines)
+
+Write-Section -Title 'Balance Harness'
+foreach ($balanceLine in $balanceHarnessLines) {
+    Write-Host $balanceLine
 }
 
 $assetBanksBase = @(
@@ -1867,6 +1897,9 @@ $imageBytesUsed = $layout.BootSectorBytes + $gameBin.Length + ((@($resolvedAsset
 $stage2PaddedBytes = $gameSectorCount * $layout.BootSectorBytes
 $diskFootprintBytes = $layout.BootSectorBytes + $stage2PaddedBytes + ((@($resolvedAssetBanks) | Measure-Object -Property PaddedBytes -Sum).Sum)
 $warnings = Get-BuildWarnings -BootBytes $bootBin.Length -Stage2Bytes $gameBin.Length -Stage2Sectors $gameSectorCount -ImageBytesUsed $imageBytesUsed -DiskFootprintBytes $diskFootprintBytes -AssetBanks $resolvedAssetBanks -Layout $layout
+if ($null -ne $balanceHarness.WarningLines -and @($balanceHarness.WarningLines).Count -gt 0) {
+    $warnings = @($warnings) + @($balanceHarness.WarningLines)
+}
 
 $floppy = New-Object byte[] $layout.FloppyBytes
 [Array]::Copy($bootSector, 0, $floppy, 0, $bootSector.Length)
@@ -1909,6 +1942,7 @@ Write-BuildReport `
     -GeneratedArtBytes $generatedArt.TotalBytes `
     -GeneratedArtSizes $generatedArt.SizeSummary `
     -GeneratedContentLines $generatedContentLines `
+    -BalanceHarnessLines $balanceHarnessLines `
     -AssetBankLines $assetBankLines `
     -ScreenshotHousekeeping $screenshotHousekeepingText `
     -ReadmeScreenshotSlots $screenshotSync.ReadmeSlots `
@@ -1927,7 +1961,7 @@ Write-BuildReport `
     -BootStartOffset $bootStartOffset `
     -StageStartOffset $stageStartOffset `
     -Warnings $warnings `
-    -ArtifactPaths @($generatedArtPath, $generatedSectorContentPath, $generatedMapsPath, $generatedMusicPath, $generatedBankLayoutPath, $mapBankBinPath, $bootBinPath, $stage2BinPath, $bootList, $gameList, $bootConfig, $debugConfig, $imgPath, $vfdPath) + $readmeScreenshotArtifacts + @($reportPath, $screenshotSync.RotationStatePath) `
+    -ArtifactPaths @($generatedArtPath, $generatedSectorContentPath, $generatedMapsPath, $generatedMusicPath, $balanceReportPath, $generatedBankLayoutPath, $mapBankBinPath, $bootBinPath, $stage2BinPath, $bootList, $gameList, $bootConfig, $debugConfig, $imgPath, $vfdPath) + $readmeScreenshotArtifacts + @($reportPath, $screenshotSync.RotationStatePath) `
     -Layout $layout
 
 Write-Section -Title 'Artifacts'
@@ -1937,6 +1971,7 @@ Write-Host ("Art     {0}" -f $generatedArtPath)
 Write-Host ("Rules   {0}" -f $generatedSectorContentPath)
 Write-Host ("Maps    {0}" -f $generatedMapsPath)
 Write-Host ("Music   {0}" -f $generatedMusicPath)
+Write-Host ("Balance {0}" -f $balanceReportPath)
 Write-Host ("Banks   {0}" -f $generatedBankLayoutPath)
 Write-Host ("Bank    {0}" -f $mapBankBinPath)
 foreach ($readmeShot in $readmeScreenshotArtifacts) {

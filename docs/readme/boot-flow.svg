@@ -1,0 +1,76 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="420" viewBox="0 0 1000 420" role="img" aria-labelledby="title desc">
+  <title id="title">CyberStorm boot flow</title>
+  <desc id="desc">A simple flow diagram showing BIOS loading the boot sector, the boot sector loading stage two, stage two loading the map bank, and the game entering VGA mode 13h.</desc>
+  <defs>
+    <style>
+      .title { font: 700 28px 'Segoe UI', Arial, sans-serif; fill: #0f172a; }
+      .subtitle { font: 400 15px 'Segoe UI', Arial, sans-serif; fill: #334155; }
+      .label { font: 700 16px 'Segoe UI', Arial, sans-serif; fill: #e2e8f0; }
+      .body { font: 400 13px 'Segoe UI', Arial, sans-serif; fill: #cbd5e1; }
+      .note { font: 400 13px 'Segoe UI', Arial, sans-serif; fill: #475569; }
+      .chip { font: 700 12px 'Segoe UI', Arial, sans-serif; fill: #082f49; }
+    </style>
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+      <path d="M0,0 L12,6 L0,12 Z" fill="#22d3ee"/>
+    </marker>
+  </defs>
+
+  <text x="40" y="42" class="title">CyberStorm Boot Flow</text>
+  <text x="40" y="68" class="subtitle">Current build facts: boot sector at LBA 0, stage two at LBA 1..34, map bank at LBA 35..42.</text>
+
+  <rect x="40" y="110" width="170" height="120" rx="18" fill="#0f172a" stroke="#38bdf8" stroke-width="2"/>
+  <text x="60" y="142" class="label">1. BIOS Entry</text>
+  <text x="60" y="170" class="body">Loads LBA 0 to</text>
+  <text x="60" y="190" class="body">0000:7C00</text>
+  <text x="60" y="214" class="body">Starts boot code in</text>
+  <text x="60" y="234" class="body">src/boot.asm</text>
+
+  <rect x="230" y="110" width="170" height="120" rx="18" fill="#0f172a" stroke="#38bdf8" stroke-width="2"/>
+  <text x="250" y="142" class="label">2. Boot Sector</text>
+  <text x="250" y="170" class="body">132 bytes of code</text>
+  <text x="250" y="190" class="body">plus 0x55AA signature</text>
+  <text x="250" y="214" class="body">Uses INT 13h to read</text>
+  <text x="250" y="234" class="body">the next 34 sectors</text>
+
+  <rect x="420" y="110" width="170" height="120" rx="18" fill="#0f172a" stroke="#38bdf8" stroke-width="2"/>
+  <text x="440" y="142" class="label">3. Stage Two</text>
+  <text x="440" y="170" class="body">LBA 1..34</text>
+  <text x="440" y="190" class="body">17155 bytes loaded to</text>
+  <text x="440" y="210" class="body">1000:0000</text>
+  <text x="440" y="234" class="body">Entry byte 0 jumps into</text>
+  <text x="440" y="254" class="body">the runtime in game.asm</text>
+
+  <rect x="610" y="110" width="170" height="120" rx="18" fill="#0f172a" stroke="#f59e0b" stroke-width="2"/>
+  <text x="630" y="142" class="label">4. Asset Bank</text>
+  <text x="630" y="170" class="body">Map bank at LBA 35..42</text>
+  <text x="630" y="190" class="body">3780 bytes payload</text>
+  <text x="630" y="210" class="body">Read into 7000:0000</text>
+  <text x="630" y="234" class="body">by banks.asm after</text>
+  <text x="630" y="254" class="body">stage two starts</text>
+
+  <rect x="800" y="110" width="160" height="120" rx="18" fill="#0f172a" stroke="#22c55e" stroke-width="2"/>
+  <text x="820" y="142" class="label">5. VGA Runtime</text>
+  <text x="820" y="170" class="body">Switches to mode 13h</text>
+  <text x="820" y="190" class="body">Draws into 9000:0000</text>
+  <text x="820" y="210" class="body">Presents to A000:0000</text>
+  <text x="820" y="234" class="body">Runs the game loop</text>
+
+  <line x1="210" y1="170" x2="230" y2="170" stroke="#22d3ee" stroke-width="4" marker-end="url(#arrow)"/>
+  <line x1="400" y1="170" x2="420" y2="170" stroke="#22d3ee" stroke-width="4" marker-end="url(#arrow)"/>
+  <line x1="590" y1="170" x2="610" y2="170" stroke="#22d3ee" stroke-width="4" marker-end="url(#arrow)"/>
+  <line x1="780" y1="170" x2="800" y2="170" stroke="#22d3ee" stroke-width="4" marker-end="url(#arrow)"/>
+
+  <rect x="40" y="278" width="168" height="30" rx="15" fill="#cffafe"/>
+  <text x="57" y="298" class="chip">Boot: 0000:7C00</text>
+  <rect x="224" y="278" width="188" height="30" rx="15" fill="#cffafe"/>
+  <text x="241" y="298" class="chip">Stage two: 1000:0000</text>
+  <rect x="428" y="278" width="184" height="30" rx="15" fill="#fef3c7"/>
+  <text x="445" y="298" class="chip">Map bank: 7000:0000</text>
+  <rect x="628" y="278" width="158" height="30" rx="15" fill="#dcfce7"/>
+  <text x="645" y="298" class="chip">Backbuffer: 9000:0000</text>
+  <rect x="802" y="278" width="158" height="30" rx="15" fill="#dcfce7"/>
+  <text x="819" y="298" class="chip">VGA: A000:0000</text>
+
+  <text x="40" y="352" class="note">What this shows: the build keeps the floppy layout and the runtime load addresses aligned with the documented boot contract.</text>
+  <text x="40" y="374" class="note">The boot sector loads stage two, stage two loads the banked maps, and the game enters raw VGA without DOS or a host runtime.</text>
+</svg>

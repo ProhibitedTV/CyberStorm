@@ -1448,6 +1448,87 @@ function Sync-ReadmeScreenshots {
         $galleryCandidates = $sourceScreenshots
     }
 
+    function Get-ScreenshotTags {
+        param([string]$Name)
+
+        $stem = [IO.Path]::GetFileNameWithoutExtension($Name).ToLowerInvariant()
+        $tags = New-Object 'System.Collections.Generic.List[string]'
+
+        if ($stem -match '(title|splash|boot|bitriver|intro)') { $tags.Add('title') }
+        if ($stem -match '(gameplay|sector|run|combat|hud|map)') { $tags.Add('gameplay') }
+        if ($stem -match '(hazard|surge|terminal|spoof|shard|emp|pulse|trap)') { $tags.Add('hazard') }
+        if ($stem -match '(elite|warden|flanker|hunter|enemy|pressure)') { $tags.Add('elite') }
+        if ($stem -match '(ending|win|lose|gate|unlock|transition|victory|defeat)') { $tags.Add('ending') }
+        if ($stem -match '(debug|overlay|pipeline|asset|bank|memory|module|technical|report)') { $tags.Add('technical') }
+
+        if ($tags.Count -eq 0) {
+            $tags.Add('uncategorized')
+        }
+
+        return @($tags)
+    }
+
+    function Get-PreferredScreenshotCandidate {
+        param(
+            [object[]]$Candidates,
+            [string[]]$PreferenceOrder,
+            [int]$RotationIndex
+        )
+
+        if ($Candidates.Count -eq 0) {
+            return $null
+        }
+
+        $ranked = foreach ($candidate in $Candidates) {
+            $rank = $PreferenceOrder.Count
+            for ($preferenceIndex = 0; $preferenceIndex -lt $PreferenceOrder.Count; $preferenceIndex++) {
+                if (@($candidate.Tags) -contains $PreferenceOrder[$preferenceIndex]) {
+                    $rank = $preferenceIndex
+                    break
+                }
+            }
+
+            [pscustomobject]@{
+                Candidate = $candidate
+                Rank = $rank
+            }
+        }
+
+        $bestRank = ($ranked | Measure-Object -Property Rank -Minimum).Minimum
+        $bestCandidates = @(
+            $ranked |
+                Where-Object { $_.Rank -eq $bestRank } |
+                Sort-Object -Property @{ Expression = { $_.Candidate.File.LastWriteTimeUtc }; Descending = $true }, @{ Expression = { $_.Candidate.File.Name }; Descending = $false }
+        )
+
+        $selectedIndex = $RotationIndex % $bestCandidates.Count
+        return $bestCandidates[$selectedIndex].Candidate
+    }
+
+    $galleryMetadata = @(
+        foreach ($candidate in $galleryCandidates) {
+            [pscustomobject]@{
+                File = $candidate
+                Tags = @(Get-ScreenshotTags -Name $candidate.Name)
+            }
+        }
+    )
+
+    $slotTaxonomy = @(
+        [pscustomobject]@{
+            Label = 'title'
+            PreferenceOrder = @('title', 'gameplay', 'technical', 'hazard', 'elite', 'ending', 'uncategorized')
+        }
+        [pscustomobject]@{
+            Label = 'gameplay'
+            PreferenceOrder = @('gameplay', 'hazard', 'elite', 'title', 'technical', 'ending', 'uncategorized')
+        }
+        [pscustomobject]@{
+            Label = 'payoff'
+            PreferenceOrder = @('ending', 'hazard', 'elite', 'technical', 'gameplay', 'title', 'uncategorized')
+        }
+    )
+
     $rotationIndex = 0
     if (Test-Path -LiteralPath $rotationStatePath) {
         $rawRotation = (Get-Content -LiteralPath $rotationStatePath -Raw).Trim()
@@ -1457,6 +1538,7 @@ function Sync-ReadmeScreenshots {
     }
 
     $slotSummary = New-Object 'System.Collections.Generic.List[string]'
+    $usedSourcePaths = New-Object 'System.Collections.Generic.HashSet[string]' ([System.StringComparer]::OrdinalIgnoreCase)
 
     if ($sourceScreenshots.Count -eq 0) {
         foreach ($slotName in $slotNames) {
@@ -1469,14 +1551,22 @@ function Sync-ReadmeScreenshots {
 
         Set-Content -LiteralPath $rotationStatePath -Encoding ascii -Value '0'
     } else {
-        $startIndex = $rotationIndex % $galleryCandidates.Count
         for ($slotIndex = 0; $slotIndex -lt $ReadmeSlotCount; $slotIndex++) {
-            $sourceIndex = ($startIndex + $slotIndex) % $galleryCandidates.Count
-            $sourceShot = $galleryCandidates[$sourceIndex]
+            $slotConfig = if ($slotIndex -lt $slotTaxonomy.Count) { $slotTaxonomy[$slotIndex] } else { $slotTaxonomy[$slotTaxonomy.Count - 1] }
+            $availableCandidates = @($galleryMetadata | Where-Object { -not $usedSourcePaths.Contains($_.File.FullName) })
+            if ($availableCandidates.Count -eq 0) {
+                $availableCandidates = $galleryMetadata
+            }
+
+            $sourceShot = Get-PreferredScreenshotCandidate `
+                -Candidates $availableCandidates `
+                -PreferenceOrder $slotConfig.PreferenceOrder `
+                -RotationIndex ($rotationIndex + $slotIndex)
             $slotName = $slotNames[$slotIndex]
             $slotPath = Join-Path $BuildDir $slotName
-            Copy-Item -LiteralPath $sourceShot.FullName -Destination $slotPath -Force
-            $slotSummary.Add(("{0} <- {1}" -f $slotName, $sourceShot.Name))
+            Copy-Item -LiteralPath $sourceShot.File.FullName -Destination $slotPath -Force
+            $null = $usedSourcePaths.Add($sourceShot.File.FullName)
+            $slotSummary.Add(("{0} [{1}] <- {2}" -f $slotName, $slotConfig.Label, $sourceShot.File.Name))
         }
 
         Set-Content -LiteralPath $rotationStatePath -Encoding ascii -Value ($rotationIndex + 1)

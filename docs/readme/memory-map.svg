@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="620" viewBox="0 0 960 620" role="img" aria-labelledby="title desc">
+  <title id="title">CyberStorm memory map</title>
+  <desc id="desc">A simplified memory map showing the BIOS-owned low memory, the inherited boot stack, stage two, the banked map segment, the backbuffer, and VGA memory.</desc>
+  <defs>
+    <style>
+      .title { font: 700 28px 'Segoe UI', Arial, sans-serif; fill: #0f172a; }
+      .subtitle { font: 400 15px 'Segoe UI', Arial, sans-serif; fill: #334155; }
+      .addr { font: 700 14px 'Consolas', 'Courier New', monospace; fill: #0f172a; }
+      .label { font: 700 16px 'Segoe UI', Arial, sans-serif; fill: #e2e8f0; }
+      .body { font: 400 13px 'Segoe UI', Arial, sans-serif; fill: #cbd5e1; }
+      .note { font: 400 13px 'Segoe UI', Arial, sans-serif; fill: #475569; }
+      .tiny { font: 400 12px 'Segoe UI', Arial, sans-serif; fill: #334155; }
+    </style>
+  </defs>
+
+  <text x="40" y="42" class="title">CyberStorm Memory Map</text>
+  <text x="40" y="68" class="subtitle">Simplified runtime view from docs/architecture.md and the current build report.</text>
+
+  <line x1="185" y1="100" x2="185" y2="530" stroke="#94a3b8" stroke-width="3"/>
+
+  <text x="40" y="118" class="addr">0000:0000</text>
+  <rect x="220" y="92" width="420" height="46" rx="12" fill="#0f172a" stroke="#94a3b8" stroke-width="2"/>
+  <text x="242" y="121" class="label">Interrupt Vector Table</text>
+
+  <text x="40" y="172" class="addr">0000:0400</text>
+  <rect x="220" y="146" width="420" height="46" rx="12" fill="#0f172a" stroke="#94a3b8" stroke-width="2"/>
+  <text x="242" y="175" class="label">BIOS Data Area</text>
+
+  <text x="40" y="242" class="addr">0000:7C00</text>
+  <rect x="220" y="208" width="420" height="70" rx="14" fill="#0f172a" stroke="#38bdf8" stroke-width="2"/>
+  <text x="242" y="236" class="label">Boot Stack</text>
+  <text x="242" y="258" class="body">Created by src/boot.asm and inherited by stage two.</text>
+  <text x="242" y="278" class="body">Used downward from 0000:7C00.</text>
+
+  <text x="40" y="338" class="addr">1000:0000</text>
+  <rect x="220" y="300" width="420" height="88" rx="14" fill="#0f172a" stroke="#22d3ee" stroke-width="2"/>
+  <text x="242" y="328" class="label">Stage Two Code + Data</text>
+  <text x="242" y="350" class="body">17155 bytes loaded from LBA 1..34.</text>
+  <text x="242" y="370" class="body">DS = CS here; the game assumes a shared segment.</text>
+  <text x="242" y="390" class="body">Entry is byte 0 of src/game.asm, which jumps to start.</text>
+
+  <text x="40" y="440" class="addr">7000:0000</text>
+  <rect x="220" y="404" width="420" height="72" rx="14" fill="#0f172a" stroke="#f59e0b" stroke-width="2"/>
+  <text x="242" y="432" class="label">Map Bank</text>
+  <text x="242" y="454" class="body">3780-byte read-only payload loaded from LBA 35..42.</text>
+  <text x="242" y="474" class="body">Used for authored map templates after stage two starts.</text>
+
+  <text x="40" y="526" class="addr">9000:0000</text>
+  <rect x="220" y="492" width="420" height="54" rx="14" fill="#0f172a" stroke="#22c55e" stroke-width="2"/>
+  <text x="242" y="524" class="label">Backbuffer</text>
+  <text x="390" y="524" class="body">64000-byte off-screen framebuffer</text>
+
+  <text x="40" y="586" class="addr">A000:0000</text>
+  <rect x="220" y="554" width="420" height="46" rx="12" fill="#0f172a" stroke="#22c55e" stroke-width="2"/>
+  <text x="242" y="583" class="label">VGA Mode 13h Framebuffer</text>
+
+  <rect x="690" y="208" width="220" height="150" rx="16" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"/>
+  <text x="712" y="238" class="addr">Key assumptions</text>
+  <text x="712" y="264" class="tiny">- Stage two stays inside one 64 KiB load window.</text>
+  <text x="712" y="286" class="tiny">- DF is cleared by the bootloader.</text>
+  <text x="712" y="308" class="tiny">- Most render helpers use ES = BACKBUFFER_SEG.</text>
+  <text x="712" y="330" class="tiny">- BIOS low-memory regions remain under BIOS ownership.</text>
+
+  <text x="40" y="614" class="note">What this shows: where the live runtime sits in memory and why the single-segment stage-two contract still matters.</text>
+</svg>

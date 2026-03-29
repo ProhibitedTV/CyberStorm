@@ -1,165 +1,151 @@
 # CyberStorm
 
-CyberStorm is a bare-metal x86 game that boots directly from a floppy image with no operating system underneath it.
+> No OS. No shell. Just the breach.
+>
+> CyberStorm is a bootable 16-bit x86 infiltration game and a compact bare-metal engine project. It boots from a floppy image, enters a hand-written boot sector, loads a real-mode stage two, switches into raw VGA mode `13h`, and runs without DOS or any host runtime.
 
-The current target is BIOS-compatible x86 hardware and Oracle VirtualBox. The image is a raw floppy disk (`.img` / `.vfd`) whose first sector is a hand-written bootloader. That loader reads the game into memory and jumps straight into it.
+![CyberStorm hero](build/readme-shot-1.png)
 
-## Architecture
+| Built for | Boots from | Video | Runtime |
+| --- | --- | --- | --- |
+| BIOS x86 + Oracle VirtualBox | Raw floppy image (`.img` / `.vfd`) | VGA mode `13h` | 16-bit real mode |
 
-The runtime contracts and memory/layout assumptions are documented in [docs/architecture.md](docs/architecture.md). Read that before changing boot flow, segment setup, input handling, or the state layout.
+## Key Features
 
-Assembler/build portability notes live in [docs/assembler-paths.md](docs/assembler-paths.md).
+### For Players
 
-Sector design goals and the current three-zone identity pass live in [docs/sector-identity.md](docs/sector-identity.md).
+- **Three distinct sectors.** `Scout Grid`, `Surge Furnace`, and `Warden Lock` each push a different mix of routing, hazard, and pursuit pressure.
+- **Readable turn-based tension.** You move once, hunters answer once, and every bad turn is meant to stay understandable.
+- **Tactical systems without control bloat.** EMP pulses, surge nodes, spoof terminals, gate states, and elite hunters all live inside the same compact loop.
+- **A real arcade-style mastery layer.** Runs now track score, sector performance, and final rank without replacing the survival objective.
 
-Hunter behavior and balance notes for the latest drama/telegraph pass live in [docs/enemy-drama.md](docs/enemy-drama.md).
+### For Engine People
 
-The new spoof-terminal tactical system is explained in [docs/spoof-terminals.md](docs/spoof-terminals.md).
+- **A real boot path.** The build emits a bootable floppy image, not a host app wrapped in a fake shell.
+- **A compact but structured runtime.** Stage two stays inside a documented single-segment contract while still using modular render, gameplay, audio, and data layers.
+- **Generated content tooling.** Sprites, sectors, rules, and music come from readable source files that generate MASM-friendly data at build time.
+- **Disciplined validation.** The build enforces boot/image layout, generated content shape, deterministic debug options, and a lightweight balance harness.
 
-The score and rank rules for the mastery layer live in [docs/mastery-score.md](docs/mastery-score.md).
+## Visual Gallery
 
-The broader authored data workflow is documented in [docs/content-pipeline.md](docs/content-pipeline.md).
+The README gallery is intentionally small. The build maintains three stable slots so the page stays curated instead of turning into a screenshot dump.
 
-The phase-1 banked-content design and runtime contract are documented in [docs/asset-banks.md](docs/asset-banks.md).
+| Title / Identity | Live Gameplay | Payoff / Systems |
+| --- | --- | --- |
+| ![CyberStorm title shot](build/readme-shot-1.png) | ![CyberStorm gameplay shot](build/readme-shot-2.png) | ![CyberStorm payoff shot](build/readme-shot-3.png) |
+| The first shot should immediately communicate "bootable game" through the splash or main title. | The middle shot should show the runner, hunters, HUD, and objective pressure in one readable frame. | The last shot should show a memorable beat: gate unlock, hazard interaction, sector transition, or end-state reveal. |
 
-The new deterministic balance/validation workflow is documented in [docs/balance-harness.md](docs/balance-harness.md).
+If you want the build to auto-pick better captures, name files with tags like `*-title-*`, `*-gameplay-*`, `*-hazard-*`, `*-elite-*`, `*-ending-*`, or `*-technical-*`.
 
-## What The Game Is
+## How It Works
 
-CyberStorm is a turn-based terminal-styled infiltration run:
+CyberStorm is small enough to inspect, but it is no longer a single opaque assembly file. The diagrams below show the project as it exists in the current build.
 
-- You control a runner diving through three hostile sectors.
-- Each sector contains four data shards that must be harvested before the gate unlocks.
-- Hunter programs move after every action.
-- EMP pulses can clear nearby threats, but charges are limited.
-- The run ends in victory only if you breach all three sectors.
+### Boot Path
 
-## Screenshots
+![CyberStorm boot flow](docs/readme/boot-flow.svg)
 
-The build keeps a small rolling screenshot pool in `build\` and rewrites these stable README slots on each build so the gallery stays fresh without accumulating every debug capture forever.
+The boot sector at `LBA 0` loads stage two from `LBA 1..34` into `1000:0000`, then stage two loads the current map bank from `LBA 35..42` into `7000:0000` before entering VGA gameplay.
 
-![CyberStorm Screenshot 1](build/readme-shot-1.png)
-![CyberStorm Screenshot 2](build/readme-shot-2.png)
-![CyberStorm Screenshot 3](build/readme-shot-3.png)
+### Runtime Layout
 
-## Build
+![CyberStorm memory map](docs/readme/memory-map.svg)
+
+![CyberStorm runtime modules](docs/readme/runtime-modules.svg)
+
+The runtime keeps BIOS-owned low memory untouched, inherits the boot stack at `0000:7C00`, runs stage two from a single segment at `1000:0000`, and uses a backbuffer at `9000:0000` before presenting to VGA memory at `A000:0000`.
+
+### Asset And Content Pipeline
+
+![CyberStorm asset pipeline](docs/readme/asset-pipeline.svg)
+
+[assets/visuals.psd1](assets/visuals.psd1), [assets/sectors.psd1](assets/sectors.psd1), and [assets/music.psd1](assets/music.psd1) are the readable source of truth. [scripts/build.ps1](scripts/build.ps1) turns them into generated includes and a banked map payload that the runtime can load after boot.
+
+## Quickstart
+
+### Build The Release Image
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\build.ps1
+```
+
+### Boot It In VirtualBox
+
+1. Create a BIOS-based VM such as `Other/Unknown (32-bit)`.
+2. Keep or add a floppy controller.
+3. Attach [build/cyberstorm.vfd](build/cyberstorm.vfd) as the floppy disk.
+4. Boot the VM.
+
+### Use The Included Workspace VM
+
+Register the reusable VM:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\deploy-vm.ps1
+```
+
+Launch it:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\start-vm.ps1
+```
+
+## Technical Facts
+
+These values come from the current [build/cyberstorm-build-report.txt](build/cyberstorm-build-report.txt).
+
+| Fact | Current build |
+| --- | --- |
+| Boot code | `132 / 510` bytes |
+| Stage two | `17155` bytes across `34` sectors |
+| Banked map payload | `3780` bytes across `8` sectors |
+| Bank LBA range | `35..42` |
+| Content set | `3` sectors, `9` maps, `5` music themes |
+| Balance sweep | `36` deterministic scenarios |
+| Video target | `320x200x256` in VGA mode `13h` |
+| Runtime model | Single-segment `16-bit` real mode |
+
+## Why This Is A Strong AI-Assisted Development Example
+
+CyberStorm is a good AI-assisted project for a specific reason: the repository gives automated iteration clear boundaries. The interesting part is not "AI wrote some assembly." The interesting part is that the repo makes it practical to use AI on a bare-metal codebase without letting that become reckless.
+
+- **The source of truth is readable.** Visuals, sector layouts, sector rules, and music live in compact authored files instead of sprawling raw assembly data.
+- **The runtime contracts are explicit.** [docs/architecture.md](docs/architecture.md) spells out the boot handoff, segment assumptions, memory map, state layout, and bank-loading rules.
+- **The build enforces the dangerous constraints.** [scripts/build.ps1](scripts/build.ps1) validates boot-sector size, the single-segment stage-two limit, bank layout, floppy footprint, and generated content shape before writing the image.
+- **Debugging can be reproduced.** Deterministic debug flags can force a known RNG seed, start in a chosen sector, and enable a compact overlay.
+- **Balance changes get guardrails.** [scripts/balance-harness.ps1](scripts/balance-harness.ps1) runs static fairness checks and fixed-seed spawn sweeps before someone boots VirtualBox.
+- **Design intent is written down.** [docs/sector-identity.md](docs/sector-identity.md) and [docs/enemy-drama.md](docs/enemy-drama.md) explain what sectors and enemies are supposed to feel like, not just how they are coded.
+
+Repo artifacts that support that claim:
+
+- [assets/visuals.psd1](assets/visuals.psd1), [assets/sectors.psd1](assets/sectors.psd1), and [assets/music.psd1](assets/music.psd1)
+- [build/generated_art.inc](build/generated_art.inc), [build/generated_sector_content.inc](build/generated_sector_content.inc), [build/generated_maps.inc](build/generated_maps.inc), and [build/generated_music.inc](build/generated_music.inc)
+- [docs/architecture.md](docs/architecture.md), [docs/sector-identity.md](docs/sector-identity.md), and [docs/enemy-drama.md](docs/enemy-drama.md)
+- [scripts/build.ps1](scripts/build.ps1) and [scripts/balance-harness.ps1](scripts/balance-harness.ps1)
+- [build/cyberstorm-build-report.txt](build/cyberstorm-build-report.txt) and [build/cyberstorm-balance-report.txt](build/cyberstorm-balance-report.txt)
+
+## Build, Debug, And Validation
 
 ### Prerequisites
 
 - Windows PowerShell
 - MASM `ml.exe` from Visual Studio or Visual Studio Build Tools with the MSVC x86/x64 toolset
 
-The stable default is the MASM path:
-
-1. `-MasmPath`
-2. `-AssemblerPath`
-3. `ML_EXE`
-4. `PATH`
-5. `VCToolsInstallDir`
-6. `vswhere`
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\build.ps1
-```
-
-If MASM is installed somewhere unusual, you can override discovery explicitly:
+If MASM is installed somewhere unusual:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\build.ps1 -MasmPath 'C:\path\to\ml.exe'
 ```
 
-There is also an experimental MASM-compatible assembler path for tools like `UASM` or `JWasm`:
+There is also an experimental MASM-compatible path for tools like `UASM` or `JWasm`:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\build.ps1 -Assembler uasm -AssemblerPath 'C:\path\to\uasm.exe'
 ```
 
-That path is intentionally not the default. It reuses the same source and COFF-flattening pipeline, so it is only expected to work with assemblers that accept MASM-style source and emit compatible 16-bit COFF output.
+That path is not the default and is only expected to work with assemblers that accept MASM-style source and emit compatible `16-bit` COFF output.
 
-The build writes:
-
-- `build\cyberstorm.img`
-- `build\cyberstorm.vfd`
-- `build\cyberstorm-boot.bin`
-- `build\cyberstorm-stage2.bin`
-- `build\generated_art.inc`
-- `build\generated_sector_content.inc`
-- `build\generated_maps.inc`
-- `build\generated_music.inc`
-- `build\generated_bank_layout.inc`
-- `build\cyberstorm-map-bank.bin`
-- `build\cyberstorm-balance-report.txt`
-- `build\readme-shot-1.png`
-- `build\readme-shot-2.png`
-- `build\readme-shot-3.png`
-- `build\boot.lst`
-- `build\game.lst`
-- `build\debug_config.inc`
-- `build\cyberstorm-build-report.txt`
-
-The console summary now includes:
-
-- assembler discovery path and source
-- active assembler path
-- balance harness seed set, scenario count, and per-sector pressure summary
-- boot code size and remaining slack before the 510-byte limit
-- stage-two size, padded size, sector count, and remaining slack before the 64 KiB load limit
-- asset-bank LBA ranges, payload sizes, and runtime load segments
-- floppy usage
-- key addresses used by the current boot contract
-- relocation counts and assembler warning counts
-
-### Editing Sprites And Tiles
-
-Sprite and tile bitmaps now come from [assets\visuals.psd1](assets/visuals.psd1). The build generates `build\generated_art.inc`, and [src\game\art.asm](src/game/art.asm) includes that file at assembly time.
-
-That means future visual edits usually happen in the asset source instead of raw `db` rows. The format is intentionally small:
-
-- `Legend` maps one-character pixels to assembly palette symbols such as `PAL_CYAN2` or `0`
-- each asset keeps its runtime label name, plus an explicit `Width`, `Height`, and `Rows`
-- the build validates unknown legend keys, row width mismatches, and declared size mismatches before MASM runs
-
-Example row source:
-
-```powershell
-Rows = @(
-    '..pppp..'
-    '.pCCCCp.'
-)
-```
-
-The generated-art console/report section shows the source file, generated include path, asset count, byte footprint, and size buckets so visual-data changes are easy to sanity-check.
-
-### Editing Sector Content And Music
-
-Authored gameplay content now has the same source-of-truth workflow:
-
-- [assets\sectors.psd1](assets/sectors.psd1) owns sector titles, intro copy, rule tables, and the authored map pools
-- [assets\music.psd1](assets/music.psd1) owns the looping theme note sequences
-
-The build generates:
-
-- `build\generated_sector_content.inc`
-- `build\generated_maps.inc`
-- `build\generated_music.inc`
-- `build\generated_bank_layout.inc`
-- `build\cyberstorm-map-bank.bin`
-
-`build\generated_maps.inc` stays in the repo as a readable review artifact, but phase 1 of the asset-bank system now emits the same map pool as `build\cyberstorm-map-bank.bin` and places it after stage two on disk. The runtime reads that bank into `MAP_BANK_SEG` after stage two starts, using metadata from `build\generated_bank_layout.inc`.
-
-Validation now catches:
-
-- sector count drifting away from `TOTAL_SECTORS`
-- malformed or duplicate map labels
-- wrong map geometry
-- malformed music events or unsupported note names
-- non-ASCII content that would be awkward to emit into MASM includes
-
-The generated-content console/report section summarizes sector count, map count, rule summaries, theme count, and event count so authored data changes are easy to review.
-
-### Deterministic Debug Builds
-
-The default build is a release image. Debug/testability features are only enabled when you pass explicit debug flags:
+### Deterministic Debug Build
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\build.ps1 `
@@ -170,93 +156,70 @@ powershell -ExecutionPolicy Bypass -File .\scripts\build.ps1 `
   -DebugStartSector 2
 ```
 
-What those flags do:
+Useful switches:
 
-- `-DebugSeed <0..65535>` forces the same 16-bit RNG seed on every new run, including `Enter` resets. This is the key switch for reproducible gameplay bugs.
-- `-DebugOverlay` adds a compact in-game state strip showing sector, player `X/Y`, shield, pulse, shard count, and live enemy count.
-- `-DebugStartInGame` skips the splash/title flow and boots directly into a run.
-- `-DebugStartSector <n>` makes every new run start from that sector instead of sector `1`.
-- `-DebugBuild` enables the debug profile and keeps title-screen diagnostics available when you need them.
-
-The generated `build\debug_config.inc` and `build\cyberstorm-build-report.txt` record which debug options were compiled into the current image.
-
-To return to the normal release image, run the build script again without any debug flags.
+- `-DebugSeed <0..65535>` forces the same `16-bit` RNG seed on every new run
+- `-DebugOverlay` shows compact live state in-game
+- `-DebugStartInGame` skips splash/title and boots directly into a run
+- `-DebugStartSector <n>` starts every new run from a chosen sector
 
 ### Balance Harness
-
-The build now runs a lightweight deterministic balance harness after content generation and before the final image is written:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\balance-harness.ps1
 ```
 
-That harness is intentionally simple and Windows-friendly. It does not require an external test framework or emulator plugin. Instead, it validates the authored sector data and runs deterministic spawn sweeps against a fixed seed set so content regressions are easier to catch in normal development.
-
-The main outputs are:
-
-- `build\cyberstorm-balance-report.txt`: static fairness checks, deterministic spawn-sweep summaries, and warnings
-- the `Balance Harness` section in the console/build report: seed set, scenario count, and per-sector summaries
-
-The current harness checks:
+The harness checks:
 
 - walkable start-to-exit paths for every authored map
 - placement slack for shards, surges, terminals, and enemies
-- safe-zone pressure constraints for terminals and enemy spawns
-- sector rule sanity such as `MAX_ENEMIES` and hunter-threshold ordering
-- deterministic spawn mixes and nearest-enemy pressure across a fixed seed sweep
+- safe-zone pressure constraints
+- sector rule sanity
+- deterministic spawn mixes and nearest-enemy pressure across fixed seeds
 
-For interpretation details and extension guidance, see [docs/balance-harness.md](docs/balance-harness.md).
+### Key Build Outputs
 
-### Build Validation
+- [build/cyberstorm.img](build/cyberstorm.img)
+- [build/cyberstorm.vfd](build/cyberstorm.vfd)
+- [build/cyberstorm-boot.bin](build/cyberstorm-boot.bin)
+- [build/cyberstorm-stage2.bin](build/cyberstorm-stage2.bin)
+- [build/generated_art.inc](build/generated_art.inc)
+- [build/generated_sector_content.inc](build/generated_sector_content.inc)
+- [build/generated_maps.inc](build/generated_maps.inc)
+- [build/generated_music.inc](build/generated_music.inc)
+- [build/generated_bank_layout.inc](build/generated_bank_layout.inc)
+- [build/cyberstorm-map-bank.bin](build/cyberstorm-map-bank.bin)
+- [build/cyberstorm-balance-report.txt](build/cyberstorm-balance-report.txt)
+- [build/boot.lst](build/boot.lst)
+- [build/game.lst](build/game.lst)
+- [build/debug_config.inc](build/debug_config.inc)
+- [build/cyberstorm-build-report.txt](build/cyberstorm-build-report.txt)
 
-The build validates the layout assumptions before writing the floppy image:
+### Best Files To Inspect When Something Breaks
 
-- boot code must fit within `510` bytes so the `55 AA` signature still occupies bytes `510-511`
-- stage two must fit in the current single-segment load window at `1000:0000`
-- post-boot asset banks must fit in their current single-segment runtime load windows
-- boot, stage two, and asset banks must fit in the `1.44MB` floppy image
-- the final `.img` / `.vfd` must have the exact expected floppy size
+- [build/boot.lst](build/boot.lst): bootloader assembly listing
+- [build/game.lst](build/game.lst): stage-two assembly listing
+- [build/generated_art.inc](build/generated_art.inc): generated sprite/tile data as MASM sees it
+- [build/generated_bank_layout.inc](build/generated_bank_layout.inc): runtime bank metadata
+- [build/cyberstorm-map-bank.bin](build/cyberstorm-map-bank.bin): raw post-boot map payload
+- [build/cyberstorm-balance-report.txt](build/cyberstorm-balance-report.txt): fairness and deterministic sweep summary
+- [build/cyberstorm-build-report.txt](build/cyberstorm-build-report.txt): layout, addresses, warnings, and artifact paths
+- [build/cyberstorm-stage2.bin](build/cyberstorm-stage2.bin): flattened stage-two payload exactly as written after the boot sector
 
-### Inspecting Output
+## Project Guide
 
-If a build fails or boots unexpectedly, these artifacts are the fastest things to inspect:
+- Runtime and memory-layout contracts: [docs/architecture.md](docs/architecture.md)
+- Sector identity: [docs/sector-identity.md](docs/sector-identity.md)
+- Hunter behavior and telegraphing: [docs/enemy-drama.md](docs/enemy-drama.md)
+- Tactical spoof terminals: [docs/spoof-terminals.md](docs/spoof-terminals.md)
+- Mastery score and rank rules: [docs/mastery-score.md](docs/mastery-score.md)
+- Content-generation pipeline: [docs/content-pipeline.md](docs/content-pipeline.md)
+- Asset-bank design: [docs/asset-banks.md](docs/asset-banks.md)
+- Balance harness: [docs/balance-harness.md](docs/balance-harness.md)
+- Assembler-path notes: [docs/assembler-paths.md](docs/assembler-paths.md)
 
-- `build\boot.lst`: assembler listing for the bootloader
-- `build\game.lst`: assembler listing for stage two
-- `build\generated_art.inc`: generated sprite/tile `db` rows exactly as seen by MASM
-- `build\generated_bank_layout.inc`: generated LBA/size metadata for post-boot asset banks
-- `build\cyberstorm-map-bank.bin`: the raw bank payload currently loaded by stage two
-- `build\cyberstorm-balance-report.txt`: map fairness checks, deterministic spawn sweeps, and balance warnings
-- `build\readme-shot-*.png`: stable README gallery images rotated from the newest kept screenshot captures
-- `build\debug_config.inc`: generated compile-time debug flags for the current image
-- `build\cyberstorm-build-report.txt`: layout summary, addresses, relocation counts, warnings, and artifact paths
-- `build\cyberstorm-stage2.bin`: flattened stage-two payload exactly as written after the boot sector
+## Scope And Truth-In-Advertising
 
-For a comparison of MASM, MASM-compatible experimental paths, and why NASM is not currently a low-risk drop-in, see [docs/assembler-paths.md](docs/assembler-paths.md).
-
-## Run In VirtualBox
-
-1. Create a new BIOS-based VM such as `Other/Unknown (32-bit)`.
-2. Add or keep a floppy controller.
-3. Attach `build\cyberstorm.vfd` as the floppy disk.
-4. Boot the VM.
-
-## Deploy A Reusable VM
-
-To register a ready-to-boot VirtualBox VM named `CyberStorm` in this workspace:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\deploy-vm.ps1
-```
-
-To launch it:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\start-vm.ps1
-```
-
-## Notes
-
-- This is OS-independent in the sense that it boots directly on the machine or VM and does not rely on a host kernel, filesystem, or runtime.
+- CyberStorm is OS-independent in the sense that it boots directly on the target machine or VM and does not rely on a host kernel, filesystem, or runtime.
 - It is not firmware- or architecture-universal. The current image targets BIOS-style x86 booting, which is the right fit for VirtualBox.
-- The build intentionally preserves the current boot contract: boot sector at LBA `0`, stage two immediately after it at LBA `1`, loaded by the bootloader to `1000:0000`.
+- The build intentionally preserves the current boot contract: boot sector at `LBA 0`, stage two immediately after it at `LBA 1`, loaded by the bootloader to `1000:0000`.

@@ -7,7 +7,11 @@ start:
     mov ax, 0013h
     int 10h
     call init_palette
+    call stop_sfx
     call reset_keyboard_state
+    mov byte ptr [last_game_state], 0FFh
+    mov byte ptr [feedback_timer], 0
+    mov byte ptr [state_ticks], 0
 
 IF DEBUG_FORCE_SEED
     mov word ptr [rng_state], DEBUG_SEED_VALUE
@@ -39,6 +43,7 @@ main_loop:
     call wait_frame_tick
     call poll_bios_keyboard
     call update_frontend_state
+    call update_runtime_feedback
     call render_screen
     cmp byte ptr [game_state], STATE_PLAYING
     je handle_play_input
@@ -155,5 +160,6 @@ debug_start_pulses_ready:
     mov byte ptr [pulse_count], al
 ENDIF
     call load_sector
-    mov byte ptr [message_id], MSG_SECTOR
+    mov al, MSG_SECTOR
+    call set_message_event
     ret

@@ -47,6 +47,29 @@ MSG_SURGE      equ 8
 MSG_TRAP       equ 9
 MSG_RECHARGE   equ 10
 
+FEEDBACK_TICKS_MINOR    equ 5
+FEEDBACK_TICKS_STANDARD equ 7
+FEEDBACK_TICKS_MAJOR    equ 11
+
+END_REVEAL_BODY   equ 4
+END_REVEAL_STATS  equ 10
+END_REVEAL_PROMPT equ 18
+
+SFX_NONE      equ 0
+SFX_SECTOR    equ 1
+SFX_BLOCK     equ 2
+SFX_SHARD     equ 3
+SFX_GATE      equ 4
+SFX_HIT       equ 5
+SFX_KILL      equ 6
+SFX_PULSE     equ 7
+SFX_DRY       equ 8
+SFX_SURGE     equ 9
+SFX_TRAP      equ 10
+SFX_RECHARGE  equ 11
+SFX_WIN       equ 12
+SFX_LOSE      equ 13
+
 TILE_FLOOR        equ 0
 TILE_WALL         equ 1
 TILE_SHARD        equ 2

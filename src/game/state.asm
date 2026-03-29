@@ -16,6 +16,12 @@ rng_state    dw 0ACE1h
 last_tick    dw 0
 anim_phase   db 0
 splash_ticks db 0
+state_ticks  db 0
+last_game_state db 0FFh
+feedback_timer db 0
+sound_id     db SFX_NONE
+sound_timer  db 0
+sound_phase  db 0
 key_extended db 0
 any_key_pending db 0
 input_event_count db 0
@@ -71,17 +77,17 @@ pulse_text    db 'PULSE', 0
 gate_text     db 'GATE', 0
 controls_text db 'MOVE WASD OR ARROWS  C EMP  ENTER RESET', 0
 
-text_msg_sector  db 'TAKE ALL 4 SHARDS TO OPEN THE GATE.', 0
-text_msg_block   db 'BLACK ICE BLOCKS THAT ROUTE.', 0
-text_msg_shard   db 'SHARD SECURED.', 0
-text_msg_gate    db 'GATE UNLOCKED. PUSH THROUGH.', 0
-text_msg_hit     db 'HUNTER HIT. SHIELD LOST.', 0
-text_msg_kill    db 'HUNTER PURGED.', 0
-text_msg_pulse   db 'EMP DETONATED.', 0
-text_msg_nopulse db 'NO EMP CHARGES LEFT.', 0
-text_msg_surge   db 'SURGE NODE BURNED YOUR SHIELD.', 0
-text_msg_trap    db 'SURGE NODE FRIED A HUNTER.', 0
-text_msg_recharge db 'CHAIN EMP RECHARGED 1 PULSE.', 0
+text_msg_sector   db 'SECTOR LIVE. LIFT 4 SHARDS TO CRACK THE GATE.', 0
+text_msg_block    db 'BLACK ICE HOLDS. CUT A DIFFERENT LINE.', 0
+text_msg_shard    db 'SHARD SPIKED. THE BREACH IS OPENING.', 0
+text_msg_gate     db 'GATE SHATTERED. RUN THE EXIT.', 0
+text_msg_hit      db 'RUNNER HIT. SHIELD SHEARED AWAY.', 0
+text_msg_kill     db 'HUNTER PURGED. THE LANE BREATHES.', 0
+text_msg_pulse    db 'EMP WAVE CUT LOOSE.', 0
+text_msg_nopulse  db 'EMP DRY. NO CHARGES IN THE BANK.', 0
+text_msg_surge    db 'SURGE ARC BURNED A SHIELD.', 0
+text_msg_trap     db 'SURGE TRAP LANDED. HUNTER BURNT OUT.', 0
+text_msg_recharge db 'CHAIN BREAK. EMP CHARGE RESTORED.', 0
 
 splash_brand    db 'BITRIVER', 0
 splash_subtitle db 'SOFTWARE', 0
@@ -115,6 +121,8 @@ ENDIF
 
 win_line_1    db 'VAULT', 0
 win_line_2    db 'ALL THREE SECTORS FELL TO THE RUN.', 0
+win_line_3    db 'THE STORM BENT. THE BREACH HELD.', 0
 lose_line_1   db 'SEVERED', 0
 lose_line_2   db 'THE STORM CLOSED BEFORE THE BREACH.', 0
+lose_line_3   db 'REBUILD THE LINE. RUN IT AGAIN.', 0
 replay_prompt db 'PRESS ANY KEY TO RUN AGAIN.', 0

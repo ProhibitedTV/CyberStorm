@@ -133,6 +133,7 @@ render_game_status:
     call draw_pulse_meter
     call draw_gate_meter
 
+    call draw_message_banner
     xor ax, ax
     mov al, [message_id]
     shl ax, 1
@@ -140,7 +141,8 @@ render_game_status:
     mov si, word ptr [message_table + bx]
     mov bx, 18
     mov dx, 175
-    mov ah, PAL_WHITE
+    call get_message_text_color
+    mov ah, al
     call draw_text_small
 
     mov bx, 18
@@ -175,6 +177,22 @@ shield_meter_loop:
     push dx
     mov cx, 12
     mov bp, 8
+    cmp byte ptr [feedback_timer], 0
+    je shield_meter_feedback_done
+    mov al, [message_id]
+    cmp al, MSG_HIT
+    je shield_meter_feedback_live
+    cmp al, MSG_SURGE
+    jne shield_meter_feedback_done
+shield_meter_feedback_live:
+    test byte ptr [anim_phase], 1
+    jz shield_meter_feedback_red
+    mov al, PAL_WHITE
+    jmp shield_meter_color_ready
+shield_meter_feedback_red:
+    mov al, PAL_RED2
+    jmp shield_meter_color_ready
+shield_meter_feedback_done:
     cmp byte ptr [shield_count], 1
     jne shield_meter_safe
     test byte ptr [anim_phase], 1
@@ -208,7 +226,21 @@ pulse_meter_loop:
     push cx
     mov cx, 12
     mov bp, 8
+    cmp byte ptr [feedback_timer], 0
+    je pulse_meter_bg_ready
+    mov al, [message_id]
+    cmp al, MSG_NOPULSE
+    jne pulse_meter_bg_ready
+    test byte ptr [anim_phase], 1
+    jz pulse_meter_bg_warn
+    mov al, PAL_RED2
+    jmp pulse_meter_bg_draw
+pulse_meter_bg_warn:
+    mov al, PAL_RED
+    jmp pulse_meter_bg_draw
+pulse_meter_bg_ready:
     mov al, PAL_PANEL2
+pulse_meter_bg_draw:
     call fill_rect
     pop cx
     pop dx
@@ -221,7 +253,24 @@ pulse_meter_loop:
     push dx
     mov cx, 12
     mov bp, 8
+    cmp byte ptr [feedback_timer], 0
+    je pulse_meter_fill_ready
+    mov al, [message_id]
+    cmp al, MSG_PULSE
+    je pulse_meter_flash_live
+    cmp al, MSG_RECHARGE
+    jne pulse_meter_fill_ready
+pulse_meter_flash_live:
+    test byte ptr [anim_phase], 1
+    jz pulse_meter_flash_base
+    mov al, PAL_WHITE
+    jmp pulse_meter_color_ready
+pulse_meter_flash_base:
     mov al, PAL_AMBER
+    jmp pulse_meter_color_ready
+pulse_meter_fill_ready:
+    mov al, PAL_AMBER
+pulse_meter_color_ready:
     call fill_rect
     pop dx
     pop bx
@@ -239,8 +288,22 @@ draw_gate_meter:
     mov bp, 10
     mov al, PAL_PANEL2
     call fill_rect
+    mov bx, 260
+    mov dx, 144
+    mov cx, 36
+    mov bp, 6
+    test byte ptr [anim_phase], 1
+    jz gate_meter_locked_base
+    mov al, PAL_RED2
+    jmp gate_meter_locked_ready
+
+gate_meter_locked_base:
+    mov al, PAL_RED
+
+gate_meter_locked_ready:
+    call fill_rect
     cmp byte ptr [data_count], SHARD_COUNT
-    jne gate_closed
+    jne gate_meter_partial
     mov bx, 260
     mov dx, 144
     mov cx, 36
@@ -254,21 +317,138 @@ gate_open_base:
     mov al, PAL_GATE
     jmp gate_meter_ready
 
-gate_closed:
+gate_meter_partial:
+    xor ax, ax
+    mov al, [data_count]
+    mov cx, ax
+    shl ax, 3
+    add ax, cx
+    mov cx, ax
+    jcxz gate_meter_done
     mov bx, 260
     mov dx, 144
-    mov cx, 36
     mov bp, 6
+    cmp byte ptr [feedback_timer], 0
+    je gate_meter_partial_ready
+    mov al, [message_id]
+    cmp al, MSG_SHARD
+    jne gate_meter_partial_ready
     test byte ptr [anim_phase], 1
-    jz gate_closed_base
-    mov al, PAL_RED2
+    jz gate_meter_partial_flash
+    mov al, PAL_WHITE
+    jmp gate_meter_ready
+gate_meter_partial_flash:
+    mov al, PAL_CYAN2
     jmp gate_meter_ready
 
-gate_closed_base:
-    mov al, PAL_RED
+gate_meter_partial_ready:
+    mov al, PAL_CYAN
 
 gate_meter_ready:
     call fill_rect
+
+gate_meter_done:
+    ret
+
+draw_message_banner:
+    cmp byte ptr [feedback_timer], 0
+    je message_banner_done
+    mov bx, 16
+    mov dx, 172
+    mov cx, 288
+    mov bp, 8
+    call get_message_banner_color
+    call fill_rect
+
+message_banner_done:
+    ret
+
+get_message_banner_color:
+    mov al, [message_id]
+    cmp al, MSG_HIT
+    je message_banner_danger
+    cmp al, MSG_SURGE
+    je message_banner_danger
+    cmp al, MSG_GATE
+    je message_banner_gate
+    cmp al, MSG_RECHARGE
+    je message_banner_gate
+    cmp al, MSG_BLOCK
+    je message_banner_warn
+    cmp al, MSG_NOPULSE
+    je message_banner_warn
+    mov al, PAL_CYAN
+    ret
+
+message_banner_gate:
+    mov al, PAL_GATE
+    ret
+
+message_banner_warn:
+    mov al, PAL_AMBER
+    ret
+
+message_banner_danger:
+    mov al, PAL_RED
+    ret
+
+get_message_text_color:
+    cmp byte ptr [feedback_timer], 0
+    je message_text_default
+    mov al, [message_id]
+    cmp al, MSG_HIT
+    je message_text_danger
+    cmp al, MSG_SURGE
+    je message_text_danger
+    cmp al, MSG_GATE
+    je message_text_gate
+    cmp al, MSG_RECHARGE
+    je message_text_gate
+    cmp al, MSG_BLOCK
+    je message_text_warn
+    cmp al, MSG_NOPULSE
+    je message_text_warn
+    test byte ptr [anim_phase], 1
+    jz message_text_cyan
+    mov al, PAL_WHITE
+    ret
+
+message_text_cyan:
+    mov al, PAL_CYAN2
+    ret
+
+message_text_gate:
+    test byte ptr [anim_phase], 1
+    jz message_text_gate_base
+    mov al, PAL_WHITE
+    ret
+
+message_text_gate_base:
+    mov al, PAL_GATE
+    ret
+
+message_text_warn:
+    test byte ptr [anim_phase], 1
+    jz message_text_warn_base
+    mov al, PAL_WHITE
+    ret
+
+message_text_warn_base:
+    mov al, PAL_AMBER
+    ret
+
+message_text_danger:
+    test byte ptr [anim_phase], 1
+    jz message_text_danger_base
+    mov al, PAL_WHITE
+    ret
+
+message_text_danger_base:
+    mov al, PAL_RED2
+    ret
+
+message_text_default:
+    mov al, PAL_WHITE
     ret
 
 IF DEBUG_OVERLAY

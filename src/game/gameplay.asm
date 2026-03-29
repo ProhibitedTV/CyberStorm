@@ -102,7 +102,8 @@ move_down:
     jmp maybe_enemy_turn
 
 blocked_move:
-    mov byte ptr [message_id], MSG_BLOCK
+    mov al, MSG_BLOCK
+    call set_message_event
     ret
 
 do_pulse:
@@ -144,7 +145,8 @@ move_floor:
     ret
 
 move_blocked:
-    mov byte ptr [message_id], MSG_BLOCK
+    mov al, MSG_BLOCK
+    call set_message_event
     ret
 
 stepped_into_enemy:
@@ -153,7 +155,8 @@ stepped_into_enemy:
     call award_kill
     mov [player_x], bl
     mov [player_y], bh
-    mov byte ptr [message_id], MSG_KILL
+    mov al, MSG_KILL
+    call set_message_event
     mov byte ptr [action_taken], 1
     ret
 
@@ -168,11 +171,13 @@ move_collect_shard:
     cmp al, SHARD_COUNT
     jb shard_message
     call open_exit
-    mov byte ptr [message_id], MSG_GATE
+    mov al, MSG_GATE
+    call set_message_event
     ret
 
 shard_message:
-    mov byte ptr [message_id], MSG_SHARD
+    mov al, MSG_SHARD
+    call set_message_event
     ret
 
 move_use_exit:
@@ -190,7 +195,8 @@ move_trigger_surge:
     mov [player_y], bh
     mov byte ptr [action_taken], 1
     sub byte ptr [shield_count], SURGE_PLAYER_DAMAGE
-    mov byte ptr [message_id], MSG_SURGE
+    mov al, MSG_SURGE
+    call set_message_event
     cmp byte ptr [shield_count], 0
     jne surge_done
     mov byte ptr [game_state], STATE_LOSE
@@ -200,18 +206,21 @@ surge_done:
 
 advance_sector:
     call load_sector
-    mov byte ptr [message_id], MSG_SECTOR
+    mov al, MSG_SECTOR
+    call set_message_event
     ret
 
 use_pulse:
     cmp byte ptr [pulse_count], 0
     jne pulse_live
-    mov byte ptr [message_id], MSG_NOPULSE
+    mov al, MSG_NOPULSE
+    call set_message_event
     ret
 
 pulse_live:
     dec byte ptr [pulse_count]
-    mov byte ptr [message_id], MSG_PULSE
+    mov al, MSG_PULSE
+    call set_message_event
     mov byte ptr [action_taken], 1
     mov si, offset enemies
     mov cx, MAX_ENEMIES
@@ -267,7 +276,8 @@ pulse_next:
     cmp byte ptr [pulse_count], MAX_PULSES
     jae pulse_done
     inc byte ptr [pulse_count]
-    mov byte ptr [message_id], MSG_RECHARGE
+    mov al, MSG_RECHARGE
+    call set_message_event
 
 pulse_done:
     ret
@@ -347,7 +357,8 @@ try_enemy_step:
     jne step_not_player
     dec byte ptr [shield_count]
     mov byte ptr [si + ENEMY_ALIVE], 0
-    mov byte ptr [message_id], MSG_HIT
+    mov al, MSG_HIT
+    call set_message_event
     cmp byte ptr [shield_count], 0
     jne step_success
     mov byte ptr [game_state], STATE_LOSE
@@ -390,7 +401,8 @@ step_hit_surge:
     mov si, di
     mov byte ptr [si + ENEMY_ALIVE], 0
     call award_kill
-    mov byte ptr [message_id], MSG_TRAP
+    mov al, MSG_TRAP
+    call set_message_event
     stc
     ret
 

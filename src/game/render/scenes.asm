@@ -289,23 +289,92 @@ draw_win_scene:
     mov dx, 30
     mov cx, 268
     mov bp, 128
+    test byte ptr [anim_phase], 1
+    jz win_frame_base
+    mov al, PAL_WHITE
+    jmp win_frame_ready
+
+win_frame_base:
     mov al, PAL_CYAN
+
+win_frame_ready:
     call draw_rect_outline
+    xor ax, ax
+    mov al, [state_ticks]
+    mov cx, ax
+    shl ax, 3
+    add ax, cx
+    add ax, cx
+    cmp ax, 200
+    jbe win_bar_ready
+    mov ax, 200
+
+win_bar_ready:
+    mov cx, ax
+    mov bx, 60
+    mov dx, 88
+    mov bp, 4
+    mov al, PAL_GATE
+    call fill_rect
 
     mov bx, 78
     mov dx, 54
     mov si, offset win_line_1
     mov ah, PAL_CYAN2
     call draw_text_big
+    cmp byte ptr [state_ticks], END_REVEAL_BODY
+    jb win_scene_done
 
     mov bx, 52
     mov dx, 100
     mov si, offset win_line_2
     mov ah, PAL_WHITE
     call draw_text_small
+    mov bx, 68
+    mov dx, 112
+    mov si, offset win_line_3
+    mov ah, PAL_CYAN
+    call draw_text_small
+    cmp byte ptr [state_ticks], END_REVEAL_STATS
+    jb win_scene_done
+
+    mov bx, 60
+    mov dx, 126
+    mov si, offset sector_text
+    mov ah, PAL_WHITE
+    call draw_text_small
+    mov al, [sector_num]
+    mov ah, PAL_GATE
+    mov bx, 98
+    mov dx, 126
+    call draw_digit_small
+
+    mov bx, 122
+    mov dx, 126
+    mov si, offset kills_text
+    mov ah, PAL_WHITE
+    call draw_text_small
+    mov al, [kill_count]
+    mov ah, PAL_GATE
+    mov bx, 156
+    mov dx, 126
+    call draw_two_digit_small
+
+    mov bx, 188
+    mov dx, 126
+    mov si, offset shield_text
+    mov ah, PAL_WHITE
+    call draw_text_small
+    mov al, [shield_count]
+    mov ah, PAL_GATE
+    mov bx, 232
+    mov dx, 126
+    call draw_digit_small
+    cmp byte ptr [state_ticks], END_REVEAL_PROMPT
+    jb win_scene_done
 
     mov bx, 70
-    mov dx, 132
+    mov dx, 146
     mov si, offset replay_prompt
     test byte ptr [anim_phase], 1
     jz win_prompt_dim
@@ -317,6 +386,7 @@ win_prompt_dim:
 
 win_prompt_ready:
     call draw_text_small
+win_scene_done:
     ret
 
 draw_lose_scene:
@@ -331,23 +401,92 @@ draw_lose_scene:
     mov dx, 30
     mov cx, 268
     mov bp, 128
+    test byte ptr [anim_phase], 1
+    jz lose_frame_base
+    mov al, PAL_RED2
+    jmp lose_frame_ready
+
+lose_frame_base:
     mov al, PAL_RED
+
+lose_frame_ready:
     call draw_rect_outline
+    xor ax, ax
+    mov al, [state_ticks]
+    mov cx, ax
+    shl ax, 3
+    add ax, cx
+    add ax, cx
+    cmp ax, 200
+    jbe lose_bar_ready
+    mov ax, 200
+
+lose_bar_ready:
+    mov cx, ax
+    mov bx, 60
+    mov dx, 88
+    mov bp, 4
+    mov al, PAL_RED2
+    call fill_rect
 
     mov bx, 82
     mov dx, 54
     mov si, offset lose_line_1
     mov ah, PAL_RED2
     call draw_text_big
+    cmp byte ptr [state_ticks], END_REVEAL_BODY
+    jb lose_scene_done
 
     mov bx, 46
     mov dx, 100
     mov si, offset lose_line_2
     mov ah, PAL_WHITE
     call draw_text_small
+    mov bx, 62
+    mov dx, 112
+    mov si, offset lose_line_3
+    mov ah, PAL_AMBER
+    call draw_text_small
+    cmp byte ptr [state_ticks], END_REVEAL_STATS
+    jb lose_scene_done
+
+    mov bx, 64
+    mov dx, 126
+    mov si, offset sector_text
+    mov ah, PAL_WHITE
+    call draw_text_small
+    mov al, [sector_num]
+    mov ah, PAL_RED2
+    mov bx, 102
+    mov dx, 126
+    call draw_digit_small
+
+    mov bx, 126
+    mov dx, 126
+    mov si, offset kills_text
+    mov ah, PAL_WHITE
+    call draw_text_small
+    mov al, [kill_count]
+    mov ah, PAL_RED2
+    mov bx, 160
+    mov dx, 126
+    call draw_two_digit_small
+
+    mov bx, 192
+    mov dx, 126
+    mov si, offset shield_text
+    mov ah, PAL_WHITE
+    call draw_text_small
+    mov al, [shield_count]
+    mov ah, PAL_RED2
+    mov bx, 236
+    mov dx, 126
+    call draw_digit_small
+    cmp byte ptr [state_ticks], END_REVEAL_PROMPT
+    jb lose_scene_done
 
     mov bx, 70
-    mov dx, 132
+    mov dx, 146
     mov si, offset replay_prompt
     test byte ptr [anim_phase], 1
     jz lose_prompt_dim
@@ -359,4 +498,5 @@ lose_prompt_dim:
 
 lose_prompt_ready:
     call draw_text_small
+lose_scene_done:
     ret

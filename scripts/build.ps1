@@ -1231,17 +1231,15 @@ function Write-GeneratedMusicInclude {
     $expectedThemeKeys = @('splash', 'title', 'run', 'win', 'lose')
     $noteTokenMap = @{
         'REST' = 'MUSIC_NOTE_REST'
+        'G3'   = 'MUSIC_NOTE_G3'
         'A3'   = 'MUSIC_NOTE_A3'
         'C4'   = 'MUSIC_NOTE_C4'
         'D4'   = 'MUSIC_NOTE_D4'
         'E4'   = 'MUSIC_NOTE_E4'
+        'F4'   = 'MUSIC_NOTE_F4'
         'G4'   = 'MUSIC_NOTE_G4'
         'A4'   = 'MUSIC_NOTE_A4'
-        'B4'   = 'MUSIC_NOTE_B4'
         'C5'   = 'MUSIC_NOTE_C5'
-        'D5'   = 'MUSIC_NOTE_D5'
-        'E5'   = 'MUSIC_NOTE_E5'
-        'G5'   = 'MUSIC_NOTE_G5'
         'LOOP' = 'MUSIC_NOTE_LOOP'
     }
 

@@ -31,7 +31,7 @@ SB16_START_AUTO_DMA_8  equ 01Ch
 SB16_TIME_CONSTANT     equ 166
 AUDIO_BLOCK_SAMPLES    equ 611
 AUDIO_SAMPLE_CENTER    equ 128
-AUDIO_SAMPLE_AMPLITUDE equ 80
+AUDIO_SAMPLE_AMPLITUDE equ 40
 
 MUSIC_THEME_SPLASH equ 0
 MUSIC_THEME_TITLE  equ 1
@@ -47,24 +47,21 @@ MUSIC_THEME_NONE   equ 0FFh
 ; The PC speaker is single-voice, so active SFX always own the channel. While a
 ; one-shot SFX is active, theme timing pauses and resumes on the same note.
 MUSIC_NOTE_REST equ 0
-MUSIC_NOTE_A3   equ 1
-MUSIC_NOTE_C4   equ 2
-MUSIC_NOTE_D4   equ 3
-MUSIC_NOTE_E4   equ 4
-MUSIC_NOTE_G4   equ 5
-MUSIC_NOTE_A4   equ 6
-MUSIC_NOTE_B4   equ 7
-MUSIC_NOTE_C5   equ 8
-MUSIC_NOTE_D5   equ 9
-MUSIC_NOTE_E5   equ 10
-MUSIC_NOTE_G5   equ 11
+MUSIC_NOTE_G3   equ 1
+MUSIC_NOTE_A3   equ 2
+MUSIC_NOTE_C4   equ 3
+MUSIC_NOTE_D4   equ 4
+MUSIC_NOTE_E4   equ 5
+MUSIC_NOTE_F4   equ 6
+MUSIC_NOTE_G4   equ 7
+MUSIC_NOTE_A4   equ 8
+MUSIC_NOTE_C5   equ 9
 MUSIC_NOTE_LOOP equ 0FFh
 
 init_audio:
     mov byte ptr [audio_backend], AUDIO_BACKEND_PCSPEAKER
-    mov byte ptr [audio_half_period], 0
-    mov byte ptr [audio_phase_count], 1
-    mov byte ptr [audio_wave_high], 1
+    mov byte ptr [audio_phase_step], 0
+    mov byte ptr [audio_phase_accum], 0
     mov byte ptr [sb16_dma_active], 0
     call init_sb16_backend
     call stop_sfx
@@ -528,17 +525,8 @@ speaker_play_divisor:
     jmp speaker_play_done
 
 speaker_route_sb16:
-    call map_divisor_to_half_period
-    mov [audio_half_period], al
-    cmp al, 0
-    jne speaker_sb16_active
-    mov byte ptr [audio_phase_count], 1
-    mov byte ptr [audio_wave_high], 1
-    jmp speaker_play_done
-
-speaker_sb16_active:
-    mov [audio_phase_count], al
-    mov byte ptr [audio_wave_high], 1
+    call map_divisor_to_phase_step
+    mov [audio_phase_step], al
 
 speaker_play_done:
     pop dx
@@ -548,9 +536,7 @@ speaker_play_done:
 stop_speaker_output:
     cmp byte ptr [audio_backend], AUDIO_BACKEND_SB16
     jne stop_pc_speaker_output
-    mov byte ptr [audio_half_period], 0
-    mov byte ptr [audio_phase_count], 1
-    mov byte ptr [audio_wave_high], 1
+    mov byte ptr [audio_phase_step], 0
     ret
 
 stop_pc_speaker_output:
@@ -610,40 +596,33 @@ fill_sb16_buffer:
     push di
     mov di, offset sb16_audio_buffer
     mov cx, AUDIO_BLOCK_SAMPLES
-    mov bl, [audio_half_period]
-    ; The SB16 stream loops this block continuously. Keeping the block length
-    ; near one BIOS tick makes note changes land more cleanly on the game's
-    ; only global clock while still staying simple and IRQ-free.
-    cmp bl, 0
+    mov dl, [audio_phase_step]
+    ; The SB16 stream loops this block continuously. Instead of a hard square
+    ; wave, the backend advances through a small stepped waveform so repeated
+    ; notes stay gentler and do not restart into an audible tick every frame.
+    cmp dl, 0
     jne fill_sb16_tone
     mov al, AUDIO_SAMPLE_CENTER
     rep stosb
     jmp fill_sb16_done
 
 fill_sb16_tone:
-    mov dl, [audio_phase_count]
-    mov ah, [audio_wave_high]
+    mov ah, [audio_phase_accum]
 
 fill_sb16_loop:
-    cmp ah, 0
-    je fill_sb16_low
-    mov al, AUDIO_SAMPLE_CENTER + AUDIO_SAMPLE_AMPLITUDE
-    jmp fill_sb16_store
-
-fill_sb16_low:
-    mov al, AUDIO_SAMPLE_CENTER - AUDIO_SAMPLE_AMPLITUDE
-
-fill_sb16_store:
+    add ah, dl
+    mov al, ah
+    shr al, 1
+    shr al, 1
+    shr al, 1
+    shr al, 1
+    xor bh, bh
+    mov bl, al
+    mov al, [sb16_waveform + bx]
+    add al, AUDIO_SAMPLE_CENTER
     stosb
-    dec dl
-    jne fill_sb16_next
-    mov dl, bl
-    xor ah, 1
-
-fill_sb16_next:
     loop fill_sb16_loop
-    mov [audio_phase_count], dl
-    mov [audio_wave_high], ah
+    mov [audio_phase_accum], ah
 
 fill_sb16_done:
     pop di
@@ -787,63 +766,56 @@ sb16_write_block_length:
     pop ax
     ret
 
-map_divisor_to_half_period:
+map_divisor_to_phase_step:
     mov al, 0
     cmp bx, SPEAKER_DIV_DRY
-    je map_divisor_17
+    je map_divisor_8
     cmp bx, SPEAKER_DIV_LOW
-    je map_divisor_14
+    je map_divisor_9
     cmp bx, SPEAKER_DIV_WARN
     je map_divisor_11
     cmp bx, SPEAKER_DIV_MID
-    je map_divisor_8
+    je map_divisor_15
     cmp bx, SPEAKER_DIV_UP
-    je map_divisor_6
+    je map_divisor_20
     cmp bx, SPEAKER_DIV_HIGH
-    je map_divisor_5
-    cmp bx, SPEAKER_DIV_CHIME
-    je map_divisor_4
-    cmp bx, 5424
     je map_divisor_25
+    cmp bx, SPEAKER_DIV_CHIME
+    je map_divisor_31
+    cmp bx, 6087
+    je map_divisor_5
+    cmp bx, 5424
+    je map_divisor_5
     cmp bx, 4560
-    je map_divisor_21
+    je map_divisor_6
     cmp bx, 4063
-    je map_divisor_19
-    cmp bx, 3620
-    je map_divisor_17
-    cmp bx, 3044
-    je map_divisor_14
-    cmp bx, 2712
-    je map_divisor_13
-    cmp bx, 2416
-    je map_divisor_11
-    cmp bx, 2280
-    je map_divisor_10
-    cmp bx, 2032
-    je map_divisor_9
-    cmp bx, 1810
-    je map_divisor_8
-    cmp bx, 1522
     je map_divisor_7
+    cmp bx, 3620
+    je map_divisor_8
+    cmp bx, 3417
+    je map_divisor_8
+    cmp bx, 3044
+    je map_divisor_9
+    cmp bx, 2712
+    je map_divisor_10
+    cmp bx, 2280
+    je map_divisor_12
     ret
 
+map_divisor_31:
+    mov al, 31
+    ret
 map_divisor_25:
     mov al, 25
     ret
-map_divisor_21:
-    mov al, 21
+map_divisor_20:
+    mov al, 20
     ret
-map_divisor_19:
-    mov al, 19
+map_divisor_15:
+    mov al, 15
     ret
-map_divisor_17:
-    mov al, 17
-    ret
-map_divisor_14:
-    mov al, 14
-    ret
-map_divisor_13:
-    mov al, 13
+map_divisor_12:
+    mov al, 12
     ret
 map_divisor_11:
     mov al, 11
@@ -871,25 +843,24 @@ map_divisor_4:
     ret
 
 music_note_divisors dw 0
+                    dw 6087
                     dw 5424
                     dw 4560
                     dw 4063
                     dw 3620
+                    dw 3417
                     dw 3044
                     dw 2712
-                    dw 2416
                     dw 2280
-                    dw 2032
-                    dw 1810
-                    dw 1522
 
 ; Theme tables are generated from assets\music.psd1 so content iteration does
 ; not require hand-editing long note lists in assembly.
 include generated_music.inc
 
 audio_backend db AUDIO_BACKEND_PCSPEAKER
-audio_half_period db 0
-audio_phase_count db 1
-audio_wave_high db 1
+audio_phase_step db 0
+audio_phase_accum db 0
 sb16_dma_active db 0
 sb16_audio_buffer db AUDIO_BLOCK_SAMPLES dup (AUDIO_SAMPLE_CENTER)
+sb16_waveform db 0, 14, 26, 34, 40, 34, 26, 14
+              db 0, -14, -26, -34, -40, -34, -26, -14

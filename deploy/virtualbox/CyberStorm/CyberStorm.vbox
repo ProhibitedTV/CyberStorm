@@ -6,12 +6,16 @@
 ** Use VBoxManage or the VirtualBox Manager GUI to make changes.
 -->
 <VirtualBox xmlns="http://www.virtualbox.org/" version="1.19-windows">
-  <Machine uuid="{af07ae87-00f9-48ce-b013-6d60189f9e20}" name="CyberStorm" OSType="Other" snapshotFolder="Snapshots" lastStateChange="2026-03-30T02:03:47Z">
+  <Machine uuid="{6cdda638-6331-417d-be4b-c21086110301}" name="CyberStorm" OSType="Other" snapshotFolder="Snapshots" lastStateChange="2026-03-30T02:17:20Z">
     <MediaRegistry>
       <FloppyImages>
         <Image uuid="{aa73f26b-98f9-4ce7-b144-688151f6bc3d}" location="C:/Users/RhythmicCarnage/Desktop/CyberStorm/build/cyberstorm.vfd"/>
       </FloppyImages>
     </MediaRegistry>
+    <ExtraData>
+      <ExtraDataItem name="GUI/LastCloseAction" value="PowerOff"/>
+      <ExtraDataItem name="GUI/LastNormalWindowPosition" value="246,219,640,520"/>
+    </ExtraData>
     <Hardware>
       <CPU>
         <PAE enabled="true"/>
@@ -29,12 +33,15 @@
         <SmbiosUuidLittleEndian enabled="true"/>
       </BIOS>
       <Network>
-        <Adapter slot="0" enabled="true" MACAddress="080027781153">
-          <NAT/>
+        <Adapter slot="0" enabled="true" MACAddress="08002765D6EE">
+          <NAT localhost-reachable="true"/>
         </Adapter>
       </Network>
       <AudioAdapter controller="SB16" useDefault="true" driver="WAS" enabled="true" enabledOut="true"/>
       <Clipboard/>
+      <GuestProperties>
+        <GuestProperty name="/VirtualBox/HostInfo/GUI/LanguageID" value="en_US" timestamp="1774837040469214700" flags="RDONLYGUEST"/>
+      </GuestProperties>
       <StorageControllers>
         <StorageController name="Floppy" type="I82078" PortCount="1" useHostIOCache="true" Bootable="true">
           <AttachedDevice type="Floppy" hotpluggable="false" port="0" device="0">

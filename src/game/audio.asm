@@ -32,6 +32,9 @@ SB16_TIME_CONSTANT     equ 166
 AUDIO_BLOCK_SAMPLES    equ 611
 AUDIO_SAMPLE_CENTER    equ 128
 AUDIO_SAMPLE_AMPLITUDE equ 40
+; The current bare-metal synth is intentionally tiny. Keep looping music off by
+; default until we have a fuller score path than simple monophonic tones.
+MUSIC_ENABLED          equ 0
 
 MUSIC_THEME_SPLASH equ 0
 MUSIC_THEME_TITLE  equ 1
@@ -72,11 +75,18 @@ init_audio:
     ret
 
 update_audio:
+IF MUSIC_ENABLED
     call sync_music_theme
     cmp byte ptr [sound_timer], 0
     jne update_audio_sfx
     call update_music
     jmp update_audio_commit
+ELSE
+    cmp byte ptr [sound_timer], 0
+    jne update_audio_sfx
+    call stop_speaker_output
+    jmp update_audio_commit
+ENDIF
 
 update_audio_sfx:
     call update_sfx

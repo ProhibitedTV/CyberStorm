@@ -26,10 +26,12 @@ DMA1_MASK_CHANNEL_1    equ 05h
 DMA1_UNMASK_CHANNEL_1  equ 01h
 DMA1_MODE_SINGLE_WRITE equ 049h
 
+SB16_SET_BLOCK_SIZE    equ 048h
+SB16_START_AUTO_DMA_8  equ 01Ch
 SB16_TIME_CONSTANT     equ 166
-AUDIO_BLOCK_SAMPLES    equ 606
+AUDIO_BLOCK_SAMPLES    equ 611
 AUDIO_SAMPLE_CENTER    equ 128
-AUDIO_SAMPLE_AMPLITUDE equ 36
+AUDIO_SAMPLE_AMPLITUDE equ 80
 
 MUSIC_THEME_SPLASH equ 0
 MUSIC_THEME_TITLE  equ 1
@@ -63,6 +65,7 @@ init_audio:
     mov byte ptr [audio_half_period], 0
     mov byte ptr [audio_phase_count], 1
     mov byte ptr [audio_wave_high], 1
+    mov byte ptr [sb16_dma_active], 0
     call init_sb16_backend
     call stop_sfx
     mov byte ptr [music_theme], MUSIC_THEME_NONE
@@ -572,12 +575,21 @@ init_sb16_backend:
     call sb16_reset
     jc init_sb16_done
     mov byte ptr [audio_backend], AUDIO_BACKEND_SB16
+    call fill_sb16_buffer
+    call program_dma1_for_sb16
     mov al, 040h
     call sb16_write_dsp
     mov al, SB16_TIME_CONSTANT
     call sb16_write_dsp
+    mov al, SB16_SET_BLOCK_SIZE
+    call sb16_write_dsp
+    mov ax, AUDIO_BLOCK_SAMPLES - 1
+    call sb16_write_block_length
     mov al, 0D1h
     call sb16_write_dsp
+    mov al, SB16_START_AUTO_DMA_8
+    call sb16_write_dsp
+    mov byte ptr [sb16_dma_active], 1
 
 init_sb16_done:
     ret
@@ -586,7 +598,6 @@ commit_audio_output:
     cmp byte ptr [audio_backend], AUDIO_BACKEND_SB16
     jne commit_audio_done
     call fill_sb16_buffer
-    call play_sb16_buffer
 
 commit_audio_done:
     ret
@@ -600,6 +611,9 @@ fill_sb16_buffer:
     mov di, offset sb16_audio_buffer
     mov cx, AUDIO_BLOCK_SAMPLES
     mov bl, [audio_half_period]
+    ; The SB16 stream loops this block continuously. Keeping the block length
+    ; near one BIOS tick makes note changes land more cleanly on the game's
+    ; only global clock while still staying simple and IRQ-free.
     cmp bl, 0
     jne fill_sb16_tone
     mov al, AUDIO_SAMPLE_CENTER
@@ -635,20 +649,6 @@ fill_sb16_done:
     pop di
     pop dx
     pop cx
-    pop bx
-    pop ax
-    ret
-
-play_sb16_buffer:
-    push ax
-    push bx
-    push dx
-    call program_dma1_for_sb16
-    mov al, 014h
-    call sb16_write_dsp
-    mov ax, AUDIO_BLOCK_SAMPLES - 1
-    call sb16_write_block_length
-    pop dx
     pop bx
     pop ax
     ret
@@ -891,4 +891,5 @@ audio_backend db AUDIO_BACKEND_PCSPEAKER
 audio_half_period db 0
 audio_phase_count db 1
 audio_wave_high db 1
+sb16_dma_active db 0
 sb16_audio_buffer db AUDIO_BLOCK_SAMPLES dup (AUDIO_SAMPLE_CENTER)

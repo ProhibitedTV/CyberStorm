@@ -28,6 +28,9 @@ anim_phase   db 0
 splash_ticks db 0
 state_ticks  db 0
 title_idle_ticks db 0
+; A short Enter guard after leaving splash/title prevents the start key from
+; immediately retriggering the in-run reset binding on the next gameplay tick.
+run_start_enter_guard db 0
 ; Demo playback is opt-in attract mode driven by generated [action, ticks]
 ; pairs. next_demo_index rotates the title idle cycle through the authored set.
 demo_active  db 0

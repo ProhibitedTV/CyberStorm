@@ -20,36 +20,47 @@ if (-not (Test-Path $floppy)) {
     throw "Boot image not found: $floppy. Run scripts/build.ps1 first."
 }
 
+function Invoke-VBoxManage {
+    param([string[]]$Arguments)
+
+    & $vbox @Arguments
+    if ($LASTEXITCODE -ne 0) {
+        throw ("VBoxManage failed: {0}" -f ($Arguments -join ' '))
+    }
+}
+
 New-Item -ItemType Directory -Force -Path $base | Out-Null
 
 $vmExists = $false
 try {
-    & $vbox showvminfo $VmName 2>$null | Out-Null
+    Invoke-VBoxManage -Arguments @('showvminfo', $VmName) 2>$null | Out-Null
     $vmExists = ($LASTEXITCODE -eq 0)
 } catch {
     $vmExists = $false
 }
 
 if ($vmExists) {
-    & $vbox unregistervm $VmName --delete | Out-Null
+    Invoke-VBoxManage -Arguments @('unregistervm', $VmName, '--delete') | Out-Null
 }
 
-& $vbox createvm --name $VmName --basefolder $base --ostype Other --register
+Invoke-VBoxManage -Arguments @('createvm', '--name', $VmName, '--basefolder', $base, '--ostype', 'Other', '--register')
 # Keep the VM audible by default and expose a guest-visible legacy sound device
 # that the bare-metal runtime can program directly.
-& $vbox modifyvm $VmName `
-    --memory 32 `
-    --vram 8 `
-    --boot1 floppy `
-    --boot2 none `
-    --boot3 none `
-    --boot4 none `
-    --audio-enabled on `
-    --audio-controller sb16 `
-    --audio-codec sb16 `
-    --audio-driver $AudioDriver `
-    --audio-in off `
-    --audio-out on
-& $vbox storagectl $VmName --name Floppy --add floppy
-& $vbox storageattach $VmName --storagectl Floppy --port 0 --device 0 --type fdd --medium $floppy
-& $vbox showvminfo $VmName
+Invoke-VBoxManage -Arguments @(
+    'modifyvm', $VmName,
+    '--memory', '32',
+    '--vram', '8',
+    '--boot1', 'floppy',
+    '--boot2', 'none',
+    '--boot3', 'none',
+    '--boot4', 'none',
+    '--audio-enabled', 'on',
+    '--audio-controller', 'sb16',
+    '--audio-codec', 'sb16',
+    '--audio-driver', $AudioDriver,
+    '--audio-in', 'off',
+    '--audio-out', 'on'
+)
+Invoke-VBoxManage -Arguments @('storagectl', $VmName, '--name', 'Floppy', '--add', 'floppy')
+Invoke-VBoxManage -Arguments @('storageattach', $VmName, '--storagectl', 'Floppy', '--port', '0', '--device', '0', '--type', 'fdd', '--medium', $floppy)
+Invoke-VBoxManage -Arguments @('showvminfo', $VmName)

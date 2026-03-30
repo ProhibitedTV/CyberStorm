@@ -122,6 +122,11 @@ wait_frame_tick_loop:
     je wait_frame_tick_loop
     mov [last_tick], dx
     inc byte ptr [anim_phase]
+    cmp byte ptr [run_start_enter_guard], 0
+    je wait_frame_tick_done
+    dec byte ptr [run_start_enter_guard]
+
+wait_frame_tick_done:
     ret
 
 update_frontend_state:
@@ -292,6 +297,7 @@ run_start_pulse_ready:
 initialize_run_state:
     mov byte ptr [game_state], STATE_PLAYING
     mov byte ptr [title_idle_ticks], 0
+    mov byte ptr [run_start_enter_guard], RUN_START_ENTER_GUARD_TICKS
     mov byte ptr [shield_count], START_SHIELDS
     mov byte ptr [data_count], 0
     mov byte ptr [kill_count], 0

@@ -1,5 +1,5 @@
 CyberStorm Build Report
-Generated: 2026-03-29 20:15:27 -06:00
+Generated: 2026-04-01 15:33:32 -06:00
 
 Toolchain
   Assembler: MASM
@@ -50,14 +50,22 @@ Balance Harness
   S2 SURGE: path 37-41, branches 10-34, slack>=175, terminal-safe>=177, enemy-safe>=177, nearest enemy 12-16, mix R 58.3% F 41.7% W 0%
   S3 WARDEN: path 37-45, branches 10-11, slack>=171, terminal-safe>=177, enemy-safe>=177, nearest enemy 12-15, mix R 25% F 41.7% W 33.3%
 
+Regression Harness
+  Report: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-regression-report.txt
+  Boot sector: 512 bytes, signature 0x55AA, LBA 0 matches both image files
+  Stage two: 18942 bytes, 37 sectors, GAME_SECTORS matches, entry near jmp to 0x0E39
+  Map bank: 3780 bytes (4096 padded), 8 sectors, LBA 38..45
+  Images: .img and .vfd match exactly, unused tail zero-filled from byte 23552
+  Diagnostics: boot.lst and game.lst are present for post-failure inspection
+
 Asset Banks
   Layout include: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\generated_bank_layout.inc
   Map bank: 3780 bytes (4096 padded), 8 sectors, LBA 38..45, load 0x7000:0000, payload C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-map-bank.bin
 
 Screenshots
   Housekeeping: kept 6 source screenshots, removed 0, rotated 3 README slots
-  readme-shot-1.png [title] <- cyberstorm-asset-pipeline-boot.png
-  readme-shot-2.png [gameplay] <- cyberstorm-sector-layouts-boot.png
+  readme-shot-1.png [title] <- cyberstorm-sector-layouts-boot.png
+  readme-shot-2.png [gameplay] <- cyberstorm-asset-pipeline-boot.png
   readme-shot-3.png [payoff] <- cyberstorm-music-boot.png
 
 Layout
@@ -88,6 +96,7 @@ Artifacts
   C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\generated_demos.inc
   C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\generated_music.inc
   C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-balance-report.txt
+  C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-regression-report.txt
   C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\generated_bank_layout.inc
   C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-map-bank.bin
   C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-boot.bin

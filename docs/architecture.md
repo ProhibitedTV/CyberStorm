@@ -179,3 +179,19 @@ The harness reads the authored sector source plus gameplay constants, then valid
 - deterministic spawn behavior across a fixed seed sweep
 
 The build surfaces the results in `build\cyberstorm-balance-report.txt` and echoes a summary into the main build report. When gameplay constants or authored sector content change, this harness is the fastest way to catch balance regressions before a full VM boot.
+
+## 11. Artifact Regression Harness
+
+CyberStorm also has a binary-level regression harness in [scripts/regression-harness.ps1](../scripts/regression-harness.ps1). This one is aimed at the fragile assembly/runtime edges rather than game balance.
+
+It validates the shipped artifacts after the image is built:
+
+- `cyberstorm-boot.bin` is exactly one sector and still ends in `0x55AA`
+- `boot_config.inc` still agrees with the actual stage-two sector count
+- stage two still fits the single-segment load contract and begins with an intentional offset-0 handoff
+- `cyberstorm.img` and `cyberstorm.vfd` are byte-identical
+- stage two and the map bank occupy the expected LBA ranges inside the image
+- sector padding and the unused floppy tail are zero-filled
+- `boot.lst` and `game.lst` are present for follow-up inspection
+
+The build runs this automatically and writes the results to `build\cyberstorm-regression-report.txt`. When low-level assembly changes land, this harness is the quickest way to prove the floppy contract still matches the documentation.

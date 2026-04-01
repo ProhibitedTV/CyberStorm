@@ -46,7 +46,7 @@ CyberStorm is small enough to inspect, but it is no longer a single opaque assem
 
 ![CyberStorm boot flow](docs/readme/boot-flow.svg)
 
-The boot sector at `LBA 0` loads stage two from `LBA 1..34` into `1000:0000`, then stage two loads the current map bank from `LBA 35..42` into `7000:0000` before entering VGA gameplay.
+The boot sector at `LBA 0` loads stage two from `LBA 1..37` into `1000:0000`, then stage two loads the current map bank from `LBA 38..45` into `7000:0000` before entering VGA gameplay.
 
 ### Runtime Layout
 
@@ -100,9 +100,9 @@ These values come from the current [build/cyberstorm-build-report.txt](build/cyb
 | Fact | Current build |
 | --- | --- |
 | Boot code | `132 / 510` bytes |
-| Stage two | `17767` bytes across `35` sectors |
+| Stage two | `18942` bytes across `37` sectors |
 | Banked map payload | `3780` bytes across `8` sectors |
-| Bank LBA range | `36..43` |
+| Bank LBA range | `38..45` |
 | Content set | `3` sectors, `9` maps, `3` demos, `5` music themes |
 | Balance sweep | `36` deterministic scenarios |
 | Video target | `320x200x256` in VGA mode `13h` |
@@ -180,6 +180,24 @@ The harness checks:
 - sector rule sanity
 - deterministic spawn mixes and nearest-enemy pressure across fixed seeds
 
+### Regression Harness
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\regression-harness.ps1
+```
+
+The regression harness checks the binary/runtime contract that is easiest to accidentally break in assembly work:
+
+- boot sector size and `0x55AA` signature
+- `GAME_SECTORS` vs the actual stage-two sector count
+- stage-two entry byte `0` still contains an intentional executable handoff
+- `.img` and `.vfd` byte-for-byte equality
+- stage-two and bank payload placement at the correct LBA ranges
+- zero-filled sector padding and unused floppy tail
+- presence of `boot.lst` and `game.lst` for post-failure inspection
+
+The normal build runs this automatically and writes [build/cyberstorm-regression-report.txt](build/cyberstorm-regression-report.txt).
+
 ### Key Build Outputs
 
 - [build/cyberstorm.img](build/cyberstorm.img)
@@ -194,6 +212,7 @@ The harness checks:
 - [build/generated_bank_layout.inc](build/generated_bank_layout.inc)
 - [build/cyberstorm-map-bank.bin](build/cyberstorm-map-bank.bin)
 - [build/cyberstorm-balance-report.txt](build/cyberstorm-balance-report.txt)
+- [build/cyberstorm-regression-report.txt](build/cyberstorm-regression-report.txt)
 - [build/boot.lst](build/boot.lst)
 - [build/game.lst](build/game.lst)
 - [build/debug_config.inc](build/debug_config.inc)
@@ -208,6 +227,7 @@ The harness checks:
 - [build/generated_bank_layout.inc](build/generated_bank_layout.inc): runtime bank metadata
 - [build/cyberstorm-map-bank.bin](build/cyberstorm-map-bank.bin): raw post-boot map payload
 - [build/cyberstorm-balance-report.txt](build/cyberstorm-balance-report.txt): fairness and deterministic sweep summary
+- [build/cyberstorm-regression-report.txt](build/cyberstorm-regression-report.txt): boot/image contract summary for the shipped floppy artifacts
 - [build/cyberstorm-build-report.txt](build/cyberstorm-build-report.txt): layout, addresses, warnings, and artifact paths
 - [build/cyberstorm-stage2.bin](build/cyberstorm-stage2.bin): flattened stage-two payload exactly as written after the boot sector
 

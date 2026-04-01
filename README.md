@@ -180,6 +180,21 @@ The harness checks:
 - sector rule sanity
 - deterministic spawn mixes and nearest-enemy pressure across fixed seeds
 
+### Replay Harness
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\replay-harness.ps1
+```
+
+The replay harness turns the authored attract demos into deterministic gameplay smoke tests:
+
+- replays the same seeded sector loads the title demos use
+- simulates movement, EMP use, hunter turns, spoof routing, surge hits, sector exits, and scoring
+- compares the observed end state against the `Expected` block stored beside each demo in [assets/demos.psd1](assets/demos.psd1)
+- writes a report with suggested replacement expectation blocks if an intentional gameplay change shifted the result
+
+The normal build runs this automatically and writes [build/cyberstorm-replay-report.txt](build/cyberstorm-replay-report.txt).
+
 ### Regression Harness
 
 ```powershell
@@ -211,6 +226,7 @@ The normal build runs this automatically and writes [build/cyberstorm-regression
 - [build/generated_music.inc](build/generated_music.inc)
 - [build/generated_bank_layout.inc](build/generated_bank_layout.inc)
 - [build/cyberstorm-map-bank.bin](build/cyberstorm-map-bank.bin)
+- [build/cyberstorm-replay-report.txt](build/cyberstorm-replay-report.txt)
 - [build/cyberstorm-balance-report.txt](build/cyberstorm-balance-report.txt)
 - [build/cyberstorm-regression-report.txt](build/cyberstorm-regression-report.txt)
 - [build/boot.lst](build/boot.lst)
@@ -226,6 +242,7 @@ The normal build runs this automatically and writes [build/cyberstorm-regression
 - [build/generated_demos.inc](build/generated_demos.inc): generated attract-mode scripts as MASM sees them
 - [build/generated_bank_layout.inc](build/generated_bank_layout.inc): runtime bank metadata
 - [build/cyberstorm-map-bank.bin](build/cyberstorm-map-bank.bin): raw post-boot map payload
+- [build/cyberstorm-replay-report.txt](build/cyberstorm-replay-report.txt): deterministic replay smoke summary and suggested expectation updates
 - [build/cyberstorm-balance-report.txt](build/cyberstorm-balance-report.txt): fairness and deterministic sweep summary
 - [build/cyberstorm-regression-report.txt](build/cyberstorm-regression-report.txt): boot/image contract summary for the shipped floppy artifacts
 - [build/cyberstorm-build-report.txt](build/cyberstorm-build-report.txt): layout, addresses, warnings, and artifact paths
@@ -241,6 +258,7 @@ The normal build runs this automatically and writes [build/cyberstorm-regression
 - Content-generation pipeline: [docs/content-pipeline.md](docs/content-pipeline.md)
 - Asset-bank design: [docs/asset-banks.md](docs/asset-banks.md)
 - Balance harness: [docs/balance-harness.md](docs/balance-harness.md)
+- Replay harness: [docs/replay-harness.md](docs/replay-harness.md)
 - Assembler-path notes: [docs/assembler-paths.md](docs/assembler-paths.md)
 
 ## Scope And Truth-In-Advertising

@@ -195,3 +195,18 @@ It validates the shipped artifacts after the image is built:
 - `boot.lst` and `game.lst` are present for follow-up inspection
 
 The build runs this automatically and writes the results to `build\cyberstorm-regression-report.txt`. When low-level assembly changes land, this harness is the quickest way to prove the floppy contract still matches the documentation.
+
+## 12. Deterministic Replay Harness
+
+CyberStorm also uses its authored attract demos as deterministic gameplay smoke tests through [scripts/replay-harness.ps1](../scripts/replay-harness.ps1).
+
+The important contract is:
+
+- [assets/demos.psd1](../assets/demos.psd1) is now both presentation content and a replay-test source of truth.
+- Each demo still defines `Name`, `StartSector`, `Seed`, and `Steps`.
+- Each demo also carries an `Expected` block describing the replay end state that should result from the current rules and content.
+- The replay harness simulates the same seeded sector load, map selection, placements, movement, EMP use, hunter turns, spoof windows, surge hits, exits, and scoring that the runtime uses.
+
+This is intentionally lightweight rather than emulator-driven. It is meant to catch "we changed a rule and the demos no longer land where we think they do" before someone boots a VM.
+
+The build writes the results to `build\cyberstorm-replay-report.txt`. When gameplay changes are intentional, that report includes suggested replacement `Expected` blocks so the demo source can be updated reviewably.

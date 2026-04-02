@@ -1,27 +1,45 @@
 load_required_asset_banks:
-    ; Phase 1 keeps the boot contract untouched and loads one read-only map bank
-    ; after stage two starts. The generated bank layout include defines the LBA
-    ; range, while MAP_BANK_SEG is the runtime destination segment.
+    ; Post-boot banks keep bulky read-only content off the stage-two segment.
+    ; The generated bank layout include defines the on-disk LBA ranges, while
+    ; each bank still loads into one conventional-memory segment.
     push ax
     push bx
     push cx
+    push dx
     push es
-    mov cx, MAP_BANK_SECTORS
-    jcxz load_required_asset_banks_done
-    mov ax, MAP_BANK_SEG
-    mov es, ax
-    xor bx, bx
+
     mov ax, MAP_BANK_LBA
-    call read_floppy_lba_sectors
-    jnc load_required_asset_banks_done
+    mov cx, MAP_BANK_SECTORS
+    mov dx, MAP_BANK_SEG
     mov si, offset text_map_bank_error
-    call fatal_asset_bank_error
+    call load_asset_bank_or_fail
+
+    mov ax, PRESENT_BANK_LBA
+    mov cx, PRESENT_BANK_SECTORS
+    mov dx, PRESENT_BANK_SEG
+    mov si, offset text_presentation_bank_error
+    call load_asset_bank_or_fail
 
 load_required_asset_banks_done:
     pop es
+    pop dx
     pop cx
     pop bx
     pop ax
+    ret
+
+load_asset_bank_or_fail:
+    or cx, cx
+    jz load_asset_bank_done
+    push si
+    mov es, dx
+    xor bx, bx
+    call read_floppy_lba_sectors
+    pop si
+    jnc load_asset_bank_done
+    call fatal_asset_bank_error
+
+load_asset_bank_done:
     ret
 
 read_floppy_lba_sectors:
@@ -105,3 +123,4 @@ fatal_asset_bank_spin:
     jmp fatal_asset_bank_spin
 
 text_map_bank_error db 'CYBERSTORM MAP BANK ERROR', 0
+text_presentation_bank_error db 'CYBERSTORM PRESENTATION BANK ERROR', 0

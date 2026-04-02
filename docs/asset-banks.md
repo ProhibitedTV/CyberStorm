@@ -1,4 +1,4 @@
-# Asset Banks (Phase 1)
+# Asset Banks
 
 CyberStorm still boots with the same contract:
 
@@ -7,7 +7,7 @@ CyberStorm still boots with the same contract:
 - stage two loaded to `1000:0000`
 - far-return into offset `0000`
 
-Phase 1 adds a second content path after that handoff: once stage two starts, it can load additional read-only payloads from later floppy sectors into their own conventional-memory segments.
+The bank system adds a second content path after that handoff: once stage two starts, it can load additional read-only payloads from later floppy sectors into their own conventional-memory segments.
 
 ## Why This Exists
 
@@ -20,19 +20,29 @@ Asset banks are the path beyond that ceiling:
 - move bulky read-only content out of the initial stage-two segment
 - make later growth possible without redesigning the bootloader first
 
-## Phase-1 Scope
+## Current Scope
 
-Phase 1 banks the authored sector map pool.
+CyberStorm now banks two authored payloads:
+
+- the sector map pool
+- fixed-size splash/title/end presentation banners
 
 That means:
 
 - `assets/sectors.psd1` still owns the source-of-truth maps
+- `assets/presentation.psd1` now owns the source-of-truth scene banners
 - `build/generated_maps.inc` still exists for review
+- `build/generated_presentation_content.inc` still exists for review
 - `build/cyberstorm-map-bank.bin` now carries the runtime map payload
+- `build/cyberstorm-presentation-bank.bin` now carries the runtime presentation payload
 - `build/generated_bank_layout.inc` tells stage two where that payload lives on disk
 - stage two loads the map bank into `MAP_BANK_SEG`
+- stage two loads the presentation bank into `PRESENT_BANK_SEG`
 
-The gameplay benefit is immediate: all authored map templates no longer consume stage-two resident bytes, but the game still picks and copies them the same way at runtime.
+The benefits are immediate:
+
+- all authored map templates no longer consume stage-two resident bytes, but gameplay still picks and copies them the same way at runtime
+- splash/title/end scenes can use richer art without growing stage two or touching the boot sector
 
 ## Runtime Contract
 
@@ -58,11 +68,14 @@ The build now resolves banks in two passes:
 
 That keeps the existing boot contract while still letting stage two know the real post-boot LBA layout.
 
-## Current Phase-1 Files
+## Current Files
 
 - [assets/sectors.psd1](../assets/sectors.psd1)
+- [assets/presentation.psd1](../assets/presentation.psd1)
 - [build/generated_maps.inc](../build/generated_maps.inc)
+- [build/generated_presentation_content.inc](../build/generated_presentation_content.inc)
 - [build/cyberstorm-map-bank.bin](../build/cyberstorm-map-bank.bin)
+- [build/cyberstorm-presentation-bank.bin](../build/cyberstorm-presentation-bank.bin)
 - [build/generated_bank_layout.inc](../build/generated_bank_layout.inc)
 - [src/game/banks.asm](../src/game/banks.asm)
 
@@ -75,30 +88,32 @@ powershell -ExecutionPolicy Bypass -File .\scripts\build.ps1
 ```
 
 2. Open `build\cyberstorm-build-report.txt` and confirm:
-   - a `Map bank` entry exists
-   - the map bank has its own LBA range after stage two
-   - the map bank load segment is `7000:0000`
+   - `Map bank` and `Presentation bank` entries both exist
+   - both banks have their own LBA ranges after stage two
+   - the load segments are `7000:0000` and `7800:0000`
 
 3. Boot `build\cyberstorm.vfd` in VirtualBox.
 
 4. Start several new runs and sectors. The game should behave normally, which now proves:
    - stage two booted correctly
-   - the post-boot map bank loaded successfully
-   - sector templates are being copied from the banked payload rather than stage-two labels
+   - the post-boot banks loaded successfully
+   - sector templates are being copied from the banked map payload rather than stage-two labels
+   - splash/title/end scenes can read their banner art from the presentation bank
 
-5. If startup fails with a text-mode `MAP BANK ERROR`, inspect:
+5. If startup fails with a text-mode bank error, inspect:
    - `build/generated_bank_layout.inc`
    - `build/cyberstorm-map-bank.bin`
+   - `build/cyberstorm-presentation-bank.bin`
    - `build/cyberstorm-build-report.txt`
    - `build/game.lst`
 
-## Next Steps After Phase 1
+## Next Steps
 
 The same path can later bank:
 
-- larger intro/splash art
+- larger intro/splash art beyond the fixed banner format
 - extra sector families
 - scripted demo/replay input streams
-- bigger music tables
+- bigger music tables or alternate theme sets
 
 without touching the boot sector again.

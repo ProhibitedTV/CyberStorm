@@ -61,11 +61,11 @@ main_loop:
 
     cmp byte ptr [game_state], STATE_TITLE
     je handle_frontend_start_input
+    cmp byte ptr [game_state], STATE_WIN
+    je handle_frontend_continue_input
+    cmp byte ptr [game_state], STATE_LOSE
+    je handle_frontend_continue_input
 
-    cmp byte ptr [any_key_pending], 0
-    je main_loop
-    mov byte ptr [any_key_pending], 0
-    call start_new_run
     jmp main_loop
 
 handle_splash_input:
@@ -87,11 +87,26 @@ skip_splash:
     jmp main_loop
 
 handle_frontend_start_input:
-    ; Title/start flow consumes the same explicit latches as gameplay first,
-    ; then falls back to the generic any-key flag for unknown BIOS keys.
-    call title_input_pending
+    ; Release builds keep Enter as the only visible title-screen start key.
+    ; Other keys still reset the attract timer, but they do not launch a run.
+    call frontend_start_key_pending
+    cmp al, 0
+    jne frontend_start_now
+    call frontend_activity_pending
     cmp al, 0
     je main_loop
+    call clear_pressed_latches
+    jmp main_loop
+
+handle_frontend_continue_input:
+    call frontend_start_key_pending
+    cmp al, 0
+    jne frontend_start_now
+    call frontend_activity_pending
+    cmp al, 0
+    je main_loop
+    call clear_pressed_latches
+    jmp main_loop
 
 frontend_start_now:
     call start_new_run
@@ -155,7 +170,7 @@ frontend_update_splash:
     jmp frontend_state_done
 
 frontend_update_title:
-    call title_input_pending
+    call frontend_activity_pending
     cmp al, 0
     jne frontend_title_has_input
     cmp byte ptr [title_idle_ticks], 255
@@ -174,7 +189,13 @@ frontend_title_has_input:
 frontend_state_done:
     ret
 
-title_input_pending:
+frontend_start_key_pending:
+    cmp byte ptr [pressed_enter], 0
+    jne title_input_yes
+    xor al, al
+    ret
+
+frontend_activity_pending:
     cmp byte ptr [pressed_enter], 0
     jne title_input_yes
     cmp byte ptr [pressed_w], 0
@@ -184,6 +205,8 @@ title_input_pending:
     cmp byte ptr [pressed_s], 0
     jne title_input_yes
     cmp byte ptr [pressed_d], 0
+    jne title_input_yes
+    cmp byte ptr [pressed_r], 0
     jne title_input_yes
     cmp byte ptr [pressed_c], 0
     jne title_input_yes

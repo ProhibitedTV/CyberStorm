@@ -28,6 +28,7 @@ SCAN_W         equ 11h
 SCAN_A         equ 1Eh
 SCAN_S         equ 1Fh
 SCAN_D         equ 20h
+SCAN_R         equ 13h
 SCAN_C         equ 2Eh
 SCAN_EXT_FLAG  equ 80h
 SCAN_UP_EXT    equ 0C8h
@@ -166,8 +167,15 @@ SAFE_Y_MIN    equ 10
 ; Phase-1 asset banks load into a separate conventional-memory segment so
 ; stage two can keep its original 64 KiB boot contract unchanged.
 MAP_BANK_SEG   equ 7000h
+PRESENT_BANK_SEG equ 7800h
 BACKBUFFER_SEG equ 9000h
 VGA_SEG        equ 0A000h
+
+; Phase-2 presentation banners are fixed-size banked bitmaps so scenes can
+; use richer art without adding more bulky static data to stage two.
+PRESENT_BANNER_W     equ 64
+PRESENT_BANNER_H     equ 24
+PRESENT_BANNER_SCALE equ 2
 
 PAL_BLACK      equ 0
 PAL_BG0        equ 1

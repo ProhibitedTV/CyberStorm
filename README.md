@@ -24,7 +24,7 @@
 
 - **A real boot path.** The build emits a bootable floppy image, not a host app wrapped in a fake shell.
 - **A compact but structured runtime.** Stage two stays inside a documented single-segment contract while still using modular render, gameplay, audio, and data layers.
-- **Generated content tooling.** Sprites, sectors, rules, demos, and music come from readable source files that generate MASM-friendly data at build time.
+- **Generated content tooling.** Sprites, presentation banners, sectors, rules, demos, and music come from readable source files that generate MASM-friendly data at build time.
 - **Disciplined validation.** The build enforces boot/image layout, generated content shape, deterministic debug options, and a lightweight balance harness.
 
 ## Visual Gallery
@@ -46,7 +46,7 @@ CyberStorm is small enough to inspect, but it is no longer a single opaque assem
 
 ![CyberStorm boot flow](docs/readme/boot-flow.svg)
 
-The boot sector at `LBA 0` loads stage two from `LBA 1..37` into `1000:0000`, then stage two loads the current map bank from `LBA 38..45` into `7000:0000` before entering VGA gameplay.
+The boot sector at `LBA 0` loads stage two from `LBA 1..38` into `1000:0000`, then stage two loads the current map bank from `LBA 39..46` into `7000:0000` before entering VGA gameplay.
 
 ### Runtime Layout
 
@@ -60,7 +60,7 @@ The runtime keeps BIOS-owned low memory untouched, inherits the boot stack at `0
 
 ![CyberStorm asset pipeline](docs/readme/asset-pipeline.svg)
 
-[assets/visuals.psd1](assets/visuals.psd1), [assets/sectors.psd1](assets/sectors.psd1), [assets/demos.psd1](assets/demos.psd1), and [assets/music.psd1](assets/music.psd1) are the readable source of truth. [scripts/build.ps1](scripts/build.ps1) turns them into generated includes and a banked map payload that the runtime can load after boot.
+[assets/visuals.psd1](assets/visuals.psd1), [assets/presentation.psd1](assets/presentation.psd1), [assets/sectors.psd1](assets/sectors.psd1), [assets/demos.psd1](assets/demos.psd1), and [assets/music.psd1](assets/music.psd1) are the readable source of truth. [scripts/build.ps1](scripts/build.ps1) turns them into generated includes plus banked map and presentation payloads that the runtime can load after boot.
 
 ## Quickstart
 
@@ -93,6 +93,13 @@ powershell -ExecutionPolicy Bypass -File .\scripts\start-vm.ps1
 
 If you leave the title screen alone for a few seconds, CyberStorm now auto-starts an authored attract/demo run. Press any key during the demo to jump into a fresh live run.
 
+### Release Controls
+
+- `Enter`: start from splash/title and replay from win/lose
+- `WASD` or arrow keys: move
+- `C`: EMP pulse
+- `R`: restart the current run
+
 ## Technical Facts
 
 These values come from the current [build/cyberstorm-build-report.txt](build/cyberstorm-build-report.txt).
@@ -100,11 +107,12 @@ These values come from the current [build/cyberstorm-build-report.txt](build/cyb
 | Fact | Current build |
 | --- | --- |
 | Boot code | `132 / 510` bytes |
-| Stage two | `18942` bytes across `37` sectors |
-| Banked map payload | `3780` bytes across `8` sectors |
-| Bank LBA range | `38..45` |
-| Content set | `3` sectors, `9` maps, `3` demos, `5` music themes |
+| Stage two | `19417` bytes across `38` sectors |
+| Banked payloads | maps `3780` bytes across `8` sectors, presentation `6144` bytes across `12` sectors |
+| Bank LBA ranges | map `39..46`, presentation `47..58` |
+| Content set | `3` sectors, `9` maps, `3` demos, `5` music themes, `4` presentation banners |
 | Balance sweep | `36` deterministic scenarios |
+| Release audio policy | `SFX_ONLY` by default |
 | Video target | `320x200x256` in VGA mode `13h` |
 | Runtime model | Single-segment `16-bit` real mode |
 
@@ -112,7 +120,7 @@ These values come from the current [build/cyberstorm-build-report.txt](build/cyb
 
 CyberStorm is a good AI-assisted project for a specific reason: the repository gives automated iteration clear boundaries. The interesting part is not "AI wrote some assembly." The interesting part is that the repo makes it practical to use AI on a bare-metal codebase without letting that become reckless.
 
-- **The source of truth is readable.** Visuals, sector layouts, sector rules, demos, and music live in compact authored files instead of sprawling raw assembly data.
+- **The source of truth is readable.** Visuals, presentation art, sector layouts, sector rules, demos, and music live in compact authored files instead of sprawling raw assembly data.
 - **The runtime contracts are explicit.** [docs/architecture.md](docs/architecture.md) spells out the boot handoff, segment assumptions, memory map, state layout, and bank-loading rules.
 - **The build enforces the dangerous constraints.** [scripts/build.ps1](scripts/build.ps1) validates boot-sector size, the single-segment stage-two limit, bank layout, floppy footprint, and generated content shape before writing the image.
 - **Debugging can be reproduced.** Deterministic debug flags can force a known RNG seed, start in a chosen sector, and enable a compact overlay.
@@ -121,8 +129,8 @@ CyberStorm is a good AI-assisted project for a specific reason: the repository g
 
 Repo artifacts that support that claim:
 
-- [assets/visuals.psd1](assets/visuals.psd1), [assets/sectors.psd1](assets/sectors.psd1), [assets/demos.psd1](assets/demos.psd1), and [assets/music.psd1](assets/music.psd1)
-- [build/generated_art.inc](build/generated_art.inc), [build/generated_sector_content.inc](build/generated_sector_content.inc), [build/generated_maps.inc](build/generated_maps.inc), [build/generated_demos.inc](build/generated_demos.inc), and [build/generated_music.inc](build/generated_music.inc)
+- [assets/visuals.psd1](assets/visuals.psd1), [assets/presentation.psd1](assets/presentation.psd1), [assets/sectors.psd1](assets/sectors.psd1), [assets/demos.psd1](assets/demos.psd1), and [assets/music.psd1](assets/music.psd1)
+- [build/generated_art.inc](build/generated_art.inc), [build/generated_presentation_content.inc](build/generated_presentation_content.inc), [build/generated_sector_content.inc](build/generated_sector_content.inc), [build/generated_maps.inc](build/generated_maps.inc), [build/generated_demos.inc](build/generated_demos.inc), and [build/generated_music.inc](build/generated_music.inc)
 - [docs/architecture.md](docs/architecture.md), [docs/sector-identity.md](docs/sector-identity.md), and [docs/enemy-drama.md](docs/enemy-drama.md)
 - [scripts/build.ps1](scripts/build.ps1) and [scripts/balance-harness.ps1](scripts/balance-harness.ps1)
 - [build/cyberstorm-build-report.txt](build/cyberstorm-build-report.txt) and [build/cyberstorm-balance-report.txt](build/cyberstorm-balance-report.txt)
@@ -162,9 +170,25 @@ powershell -ExecutionPolicy Bypass -File .\scripts\build.ps1 `
 Useful switches:
 
 - `-DebugSeed <0..65535>` forces the same `16-bit` RNG seed on every new run
-- `-DebugOverlay` shows compact live state in-game
+- `-DebugOverlay` shows compact live state in-game, including `GS/DM/GD/LK/AB/AM/FX/FT` for state, demo, guard, last key, audio backend, audio mode, active SFX, and SFX timer
 - `-DebugStartInGame` skips splash/title and boots directly into a run
 - `-DebugStartSector <n>` starts every new run from a chosen sector
+
+### Audio Modes
+
+Release builds are intentionally `SFX_ONLY` right now:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\build.ps1
+```
+
+If you want to compile the experimental looping music path anyway:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\build.ps1 -ExperimentalMusic
+```
+
+That switch is opt-in on purpose. One-shot SFX are the supported default until the calmer Audio V2 transport is proven pleasant enough to graduate from experimental status.
 
 ### Balance Harness
 
@@ -213,6 +237,32 @@ The regression harness checks the binary/runtime contract that is easiest to acc
 
 The normal build runs this automatically and writes [build/cyberstorm-regression-report.txt](build/cyberstorm-regression-report.txt).
 
+### VM Smoke
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\vm-smoke.ps1
+```
+
+Or from the full build:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\build.ps1 -VmSmoke
+```
+
+The smoke path is deliberately attract-mode driven instead of key-injection driven. It:
+
+- redeploys the workspace VM against the current release image
+- boots headless
+- waits long enough for splash -> title -> attract timing
+- captures a screenshot and VBox log
+- fails if the log never reaches floppy boot or shows obvious guest failure markers
+
+Artifacts:
+
+- [build/cyberstorm-vm-smoke-report.txt](build/cyberstorm-vm-smoke-report.txt)
+- [build/vm-smoke/cyberstorm-vm-smoke.png](build/vm-smoke/cyberstorm-vm-smoke.png)
+- [build/vm-smoke/cyberstorm-vm-smoke.log](build/vm-smoke/cyberstorm-vm-smoke.log)
+
 ### Key Build Outputs
 
 - [build/cyberstorm.img](build/cyberstorm.img)
@@ -220,18 +270,22 @@ The normal build runs this automatically and writes [build/cyberstorm-regression
 - [build/cyberstorm-boot.bin](build/cyberstorm-boot.bin)
 - [build/cyberstorm-stage2.bin](build/cyberstorm-stage2.bin)
 - [build/generated_art.inc](build/generated_art.inc)
+- [build/generated_presentation_content.inc](build/generated_presentation_content.inc)
 - [build/generated_sector_content.inc](build/generated_sector_content.inc)
 - [build/generated_maps.inc](build/generated_maps.inc)
 - [build/generated_demos.inc](build/generated_demos.inc)
 - [build/generated_music.inc](build/generated_music.inc)
 - [build/generated_bank_layout.inc](build/generated_bank_layout.inc)
 - [build/cyberstorm-map-bank.bin](build/cyberstorm-map-bank.bin)
+- [build/cyberstorm-presentation-bank.bin](build/cyberstorm-presentation-bank.bin)
 - [build/cyberstorm-replay-report.txt](build/cyberstorm-replay-report.txt)
 - [build/cyberstorm-balance-report.txt](build/cyberstorm-balance-report.txt)
 - [build/cyberstorm-regression-report.txt](build/cyberstorm-regression-report.txt)
+- [build/cyberstorm-vm-smoke-report.txt](build/cyberstorm-vm-smoke-report.txt)
 - [build/boot.lst](build/boot.lst)
 - [build/game.lst](build/game.lst)
 - [build/debug_config.inc](build/debug_config.inc)
+- [build/audio_config.inc](build/audio_config.inc)
 - [build/cyberstorm-build-report.txt](build/cyberstorm-build-report.txt)
 
 ### Best Files To Inspect When Something Breaks
@@ -239,12 +293,16 @@ The normal build runs this automatically and writes [build/cyberstorm-regression
 - [build/boot.lst](build/boot.lst): bootloader assembly listing
 - [build/game.lst](build/game.lst): stage-two assembly listing
 - [build/generated_art.inc](build/generated_art.inc): generated sprite/tile data as MASM sees it
+- [build/generated_presentation_content.inc](build/generated_presentation_content.inc): generated scene-banner offsets and sizes as MASM sees them
 - [build/generated_demos.inc](build/generated_demos.inc): generated attract-mode scripts as MASM sees them
 - [build/generated_bank_layout.inc](build/generated_bank_layout.inc): runtime bank metadata
 - [build/cyberstorm-map-bank.bin](build/cyberstorm-map-bank.bin): raw post-boot map payload
+- [build/cyberstorm-presentation-bank.bin](build/cyberstorm-presentation-bank.bin): raw post-boot presentation payload
 - [build/cyberstorm-replay-report.txt](build/cyberstorm-replay-report.txt): deterministic replay smoke summary and suggested expectation updates
 - [build/cyberstorm-balance-report.txt](build/cyberstorm-balance-report.txt): fairness and deterministic sweep summary
 - [build/cyberstorm-regression-report.txt](build/cyberstorm-regression-report.txt): boot/image contract summary for the shipped floppy artifacts
+- [build/cyberstorm-vm-smoke-report.txt](build/cyberstorm-vm-smoke-report.txt): headless VirtualBox smoke summary and capture paths
+- [build/audio_config.inc](build/audio_config.inc): generated release-vs-experimental audio mode contract
 - [build/cyberstorm-build-report.txt](build/cyberstorm-build-report.txt): layout, addresses, warnings, and artifact paths
 - [build/cyberstorm-stage2.bin](build/cyberstorm-stage2.bin): flattened stage-two payload exactly as written after the boot sector
 

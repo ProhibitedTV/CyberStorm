@@ -8,7 +8,9 @@ jmp start
 
 include game\constants.inc
 include debug_config.inc
+include audio_config.inc
 include generated_bank_layout.inc
+include generated_presentation_content.inc
 include game\audio.asm
 include game\feedback.asm
 include game\input.asm

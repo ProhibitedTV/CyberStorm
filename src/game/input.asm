@@ -47,6 +47,7 @@ clear_pressed_latches:
     mov byte ptr [pressed_a], 0
     mov byte ptr [pressed_s], 0
     mov byte ptr [pressed_d], 0
+    mov byte ptr [pressed_r], 0
     mov byte ptr [pressed_c], 0
     mov byte ptr [pressed_up], 0
     mov byte ptr [pressed_left], 0
@@ -113,6 +114,8 @@ latch_bios_key:
     je bios_key_s
     cmp ah, SCAN_D
     je bios_key_d
+    cmp ah, SCAN_R
+    je bios_key_r
     cmp ah, SCAN_C
     je bios_key_c
     cmp ah, BIOS_SCAN_UP
@@ -143,6 +146,10 @@ bios_key_s:
 
 bios_key_d:
     mov byte ptr [pressed_d], 1
+    ret
+
+bios_key_r:
+    mov byte ptr [pressed_r], 1
     ret
 
 bios_key_c:
@@ -182,6 +189,8 @@ poll_check_ready:
     jne poll_key_s
     cmp byte ptr [pressed_d], 0
     jne poll_key_d
+    cmp byte ptr [pressed_r], 0
+    jne poll_key_r
     cmp byte ptr [pressed_c], 0
     jne poll_key_c
     cmp byte ptr [pressed_up], 0
@@ -225,6 +234,12 @@ poll_key_d:
     mov byte ptr [pressed_d], 0
     mov byte ptr [any_key_pending], 0
     mov al, SCAN_D
+    jmp poll_key_ready
+
+poll_key_r:
+    mov byte ptr [pressed_r], 0
+    mov byte ptr [any_key_pending], 0
+    mov al, SCAN_R
     jmp poll_key_ready
 
 poll_key_c:
@@ -292,8 +307,14 @@ key_check_s:
 
 key_check_d:
     cmp al, SCAN_D
-    jne key_check_c
+    jne key_check_r
     mov al, 'd'
+    ret
+
+key_check_r:
+    cmp al, SCAN_R
+    jne key_check_c
+    mov al, 'r'
     ret
 
 key_check_c:
@@ -400,6 +421,8 @@ keyboard_irq_handler:
     je keyboard_press_s
     cmp al, SCAN_D
     je keyboard_press_d
+    cmp al, SCAN_R
+    je keyboard_press_r
     cmp al, SCAN_C
     je keyboard_press_c
     cmp al, SCAN_UP_EXT
@@ -430,6 +453,10 @@ keyboard_press_s:
 
 keyboard_press_d:
     mov byte ptr [pressed_d], 1
+    jmp keyboard_count_event
+
+keyboard_press_r:
+    mov byte ptr [pressed_r], 1
     jmp keyboard_count_event
 
 keyboard_press_c:

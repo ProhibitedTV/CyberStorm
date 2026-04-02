@@ -646,8 +646,8 @@ IF DEBUG_OVERLAY
 render_debug_overlay:
     mov bx, 16
     mov dx, 38
-    mov cx, 224
-    mov bp, 10
+    mov cx, 288
+    mov bp, 20
     mov al, PAL_PANEL2
     call fill_rect
 
@@ -659,86 +659,182 @@ render_debug_overlay:
 
     mov bx, 42
     mov dx, 40
+    mov si, offset debug_state_tag
+    mov ah, PAL_CYAN
+    call draw_text_small
+
+    mov al, [game_state]
+    mov ah, PAL_WHITE
+    mov bx, 54
+    mov dx, 40
+    call draw_digit_small
+
+    mov bx, 66
+    mov dx, 40
+    mov si, offset debug_demo_tag
+    mov ah, PAL_CYAN
+    call draw_text_small
+
+    mov al, [demo_active]
+    mov ah, PAL_WHITE
+    mov bx, 78
+    mov dx, 40
+    call draw_digit_small
+
+    mov bx, 90
+    mov dx, 40
+    mov si, offset debug_guard_tag
+    mov ah, PAL_CYAN
+    call draw_text_small
+
+    mov al, [run_start_enter_guard]
+    mov ah, PAL_WHITE
+    mov bx, 102
+    mov dx, 40
+    call draw_two_digit_small
+
+    mov bx, 120
+    mov dx, 40
+    mov si, offset debug_key_tag
+    mov ah, PAL_CYAN
+    call draw_text_small
+
+    mov al, [input_last_code]
+    mov ah, PAL_WHITE
+    mov bx, 132
+    mov dx, 40
+    call draw_byte_hex_small
+
+    mov bx, 150
+    mov dx, 40
+    mov si, offset debug_backend_tag
+    mov ah, PAL_CYAN
+    call draw_text_small
+
+    mov al, [audio_backend]
+    mov ah, PAL_WHITE
+    mov bx, 162
+    mov dx, 40
+    call draw_digit_small
+
+    mov bx, 174
+    mov dx, 40
+    mov si, offset debug_audio_mode_tag
+    mov ah, PAL_CYAN
+    call draw_text_small
+
+    mov al, [audio_mode_value]
+    mov ah, PAL_WHITE
+    mov bx, 186
+    mov dx, 40
+    call draw_digit_small
+
+    mov bx, 198
+    mov dx, 40
+    mov si, offset debug_sfx_tag
+    mov ah, PAL_CYAN
+    call draw_text_small
+
+    mov al, [sound_id]
+    mov ah, PAL_WHITE
+    mov bx, 210
+    mov dx, 40
+    call draw_two_digit_small
+
+    mov bx, 228
+    mov dx, 40
+    mov si, offset debug_sfx_timer_tag
+    mov ah, PAL_CYAN
+    call draw_text_small
+
+    mov al, [sound_timer]
+    mov ah, PAL_WHITE
+    mov bx, 240
+    mov dx, 40
+    call draw_two_digit_small
+
+    mov bx, 18
+    mov dx, 50
     mov si, offset debug_sector_tag
     mov ah, PAL_CYAN
     call draw_text_small
 
     mov al, [sector_num]
     mov ah, PAL_WHITE
-    mov bx, 48
-    mov dx, 40
+    mov bx, 24
+    mov dx, 50
     call draw_digit_small
 
-    mov bx, 60
-    mov dx, 40
+    mov bx, 36
+    mov dx, 50
     mov si, offset debug_x_tag
     mov ah, PAL_CYAN
     call draw_text_small
 
     mov al, [player_x]
     mov ah, PAL_WHITE
-    mov bx, 66
-    mov dx, 40
+    mov bx, 42
+    mov dx, 50
     call draw_two_digit_small
 
-    mov bx, 84
-    mov dx, 40
+    mov bx, 60
+    mov dx, 50
     mov si, offset debug_y_tag
     mov ah, PAL_CYAN
     call draw_text_small
 
     mov al, [player_y]
     mov ah, PAL_WHITE
-    mov bx, 90
-    mov dx, 40
+    mov bx, 66
+    mov dx, 50
     call draw_two_digit_small
 
-    mov bx, 108
-    mov dx, 40
+    mov bx, 84
+    mov dx, 50
     mov si, offset debug_shield_tag
     mov ah, PAL_CYAN
     call draw_text_small
 
     mov al, [shield_count]
     mov ah, PAL_WHITE
-    mov bx, 114
-    mov dx, 40
+    mov bx, 90
+    mov dx, 50
     call draw_digit_small
 
-    mov bx, 126
-    mov dx, 40
+    mov bx, 102
+    mov dx, 50
     mov si, offset debug_pulse_tag
     mov ah, PAL_CYAN
     call draw_text_small
 
     mov al, [pulse_count]
     mov ah, PAL_WHITE
-    mov bx, 132
-    mov dx, 40
+    mov bx, 108
+    mov dx, 50
     call draw_digit_small
 
-    mov bx, 144
-    mov dx, 40
+    mov bx, 120
+    mov dx, 50
     mov si, offset debug_data_tag
     mov ah, PAL_CYAN
     call draw_text_small
 
     mov al, [data_count]
     mov ah, PAL_WHITE
-    mov bx, 150
-    mov dx, 40
+    mov bx, 126
+    mov dx, 50
     call draw_digit_small
 
-    mov bx, 162
-    mov dx, 40
+    mov bx, 138
+    mov dx, 50
     mov si, offset debug_enemy_tag
     mov ah, PAL_CYAN
     call draw_text_small
 
     call count_live_enemies
     mov ah, PAL_WHITE
-    mov bx, 168
-    mov dx, 40
+    mov bx, 144
+    mov dx, 50
     call draw_two_digit_small
     ret
 

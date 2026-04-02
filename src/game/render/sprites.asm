@@ -132,3 +132,69 @@ draw_sprite16_2x_done:
     pop bx
     pop ax
     ret
+
+draw_presentation_banner_2x:
+    ; Banked scene banners are transparent 64x24 bitmaps scaled 2x at draw
+    ; time so splash/title/end scenes can use richer art without spending more
+    ; stage-two resident bytes on static presentation data.
+    push ax
+    push bx
+    push cx
+    push dx
+    push si
+    push di
+    push bp
+    push ds
+    mov [glyph_base_x], bx
+    mov [glyph_base_y], dx
+    mov ax, PRESENT_BANK_SEG
+    mov ds, ax
+    xor bp, bp
+
+draw_presentation_banner_row:
+    cmp bp, PRESENT_BANNER_H
+    jae draw_presentation_banner_done
+    xor di, di
+
+draw_presentation_banner_col:
+    cmp di, PRESENT_BANNER_W
+    jae draw_presentation_banner_next_row
+    lodsb
+    or al, al
+    jz draw_presentation_banner_skip
+    mov [text_color], al
+    push bp
+    push di
+    mov bx, [glyph_base_x]
+    mov dx, [glyph_base_y]
+    mov ax, di
+    shl ax, 1
+    add bx, ax
+    mov ax, bp
+    shl ax, 1
+    add dx, ax
+    mov cx, PRESENT_BANNER_SCALE
+    mov bp, PRESENT_BANNER_SCALE
+    mov al, [text_color]
+    call fill_rect
+    pop di
+    pop bp
+
+draw_presentation_banner_skip:
+    inc di
+    jmp draw_presentation_banner_col
+
+draw_presentation_banner_next_row:
+    inc bp
+    jmp draw_presentation_banner_row
+
+draw_presentation_banner_done:
+    pop ds
+    pop bp
+    pop di
+    pop si
+    pop dx
+    pop cx
+    pop bx
+    pop ax
+    ret

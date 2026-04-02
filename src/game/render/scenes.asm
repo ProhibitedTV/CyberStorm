@@ -60,45 +60,31 @@ splash_frame_base:
 splash_frame_ready:
     call draw_rect_outline
 
-    mov bx, 60
-    mov dx, 54
-    mov cx, 52
-    mov bp, 52
-    mov al, PAL_PANEL2
-    call fill_rect
+    mov bx, 96
+    mov dx, 42
+    mov si, PRESENT_BANNER_SPLASH_OFFSET
+    call draw_presentation_banner_2x
 
-    mov bx, 58
-    mov dx, 52
-    mov cx, 56
-    mov bp, 56
-    mov al, PAL_CYAN
-    call draw_rect_outline
-
-    mov bx, 70
-    mov dx, 64
-    mov si, offset sprite_bitriver_mark
-    call draw_sprite16_2x
-
-    mov bx, 126
-    mov dx, 62
+    mov bx, 108
+    mov dx, 98
     mov si, offset splash_brand
     mov ah, PAL_CYAN2
     call draw_text_big
 
-    mov bx, 148
-    mov dx, 92
+    mov bx, 150
+    mov dx, 124
     mov si, offset splash_subtitle
     mov ah, PAL_WHITE
     call draw_text_small
 
-    mov bx, 66
-    mov dx, 122
+    mov bx, 68
+    mov dx, 136
     mov si, offset splash_tagline
     mov ah, PAL_CYAN
     call draw_text_small
 
     mov bx, 78
-    mov dx, 142
+    mov dx, 146
     mov cx, 164
     mov bp, 8
     mov al, PAL_PANEL2
@@ -133,8 +119,8 @@ splash_bar_ready:
     call fill_rect
 
 splash_bar_done:
-    mov bx, 114
-    mov dx, 158
+    mov bx, 104
+    mov dx, 156
     mov si, offset splash_skip
     test byte ptr [anim_phase], 1
     jz splash_skip_dim
@@ -170,6 +156,11 @@ title_frame_dim:
 
 title_frame_ready:
     call draw_rect_outline
+
+    mov bx, 150
+    mov dx, 40
+    mov si, PRESENT_BANNER_TITLE_OFFSET
+    call draw_presentation_banner_2x
 
     mov bx, 34
     mov dx, 42
@@ -310,6 +301,11 @@ win_frame_base:
 
 win_frame_ready:
     call draw_rect_outline
+
+    mov bx, 134
+    mov dx, 42
+    mov si, PRESENT_BANNER_WIN_OFFSET
+    call draw_presentation_banner_2x
     xor ax, ax
     mov al, [state_ticks]
     mov cx, ax
@@ -510,6 +506,11 @@ lose_frame_base:
 
 lose_frame_ready:
     call draw_rect_outline
+
+    mov bx, 134
+    mov dx, 42
+    mov si, PRESENT_BANNER_LOSE_OFFSET
+    call draw_presentation_banner_2x
     xor ax, ax
     mov al, [state_ticks]
     mov cx, ax

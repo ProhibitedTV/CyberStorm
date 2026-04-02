@@ -1,10 +1,10 @@
-SPEAKER_DIV_DRY    equ 3600
-SPEAKER_DIV_LOW    equ 3000
-SPEAKER_DIV_WARN   equ 2400
-SPEAKER_DIV_MID    equ 1800
-SPEAKER_DIV_UP     equ 1400
-SPEAKER_DIV_HIGH   equ 1100
-SPEAKER_DIV_CHIME  equ 900
+SPEAKER_DIV_DRY    equ 4200
+SPEAKER_DIV_LOW    equ 3600
+SPEAKER_DIV_WARN   equ 3000
+SPEAKER_DIV_MID    equ 2400
+SPEAKER_DIV_UP     equ 1800
+SPEAKER_DIV_HIGH   equ 1400
+SPEAKER_DIV_CHIME  equ 1100
 
 AUDIO_BACKEND_PCSPEAKER equ 0
 AUDIO_BACKEND_SB16      equ 1
@@ -29,12 +29,10 @@ DMA1_MODE_SINGLE_WRITE equ 049h
 SB16_SET_BLOCK_SIZE    equ 048h
 SB16_START_AUTO_DMA_8  equ 01Ch
 SB16_TIME_CONSTANT     equ 166
+; 611 samples at the current SB16 time constant lands very close to one BIOS
+; tick, so the background voice can change on the same rhythm as the game loop.
 AUDIO_BLOCK_SAMPLES    equ 611
 AUDIO_SAMPLE_CENTER    equ 128
-AUDIO_SAMPLE_AMPLITUDE equ 40
-; The current bare-metal synth is intentionally tiny. Keep looping music off by
-; default until we have a fuller score path than simple monophonic tones.
-MUSIC_ENABLED          equ 0
 
 MUSIC_THEME_SPLASH equ 0
 MUSIC_THEME_TITLE  equ 1
@@ -43,55 +41,50 @@ MUSIC_THEME_WIN    equ 3
 MUSIC_THEME_LOSE   equ 4
 MUSIC_THEME_NONE   equ 0FFh
 
-; Music note ids index music_note_divisors. Themes are 2-byte cells:
+; Generated themes are 2-byte cells:
 ;   <note id>, <duration in BIOS ticks>
-; NOTE_REST mutes the speaker for that duration.
-; MUSIC_NOTE_LOOP rewinds to the current theme start and keeps looping.
-; The PC speaker is single-voice, so active SFX always own the channel. While a
-; one-shot SFX is active, theme timing pauses and resumes on the same note.
+; The transport owns theme selection, pointer rewind, and note timing. The
+; voice layer turns the current transport note into a single raw tone. Because
+; the hardware path is effectively monophonic, one-shot SFX always take the
+; speaker while the music transport simply pauses on its current note.
 MUSIC_NOTE_REST equ 0
-MUSIC_NOTE_G3   equ 1
-MUSIC_NOTE_A3   equ 2
-MUSIC_NOTE_C4   equ 3
-MUSIC_NOTE_D4   equ 4
-MUSIC_NOTE_E4   equ 5
-MUSIC_NOTE_F4   equ 6
-MUSIC_NOTE_G4   equ 7
-MUSIC_NOTE_A4   equ 8
-MUSIC_NOTE_C5   equ 9
+MUSIC_NOTE_G2   equ 1
+MUSIC_NOTE_A2   equ 2
+MUSIC_NOTE_C3   equ 3
+MUSIC_NOTE_D3   equ 4
+MUSIC_NOTE_E3   equ 5
+MUSIC_NOTE_F3   equ 6
+MUSIC_NOTE_G3   equ 7
+MUSIC_NOTE_A3   equ 8
+MUSIC_NOTE_C4   equ 9
+MUSIC_NOTE_D4   equ 10
+MUSIC_NOTE_E4   equ 11
+MUSIC_NOTE_F4   equ 12
+MUSIC_NOTE_G4   equ 13
 MUSIC_NOTE_LOOP equ 0FFh
 
 init_audio:
     mov byte ptr [audio_backend], AUDIO_BACKEND_PCSPEAKER
-    mov byte ptr [audio_phase_step], 0
     mov byte ptr [audio_phase_accum], 0
     mov byte ptr [sb16_dma_active], 0
+    mov word ptr [audio_hw_divisor], 0
+    call clear_music_voice
+    call clear_sfx_voice
+    call clear_audio_output_voice
     call init_sb16_backend
     call stop_sfx
-    mov byte ptr [music_theme], MUSIC_THEME_NONE
-    mov byte ptr [music_ticks], 0
-    mov byte ptr [music_note], MUSIC_NOTE_REST
-    mov word ptr [music_ptr], 0
+    call stop_music
     ret
 
 update_audio:
-IF MUSIC_ENABLED
+IF AUDIO_MUSIC_ENABLED
     call sync_music_theme
-    cmp byte ptr [sound_timer], 0
-    jne update_audio_sfx
-    call update_music
-    jmp update_audio_commit
+    call update_music_transport
 ELSE
-    cmp byte ptr [sound_timer], 0
-    jne update_audio_sfx
-    call stop_speaker_output
-    jmp update_audio_commit
+    call stop_music
 ENDIF
-
-update_audio_sfx:
-    call update_sfx
-
-update_audio_commit:
+    call update_sfx_transport
+    call resolve_audio_transport
     call commit_audio_output
     ret
 
@@ -150,6 +143,7 @@ start_music_apply:
     call reset_music_pointer
     mov byte ptr [music_ticks], 0
     mov byte ptr [music_note], MUSIC_NOTE_REST
+    call clear_music_voice
     ret
 
 stop_music:
@@ -157,7 +151,7 @@ stop_music:
     mov byte ptr [music_ticks], 0
     mov byte ptr [music_note], MUSIC_NOTE_REST
     mov word ptr [music_ptr], 0
-    call stop_speaker_output
+    call clear_music_voice
     ret
 
 reset_music_pointer:
@@ -173,34 +167,39 @@ reset_music_pointer:
     pop ax
     ret
 
-update_music:
-    push ax
+update_music_transport:
     cmp byte ptr [music_theme], MUSIC_THEME_NONE
-    jne update_music_check
-    call stop_speaker_output
-    jmp update_music_done
+    jne update_music_theme_active
+    call clear_music_voice
+    ret
 
-update_music_check:
+update_music_theme_active:
+    cmp byte ptr [sound_timer], 0
+    jne update_music_paused
     cmp byte ptr [music_ticks], 0
-    jne update_music_play
+    jne update_music_have_event
     call load_music_event
 
-update_music_play:
+update_music_have_event:
     cmp byte ptr [music_ticks], 0
-    je update_music_done
+    je update_music_clear
     cmp byte ptr [music_note], MUSIC_NOTE_REST
     je update_music_rest
-    call play_music_note
+    call set_music_voice_from_note
     jmp update_music_tick
 
 update_music_rest:
-    call stop_speaker_output
+    call clear_music_voice
 
 update_music_tick:
     dec byte ptr [music_ticks]
+    ret
 
-update_music_done:
-    pop ax
+update_music_paused:
+    ret
+
+update_music_clear:
+    call clear_music_voice
     ret
 
 load_music_event:
@@ -226,16 +225,18 @@ load_music_event_apply:
     pop ax
     ret
 
-play_music_note:
+set_music_voice_from_note:
     push ax
     push bx
     push si
     mov al, [music_note]
     xor ah, ah
-    shl ax, 1
     mov si, ax
-    mov bx, word ptr [music_note_divisors + si]
-    call speaker_play_divisor
+    shl ax, 1
+    mov bx, word ptr [music_note_divisors + ax]
+    mov word ptr [music_divisor], bx
+    mov al, [music_note_phase_steps + si]
+    mov [music_phase_step], al
     pop si
     pop bx
     pop ax
@@ -302,18 +303,19 @@ start_sfx_check_lose:
 start_sfx_apply:
     mov [sound_timer], bl
     mov byte ptr [sound_phase], 0
+    call clear_sfx_voice
 
 start_sfx_done:
     pop bx
     pop ax
     ret
 
-update_sfx:
+update_sfx_transport:
     push ax
     push bx
     cmp byte ptr [sound_timer], 0
     jne update_sfx_active
-    call stop_speaker_output
+    call clear_sfx_voice
     jmp update_sfx_done
 
 update_sfx_active:
@@ -504,7 +506,7 @@ update_sfx_lose_c:
     mov bx, SPEAKER_DIV_LOW
 
 update_sfx_apply:
-    call speaker_play_divisor
+    call set_sfx_voice_from_divisor
     inc byte ptr [sound_phase]
     dec byte ptr [sound_timer]
     jne update_sfx_done
@@ -515,11 +517,56 @@ update_sfx_done:
     pop ax
     ret
 
-speaker_play_divisor:
+set_sfx_voice_from_divisor:
+    push ax
+    mov word ptr [sfx_divisor], bx
+    call map_divisor_to_phase_step
+    mov [sfx_phase_step], al
+    pop ax
+    ret
+
+resolve_audio_transport:
+    cmp byte ptr [sound_timer], 0
+    jne resolve_audio_use_sfx
+    mov ax, [music_divisor]
+    mov [audio_output_divisor], ax
+    mov al, [music_phase_step]
+    mov [audio_output_phase_step], al
+    ret
+
+resolve_audio_use_sfx:
+    mov ax, [sfx_divisor]
+    mov [audio_output_divisor], ax
+    mov al, [sfx_phase_step]
+    mov [audio_output_phase_step], al
+    ret
+
+commit_audio_output:
+    cmp byte ptr [audio_backend], AUDIO_BACKEND_SB16
+    jne commit_audio_pc_speaker
+    call fill_sb16_buffer
+    ret
+
+commit_audio_pc_speaker:
+    mov bx, [audio_output_divisor]
+    cmp bx, 0
+    jne commit_audio_pc_program
+    call stop_pc_speaker_output
+    mov word ptr [audio_hw_divisor], 0
+    ret
+
+commit_audio_pc_program:
+    cmp bx, [audio_hw_divisor]
+    je commit_audio_done
+    call program_pc_speaker_divisor
+    mov [audio_hw_divisor], bx
+
+commit_audio_done:
+    ret
+
+program_pc_speaker_divisor:
     push ax
     push dx
-    cmp byte ptr [audio_backend], AUDIO_BACKEND_SB16
-    je speaker_route_sb16
     mov dx, 43h
     mov al, 0B6h
     out dx, al
@@ -532,21 +579,8 @@ speaker_play_divisor:
     in al, dx
     or al, 03h
     out dx, al
-    jmp speaker_play_done
-
-speaker_route_sb16:
-    call map_divisor_to_phase_step
-    mov [audio_phase_step], al
-
-speaker_play_done:
     pop dx
     pop ax
-    ret
-
-stop_speaker_output:
-    cmp byte ptr [audio_backend], AUDIO_BACKEND_SB16
-    jne stop_pc_speaker_output
-    mov byte ptr [audio_phase_step], 0
     ret
 
 stop_pc_speaker_output:
@@ -564,7 +598,22 @@ stop_sfx:
     mov byte ptr [sound_id], SFX_NONE
     mov byte ptr [sound_timer], 0
     mov byte ptr [sound_phase], 0
-    call stop_speaker_output
+    call clear_sfx_voice
+    ret
+
+clear_music_voice:
+    mov word ptr [music_divisor], 0
+    mov byte ptr [music_phase_step], 0
+    ret
+
+clear_sfx_voice:
+    mov word ptr [sfx_divisor], 0
+    mov byte ptr [sfx_phase_step], 0
+    ret
+
+clear_audio_output_voice:
+    mov word ptr [audio_output_divisor], 0
+    mov byte ptr [audio_output_phase_step], 0
     ret
 
 init_sb16_backend:
@@ -590,14 +639,6 @@ init_sb16_backend:
 init_sb16_done:
     ret
 
-commit_audio_output:
-    cmp byte ptr [audio_backend], AUDIO_BACKEND_SB16
-    jne commit_audio_done
-    call fill_sb16_buffer
-
-commit_audio_done:
-    ret
-
 fill_sb16_buffer:
     push ax
     push bx
@@ -606,10 +647,7 @@ fill_sb16_buffer:
     push di
     mov di, offset sb16_audio_buffer
     mov cx, AUDIO_BLOCK_SAMPLES
-    mov dl, [audio_phase_step]
-    ; The SB16 stream loops this block continuously. Instead of a hard square
-    ; wave, the backend advances through a small stepped waveform so repeated
-    ; notes stay gentler and do not restart into an audible tick every frame.
+    mov dl, [audio_output_phase_step]
     cmp dl, 0
     jne fill_sb16_tone
     mov al, AUDIO_SAMPLE_CENTER
@@ -622,7 +660,6 @@ fill_sb16_tone:
 fill_sb16_loop:
     add ah, dl
     mov al, ah
-    shr al, 1
     shr al, 1
     shr al, 1
     shr al, 1
@@ -779,56 +816,58 @@ sb16_write_block_length:
 map_divisor_to_phase_step:
     mov al, 0
     cmp bx, SPEAKER_DIV_DRY
-    je map_divisor_8
+    je map_divisor_6
     cmp bx, SPEAKER_DIV_LOW
-    je map_divisor_9
+    je map_divisor_7
     cmp bx, SPEAKER_DIV_WARN
-    je map_divisor_11
+    je map_divisor_9
     cmp bx, SPEAKER_DIV_MID
-    je map_divisor_15
+    je map_divisor_12
     cmp bx, SPEAKER_DIV_UP
-    je map_divisor_20
+    je map_divisor_16
     cmp bx, SPEAKER_DIV_HIGH
-    je map_divisor_25
+    je map_divisor_21
     cmp bx, SPEAKER_DIV_CHIME
-    je map_divisor_31
+    je map_divisor_27
+    cmp bx, 12174
+    je map_divisor_2
+    cmp bx, 10847
+    je map_divisor_3
+    cmp bx, 9121
+    je map_divisor_3
+    cmp bx, 8126
+    je map_divisor_4
+    cmp bx, 7241
+    je map_divisor_4
+    cmp bx, 6833
+    je map_divisor_5
     cmp bx, 6087
     je map_divisor_5
     cmp bx, 5424
-    je map_divisor_5
-    cmp bx, 4560
     je map_divisor_6
-    cmp bx, 4063
+    cmp bx, 4560
     je map_divisor_7
+    cmp bx, 4063
+    je map_divisor_8
     cmp bx, 3620
     je map_divisor_8
     cmp bx, 3417
-    je map_divisor_8
-    cmp bx, 3044
     je map_divisor_9
-    cmp bx, 2712
+    cmp bx, 3044
     je map_divisor_10
-    cmp bx, 2280
-    je map_divisor_12
     ret
 
-map_divisor_31:
-    mov al, 31
+map_divisor_27:
+    mov al, 27
     ret
-map_divisor_25:
-    mov al, 25
+map_divisor_21:
+    mov al, 21
     ret
-map_divisor_20:
-    mov al, 20
-    ret
-map_divisor_15:
-    mov al, 15
+map_divisor_16:
+    mov al, 16
     ret
 map_divisor_12:
     mov al, 12
-    ret
-map_divisor_11:
-    mov al, 11
     ret
 map_divisor_10:
     mov al, 10
@@ -851,8 +890,20 @@ map_divisor_5:
 map_divisor_4:
     mov al, 4
     ret
+map_divisor_3:
+    mov al, 3
+    ret
+map_divisor_2:
+    mov al, 2
+    ret
 
 music_note_divisors dw 0
+                    dw 12174
+                    dw 10847
+                    dw 9121
+                    dw 8126
+                    dw 7241
+                    dw 6833
                     dw 6087
                     dw 5424
                     dw 4560
@@ -860,17 +911,41 @@ music_note_divisors dw 0
                     dw 3620
                     dw 3417
                     dw 3044
-                    dw 2712
-                    dw 2280
+
+music_note_phase_steps db 0
+                      db 2
+                      db 3
+                      db 3
+                      db 4
+                      db 4
+                      db 5
+                      db 5
+                      db 6
+                      db 7
+                      db 8
+                      db 8
+                      db 9
+                      db 10
 
 ; Theme tables are generated from assets\music.psd1 so content iteration does
 ; not require hand-editing long note lists in assembly.
 include generated_music.inc
 
 audio_backend db AUDIO_BACKEND_PCSPEAKER
-audio_phase_step db 0
+audio_mode_value db AUDIO_MODE
 audio_phase_accum db 0
+audio_output_phase_step db 0
+audio_output_divisor dw 0
+audio_hw_divisor dw 0
+music_phase_step db 0
+music_divisor dw 0
+sfx_phase_step db 0
+sfx_divisor dw 0
 sb16_dma_active db 0
 sb16_audio_buffer db AUDIO_BLOCK_SAMPLES dup (AUDIO_SAMPLE_CENTER)
-sb16_waveform db 0, 14, 26, 34, 40, 34, 26, 14
-              db 0, -14, -26, -34, -40, -34, -26, -14
+; A short rounded waveform keeps the experimental music path less piercing than
+; the earlier hard-edged square-wave approach while still staying period-lean.
+sb16_waveform db 0, 6, 12, 18, 23, 28, 31, 34
+              db 36, 34, 31, 28, 23, 18, 12, 6
+              db 0, -6, -12, -18, -23, -28, -31, -34
+              db -36, -34, -31, -28, -23, -18, -12, -6

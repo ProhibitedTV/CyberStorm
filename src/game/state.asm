@@ -28,8 +28,8 @@ anim_phase   db 0
 splash_ticks db 0
 state_ticks  db 0
 title_idle_ticks db 0
-; A short Enter guard after leaving splash/title prevents the start key from
-; immediately retriggering the in-run reset binding on the next gameplay tick.
+; A short post-start guard keeps freshly entered runs from immediately honoring
+; reset input on the next gameplay tick while frontend keys are settling.
 run_start_enter_guard db 0
 ; Demo playback is opt-in attract mode driven by generated [action, ticks]
 ; pairs. next_demo_index rotates the title idle cycle through the authored set.
@@ -77,6 +77,7 @@ pressed_w db 0
 pressed_a db 0
 pressed_s db 0
 pressed_d db 0
+pressed_r db 0
 pressed_c db 0
 pressed_up db 0
 pressed_left db 0
@@ -119,7 +120,7 @@ spoof_text    db 'SPOOF', 0
 shield_text   db 'SHIELD', 0
 pulse_text    db 'PULSE', 0
 gate_text     db 'GATE', 0
-controls_text db 'MOVE WASD OR ARROWS  C EMP  ENTER RESET', 0
+controls_text db 'MOVE WASD OR ARROWS  C EMP  R RESET', 0
 sector1_short_text db 'S1', 0
 sector2_short_text db 'S2', 0
 sector3_short_text db 'S3', 0
@@ -158,7 +159,7 @@ title_logo    db 'CYBERSTORM', 0
 title_line_1  db 'NO OS. NO SHELL. JUST THE BREACH.', 0
 title_line_2  db 'TURN BASED INFILTRATION IN RAW VGA.', 0
 title_line_3  db 'TAKE 4 SHARDS. OPEN THE GATE. REPEAT.', 0
-title_line_4  db 'PRESS ANY KEY TO JACK IN.', 0
+title_line_4  db 'PRESS ENTER TO JACK IN.', 0
 title_prompt  db 'IDLE STARTS AN ATTRACT RUN.', 0
 IF DEBUG_BUILD
 ; Temporary title-scene diagnostics used while hardening keyboard support.
@@ -170,6 +171,14 @@ ENDIF
 
 IF DEBUG_OVERLAY
 debug_tag_text   db 'DBG', 0
+debug_state_tag  db 'GS', 0
+debug_demo_tag   db 'DM', 0
+debug_guard_tag  db 'GD', 0
+debug_key_tag    db 'LK', 0
+debug_backend_tag db 'AB', 0
+debug_audio_mode_tag db 'AM', 0
+debug_sfx_tag    db 'FX', 0
+debug_sfx_timer_tag db 'FT', 0
 debug_sector_tag db 'S', 0
 debug_x_tag      db 'X', 0
 debug_y_tag      db 'Y', 0
@@ -185,4 +194,4 @@ win_line_3    db 'THE STORM BENT. THE BREACH HELD.', 0
 lose_line_1   db 'SEVERED', 0
 lose_line_2   db 'THE STORM CLOSED BEFORE THE BREACH.', 0
 lose_line_3   db 'REBUILD THE LINE. RUN IT AGAIN.', 0
-replay_prompt db 'PRESS ANY KEY TO RUN AGAIN.', 0
+replay_prompt db 'PRESS ENTER TO RUN AGAIN.', 0

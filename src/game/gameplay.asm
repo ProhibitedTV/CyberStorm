@@ -3,18 +3,17 @@ process_play_input:
     ; exactly one responding turn.
     mov byte ptr [action_taken], 0
 
-    ; Enter starts runs from the frontend and also resets in-game. Guard it for
-    ; a few ticks after run start so a held start key does not pin the game in
-    ; a restart loop that looks like a freeze.
+    ; Release builds keep Enter on the frontend. In live play, R is the reset
+    ; key and the short start guard debounces it for the first few ticks.
     cmp byte ptr [run_start_enter_guard], 0
-    je check_reset_enter
-    mov byte ptr [pressed_enter], 0
+    je check_reset_r
+    mov byte ptr [pressed_r], 0
     jmp check_pulse_lower
 
-check_reset_enter:
-    cmp byte ptr [pressed_enter], 0
+check_reset_r:
+    cmp byte ptr [pressed_r], 0
     je check_pulse_lower
-    mov byte ptr [pressed_enter], 0
+    mov byte ptr [pressed_r], 0
     mov byte ptr [any_key_pending], 0
     call start_new_run
     ret

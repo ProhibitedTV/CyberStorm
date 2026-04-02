@@ -6,66 +6,48 @@ music_theme_table dw offset music_theme_splash_data, offset music_theme_title_da
                   dw offset music_theme_win_data, offset music_theme_lose_data
 
 ; Theme: SPLASH
-music_theme_splash_data db MUSIC_NOTE_G3, 8
-                        db MUSIC_NOTE_REST, 2
-                        db MUSIC_NOTE_C4, 6
-                        db MUSIC_NOTE_D4, 6
-                        db MUSIC_NOTE_G3, 8
-                        db MUSIC_NOTE_REST, 4
+music_theme_splash_data db MUSIC_NOTE_C3, 10
+                        db MUSIC_NOTE_REST, 6
+                        db MUSIC_NOTE_G2, 8
+                        db MUSIC_NOTE_REST, 12
                         db MUSIC_NOTE_LOOP, 0
 
 ; Theme: TITLE
-music_theme_title_data db MUSIC_NOTE_G3, 6
-                       db MUSIC_NOTE_C4, 4
-                       db MUSIC_NOTE_D4, 4
-                       db MUSIC_NOTE_G3, 4
-                       db MUSIC_NOTE_REST, 2
-                       db MUSIC_NOTE_G3, 6
-                       db MUSIC_NOTE_C4, 4
-                       db MUSIC_NOTE_F4, 4
-                       db MUSIC_NOTE_E4, 6
-                       db MUSIC_NOTE_D4, 4
-                       db MUSIC_NOTE_C4, 6
+music_theme_title_data db MUSIC_NOTE_G2, 12
                        db MUSIC_NOTE_REST, 4
+                       db MUSIC_NOTE_D3, 8
+                       db MUSIC_NOTE_REST, 4
+                       db MUSIC_NOTE_C3, 10
+                       db MUSIC_NOTE_REST, 10
+                       db MUSIC_NOTE_G2, 8
+                       db MUSIC_NOTE_REST, 8
                        db MUSIC_NOTE_LOOP, 0
 
 ; Theme: RUN
-music_theme_run_data db MUSIC_NOTE_G3, 3
-                     db MUSIC_NOTE_REST, 1
-                     db MUSIC_NOTE_G3, 2
-                     db MUSIC_NOTE_C4, 2
-                     db MUSIC_NOTE_D4, 2
-                     db MUSIC_NOTE_REST, 1
-                     db MUSIC_NOTE_C4, 2
-                     db MUSIC_NOTE_G3, 3
-                     db MUSIC_NOTE_REST, 1
-                     db MUSIC_NOTE_A3, 2
-                     db MUSIC_NOTE_C4, 2
-                     db MUSIC_NOTE_D4, 2
-                     db MUSIC_NOTE_REST, 1
-                     db MUSIC_NOTE_C4, 2
-                     db MUSIC_NOTE_G3, 4
+music_theme_run_data db MUSIC_NOTE_G2, 6
                      db MUSIC_NOTE_REST, 2
+                     db MUSIC_NOTE_G2, 4
+                     db MUSIC_NOTE_REST, 4
+                     db MUSIC_NOTE_C3, 4
+                     db MUSIC_NOTE_REST, 2
+                     db MUSIC_NOTE_D3, 4
+                     db MUSIC_NOTE_REST, 6
+                     db MUSIC_NOTE_A2, 4
+                     db MUSIC_NOTE_REST, 2
+                     db MUSIC_NOTE_C3, 4
+                     db MUSIC_NOTE_REST, 8
                      db MUSIC_NOTE_LOOP, 0
 
 ; Theme: WIN
-music_theme_win_data db MUSIC_NOTE_C4, 4
-                     db MUSIC_NOTE_E4, 4
-                     db MUSIC_NOTE_G4, 4
-                     db MUSIC_NOTE_A4, 6
-                     db MUSIC_NOTE_G4, 4
-                     db MUSIC_NOTE_E4, 4
-                     db MUSIC_NOTE_C4, 8
-                     db MUSIC_NOTE_REST, 4
+music_theme_win_data db MUSIC_NOTE_C3, 8
+                     db MUSIC_NOTE_E3, 8
+                     db MUSIC_NOTE_G3, 10
+                     db MUSIC_NOTE_REST, 12
                      db MUSIC_NOTE_LOOP, 0
 
 ; Theme: LOSE
-music_theme_lose_data db MUSIC_NOTE_E4, 4
-                      db MUSIC_NOTE_D4, 4
-                      db MUSIC_NOTE_C4, 6
-                      db MUSIC_NOTE_G3, 8
-                      db MUSIC_NOTE_REST, 3
-                      db MUSIC_NOTE_C4, 4
-                      db MUSIC_NOTE_G3, 8
-                      db MUSIC_NOTE_REST, 4
+music_theme_lose_data db MUSIC_NOTE_E3, 8
+                      db MUSIC_NOTE_D3, 8
+                      db MUSIC_NOTE_C3, 12
+                      db MUSIC_NOTE_REST, 12
                       db MUSIC_NOTE_LOOP, 0

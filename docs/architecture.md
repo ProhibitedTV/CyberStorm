@@ -25,7 +25,8 @@ Practical consequences:
 | `0000:0400-0000:04FF` | BIOS data area | Must remain untouched. |
 | `0000:7C00` downward | Active stack | Created by the boot sector and still used by stage two and the keyboard ISR. |
 | `1000:0000` upward | Stage two code + data | `DS` is set to `CS` on entry and the whole game assumes one shared segment. |
-| `7000:0000` | Map bank | Phase-1 read-only payload loaded by stage two after boot. |
+| `7000:0000` | Map bank | Read-only authored map payload loaded by stage two after boot. |
+| `7800:0000` | Presentation bank | Read-only splash/title/end banner payload loaded after the map bank. |
 | `9000:0000` | Backbuffer | 64,000-byte linear framebuffer used before presenting to VGA. |
 | `A000:0000` | VGA mode `13h` framebuffer | Final 320x200x8 output. |
 
@@ -42,6 +43,8 @@ Register assumptions that matter:
 
 - The first byte must remain executable because boot jumps to offset `0`.
 - `generated_bank_layout.inc` is build output, not source. It gives stage two the on-disk LBA/size contract for post-boot banks.
+- `generated_presentation_content.inc` is build output, not source. It gives scenes the offsets of the banked splash/title/end banners.
+- `audio_config.inc` is build output, not source. It makes the release audio contract explicit before [src/game/audio.asm](../src/game/audio.asm) is assembled.
 - [src/game/state.asm](../src/game/state.asm) owns the global state layout.
 - [src/game/art.asm](../src/game/art.asm) is the visual-data wrapper and includes the build-generated sprite/tile bitmap include before the hand-authored palette/font data.
 - [src/game/state.asm](../src/game/state.asm) now includes generated sector metadata/rule tables from the content pipeline.
@@ -49,6 +52,7 @@ Register assumptions that matter:
 - [src/game/banks.asm](../src/game/banks.asm) owns the minimal BIOS disk-read helper for post-boot asset banks.
 - [src/game/maps.asm](../src/game/maps.asm) is now documentation only; the authored map pool lives in a bank payload instead of stage two.
 - [src/game/audio.asm](../src/game/audio.asm) keeps the playback logic in-source, but includes generated theme data from the content pipeline.
+- `build\audio_config.inc` currently compiles the runtime in `SFX_ONLY` mode by default. `-ExperimentalMusic` is an opt-in build profile rather than the supported release baseline.
 
 ## 4. Core State Layout
 
@@ -90,6 +94,7 @@ Input flow:
 
 - [src/game/input.asm](../src/game/input.asm) polls BIOS keyboard services through `INT 16h`.
 - Each frame drains the BIOS key queue and latches recognized controls into `pressed_enter`, `pressed_w`, and so on.
+- In supported release builds, `Enter` is frontend-only, `R` is the in-run reset key, and attract-mode takeover still accepts any key.
 - The gameplay loop consumes the `pressed_*` latches directly.
 - Attract/demo playback does not bypass gameplay. It injects the same `pressed_*` latches the live game uses, so replayed turns stay deterministic and exercise the normal rules.
 - The older raw IRQ1 hook is still present as a legacy path, but it is not the default runtime behavior.
@@ -109,7 +114,7 @@ Map/tile rules:
 - Playable movement stays inside the interior rectangle `x = 1..26`, `y = 1..13`.
 - Tile IDs are semantic: floor, wall, shard, locked exit, open exit, surge, terminal.
 - Sector template source maps are ASCII and only `#` is treated as a wall. Every other byte becomes floor before dynamic objects are placed.
-- The authored sector source now lives outside assembly in `assets\sectors.psd1`, and attract scripts live in `assets\demos.psd1`. Both build into reviewable `generated_*.inc` files before MASM runs.
+- The authored sector source now lives outside assembly in `assets\sectors.psd1`, attract scripts live in `assets\demos.psd1`, music themes live in `assets\music.psd1`, and banked scene banners live in `assets\presentation.psd1`. These all build into reviewable `generated_*.inc` files before MASM runs.
 - Each sector now owns a small authored layout family rather than one fixed map. Sector 1 favors open pursuit lanes, sector 2 favors chambers and hinge corridors, and sector 3 favors tighter braided escape routes.
 - Spoof terminals are placed dynamically after the authored layout is copied. They are single-use tiles that redirect hunter targeting toward the exit for a short fixed window.
 
@@ -137,21 +142,22 @@ The gameplay runtime in [src/game/gameplay.asm](../src/game/gameplay.asm) is int
 - Enemy count is `sector_num * ENEMY_SPAWN_STEP + ENEMY_SPAWN_BASE`.
 - The lower-left safe zone (`SAFE_X_MAX`, `SAFE_Y_MIN`) is excluded from random enemy placement.
 
-## 8. Asset Banks (Phase 1)
+## 8. Asset Banks
 
-CyberStorm now has one narrow post-boot bank path:
+CyberStorm now has two narrow post-boot bank paths:
 
-- The build appends `cyberstorm-map-bank.bin` after stage two on the floppy image.
-- `generated_bank_layout.inc` records that bank's starting LBA, size in sectors, and byte count.
-- [src/game/banks.asm](../src/game/banks.asm) loads the bank into `MAP_BANK_SEG` during `start`, before VGA mode is enabled.
-- Gameplay reads map templates through `template_offset_table` offsets into that bank instead of embedding every map into stage two.
+- The build appends `cyberstorm-map-bank.bin` and `cyberstorm-presentation-bank.bin` after stage two on the floppy image.
+- `generated_bank_layout.inc` records each bank's starting LBA, size in sectors, and byte count.
+- [src/game/banks.asm](../src/game/banks.asm) loads the map bank into `MAP_BANK_SEG` and the presentation bank into `PRESENT_BANK_SEG` during `start`, before VGA mode is enabled.
+- Gameplay reads map templates through `template_offset_table` offsets into the map bank instead of embedding every map into stage two.
+- Splash/title/win/lose scenes read fixed-size banner art from the presentation bank through generated offset constants.
 
 Current scope and limits:
 
 - Banks are read-only.
 - Each bank currently loads into one destination segment, so each bank must fit within 64 KiB padded to sectors.
 - The bank loader assumes the same `18 sectors/track, 2 heads` floppy geometry as [src/boot.asm](../src/boot.asm).
-- Phase 1 only loads the map bank, but the build/report structure is now set up so later banks can be added without changing the boot sector.
+- The runtime currently loads both banks up front during `start`, but the build/report structure is still set up so later banks can be added without changing the boot sector.
 
 ## 9. Extension Checklist
 
@@ -210,3 +216,20 @@ The important contract is:
 This is intentionally lightweight rather than emulator-driven. It is meant to catch "we changed a rule and the demos no longer land where we think they do" before someone boots a VM.
 
 The build writes the results to `build\cyberstorm-replay-report.txt`. When gameplay changes are intentional, that report includes suggested replacement `Expected` blocks so the demo source can be updated reviewably.
+
+## 13. Headless VM Smoke Harness
+
+CyberStorm also has a lightweight VirtualBox smoke lane in [scripts/vm-smoke.ps1](../scripts/vm-smoke.ps1).
+
+Its contract is intentionally narrow:
+
+- it only targets the workspace VirtualBox VM and current release floppy image
+- it uses attract-mode timing instead of flaky key injection
+- it proves the VM can boot far enough to reach splash, title, and the attract wait window
+- it captures one screenshot plus the active VBox log for post-failure inspection
+
+The build can invoke this path with `-VmSmoke`, but it stays opt-in so normal builds do not require VirtualBox. The smoke artifacts are:
+
+- `build\cyberstorm-vm-smoke-report.txt`
+- `build\vm-smoke\cyberstorm-vm-smoke.png`
+- `build\vm-smoke\cyberstorm-vm-smoke.log`

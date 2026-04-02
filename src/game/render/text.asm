@@ -67,6 +67,36 @@ draw_two_digit_small:
     call draw_char_1x
     ret
 
+draw_byte_hex_small:
+    mov [text_color], ah
+    push ax
+    push bx
+    shr al, 1
+    shr al, 1
+    shr al, 1
+    shr al, 1
+    call draw_hex_nibble_small
+    pop bx
+    pop ax
+    and al, 0Fh
+    add bx, 6
+    call draw_hex_nibble_small
+    ret
+
+draw_hex_nibble_small:
+    cmp al, 9
+    jbe hex_nibble_digit
+    add al, 'A' - 10
+    jmp hex_nibble_ready
+
+hex_nibble_digit:
+    add al, '0'
+
+hex_nibble_ready:
+    mov ah, [text_color]
+    call draw_char_1x
+    ret
+
 draw_word_decimal_small:
     ; AX is the value, BX/DX are the destination, and CL is the palette index.
     ; Leading zeros stay hidden so score readouts remain compact and legible.

@@ -267,6 +267,65 @@ Artifacts:
 - [build/vm-smoke/cyberstorm-vm-smoke.png](build/vm-smoke/cyberstorm-vm-smoke.png)
 - [build/vm-smoke/cyberstorm-vm-smoke.log](build/vm-smoke/cyberstorm-vm-smoke.log)
 
+### Runtime Replay Verification
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\runtime-verify.ps1
+```
+
+Or from the full build:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\build.ps1 -RuntimeVerify
+```
+
+This is the new closed-loop proof lane. It does not trust only the PowerShell replay model. Instead it:
+
+- builds debug-only demo boots that reuse the real attract/demo input path
+- boots them headless in VirtualBox
+- waits for a dedicated `REPLAY PASS` or `REPLAY FAIL` scene
+- samples fixed verification markers from the screenshot instead of relying on OCR
+- records the expected and observed runtime signatures beside the VBox log
+
+Artifacts:
+
+- [build/cyberstorm-runtime-verify-report.txt](build/cyberstorm-runtime-verify-report.txt)
+- [build/runtime-verify/](build/runtime-verify)
+
+### Showcase Capture
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\capture-showcase.ps1
+```
+
+Or from the full build:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\build.ps1 -CaptureShowcase
+```
+
+This turns deterministic demos into reproducible public-facing captures:
+
+- a release title shot from the VM smoke lane
+- curated gameplay, hazard, and elite-pressure demo shots from authored demos
+- technical proof shots from the replay verification pass/fail scenes
+- stable output under `build/showcase/` so the README gallery can come from deterministic captures instead of incidental screenshots
+
+Artifacts:
+
+- [build/cyberstorm-showcase-report.txt](build/cyberstorm-showcase-report.txt)
+- [build/showcase/](build/showcase)
+
+### Confidence Stack
+
+CyberStorm now has a layered confidence model:
+
+1. content validation during generation
+2. replay-model validation in [scripts/replay-harness.ps1](scripts/replay-harness.ps1)
+3. runtime replay verification in [scripts/runtime-verify.ps1](scripts/runtime-verify.ps1)
+4. release boot smoke in [scripts/vm-smoke.ps1](scripts/vm-smoke.ps1)
+5. reproducible public showcase capture in [scripts/capture-showcase.ps1](scripts/capture-showcase.ps1)
+
 ### Key Build Outputs
 
 - [build/cyberstorm.img](build/cyberstorm.img)
@@ -286,6 +345,8 @@ Artifacts:
 - [build/cyberstorm-balance-report.txt](build/cyberstorm-balance-report.txt)
 - [build/cyberstorm-regression-report.txt](build/cyberstorm-regression-report.txt)
 - [build/cyberstorm-vm-smoke-report.txt](build/cyberstorm-vm-smoke-report.txt)
+- [build/cyberstorm-runtime-verify-report.txt](build/cyberstorm-runtime-verify-report.txt)
+- [build/cyberstorm-showcase-report.txt](build/cyberstorm-showcase-report.txt)
 - [build/boot.lst](build/boot.lst)
 - [build/game.lst](build/game.lst)
 - [build/debug_config.inc](build/debug_config.inc)
@@ -306,6 +367,8 @@ Artifacts:
 - [build/cyberstorm-balance-report.txt](build/cyberstorm-balance-report.txt): fairness and deterministic sweep summary
 - [build/cyberstorm-regression-report.txt](build/cyberstorm-regression-report.txt): boot/image contract summary for the shipped floppy artifacts
 - [build/cyberstorm-vm-smoke-report.txt](build/cyberstorm-vm-smoke-report.txt): headless VirtualBox smoke summary and capture paths
+- [build/cyberstorm-runtime-verify-report.txt](build/cyberstorm-runtime-verify-report.txt): screenshot-decoded runtime replay verification summary
+- [build/cyberstorm-showcase-report.txt](build/cyberstorm-showcase-report.txt): deterministic gallery/capture assignment summary
 - [build/audio_config.inc](build/audio_config.inc): generated release-vs-experimental audio mode contract
 - [build/cyberstorm-build-report.txt](build/cyberstorm-build-report.txt): layout, addresses, warnings, and artifact paths
 - [build/cyberstorm-stage2.bin](build/cyberstorm-stage2.bin): flattened stage-two payload exactly as written after the boot sector

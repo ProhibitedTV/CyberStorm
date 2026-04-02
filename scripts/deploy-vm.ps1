@@ -21,12 +21,40 @@ if (-not (Test-Path $floppy)) {
 }
 
 function Invoke-VBoxManage {
-    param([string[]]$Arguments)
+    param(
+        [string[]]$Arguments,
+        [int]$Attempt = 0
+    )
 
-    & $vbox @Arguments
-    if ($LASTEXITCODE -ne 0) {
-        throw ("VBoxManage failed: {0}" -f ($Arguments -join ' '))
+    $captured = New-Object 'System.Collections.Generic.List[string]'
+    $previousErrorActionPreference = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try {
+        & $vbox @Arguments 2>&1 | ForEach-Object {
+            $captured.Add($_.ToString())
+        }
+    } finally {
+        $ErrorActionPreference = $previousErrorActionPreference
     }
+
+    if ($LASTEXITCODE -eq 0) {
+        return $captured.ToArray()
+    }
+
+    $message = $captured -join [Environment]::NewLine
+    if ($Attempt -lt 3 -and $message -match 'CO_E_SERVER_EXEC_FAILURE|Failed to create the VirtualBox object') {
+        $previousErrorActionPreference = $ErrorActionPreference
+        $ErrorActionPreference = 'Continue'
+        try {
+            & taskkill /F /IM VBoxSVC.exe /IM VBoxHeadless.exe /IM VirtualBoxVM.exe *>$null
+        } finally {
+            $ErrorActionPreference = $previousErrorActionPreference
+        }
+        Start-Sleep -Seconds (2 + ($Attempt * 3))
+        return Invoke-VBoxManage -Arguments $Arguments -Attempt ($Attempt + 1)
+    }
+
+    throw ("VBoxManage failed: {0}`n{1}" -f ($Arguments -join ' '), $message)
 }
 
 New-Item -ItemType Directory -Force -Path $base | Out-Null

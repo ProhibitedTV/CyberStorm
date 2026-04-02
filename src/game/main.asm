@@ -38,7 +38,9 @@ ENDIF
     mov byte ptr [demo_action_code], DEMO_ACTION_END
     mov byte ptr [demo_action_ticks], 0
     mov word ptr [demo_script_ptr], 0
-IF DEBUG_START_IN_GAME
+IF DEBUG_DEMO_BOOT
+    call start_selected_demo_run
+ELSEIF DEBUG_START_IN_GAME
     call start_new_run
 ELSE
     mov byte ptr [game_state], STATE_SPLASH
@@ -65,6 +67,10 @@ main_loop:
     je handle_frontend_continue_input
     cmp byte ptr [game_state], STATE_LOSE
     je handle_frontend_continue_input
+    cmp byte ptr [game_state], STATE_VERIFY_PASS
+    je handle_verify_continue_input
+    cmp byte ptr [game_state], STATE_VERIFY_FAIL
+    je handle_verify_continue_input
 
     jmp main_loop
 
@@ -108,6 +114,20 @@ handle_frontend_continue_input:
     call clear_pressed_latches
     jmp main_loop
 
+handle_verify_continue_input:
+    call frontend_start_key_pending
+    cmp al, 0
+    jne verify_return_title
+    call frontend_activity_pending
+    cmp al, 0
+    je main_loop
+    call clear_pressed_latches
+    jmp main_loop
+
+verify_return_title:
+    call return_to_title
+    jmp main_loop
+
 frontend_start_now:
     call start_new_run
     jmp main_loop
@@ -115,10 +135,15 @@ frontend_start_now:
 handle_play_input:
     cmp byte ptr [demo_active], 0
     je handle_live_play_input
+IF DEBUG_DEMO_BOOT
+    call process_demo_input
+    jmp main_loop
+ELSE
     cmp byte ptr [any_key_pending], 0
     jne demo_takeover_now
     call process_demo_input
     jmp main_loop
+ENDIF
 
 demo_takeover_now:
     call start_new_run
@@ -157,6 +182,10 @@ update_frontend_state:
     jne frontend_state_done
 
 frontend_update_demo_outro:
+IF DEBUG_RUNTIME_VERIFY
+    call finalize_runtime_verify_demo
+    jmp frontend_state_done
+ENDIF
     cmp byte ptr [state_ticks], END_REVEAL_PROMPT + 24
     jb frontend_state_done
     call return_to_title
@@ -246,9 +275,18 @@ clear_demo_playback_state:
     mov word ptr [demo_script_ptr], 0
     ret
 
+clear_runtime_verify_state:
+    mov byte ptr [verify_action_pending], 0
+    mov byte ptr [verify_action_index], 0
+    mov byte ptr [verify_result_demo_index], 0
+    mov word ptr [verify_expected_signature], 0
+    mov word ptr [verify_observed_signature], 0
+    ret
+
 start_new_run:
     call reset_keyboard_state
     call clear_demo_playback_state
+    call clear_runtime_verify_state
 IF DEBUG_FORCE_SEED
     mov word ptr [rng_state], DEBUG_SEED_VALUE
 ENDIF
@@ -263,12 +301,38 @@ ENDIF
 start_demo_run:
     call reset_keyboard_state
     call clear_demo_playback_state
+    call clear_runtime_verify_state
     mov bl, [next_demo_index]
     cmp bl, DEMO_COUNT
     jb demo_index_ready
     xor bl, bl
 
 demo_index_ready:
+    call start_demo_by_index
+    mov al, [demo_index]
+    inc al
+    cmp al, DEMO_COUNT
+    jb demo_next_index_ready
+    xor al, al
+
+demo_next_index_ready:
+    mov byte ptr [next_demo_index], al
+    ret
+
+start_selected_demo_run:
+    call reset_keyboard_state
+    call clear_demo_playback_state
+    call clear_runtime_verify_state
+    mov bl, DEBUG_DEMO_INDEX
+    call start_demo_by_index
+    ret
+
+start_demo_by_index:
+    cmp bl, DEMO_COUNT
+    jb start_demo_index_ready
+    xor bl, bl
+
+start_demo_index_ready:
     mov byte ptr [demo_index], bl
     xor bh, bh
     mov al, [demo_start_sector_table + bx]
@@ -281,14 +345,6 @@ demo_index_ready:
     mov byte ptr [demo_active], 1
     mov byte ptr [demo_action_code], DEMO_ACTION_END
     mov byte ptr [demo_action_ticks], 0
-    mov al, [demo_index]
-    inc al
-    cmp al, DEMO_COUNT
-    jb demo_next_index_ready
-    xor al, al
-
-demo_next_index_ready:
-    mov byte ptr [next_demo_index], al
     call initialize_run_state
     ret
 
@@ -383,7 +439,11 @@ demo_consume_tick:
     ret
 
 demo_finished:
+IF DEBUG_RUNTIME_VERIFY
+    call finalize_runtime_verify_demo
+ELSE
     call return_to_title
+ENDIF
     ret
 
 load_next_demo_action:
@@ -397,4 +457,161 @@ load_next_demo_action:
     inc si
     mov [demo_script_ptr], si
     pop si
+    ret
+
+get_demo_name_ptr:
+    xor bx, bx
+    mov bl, [verify_result_demo_index]
+    shl bx, 1
+    mov si, word ptr [demo_name_table + bx]
+    ret
+
+verify_runtime_checkpoint:
+    mov byte ptr [verify_action_pending], 0
+    xor bx, bx
+    mov bl, [demo_index]
+    mov al, [verify_action_index]
+    cmp al, [verify_demo_checkpoint_count_table + bx]
+    jb verify_checkpoint_in_range
+    call compute_runtime_verify_signature
+    mov [verify_observed_signature], ax
+    shl bx, 1
+    mov ax, [verify_demo_final_signature_table + bx]
+    mov [verify_expected_signature], ax
+    mov al, [demo_index]
+    mov byte ptr [verify_result_demo_index], al
+    mov byte ptr [demo_active], 0
+    mov byte ptr [game_state], STATE_VERIFY_FAIL
+    ret
+
+verify_checkpoint_in_range:
+    mov dl, [verify_action_index]
+    inc byte ptr [verify_action_index]
+    call compute_runtime_verify_signature
+    mov [verify_observed_signature], ax
+    xor bx, bx
+    mov bl, [demo_index]
+    shl bx, 1
+    mov si, [verify_demo_checkpoint_table + bx]
+    xor bx, bx
+    mov bl, dl
+    shl bx, 1
+    mov ax, [si + bx]
+    mov [verify_expected_signature], ax
+    cmp ax, [verify_observed_signature]
+    je verify_checkpoint_done
+    mov al, [demo_index]
+    mov byte ptr [verify_result_demo_index], al
+    mov byte ptr [demo_active], 0
+    mov byte ptr [game_state], STATE_VERIFY_FAIL
+
+verify_checkpoint_done:
+    ret
+
+finalize_runtime_verify_demo:
+    mov byte ptr [demo_active], 0
+    mov byte ptr [verify_action_pending], 0
+    mov al, [demo_index]
+    mov byte ptr [verify_result_demo_index], al
+    xor bx, bx
+    mov bl, al
+    mov al, [verify_action_index]
+    cmp al, [verify_demo_checkpoint_count_table + bx]
+    je verify_demo_action_count_ok
+    call compute_runtime_verify_signature
+    mov [verify_observed_signature], ax
+    xor bx, bx
+    mov bl, [verify_result_demo_index]
+    shl bx, 1
+    mov ax, [verify_demo_final_signature_table + bx]
+    mov [verify_expected_signature], ax
+    mov byte ptr [game_state], STATE_VERIFY_FAIL
+    ret
+
+verify_demo_action_count_ok:
+    call compute_runtime_verify_signature
+    mov [verify_observed_signature], ax
+    xor bx, bx
+    mov bl, [verify_result_demo_index]
+    shl bx, 1
+    mov ax, [verify_demo_final_signature_table + bx]
+    mov [verify_expected_signature], ax
+    cmp ax, [verify_observed_signature]
+    jne verify_demo_fail
+    mov byte ptr [game_state], STATE_VERIFY_PASS
+    ret
+
+verify_demo_fail:
+    mov byte ptr [game_state], STATE_VERIFY_FAIL
+    ret
+
+compute_runtime_verify_signature:
+    push bx
+    push cx
+    push dx
+    push si
+    mov ax, 0A55Ah
+    mov bl, [game_state]
+    call verify_sig_mix_byte
+    mov bl, [sector_num]
+    call verify_sig_mix_byte
+    mov bl, [current_template_index]
+    call verify_sig_mix_byte
+    mov bl, [player_x]
+    call verify_sig_mix_byte
+    mov bl, [player_y]
+    call verify_sig_mix_byte
+    mov bl, [shield_count]
+    call verify_sig_mix_byte
+    mov bl, [pulse_count]
+    call verify_sig_mix_byte
+    mov bl, [data_count]
+    call verify_sig_mix_byte
+    mov bl, [kill_count]
+    call verify_sig_mix_byte
+    mov dx, [score_total]
+    call verify_sig_mix_word
+    mov bl, [sector_actions]
+    call verify_sig_mix_byte
+    mov bl, [sector_hits]
+    call verify_sig_mix_byte
+    mov bl, [sector_pulses_used]
+    call verify_sig_mix_byte
+    mov bl, [spoof_timer]
+    call verify_sig_mix_byte
+    mov dx, [rng_state]
+    call verify_sig_mix_word
+    mov si, offset enemies
+    mov cx, MAX_ENEMIES
+
+verify_sig_enemy_loop:
+    mov bl, [si + ENEMY_ALIVE]
+    call verify_sig_mix_byte
+    mov bl, [si + ENEMY_X]
+    call verify_sig_mix_byte
+    mov bl, [si + ENEMY_Y]
+    call verify_sig_mix_byte
+    mov bl, [si + ENEMY_KIND]
+    call verify_sig_mix_byte
+    add si, ENEMY_SIZE
+    loop verify_sig_enemy_loop
+    pop si
+    pop dx
+    pop cx
+    pop bx
+    ret
+
+verify_sig_mix_word:
+    push bx
+    mov bl, dl
+    call verify_sig_mix_byte
+    mov bl, dh
+    call verify_sig_mix_byte
+    pop bx
+    ret
+
+verify_sig_mix_byte:
+    rol ax, 1
+    xor al, bl
+    add ax, 173Dh
     ret

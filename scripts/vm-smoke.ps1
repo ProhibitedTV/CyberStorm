@@ -29,18 +29,40 @@ $logCopyPath = Join-Path $artifactDir 'cyberstorm-vm-smoke.log'
 $targetPath = Join-Path $root ("deploy\virtualbox\{0}\Logs\VBox.log" -f $VmName)
 
 function Invoke-VBoxManage {
-    param([string[]]$Arguments)
+    param(
+        [string[]]$Arguments,
+        [int]$Attempt = 0
+    )
 
     $captured = New-Object 'System.Collections.Generic.List[string]'
-    & $vbox @Arguments 2>&1 | ForEach-Object {
-        $captured.Add($_.ToString())
+    $previousErrorActionPreference = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try {
+        & $vbox @Arguments 2>&1 | ForEach-Object {
+            $captured.Add($_.ToString())
+        }
+    } finally {
+        $ErrorActionPreference = $previousErrorActionPreference
     }
 
-    if ($LASTEXITCODE -ne 0) {
-        throw ("VBoxManage failed: {0}`n{1}" -f ($Arguments -join ' '), ($captured -join [Environment]::NewLine))
+    if ($LASTEXITCODE -eq 0) {
+        return $captured.ToArray()
     }
 
-    return $captured.ToArray()
+    $message = $captured -join [Environment]::NewLine
+    if ($Attempt -lt 3 -and $message -match 'CO_E_SERVER_EXEC_FAILURE|Failed to create the VirtualBox object') {
+        $previousErrorActionPreference = $ErrorActionPreference
+        $ErrorActionPreference = 'Continue'
+        try {
+            & taskkill /F /IM VBoxSVC.exe /IM VBoxHeadless.exe /IM VirtualBoxVM.exe *>$null
+        } finally {
+            $ErrorActionPreference = $previousErrorActionPreference
+        }
+        Start-Sleep -Seconds (2 + ($Attempt * 3))
+        return Invoke-VBoxManage -Arguments $Arguments -Attempt ($Attempt + 1)
+    }
+
+    throw ("VBoxManage failed: {0}`n{1}" -f ($Arguments -join ' '), $message)
 }
 
 function Stop-VmIfRunning {
@@ -57,8 +79,32 @@ function Stop-VmIfRunning {
 function Start-HeadlessVm {
     param([string]$Name)
 
-    Start-Process -FilePath $vbox -ArgumentList @('startvm', $Name, '--type', 'headless') -WindowStyle Hidden | Out-Null
+    Invoke-VBoxManage -Arguments @('startvm', $Name, '--type', 'headless') | Out-Null
     Start-Sleep -Seconds 2
+}
+
+function Invoke-DeployVm {
+    param([string]$Name)
+
+    & powershell -ExecutionPolicy Bypass -File $deployScript -VmName $Name | Out-Null
+    if ($LASTEXITCODE -ne 0) {
+        throw ("Deploy script failed for VM '{0}'." -f $Name)
+    }
+}
+
+function Ensure-VmRegistered {
+    param([string]$Name)
+
+    try {
+        Invoke-VBoxManage -Arguments @('showvminfo', $Name) | Out-Null
+    } catch {
+        if ($_.Exception.Message -match 'Could not find a registered machine named|VBOX_E_OBJECT_NOT_FOUND') {
+            Invoke-DeployVm -Name $Name
+            return
+        }
+
+        throw
+    }
 }
 
 function Write-SmokeReport {
@@ -126,7 +172,7 @@ $attractCaptureSeconds = $WaitSeconds - $titleCaptureSeconds
 
 try {
     Stop-VmIfRunning -Name $VmName
-    & $deployScript -VmName $VmName | Out-Null
+    Ensure-VmRegistered -Name $VmName
     Stop-VmIfRunning -Name $VmName
 
     Start-HeadlessVm -Name $VmName

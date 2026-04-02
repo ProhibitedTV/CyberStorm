@@ -15,6 +15,10 @@ render_screen:
     je render_win_screen
     cmp byte ptr [game_state], STATE_LOSE
     je render_lose_screen
+    cmp byte ptr [game_state], STATE_VERIFY_PASS
+    je render_verify_pass_screen
+    cmp byte ptr [game_state], STATE_VERIFY_FAIL
+    je render_verify_fail_screen
     call render_game_screen
     jmp render_present
 
@@ -32,6 +36,14 @@ render_win_screen:
 
 render_lose_screen:
     call draw_lose_scene
+    jmp render_present
+
+render_verify_pass_screen:
+    call draw_verify_pass_scene
+    jmp render_present
+
+render_verify_fail_screen:
+    call draw_verify_fail_scene
 
 render_present:
     call present_frame
@@ -715,6 +727,230 @@ lose_prompt_dim:
 lose_prompt_ready:
     call draw_text_small
 lose_scene_done:
+    ret
+
+draw_verify_pass_scene:
+    call draw_verify_scene_common
+    ret
+
+draw_verify_fail_scene:
+    call draw_verify_scene_common
+    ret
+
+draw_verify_scene_common:
+    mov bx, 28
+    mov dx, 28
+    mov cx, 264
+    mov bp, 144
+    mov al, PAL_PANEL
+    call fill_rect
+
+    mov bx, 24
+    mov dx, 24
+    mov cx, 272
+    mov bp, 152
+    call get_verify_scene_accent_color
+    call draw_rect_outline
+
+    mov bx, VERIFY_MARKER_X
+    mov dx, VERIFY_MARKER_Y
+    mov cx, VERIFY_MARKER_W
+    mov bp, VERIFY_MARKER_H
+    call get_verify_scene_accent_color
+    call fill_rect
+
+    mov bx, 68
+    mov dx, 42
+    cmp byte ptr [game_state], STATE_VERIFY_PASS
+    jne verify_headline_fail
+    mov si, offset verify_pass_headline
+    mov ah, PAL_CYAN2
+    jmp verify_headline_ready
+
+verify_headline_fail:
+    mov si, offset verify_fail_headline
+    mov ah, PAL_RED2
+
+verify_headline_ready:
+    call draw_text_big
+
+    mov bx, 68
+    mov dx, 60
+    mov si, offset verify_demo_label
+    mov ah, PAL_WHITE
+    call draw_text_small
+
+    mov bx, 98
+    mov dx, 60
+    call get_demo_name_ptr
+    call get_verify_scene_accent_color
+    mov ah, al
+    call draw_text_small
+
+    mov bx, 68
+    mov dx, 72
+    call get_current_template_scenario_name_ptr
+    mov ah, PAL_WHITE
+    call draw_text_small
+
+    mov bx, 68
+    mov dx, 86
+    cmp byte ptr [game_state], STATE_VERIFY_PASS
+    jne verify_body_fail
+    mov si, offset verify_line_1
+    mov ah, PAL_WHITE
+    jmp verify_body_ready
+
+verify_body_fail:
+    mov si, offset verify_line_2
+    mov ah, PAL_WHITE
+
+verify_body_ready:
+    call draw_text_small
+
+    mov bx, 68
+    mov dx, 102
+    mov si, offset verify_step_label
+    mov ah, PAL_WHITE
+    call draw_text_small
+
+    mov al, [verify_action_index]
+    mov ah, PAL_WHITE
+    mov bx, 92
+    mov dx, 102
+    call draw_two_digit_small
+
+    mov bx, 126
+    mov dx, 102
+    mov si, offset verify_expect_label
+    mov ah, PAL_WHITE
+    call draw_text_small
+
+    mov ax, [verify_expected_signature]
+    mov bx, 150
+    mov dx, 102
+    call get_verify_scene_accent_color
+    mov cl, al
+    call draw_word_hex_small
+
+    mov bx, 204
+    mov dx, 102
+    mov si, offset verify_observe_label
+    mov ah, PAL_WHITE
+    call draw_text_small
+
+    mov ax, [verify_observed_signature]
+    mov bx, 228
+    mov dx, 102
+    call get_verify_scene_accent_color
+    mov cl, al
+    call draw_word_hex_small
+
+    mov bx, 68
+    mov dx, VERIFY_EXPECT_BITS_Y - 2
+    mov si, offset verify_expect_label
+    mov ah, PAL_WHITE
+    call draw_text_small
+    mov ax, [verify_expected_signature]
+    mov bx, VERIFY_BITS_X
+    mov dx, VERIFY_EXPECT_BITS_Y
+    call draw_verify_signature_bits
+
+    mov bx, 68
+    mov dx, VERIFY_OBS_BITS_Y - 2
+    mov si, offset verify_observe_label
+    mov ah, PAL_WHITE
+    call draw_text_small
+    mov ax, [verify_observed_signature]
+    mov bx, VERIFY_BITS_X
+    mov dx, VERIFY_OBS_BITS_Y
+    call draw_verify_signature_bits
+
+    mov bx, 74
+    mov dx, 170
+    mov cx, 172
+    mov bp, 10
+    mov al, PAL_PANEL2
+    call fill_rect
+
+    mov bx, 72
+    mov dx, 168
+    mov cx, 176
+    mov bp, 14
+    test byte ptr [anim_phase], 1
+    jz verify_prompt_frame_base
+    mov al, PAL_WHITE
+    jmp verify_prompt_frame_ready
+
+verify_prompt_frame_base:
+    call get_verify_scene_accent_color
+
+verify_prompt_frame_ready:
+    call draw_rect_outline
+
+    mov bx, 86
+    mov dx, 174
+    mov si, offset verify_prompt
+    test byte ptr [anim_phase], 1
+    jz verify_prompt_dim
+    mov ah, PAL_WHITE
+    jmp verify_prompt_ready
+
+verify_prompt_dim:
+    mov ah, PAL_AMBER
+
+verify_prompt_ready:
+    call draw_text_small
+    ret
+
+get_verify_scene_accent_color:
+    cmp byte ptr [game_state], STATE_VERIFY_PASS
+    jne verify_scene_color_fail
+    mov al, PAL_CYAN2
+    ret
+
+verify_scene_color_fail:
+    mov al, PAL_RED2
+    ret
+
+draw_verify_signature_bits:
+    push ax
+    push bx
+    push cx
+    push dx
+    push si
+    mov si, 8000h
+    mov cx, 16
+
+verify_bits_loop:
+    push ax
+    push bx
+    push cx
+    push dx
+    test ax, si
+    jz verify_bit_zero
+    mov al, PAL_WHITE
+    jmp verify_bit_color_ready
+
+verify_bit_zero:
+    mov al, PAL_PANEL2
+
+verify_bit_color_ready:
+    mov bp, VERIFY_BIT_SIZE
+    mov cx, VERIFY_BIT_SIZE
+    call fill_rect
+    pop dx
+    pop cx
+    pop bx
+    pop ax
+    add bx, VERIFY_BIT_PITCH
+    shr si, 1
+    loop verify_bits_loop
+    pop si
+    pop dx
+    pop cx
+    pop bx
+    pop ax
     ret
 
 draw_title_demo_arm_badge:

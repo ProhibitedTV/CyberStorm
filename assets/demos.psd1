@@ -1,9 +1,12 @@
 @{
     Demos = @(
         @{
+            Id = 'scout-attract'
             Name = 'SCOUT ATTRACT'
             StartSector = 1
             Seed = 0x1234
+            CaptureRole = 'gameplay'
+            CaptureTicks = 15
             Expected = @{
                 State = 'PLAYING'
                 Sector = 1
@@ -33,9 +36,12 @@
             )
         }
         @{
+            Id = 'surge-attract'
             Name = 'SURGE ATTRACT'
             StartSector = 2
             Seed = 0x2468
+            CaptureRole = 'hazard'
+            CaptureTicks = 18
             Expected = @{
                 State = 'PLAYING'
                 Sector = 2
@@ -64,9 +70,12 @@
             )
         }
         @{
+            Id = 'warden-attract'
             Name = 'WARDEN ATTRACT'
             StartSector = 3
             Seed = 0x3579
+            CaptureRole = 'elite-pressure'
+            CaptureTicks = 12
             Expected = @{
                 State = 'PLAYING'
                 Sector = 3

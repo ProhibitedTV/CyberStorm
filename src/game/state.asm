@@ -45,6 +45,13 @@ next_demo_index db 0
 demo_action_code db DEMO_ACTION_END
 demo_action_ticks db 0
 demo_script_ptr dw 0
+; Debug-only replay verification tracks consumed demo actions separately from
+; action_taken so blocked moves and other no-turn inputs can still be checked.
+verify_action_pending db 0
+verify_action_index db 0
+verify_result_demo_index db 0
+verify_expected_signature dw 0
+verify_observed_signature dw 0
 last_game_state db 0FFh
 feedback_timer db 0
 ; The runner's last committed step lets flanking hunters aim one tile ahead
@@ -143,6 +150,9 @@ include generated_sector_content.inc
 ; Demo scripts are generated from assets\demos.psd1 as compact action/tick
 ; pairs so attract-mode content can scale without hand-editing ASM tables.
 include generated_demos.inc
+; Replay verification tables are generated from scripts\replay-harness.ps1 so
+; the live runtime can prove it still matches the deterministic host model.
+include generated_runtime_verify.inc
 
 text_msg_sector   db 'SECTOR LIVE. LIFT 4 SHARDS TO CRACK THE GATE.', 0
 text_msg_block    db 'BLACK ICE HOLDS. CUT A DIFFERENT LINE.', 0
@@ -203,3 +213,12 @@ lose_line_1   db 'SEVERED', 0
 lose_line_2   db 'THE STORM CLOSED BEFORE THE BREACH.', 0
 lose_line_3   db 'REBUILD THE LINE. RUN IT AGAIN.', 0
 replay_prompt db 'PRESS ENTER TO RUN AGAIN.', 0
+verify_pass_headline db 'REPLAY PASS', 0
+verify_fail_headline db 'REPLAY FAIL', 0
+verify_line_1 db 'LIVE RUNTIME MATCHED THE AUTHORED DEMO CONTRACT.', 0
+verify_line_2 db 'THE BOOTED GAME DIVERGED FROM THE EXPECTED CHECKPOINT.', 0
+verify_demo_label db 'DEMO', 0
+verify_step_label db 'ACT', 0
+verify_expect_label db 'EXP', 0
+verify_observe_label db 'OBS', 0
+verify_prompt db 'ENTER RETURNS TO TITLE.', 0

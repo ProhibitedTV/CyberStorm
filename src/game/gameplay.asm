@@ -2,6 +2,9 @@ process_play_input:
     ; Only consumed actions set action_taken; that flag is what grants hunters
     ; exactly one responding turn.
     mov byte ptr [action_taken], 0
+IF DEBUG_RUNTIME_VERIFY
+    mov byte ptr [verify_action_pending], 0
+ENDIF
 
     ; Release builds keep Enter on the frontend. In live play, R is the reset
     ; key and the short start guard debounces it for the first few ticks.
@@ -47,30 +50,45 @@ check_pulse_lower:
 consume_pulse:
     mov byte ptr [pressed_c], 0
     mov byte ptr [any_key_pending], 0
+IF DEBUG_RUNTIME_VERIFY
+    mov byte ptr [verify_action_pending], 1
+ENDIF
     jmp do_pulse
 
 consume_left:
     mov byte ptr [pressed_a], 0
     mov byte ptr [pressed_left], 0
     mov byte ptr [any_key_pending], 0
+IF DEBUG_RUNTIME_VERIFY
+    mov byte ptr [verify_action_pending], 1
+ENDIF
     jmp move_left
 
 consume_right:
     mov byte ptr [pressed_d], 0
     mov byte ptr [pressed_right], 0
     mov byte ptr [any_key_pending], 0
+IF DEBUG_RUNTIME_VERIFY
+    mov byte ptr [verify_action_pending], 1
+ENDIF
     jmp move_right
 
 consume_up:
     mov byte ptr [pressed_w], 0
     mov byte ptr [pressed_up], 0
     mov byte ptr [any_key_pending], 0
+IF DEBUG_RUNTIME_VERIFY
+    mov byte ptr [verify_action_pending], 1
+ENDIF
     jmp move_up
 
 consume_down:
     mov byte ptr [pressed_s], 0
     mov byte ptr [pressed_down], 0
     mov byte ptr [any_key_pending], 0
+IF DEBUG_RUNTIME_VERIFY
+    mov byte ptr [verify_action_pending], 1
+ENDIF
     jmp move_down
 
 move_left:
@@ -126,6 +144,15 @@ maybe_enemy_turn:
     call enemy_turn
 
 input_done:
+IF DEBUG_RUNTIME_VERIFY
+    cmp byte ptr [demo_active], 0
+    je input_done_ready
+    cmp byte ptr [verify_action_pending], 0
+    je input_done_ready
+    call verify_runtime_checkpoint
+
+input_done_ready:
+ENDIF
     ret
 
 attempt_move_to:

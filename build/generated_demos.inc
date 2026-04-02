@@ -8,6 +8,8 @@ DEMO_COUNT EQU 3
 demo_start_sector_table db 1, 2, 3
 demo_seed_table dw 1234h, 2468h, 3579h
 demo_script_table dw offset demo_script_0, offset demo_script_1, offset demo_script_2
+demo_name_table dw offset demo_name_0, offset demo_name_1, offset demo_name_2
+demo_capture_tick_table db 15, 18, 12
 
 ; Demo 1: SCOUT ATTRACT
 demo_script_0 db DEMO_ACTION_WAIT, 8
@@ -41,3 +43,8 @@ demo_script_2 db DEMO_ACTION_WAIT, 6
               db DEMO_ACTION_UP, 2
               db DEMO_ACTION_WAIT, 4
               db DEMO_ACTION_END, 0
+
+
+demo_name_0 db 'SCOUT ATTRACT', 0
+demo_name_1 db 'SURGE ATTRACT', 0
+demo_name_2 db 'WARDEN ATTRACT', 0

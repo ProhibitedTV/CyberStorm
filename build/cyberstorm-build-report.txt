@@ -1,5 +1,5 @@
 CyberStorm Build Report
-Generated: 2026-04-02 09:11:06 -06:00
+Generated: 2026-04-02 13:27:18 -06:00
 
 Toolchain
   Assembler: MASM
@@ -45,7 +45,8 @@ Generated Content
   Demo include: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\generated_demos.inc
   Demos: 3
   Demo steps: 24
-  Demo summary: SCOUT ATTRACT (S1, 8 steps), SURGE ATTRACT (S2, 7 steps), WARDEN ATTRACT (S3, 9 steps)
+  Demo summary: SCOUT ATTRACT [gameplay] (S1, capture 15t, 8 steps), SURGE ATTRACT [hazard] (S2, capture 18t, 7 steps), WARDEN ATTRACT [elite-pressure] (S3, capture 12t, 9 steps)
+  Runtime verify include: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\generated_runtime_verify.inc
   Music source: C:\Users\RhythmicCarnage\Desktop\CyberStorm\assets\music.psd1
   Music include: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\generated_music.inc
   Themes: 5
@@ -79,19 +80,25 @@ Balance Harness
 Regression Harness
   Report: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-regression-report.txt
   Boot sector: 512 bytes, signature 0x55AA, LBA 0 matches both image files
-  Stage two: 20993 bytes, 42 sectors, GAME_SECTORS matches, entry near jmp to 0x0F4E
-  Map bank: 3780 bytes (4096 padded), 8 sectors, LBA 43..50
-  Presentation bank: 19968 bytes (19968 padded), 39 sectors, LBA 51..89
-  Images: .img and .vfd match exactly, unused tail zero-filled from byte 46080
+  Stage two: 22418 bytes, 44 sectors, GAME_SECTORS matches, entry near jmp to 0x0F4E
+  Map bank: 3780 bytes (4096 padded), 8 sectors, LBA 45..52
+  Presentation bank: 19968 bytes (19968 padded), 39 sectors, LBA 53..91
+  Images: .img and .vfd match exactly, unused tail zero-filled from byte 47104
   Diagnostics: boot.lst and game.lst are present for post-failure inspection
 
 VM Smoke
   Status: skipped (use -VmSmoke to boot the headless VirtualBox smoke path).
 
+Runtime Verify
+  Status: skipped (use -RuntimeVerify to boot debug-only replay verification demos in VirtualBox).
+
+Showcase Capture
+  Status: skipped (use -CaptureShowcase to generate deterministic boot/demo/verification screenshots).
+
 Asset Banks
   Layout include: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\generated_bank_layout.inc
-  Map bank: 3780 bytes (4096 padded), 8 sectors, LBA 43..50, load 0x7000:0000, payload C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-map-bank.bin
-  Presentation bank: 19968 bytes (19968 padded), 39 sectors, LBA 51..89, load 0x7800:0000, payload C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-presentation-bank.bin
+  Map bank: 3780 bytes (4096 padded), 8 sectors, LBA 45..52, load 0x7000:0000, payload C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-map-bank.bin
+  Presentation bank: 19968 bytes (19968 padded), 39 sectors, LBA 53..91, load 0x7800:0000, payload C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-presentation-bank.bin
 
 Screenshots
   Housekeeping: kept 6 source screenshots, removed 0, rotated 3 README slots
@@ -102,20 +109,20 @@ Screenshots
 Layout
   Boot code bytes: 132 / 510
   Boot code free bytes: 378
-  Stage2 bytes: 20993
-  Stage2 free bytes before 64 KiB limit: 44543
-  Stage2 padded bytes: 21504
-  Stage2 sectors: 42
-  Image bytes used: 45253 / 1474560
-  Image free bytes: 1429307
-  Disk footprint bytes: 46080 / 1474560
-  Disk footprint free bytes: 1428480
+  Stage2 bytes: 22418
+  Stage2 free bytes before 64 KiB limit: 43118
+  Stage2 padded bytes: 22528
+  Stage2 sectors: 44
+  Image bytes used: 46678 / 1474560
+  Image free bytes: 1427882
+  Disk footprint bytes: 47104 / 1474560
+  Disk footprint free bytes: 1427456
   Boot load address: 0000:7C00 (phys 0x00007C00)
   Stage2 load address: 0x1000:0x0000 (phys 0x00010000)
   Boot signature: 0x55AA @ byte 510
-  Stage2 LBA range: 1..42
+  Stage2 LBA range: 1..44
   Boot section: .text$mn (relocations applied: 3)
-  Stage2 section: .text$mn (relocations applied: 895)
+  Stage2 section: .text$mn (relocations applied: 990)
   Assembler warnings: boot=1, stage2=1
   Boot 'start' symbol offset: 0x0000
   Stage2 'start' symbol offset: 0x0F4E
@@ -126,11 +133,14 @@ Artifacts
   C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\generated_sector_content.inc
   C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\generated_maps.inc
   C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\generated_demos.inc
+  C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\generated_runtime_verify.inc
   C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\generated_music.inc
   C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-replay-report.txt
   C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-balance-report.txt
   C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-regression-report.txt
   C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-vm-smoke-report.txt
+  C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-runtime-verify-report.txt
+  C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-showcase-report.txt
   C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\generated_bank_layout.inc
   C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-map-bank.bin
   C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-presentation-bank.bin

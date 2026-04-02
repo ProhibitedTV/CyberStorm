@@ -216,6 +216,7 @@ function New-ReplayState {
     $state = [pscustomobject]@{
         GameState = 'PLAYING'
         SectorNum = 1
+        CurrentTemplateIndex = 0
         ShieldCount = $Constants.START_SHIELDS
         PulseCount = $Constants.START_PULSES
         DataCount = 0
@@ -485,12 +486,86 @@ function Select-SectorMap {
     }
 
     if ($maps.Count -eq 1) {
+        $State.CurrentTemplateIndex = 0
         return $maps[0]
     }
 
     $rngWord = Get-NextRngWord -State $State.Rng
     $selectedIndex = $rngWord % $maps.Count
+    $State.CurrentTemplateIndex = $selectedIndex
     return $maps[$selectedIndex]
+}
+
+function Get-GameStateId {
+    param([string]$StateName)
+
+    switch ($StateName) {
+        'TITLE' { return 0 }
+        'PLAYING' { return 1 }
+        'WIN' { return 2 }
+        'LOSE' { return 3 }
+        'SPLASH' { return 4 }
+        default { return 0xFF }
+    }
+}
+
+function Update-RuntimeSignatureByte {
+    param(
+        [int]$Signature,
+        [int]$Value
+    )
+
+    $signature = ((($signature -shl 1) -band 0xFFFF) -bor (($signature -shr 15) -band 0x1))
+    $signature = ($signature -bxor ($Value -band 0xFF))
+    $signature = ($signature + 0x173D) -band 0xFFFF
+    return $signature
+}
+
+function Update-RuntimeSignatureWord {
+    param(
+        [int]$Signature,
+        [int]$Value
+    )
+
+    $signature = Update-RuntimeSignatureByte -Signature $Signature -Value ($Value -band 0xFF)
+    $signature = Update-RuntimeSignatureByte -Signature $signature -Value (($Value -shr 8) -band 0xFF)
+    return $signature
+}
+
+function Get-RuntimeVerificationSignature {
+    param($State)
+
+    $signature = 0xA55A
+    $signature = Update-RuntimeSignatureByte -Signature $signature -Value (Get-GameStateId -StateName $State.GameState)
+    $signature = Update-RuntimeSignatureByte -Signature $signature -Value $State.SectorNum
+    $signature = Update-RuntimeSignatureByte -Signature $signature -Value $State.CurrentTemplateIndex
+    $signature = Update-RuntimeSignatureByte -Signature $signature -Value $State.PlayerX
+    $signature = Update-RuntimeSignatureByte -Signature $signature -Value $State.PlayerY
+    $signature = Update-RuntimeSignatureByte -Signature $signature -Value $State.ShieldCount
+    $signature = Update-RuntimeSignatureByte -Signature $signature -Value $State.PulseCount
+    $signature = Update-RuntimeSignatureByte -Signature $signature -Value $State.DataCount
+    $signature = Update-RuntimeSignatureByte -Signature $signature -Value $State.KillCount
+    $signature = Update-RuntimeSignatureWord -Signature $signature -Value $State.ScoreTotal
+    $signature = Update-RuntimeSignatureByte -Signature $signature -Value $State.SectorActions
+    $signature = Update-RuntimeSignatureByte -Signature $signature -Value $State.SectorHits
+    $signature = Update-RuntimeSignatureByte -Signature $signature -Value $State.SectorPulsesUsed
+    $signature = Update-RuntimeSignatureByte -Signature $signature -Value $State.SpoofTimer
+    $signature = Update-RuntimeSignatureWord -Signature $signature -Value $State.Rng.Value
+
+    foreach ($enemy in $State.Enemies) {
+        $signature = Update-RuntimeSignatureByte -Signature $signature -Value ($(if ($enemy.Alive) { 1 } else { 0 }))
+        $signature = Update-RuntimeSignatureByte -Signature $signature -Value $enemy.X
+        $signature = Update-RuntimeSignatureByte -Signature $signature -Value $enemy.Y
+        $kindValue = switch ([string]$enemy.Kind) {
+            'RUSHER' { 0 }
+            'FLANKER' { 1 }
+            'WARDEN' { 2 }
+            default { 0xFF }
+        }
+        $signature = Update-RuntimeSignatureByte -Signature $signature -Value $kindValue
+    }
+
+    return ($signature -band 0xFFFF)
 }
 
 function ConvertTo-AnchorPoint {
@@ -1548,17 +1623,36 @@ function Invoke-ReplayScenario {
         throw ("Demo '{0}' must use a 16-bit seed." -f $name)
     }
 
+    $demoId = if (($Demo -is [System.Collections.IDictionary]) -and $Demo.ContainsKey('Id')) { [string]$Demo.Id } else { '' }
+    if ([string]::IsNullOrWhiteSpace($demoId)) {
+        throw ("Demo '{0}' must define a stable Id." -f $name)
+    }
+
+    $captureRole = if (($Demo -is [System.Collections.IDictionary]) -and $Demo.ContainsKey('CaptureRole')) { [string]$Demo.CaptureRole } else { '' }
+    if ([string]::IsNullOrWhiteSpace($captureRole)) {
+        throw ("Demo '{0}' must define a CaptureRole." -f $name)
+    }
+
+    $captureTicks = if (($Demo -is [System.Collections.IDictionary]) -and $Demo.ContainsKey('CaptureTicks')) { [int]$Demo.CaptureTicks } else { -1 }
+    if ($captureTicks -lt 0 -or $captureTicks -gt 255) {
+        throw ("Demo '{0}' must define CaptureTicks in the 0..255 range." -f $name)
+    }
+
     $steps = @($Demo.Steps)
     if ($steps.Count -eq 0) {
         throw ("Demo '{0}' does not define any Steps." -f $name)
     }
 
     $state = New-ReplayState -Constants $Constants -Sectors $Sectors -StartSector $startSector -Seed $seed
+    $checkpointSignatures = New-Object 'System.Collections.Generic.List[int]'
     foreach ($step in $steps) {
         $parsedStep = Get-StepActionKey -Step $step -DemoName $name
         for ($tick = 0; $tick -lt $parsedStep.Count; $tick++) {
             $state.TraceTicks += 1
             Process-ReplayAction -State $state -Constants $Constants -Sectors $Sectors -Action $parsedStep.Action
+            if ($parsedStep.Action -ne 'WAIT') {
+                $checkpointSignatures.Add((Get-RuntimeVerificationSignature -State $state))
+            }
             if ($state.GameState -ne 'PLAYING') {
                 break
             }
@@ -1572,12 +1666,17 @@ function Invoke-ReplayScenario {
     $observed = Get-ObservedReplayResult -State $state
     $expected = if (($Demo -is [System.Collections.IDictionary]) -and $Demo.ContainsKey('Expected')) { $Demo.Expected } else { $null }
     return [pscustomobject]@{
+        Id = $demoId
         Name = $name
         StartSector = $startSector
         Seed = (Format-Hex16 $seed)
+        CaptureRole = $captureRole
+        CaptureTicks = $captureTicks
         Ticks = $state.TraceTicks
         Observed = $observed
         Signature = (Get-ReplaySignature -Observed $observed)
+        RuntimeFinalSignature = (Get-RuntimeVerificationSignature -State $state)
+        CheckpointSignatures = $checkpointSignatures.ToArray()
         SuggestedExpectation = (ConvertTo-ExpectationBlock -Indent '            ' -Observed $observed)
         Mismatches = (Compare-ExpectedReplayResult -DemoName $name -Expected $expected -Observed $observed)
     }
@@ -1605,6 +1704,7 @@ $reportLines = New-Object 'System.Collections.Generic.List[string]'
 $summaryLines = New-Object 'System.Collections.Generic.List[string]'
 $warningLines = New-Object 'System.Collections.Generic.List[string]'
 $failureLines = New-Object 'System.Collections.Generic.List[string]'
+$results = New-Object 'System.Collections.Generic.List[object]'
 
 $reportLines.Add('CyberStorm Replay Harness')
 $reportLines.Add(("Generated: {0}" -f (Get-Date -Format 'yyyy-MM-dd HH:mm:ss K')))
@@ -1618,10 +1718,15 @@ foreach ($demo in $demos) {
     $reportLines.Add(("Demo: {0}" -f $name))
     try {
         $result = Invoke-ReplayScenario -Demo $demo -Constants $constants -Sectors $sectors
+        $results.Add($result)
         $summaryLines.Add(("{0}: {1}" -f $result.Name, $result.Signature))
+        $reportLines.Add(("  Id: {0}" -f $result.Id))
         $reportLines.Add(("  Seed: {0}" -f $result.Seed))
+        $reportLines.Add(("  Capture: role={0} ticks={1}" -f $result.CaptureRole, $result.CaptureTicks))
         $reportLines.Add(("  Ticks: {0}" -f $result.Ticks))
         $reportLines.Add(("  Signature: {0}" -f $result.Signature))
+        $reportLines.Add(("  Runtime final signature: {0}" -f (Format-Hex16 $result.RuntimeFinalSignature)))
+        $reportLines.Add(("  Runtime checkpoints: {0}" -f $result.CheckpointSignatures.Count))
         $reportLines.Add(("  Observed: state={0} sector={1} map={2} player={3} shields={4} pulses={5} data={6} kills={7} alive={8} score={9} actions={10} hits={11} pulses-used={12} spoof={13} rng={14}" -f `
                 $result.Observed.State,
                 $result.Observed.Sector,
@@ -1683,4 +1788,5 @@ return [pscustomobject]@{
     ScenarioCount = $demos.Count
     SummaryLines = $summaryLines.ToArray()
     WarningLines = $warningLines.ToArray()
+    Results = $results.ToArray()
 }

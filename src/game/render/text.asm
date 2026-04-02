@@ -83,6 +83,42 @@ draw_byte_hex_small:
     call draw_hex_nibble_small
     ret
 
+draw_word_hex_small:
+    ; AX is the value, BX/DX are the destination, and CL is the palette index.
+    mov [text_color], cl
+    push ax
+    push bx
+    mov al, ah
+    shr al, 1
+    shr al, 1
+    shr al, 1
+    shr al, 1
+    call draw_hex_nibble_small
+    pop bx
+    pop ax
+    push ax
+    push bx
+    mov al, ah
+    and al, 0Fh
+    add bx, 6
+    call draw_hex_nibble_small
+    pop bx
+    pop ax
+    push ax
+    push bx
+    shr al, 1
+    shr al, 1
+    shr al, 1
+    shr al, 1
+    add bx, 12
+    call draw_hex_nibble_small
+    pop bx
+    pop ax
+    and al, 0Fh
+    add bx, 18
+    call draw_hex_nibble_small
+    ret
+
 draw_hex_nibble_small:
     cmp al, 9
     jbe hex_nibble_digit

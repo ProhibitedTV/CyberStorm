@@ -3,6 +3,8 @@ STATE_PLAYING  equ 1
 STATE_WIN      equ 2
 STATE_LOSE     equ 3
 STATE_SPLASH   equ 4
+STATE_VERIFY_PASS equ 5
+STATE_VERIFY_FAIL equ 6
 
 SPLASH_DURATION equ 54
 TITLE_ATTRACT_DELAY equ 90
@@ -12,6 +14,18 @@ SPLASH_REVEAL_LOGO equ 4
 SPLASH_REVEAL_WORDMARK equ 12
 SPLASH_REVEAL_UI equ 18
 SECTOR_CARD_STAGE_LIMIT equ 6
+
+; Debug-only runtime replay verification scenes use fixed marker geometry so
+; the host smoke scripts can sample pixels without OCR or guest input hacks.
+VERIFY_MARKER_X      equ 42
+VERIFY_MARKER_Y      equ 46
+VERIFY_MARKER_W      equ 12
+VERIFY_MARKER_H      equ 12
+VERIFY_BITS_X        equ 92
+VERIFY_EXPECT_BITS_Y equ 128
+VERIFY_OBS_BITS_Y    equ 146
+VERIFY_BIT_SIZE      equ 4
+VERIFY_BIT_PITCH     equ 6
 
 SCREEN_W      equ 320
 SCREEN_H      equ 200

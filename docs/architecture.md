@@ -237,3 +237,43 @@ The build can invoke this path with `-VmSmoke`, but it stays opt-in so normal bu
 - `build\cyberstorm-vm-smoke-report.txt`
 - `build\vm-smoke\cyberstorm-vm-smoke.png`
 - `build\vm-smoke\cyberstorm-vm-smoke.log`
+
+## 14. Runtime Replay Verification
+
+CyberStorm now also has a debug-only runtime verification lane in [scripts/runtime-verify.ps1](../scripts/runtime-verify.ps1). This closes the loop between the host-side replay model and the actual booted game.
+
+Its contract is:
+
+- it never changes the supported release image; verification is debug-only
+- it reuses the real attract/demo input path instead of faking gameplay in a renderer
+- it relies on generated verification tables from `generated_runtime_verify.inc`, which come from the replay harness
+- it stops on dedicated `STATE_VERIFY_PASS` / `STATE_VERIFY_FAIL` scenes instead of returning silently to title
+- those scenes expose fixed marker geometry and 16-bit signature strips so the host can decode pass/fail without OCR
+
+The runtime verification signature intentionally stays compact but meaningful. It mixes:
+
+- `game_state`
+- `sector_num`
+- `current_template_index`
+- player position
+- shields, pulses, shards, kills, score
+- sector mastery counters
+- `spoof_timer`
+- the current RNG word
+- every enemy record `[alive, x, y, kind]`
+
+That signature is computed after every consumed demo action and compared against the generated checkpoint table. A mismatch lands on the fail scene with both signatures visible.
+
+## 15. Reproducible Showcase Capture
+
+[scripts/capture-showcase.ps1](../scripts/capture-showcase.ps1) turns the deterministic demo/runtime-verification lanes into a public-facing artifact pipeline.
+
+Its contract is:
+
+- use the release VM smoke lane for the title/identity shot
+- use authored demo metadata from `assets\demos.psd1` for gameplay/hazard/elite-pressure capture roles
+- use runtime verification pass/fail scenes for ending/technical proof shots
+- write stable captures under `build\showcase\`
+- let `build.ps1` rotate README screenshots from those deterministic captures when they are present
+
+This keeps the README/gallery reproducible instead of depending on hand-captured incidental screenshots.

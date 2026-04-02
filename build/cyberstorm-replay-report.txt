@@ -1,27 +1,39 @@
 CyberStorm Replay Harness
-Generated: 2026-04-02 09:11:19 -06:00
+Generated: 2026-04-02 13:27:12 -06:00
 Demo source: C:\Users\RhythmicCarnage\Desktop\CyberStorm\assets\demos.psd1
 Sector source: C:\Users\RhythmicCarnage\Desktop\CyberStorm\assets\sectors.psd1
 Scenarios: 3
 
 Demo: SCOUT ATTRACT
+  Id: scout-attract
   Seed: 0x1234
+  Capture: role=gameplay ticks=15
   Ticks: 27
   Signature: PLAYING|S1|sector1_map_c|P7,13|H5|C2|D1|K0|E5|SCORE100|A10|HITS0|PU1|SP0|RNG0x764A
+  Runtime final signature: 0x2946
+  Runtime checkpoints: 13
   Observed: state=PLAYING sector=1 map=sector1_map_c player=7,13 shields=5 pulses=2 data=1 kills=0 alive=5 score=100 actions=10 hits=0 pulses-used=1 spoof=0 rng=0x764A
   Status: PASS
 
 Demo: SURGE ATTRACT
+  Id: surge-attract
   Seed: 0x2468
+  Capture: role=hazard ticks=18
   Ticks: 26
   Signature: PLAYING|S2|sector2_map_b|P8,11|H5|C3|D1|K1|E6|SCORE170|A13|HITS0|PU1|SP0|RNG0xA7CC
+  Runtime final signature: 0x6D25
+  Runtime checkpoints: 17
   Observed: state=PLAYING sector=2 map=sector2_map_b player=8,11 shields=5 pulses=3 data=1 kills=1 alive=6 score=170 actions=13 hits=0 pulses-used=1 spoof=0 rng=0xA7CC
   Status: PASS
 
 Demo: WARDEN ATTRACT
+  Id: warden-attract
   Seed: 0x3579
+  Capture: role=elite-pressure ticks=12
   Ticks: 21
   Signature: PLAYING|S3|sector3_map_c|P6,13|H5|C4|D1|K0|E10|SCORE100|A7|HITS0|PU1|SP0|RNG0x88BA
+  Runtime final signature: 0x68D2
+  Runtime checkpoints: 11
   Observed: state=PLAYING sector=3 map=sector3_map_c player=6,13 shields=5 pulses=4 data=1 kills=0 alive=10 score=100 actions=7 hits=0 pulses-used=1 spoof=0 rng=0x88BA
   Status: PASS
 

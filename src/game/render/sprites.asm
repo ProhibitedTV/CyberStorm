@@ -140,6 +140,69 @@ draw_presentation_asset_2x:
     call draw_presentation_banner_2x
     ret
 
+draw_presentation_asset_1x:
+    ; Some scenes only need a lighter presentation accent. This keeps the same
+    ; banked 64x24 transparent format but draws it at native size instead of
+    ; doubling it across the whole title card.
+    call draw_presentation_banner_1x
+    ret
+
+draw_presentation_banner_1x:
+    push ax
+    push bx
+    push cx
+    push dx
+    push si
+    push di
+    push bp
+    push ds
+    mov [glyph_base_x], bx
+    mov [glyph_base_y], dx
+    mov ax, PRESENT_BANK_SEG
+    mov ds, ax
+    xor bp, bp
+
+draw_presentation_banner_1x_row:
+    cmp bp, PRESENT_BANNER_H
+    jae draw_presentation_banner_1x_done
+    xor di, di
+
+draw_presentation_banner_1x_col:
+    cmp di, PRESENT_BANNER_W
+    jae draw_presentation_banner_1x_next_row
+    lodsb
+    or al, al
+    jz draw_presentation_banner_1x_skip
+    push bp
+    push di
+    mov bx, [glyph_base_x]
+    mov dx, [glyph_base_y]
+    add bx, di
+    add dx, bp
+    call compute_offset
+    mov es:[di], al
+    pop di
+    pop bp
+
+draw_presentation_banner_1x_skip:
+    inc di
+    jmp draw_presentation_banner_1x_col
+
+draw_presentation_banner_1x_next_row:
+    inc bp
+    jmp draw_presentation_banner_1x_row
+
+draw_presentation_banner_1x_done:
+    pop ds
+    pop bp
+    pop di
+    pop si
+    pop dx
+    pop cx
+    pop bx
+    pop ax
+    ret
+
 draw_presentation_banner_2x:
     ; Banked scene banners are transparent 64x24 bitmaps scaled 2x at draw
     ; time so splash/title/end scenes can use richer art without spending more

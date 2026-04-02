@@ -185,44 +185,42 @@ title_frame_dim:
 title_frame_ready:
     call draw_rect_outline
 
-    mov bx, 96
-    mov dx, 28
-    mov si, PRESENT_BANNER_TITLE_LOGO_OFFSET
-    call draw_presentation_asset_2x
-
+    ; Keep the title screen typography-led so the first boot reads as a clean
+    ; invitation instead of a noisy presentation collage.
     mov bx, 74
-    mov dx, 48
+    mov dx, 56
     mov si, offset title_logo
     mov ah, PAL_CYAN2
     call draw_text_big
 
-    mov bx, 92
-    mov dx, 82
-    mov si, PRESENT_BANNER_TITLE_TAGLINE_OFFSET
-    call draw_presentation_asset_2x
+    mov bx, 80
+    mov dx, 84
+    mov cx, 160
+    mov bp, 1
+    mov al, PAL_CYAN
+    call fill_rect
 
-    mov bx, 42
-    mov dx, 96
+    mov bx, 100
+    mov dx, 88
+    mov cx, 120
+    mov bp, 1
+    mov al, PAL_AMBER
+    call fill_rect
+
+    mov bx, 48
+    mov dx, 102
     mov si, offset title_line_1
     mov ah, PAL_WHITE
     call draw_text_small
 
-    mov bx, 42
-    mov dx, 108
+    mov bx, 48
+    mov dx, 114
     mov si, offset title_line_2
     mov ah, PAL_WHITE
     call draw_text_small
 
-    test byte ptr [anim_phase], 2
-    jz title_prompt_skip_asset
-    mov bx, 90
-    mov dx, 114
-    mov si, PRESENT_BANNER_TITLE_PROMPT_OFFSET
-    call draw_presentation_asset_2x
-
-title_prompt_skip_asset:
-    mov bx, 78
-    mov dx, 132
+    mov bx, 74
+    mov dx, 138
     mov si, offset title_line_4
     test byte ptr [anim_phase], 2
     jz title_prompt_amber
@@ -235,8 +233,8 @@ title_prompt_amber:
 title_line_ready:
     call draw_text_small
 
-    mov bx, 70
-    mov dx, 144
+    mov bx, 58
+    mov dx, 150
     mov si, offset title_prompt
     mov ah, PAL_CYAN
     call draw_text_small
@@ -958,12 +956,12 @@ draw_title_demo_arm_badge:
     ; before the handoff so the player can read the coming transition.
     cmp byte ptr [title_idle_ticks], TITLE_BADGE_DELAY
     jb title_demo_badge_done
-    mov bx, 20
-    mov dx, 106
+    mov bx, 222
+    mov dx, 54
     mov si, PRESENT_BANNER_DEMO_BADGE_OFFSET
-    call draw_presentation_asset_2x
-    mov bx, 42
-    mov dx, 124
+    call draw_presentation_asset_1x
+    mov bx, 236
+    mov dx, 80
     mov si, offset demo_text
     mov ah, PAL_WHITE
     call draw_text_small

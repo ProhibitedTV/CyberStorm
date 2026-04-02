@@ -106,17 +106,43 @@ poll_bios_keyboard_done:
 latch_bios_key:
     cmp ah, SCAN_ENTER
     je bios_key_enter
+    cmp al, 0Dh
+    je bios_key_enter
     cmp ah, SCAN_W
+    je bios_key_w
+    cmp al, 'w'
+    je bios_key_w
+    cmp al, 'W'
     je bios_key_w
     cmp ah, SCAN_A
     je bios_key_a
+    cmp al, 'a'
+    je bios_key_a
+    cmp al, 'A'
+    je bios_key_a
     cmp ah, SCAN_S
+    je bios_key_s
+    cmp al, 's'
+    je bios_key_s
+    cmp al, 'S'
     je bios_key_s
     cmp ah, SCAN_D
     je bios_key_d
+    cmp al, 'd'
+    je bios_key_d
+    cmp al, 'D'
+    je bios_key_d
     cmp ah, SCAN_R
     je bios_key_r
+    cmp al, 'r'
+    je bios_key_r
+    cmp al, 'R'
+    je bios_key_r
     cmp ah, SCAN_C
+    je bios_key_c
+    cmp al, 'c'
+    je bios_key_c
+    cmp al, 'C'
     je bios_key_c
     cmp ah, BIOS_SCAN_UP
     je bios_key_up

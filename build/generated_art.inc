@@ -75,6 +75,15 @@ sprite_enemy_warden_b db 0,PAL_PANEL2,PAL_GATE,PAL_GATE,PAL_GATE,PAL_GATE,PAL_PA
                       db 0,PAL_GATE,0,PAL_PANEL2,PAL_PANEL2,0,PAL_GATE,0
                       db 0,0,PAL_PANEL2,0,0,PAL_PANEL2,0,0
 
+sprite_shadow_blob db 0,0,0,0,0,0,0,0
+                   db 0,0,0,0,0,0,0,0
+                   db 0,0,0,0,0,0,0,0
+                   db 0,0,0,0,0,0,0,0
+                   db 0,0,0,PAL_PANEL2,PAL_PANEL2,0,0,0
+                   db 0,0,PAL_PANEL2,PAL_PANEL2,PAL_PANEL2,PAL_PANEL2,0,0
+                   db 0,PAL_PANEL2,PAL_PANEL2,PAL_PANEL2,PAL_PANEL2,PAL_PANEL2,PAL_PANEL2,0
+                   db 0,0,PAL_PANEL2,PAL_PANEL2,PAL_PANEL2,PAL_PANEL2,0,0
+
 sprite_shard_a db 0,0,0,PAL_CYAN,0,0,0,0
                db 0,0,PAL_CYAN2,PAL_WHITE,PAL_CYAN2,0,0,0
                db 0,PAL_CYAN2,PAL_WHITE,PAL_AMBER,PAL_WHITE,PAL_CYAN2,0,0

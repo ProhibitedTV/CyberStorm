@@ -98,6 +98,54 @@ palette_gate_ready:
     mov al, PAL_GATE
     call set_palette_entry
 
+    cmp byte ptr [game_state], STATE_PLAYING
+    jne palette_event_done
+    cmp byte ptr [feedback_timer], 0
+    je palette_event_done
+    mov bl, [anim_phase]
+    shr bl, 1
+    and bl, 01h
+    xor bh, bh
+    mov ax, bx
+    add bx, ax
+    mov al, [message_id]
+    cmp al, MSG_PULSE
+    je palette_event_pulse
+    cmp al, MSG_SURGE
+    je palette_event_surge
+    cmp al, MSG_TRAP
+    je palette_event_surge
+    cmp al, MSG_GATE
+    jne palette_event_done
+    mov si, offset palette_event_gate
+    add si, bx
+    mov al, PAL_GATE
+    call set_palette_entry
+    jmp palette_event_done
+
+palette_event_pulse:
+    mov si, offset palette_event_pulse_floor
+    add si, bx
+    mov al, PAL_FLOOR2
+    call set_palette_entry
+    mov si, offset palette_event_pulse_wall
+    add si, bx
+    mov al, PAL_WALL2
+    call set_palette_entry
+    jmp palette_event_done
+
+palette_event_surge:
+    mov si, offset palette_event_surge_floor
+    add si, bx
+    mov al, PAL_FLOOR2
+    call set_palette_entry
+    mov si, offset palette_event_surge_wall
+    add si, bx
+    mov al, PAL_WALL2
+    call set_palette_entry
+
+palette_event_done:
+
     pop si
     pop bx
     pop ax

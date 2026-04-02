@@ -74,6 +74,19 @@ palette_gate_open_cycle db 20,56,52
                         db 44,63,63
                         db 30,62,58
 
+; Event-lighting only touches environment-facing DAC entries so gameplay pieces
+; keep their stable silhouettes while big beats still breathe across the board.
+palette_event_pulse_floor db 16,32,40
+                         db 22,44,54
+palette_event_pulse_wall  db 10,22,30
+                         db 18,34,42
+palette_event_surge_floor db 18,12,10
+                         db 26,16,12
+palette_event_surge_wall  db 12,8,7
+                         db 20,10,8
+palette_event_gate        db 36,58,54
+                         db 50,63,60
+
 font5x7 db 0Eh,11h,11h,1Fh,11h,11h,11h
         db 1Eh,11h,11h,1Eh,11h,11h,1Eh
         db 0Eh,11h,10h,10h,10h,11h,0Eh

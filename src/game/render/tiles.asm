@@ -58,11 +58,13 @@ draw_floor_tile:
 draw_wall_tile:
     call get_wall_tile_frame
     call draw_bitmap8
+    call draw_wall_depth
     ret
 
 draw_shard_tile:
     call draw_floor_tile
     call draw_shard_glow
+    call draw_shard_contact_light
     call get_shard_sprite
     call draw_sprite8
     ret
@@ -71,12 +73,14 @@ draw_locked_tile:
     call get_locked_tile_frame
     call draw_bitmap8
     call draw_locked_gate_charge
+    call draw_gate_side_glow
     ret
 
 draw_open_tile:
     call get_open_tile_frame
     call draw_bitmap8
     call draw_open_gate_glow
+    call draw_gate_side_glow
     call get_gate_sprite
     call draw_sprite8
     ret
@@ -84,11 +88,13 @@ draw_open_tile:
 draw_surge_tile:
     call get_surge_tile_frame
     call draw_bitmap8
+    call draw_surge_edge_light
     ret
 
 draw_terminal_tile:
     call get_terminal_tile_frame
     call draw_bitmap8
+    call draw_terminal_edge_light
     ret
 
 get_floor_tile_frame:
@@ -376,6 +382,169 @@ open_gate_glow_ready:
     call fill_rect
     add bx, 5
     call fill_rect
+    pop dx
+    pop bx
+    pop ax
+    ret
+
+draw_wall_depth:
+    push ax
+    push bx
+    push dx
+    push cx
+    push bp
+    call get_sector_accent_color
+    mov cx, 8
+    mov bp, 1
+    call fill_rect
+    mov cx, 1
+    mov bp, 8
+    call fill_rect
+    mov al, PAL_PANEL2
+    add dx, 7
+    mov cx, 8
+    mov bp, 1
+    call fill_rect
+    sub dx, 7
+    add bx, 7
+    mov cx, 1
+    mov bp, 8
+    call fill_rect
+    pop bp
+    pop cx
+    pop dx
+    pop bx
+    pop ax
+    ret
+
+draw_shard_contact_light:
+    push ax
+    push bx
+    push dx
+    push cx
+    push bp
+    call get_visual_cycle_phase
+    test al, 1
+    jz shard_contact_base
+    mov al, PAL_WHITE
+    jmp shard_contact_ready
+
+shard_contact_base:
+    call get_sector_accent_color
+
+shard_contact_ready:
+    add bx, 2
+    add dx, 6
+    mov cx, 4
+    mov bp, 1
+    call fill_rect
+    inc dx
+    inc bx
+    mov cx, 2
+    call fill_rect
+    pop bp
+    pop cx
+    pop dx
+    pop bx
+    pop ax
+    ret
+
+draw_gate_side_glow:
+    push ax
+    push bx
+    push dx
+    push cx
+    push bp
+    test byte ptr [anim_phase], 1
+    jz gate_side_glow_base
+    mov al, PAL_WHITE
+    jmp gate_side_glow_ready
+
+gate_side_glow_base:
+    mov al, PAL_GATE
+
+gate_side_glow_ready:
+    sub bx, 1
+    inc dx
+    mov cx, 1
+    mov bp, 6
+    call fill_rect
+    add bx, 9
+    call fill_rect
+    pop bp
+    pop cx
+    pop dx
+    pop bx
+    pop ax
+    ret
+
+draw_surge_edge_light:
+    push ax
+    push bx
+    push dx
+    push cx
+    push bp
+    test byte ptr [anim_phase], 1
+    jz surge_edge_base
+    mov al, PAL_RED2
+    jmp surge_edge_ready
+
+surge_edge_base:
+    mov al, PAL_AMBER
+
+surge_edge_ready:
+    add bx, 1
+    add dx, 1
+    mov cx, 6
+    mov bp, 1
+    call fill_rect
+    add dx, 5
+    call fill_rect
+    sub dx, 5
+    add bx, 2
+    mov cx, 2
+    mov bp, 6
+    call draw_rect_outline
+    pop bp
+    pop cx
+    pop dx
+    pop bx
+    pop ax
+    ret
+
+draw_terminal_edge_light:
+    push ax
+    push bx
+    push dx
+    push cx
+    push bp
+    test byte ptr [anim_phase], 1
+    jz terminal_edge_base
+    mov al, PAL_WHITE
+    jmp terminal_edge_ready
+
+terminal_edge_base:
+    call get_sector_accent_color
+
+terminal_edge_ready:
+    add bx, 1
+    add dx, 1
+    mov cx, 6
+    mov bp, 1
+    call fill_rect
+    mov cx, 1
+    mov bp, 6
+    call fill_rect
+    add bx, 5
+    call fill_rect
+    sub bx, 3
+    add dx, 2
+    mov cx, 2
+    mov bp, 2
+    mov al, PAL_WHITE
+    call fill_rect
+    pop bp
+    pop cx
     pop dx
     pop bx
     pop ax

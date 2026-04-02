@@ -1,5 +1,5 @@
 CyberStorm Build Report
-Generated: 2026-04-02 13:27:18 -06:00
+Generated: 2026-04-02 13:58:20 -06:00
 
 Toolchain
   Assembler: MASM
@@ -22,9 +22,9 @@ Audio Policy
 Generated Art
   Source file: C:\Users\RhythmicCarnage\Desktop\CyberStorm\assets\visuals.psd1
   Generated include: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\generated_art.inc
-  Bitmap count: 35
-  Pixel data bytes: 2432
-  Sizes: 16x16 x1, 8x8 x34
+  Bitmap count: 36
+  Pixel data bytes: 2496
+  Sizes: 16x16 x1, 8x8 x35
 
 Generated Content
   Presentation source: C:\Users\RhythmicCarnage\Desktop\CyberStorm\assets\presentation.psd1
@@ -80,10 +80,10 @@ Balance Harness
 Regression Harness
   Report: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-regression-report.txt
   Boot sector: 512 bytes, signature 0x55AA, LBA 0 matches both image files
-  Stage two: 22418 bytes, 44 sectors, GAME_SECTORS matches, entry near jmp to 0x0F4E
-  Map bank: 3780 bytes (4096 padded), 8 sectors, LBA 45..52
-  Presentation bank: 19968 bytes (19968 padded), 39 sectors, LBA 53..91
-  Images: .img and .vfd match exactly, unused tail zero-filled from byte 47104
+  Stage two: 23705 bytes, 47 sectors, GAME_SECTORS matches, entry near jmp to 0x0F4E
+  Map bank: 3780 bytes (4096 padded), 8 sectors, LBA 48..55
+  Presentation bank: 19968 bytes (19968 padded), 39 sectors, LBA 56..94
+  Images: .img and .vfd match exactly, unused tail zero-filled from byte 48640
   Diagnostics: boot.lst and game.lst are present for post-failure inspection
 
 VM Smoke
@@ -97,8 +97,8 @@ Showcase Capture
 
 Asset Banks
   Layout include: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\generated_bank_layout.inc
-  Map bank: 3780 bytes (4096 padded), 8 sectors, LBA 45..52, load 0x7000:0000, payload C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-map-bank.bin
-  Presentation bank: 19968 bytes (19968 padded), 39 sectors, LBA 53..91, load 0x7800:0000, payload C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-presentation-bank.bin
+  Map bank: 3780 bytes (4096 padded), 8 sectors, LBA 48..55, load 0x7000:0000, payload C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-map-bank.bin
+  Presentation bank: 19968 bytes (19968 padded), 39 sectors, LBA 56..94, load 0x7800:0000, payload C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-presentation-bank.bin
 
 Screenshots
   Housekeeping: kept 6 source screenshots, removed 0, rotated 3 README slots
@@ -109,20 +109,20 @@ Screenshots
 Layout
   Boot code bytes: 132 / 510
   Boot code free bytes: 378
-  Stage2 bytes: 22418
-  Stage2 free bytes before 64 KiB limit: 43118
-  Stage2 padded bytes: 22528
-  Stage2 sectors: 44
-  Image bytes used: 46678 / 1474560
-  Image free bytes: 1427882
-  Disk footprint bytes: 47104 / 1474560
-  Disk footprint free bytes: 1427456
+  Stage2 bytes: 23705
+  Stage2 free bytes before 64 KiB limit: 41831
+  Stage2 padded bytes: 24064
+  Stage2 sectors: 47
+  Image bytes used: 47965 / 1474560
+  Image free bytes: 1426595
+  Disk footprint bytes: 48640 / 1474560
+  Disk footprint free bytes: 1425920
   Boot load address: 0000:7C00 (phys 0x00007C00)
   Stage2 load address: 0x1000:0x0000 (phys 0x00010000)
   Boot signature: 0x55AA @ byte 510
-  Stage2 LBA range: 1..44
+  Stage2 LBA range: 1..47
   Boot section: .text$mn (relocations applied: 3)
-  Stage2 section: .text$mn (relocations applied: 990)
+  Stage2 section: .text$mn (relocations applied: 1019)
   Assembler warnings: boot=1, stage2=1
   Boot 'start' symbol offset: 0x0000
   Stage2 'start' symbol offset: 0x0F4E

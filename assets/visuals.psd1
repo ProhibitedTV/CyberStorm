@@ -146,6 +146,22 @@
         }
         @{
             Section = 'Sprites'
+            Name = 'sprite_shadow_blob'
+            Width = 8
+            Height = 8
+            Rows = @(
+                '........'
+                '........'
+                '........'
+                '........'
+                '...pp...'
+                '..pppp..'
+                '.pppppp.'
+                '..pppp..'
+            )
+        }
+        @{
+            Section = 'Sprites'
             Name = 'sprite_shard_a'
             Width = 8
             Height = 8

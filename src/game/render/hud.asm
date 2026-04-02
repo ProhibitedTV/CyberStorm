@@ -2,12 +2,13 @@ render_game_screen:
     call draw_game_panels
     call render_game_status
     call render_map
-    ; Ambient overlays sit between tiles and entities so the sectors feel
-    ; alive without drawing over hunters, the runner, or threat telegraphs.
+    ; Base tiles are fully opaque, so the structural backdrop has to sit just
+    ; above them while ambient marks/effects/actors layer upward from there.
+    call draw_sector_backdrop
     call draw_sector_ambient
+    call render_game_effects
     call render_enemies
     call render_player
-    call render_game_effects
 IF DEBUG_OVERLAY
     call render_debug_overlay
 ENDIF

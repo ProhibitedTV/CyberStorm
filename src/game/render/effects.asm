@@ -219,6 +219,128 @@ draw_effect_focus_outline:
     pop ax
     ret
 
+draw_sector_backdrop:
+    cmp byte ptr [game_state], STATE_PLAYING
+    jne sector_backdrop_done
+    mov al, [sector_num]
+    cmp al, 2
+    je sector_backdrop_furnace
+    cmp al, 3
+    je sector_backdrop_lock
+    jmp sector_backdrop_scout
+
+sector_backdrop_scout:
+    mov bx, MAP_PIXEL_X + 8
+    xor dx, dx
+    mov dl, [anim_phase]
+    and dl, 0Eh
+    shl dx, 2
+    add dx, MAP_PIXEL_Y + 8
+    mov cx, 44
+    mov bp, 1
+    mov al, PAL_PANEL2
+    call fill_rect
+    add bx, 68
+    add dx, 12
+    mov cx, 30
+    call fill_rect
+    sub bx, 34
+    add dx, 16
+    mov cx, 52
+    call fill_rect
+    mov bx, MAP_PIXEL_X + 28
+    mov dx, MAP_PIXEL_Y + 12
+    mov cx, 1
+    mov bp, 96
+    mov al, PAL_FLOOR2
+    call fill_rect
+    mov bx, MAP_PIXEL_X + 116
+    mov dx, MAP_PIXEL_Y + 20
+    mov bp, 84
+    call fill_rect
+    mov bx, MAP_PIXEL_X + 26
+    add dx, 36
+    mov cx, 5
+    mov bp, 1
+    mov al, PAL_CYAN
+    call fill_rect
+    mov bx, MAP_PIXEL_X + 114
+    add dx, 18
+    call fill_rect
+    jmp sector_backdrop_done
+
+sector_backdrop_furnace:
+    mov bx, MAP_PIXEL_X + 18
+    mov dx, MAP_PIXEL_Y + 6
+    mov cx, 1
+    mov bp, 108
+    mov al, PAL_PANEL2
+    call fill_rect
+    mov bx, MAP_PIXEL_X + 74
+    call fill_rect
+    mov bx, MAP_PIXEL_X + 170
+    call fill_rect
+    xor dx, dx
+    mov dl, [anim_phase]
+    and dl, 0Eh
+    shl dx, 2
+    add dx, MAP_PIXEL_Y + 10
+    mov bx, MAP_PIXEL_X + 8
+    mov cx, 58
+    mov bp, 1
+    mov al, PAL_AMBER
+    call fill_rect
+    add dx, 22
+    cmp dx, MAP_PIXEL_Y + (MAP_H * TILE_SIZE)
+    jb sector_backdrop_furnace_band_ready
+    sub dx, MAP_H * TILE_SIZE
+
+sector_backdrop_furnace_band_ready:
+    mov bx, MAP_PIXEL_X + 132
+    mov cx, 40
+    mov al, PAL_RED2
+    call fill_rect
+    jmp sector_backdrop_done
+
+sector_backdrop_lock:
+    xor bx, bx
+    mov bl, [exit_x]
+    shl bx, TILE_SHIFT
+    add bx, MAP_PIXEL_X
+    add bx, 2
+    mov dx, MAP_PIXEL_Y + 4
+    mov cx, 1
+    mov bp, 112
+    mov al, PAL_PANEL2
+    call fill_rect
+    sub bx, 16
+    call fill_rect
+    add bx, 32
+    call fill_rect
+    mov bx, MAP_PIXEL_X + 10
+    xor dx, dx
+    mov dl, [anim_phase]
+    and dl, 0Ch
+    shl dx, 2
+    add dx, MAP_PIXEL_Y + 14
+    mov cx, 210
+    mov bp, 1
+    mov al, PAL_RED2
+    call fill_rect
+    add dx, 20
+    cmp dx, MAP_PIXEL_Y + (MAP_H * TILE_SIZE)
+    jb sector_backdrop_lock_band_ready
+    sub dx, MAP_H * TILE_SIZE
+
+sector_backdrop_lock_band_ready:
+    mov bx, MAP_PIXEL_X + 120
+    mov cx, 76
+    mov al, PAL_WHITE
+    call fill_rect
+
+sector_backdrop_done:
+    ret
+
 get_major_feedback_stage:
     mov al, FEEDBACK_TICKS_MAJOR
     sub al, [feedback_timer]
@@ -568,6 +690,40 @@ shard_flash_ready:
     call draw_rect_outline
     mov al, PAL_WHITE
     call draw_effect_focus_outline
+    call get_major_feedback_stage
+    cmp al, 2
+    jb shard_flash_done
+    xor bx, bx
+    mov bl, [effect_x]
+    shl bx, TILE_SHIFT
+    add bx, MAP_PIXEL_X
+    xor dx, dx
+    mov dl, [effect_y]
+    shl dx, TILE_SHIFT
+    add dx, MAP_PIXEL_Y
+    add bx, 3
+    add dx, 3
+    mov cx, 2
+    mov bp, 2
+    mov al, PAL_WHITE
+    call fill_rect
+    call get_sector_accent_color
+    sub bx, 8
+    add dx, 1
+    mov cx, 6
+    mov bp, 1
+    call fill_rect
+    add bx, 12
+    call fill_rect
+    sub bx, 4
+    sub dx, 9
+    mov cx, 1
+    mov bp, 6
+    call fill_rect
+    add dx, 12
+    call fill_rect
+
+shard_flash_done:
     ret
 
 draw_gate_flash:
@@ -608,6 +764,14 @@ gate_flash_ready:
     mov cx, 10
     mov bp, 10
     call draw_rect_outline
+    mov al, PAL_GATE
+    sub bx, 2
+    inc dx
+    mov cx, 1
+    mov bp, 6
+    call fill_rect
+    add bx, 11
+    call fill_rect
     call get_major_feedback_stage
     cmp al, 2
     jb gate_flash_done
@@ -625,6 +789,16 @@ gate_flash_ready:
     mov bp, 14
     mov al, PAL_WHITE
     call draw_rect_outline
+    xor bx, bx
+    mov bl, [exit_x]
+    shl bx, TILE_SHIFT
+    add bx, MAP_PIXEL_X
+    add bx, 2
+    mov dx, MAP_PIXEL_Y
+    mov cx, 3
+    mov bp, MAP_H * TILE_SIZE
+    mov al, PAL_GATE
+    call fill_rect
     call get_major_feedback_stage
     cmp al, 4
     jb gate_flash_done
@@ -813,12 +987,50 @@ pulse_effect_ready:
     pop bx
     push bx
     push dx
+    sub bx, 10
+    sub dx, 10
+    mov cx, 1
+    mov bp, 1
+    mov al, PAL_WHITE
+    call fill_rect
+    add bx, 28
+    call fill_rect
+    sub bx, 28
+    add dx, 28
+    call fill_rect
+    add bx, 28
+    call fill_rect
+    pop dx
+    pop bx
+    push bx
+    push dx
     sub bx, 12
     sub dx, 12
     mov cx, 32
     mov bp, 32
     mov al, PAL_WHITE
     call draw_rect_outline
+    pop dx
+    pop bx
+    cmp si, 7
+    jb pulse_effect_done
+    call get_sector_accent_color
+    push bx
+    push dx
+    sub bx, 14
+    add dx, 3
+    mov cx, 36
+    mov bp, 1
+    call fill_rect
+    pop dx
+    pop bx
+    push bx
+    push dx
+    add bx, 3
+    sub dx, 14
+    mov cx, 1
+    mov bp, 36
+    call fill_rect
     pop dx
     pop bx
 

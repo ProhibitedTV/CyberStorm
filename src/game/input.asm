@@ -21,9 +21,13 @@ reset_keyboard_state:
     mov byte ptr [key_extended], 0
     mov byte ptr [input_event_count], 0
     mov byte ptr [input_last_code], 0
+    mov byte ptr [input_last_ascii], 0
     mov byte ptr [input_check_count], 0
     mov byte ptr [input_poll_count], 0
     mov byte ptr [input_last_polled], 0
+    mov byte ptr [frontend_action], FRONTEND_ACTION_NONE
+    mov byte ptr [frontend_last_action], FRONTEND_ACTION_NONE
+    mov byte ptr [frontend_event_count], 0
     call clear_pressed_latches
     push ds
     pop es
@@ -53,6 +57,7 @@ clear_pressed_latches:
     mov byte ptr [pressed_left], 0
     mov byte ptr [pressed_right], 0
     mov byte ptr [pressed_down], 0
+    mov byte ptr [frontend_action], FRONTEND_ACTION_NONE
     pop ax
     ret
 
@@ -85,6 +90,7 @@ poll_bios_keyboard_loop:
     int 16h
     mov [input_last_polled], ah
     mov [input_last_code], ah
+    mov [input_last_ascii], al
     mov byte ptr [any_key_pending], 1
     cmp byte ptr [input_event_count], 99
     jae bios_event_count_ready
@@ -96,11 +102,195 @@ bios_event_count_ready:
     inc byte ptr [input_poll_count]
 
 bios_poll_count_ready:
+    call record_frontend_semantic_action
     call latch_bios_key
     jmp poll_bios_keyboard_loop
 
 poll_bios_keyboard_done:
     pop ax
+    ret
+
+record_frontend_semantic_action:
+    push bx
+    call classify_semantic_action_from_bios_key
+    cmp al, FRONTEND_ACTION_NONE
+    je semantic_action_done
+    mov bl, [frontend_action]
+    cmp bl, FRONTEND_ACTION_NONE
+    je semantic_action_store
+    cmp al, FRONTEND_ACTION_ACTIVITY
+    je semantic_action_last
+    cmp bl, FRONTEND_ACTION_ACTIVITY
+    jne semantic_action_last
+
+semantic_action_store:
+    mov [frontend_action], al
+
+semantic_action_last:
+    mov [frontend_last_action], al
+    cmp byte ptr [frontend_event_count], 99
+    jae semantic_action_done
+    inc byte ptr [frontend_event_count]
+
+semantic_action_done:
+    pop bx
+    ret
+
+classify_semantic_action_from_bios_key:
+    cmp byte ptr [game_state], STATE_SPLASH
+    je classify_semantic_frontend
+    cmp byte ptr [game_state], STATE_TITLE
+    je classify_semantic_frontend
+    cmp byte ptr [game_state], STATE_WIN
+    je classify_semantic_continue
+    cmp byte ptr [game_state], STATE_LOSE
+    je classify_semantic_continue
+    cmp byte ptr [game_state], STATE_VERIFY_PASS
+    je classify_semantic_continue
+    cmp byte ptr [game_state], STATE_VERIFY_FAIL
+    je classify_semantic_continue
+    cmp byte ptr [demo_active], 0
+    jne classify_semantic_demo_takeover
+    jmp classify_semantic_gameplay
+
+classify_semantic_frontend:
+    call is_bios_continue_key
+    jc classify_semantic_start_ready
+    call is_bios_move_key
+    jc classify_semantic_start_ready
+    mov al, FRONTEND_ACTION_ACTIVITY
+    ret
+
+classify_semantic_start_ready:
+    mov al, FRONTEND_ACTION_START
+    ret
+
+classify_semantic_continue:
+    call is_bios_continue_key
+    jc classify_semantic_continue_ready
+    mov al, FRONTEND_ACTION_ACTIVITY
+    ret
+
+classify_semantic_continue_ready:
+    mov al, FRONTEND_ACTION_CONTINUE
+    ret
+
+classify_semantic_demo_takeover:
+    call is_bios_continue_key
+    jc classify_semantic_continue_ready
+    call is_bios_move_key
+    jc classify_semantic_move_ready
+    call is_bios_pulse_key
+    jc classify_semantic_pulse_ready
+    call is_bios_reset_key
+    jc classify_semantic_reset_ready
+    mov al, FRONTEND_ACTION_ACTIVITY
+    ret
+
+classify_semantic_gameplay:
+    call is_bios_move_key
+    jc classify_semantic_move_ready
+    call is_bios_pulse_key
+    jc classify_semantic_pulse_ready
+    call is_bios_reset_key
+    jc classify_semantic_reset_ready
+    mov al, FRONTEND_ACTION_ACTIVITY
+    ret
+
+classify_semantic_move_ready:
+    mov al, FRONTEND_ACTION_MOVE
+    ret
+
+classify_semantic_pulse_ready:
+    mov al, FRONTEND_ACTION_PULSE
+    ret
+
+classify_semantic_reset_ready:
+    mov al, FRONTEND_ACTION_RESET
+    ret
+
+is_bios_continue_key:
+    cmp ah, SCAN_ENTER
+    je bios_continue_true
+    cmp al, KEY_ENTER
+    je bios_continue_true
+    cmp ah, SCAN_SPACE
+    je bios_continue_true
+    cmp al, ' '
+    je bios_continue_true
+    clc
+    ret
+
+bios_continue_true:
+    stc
+    ret
+
+is_bios_move_key:
+    cmp ah, SCAN_W
+    je bios_move_true
+    cmp al, 'w'
+    je bios_move_true
+    cmp al, 'W'
+    je bios_move_true
+    cmp ah, SCAN_A
+    je bios_move_true
+    cmp al, 'a'
+    je bios_move_true
+    cmp al, 'A'
+    je bios_move_true
+    cmp ah, SCAN_S
+    je bios_move_true
+    cmp al, 's'
+    je bios_move_true
+    cmp al, 'S'
+    je bios_move_true
+    cmp ah, SCAN_D
+    je bios_move_true
+    cmp al, 'd'
+    je bios_move_true
+    cmp al, 'D'
+    je bios_move_true
+    cmp ah, BIOS_SCAN_UP
+    je bios_move_true
+    cmp ah, BIOS_SCAN_LEFT
+    je bios_move_true
+    cmp ah, BIOS_SCAN_RIGHT
+    je bios_move_true
+    cmp ah, BIOS_SCAN_DOWN
+    je bios_move_true
+    clc
+    ret
+
+bios_move_true:
+    stc
+    ret
+
+is_bios_pulse_key:
+    cmp ah, SCAN_C
+    je bios_pulse_true
+    cmp al, 'c'
+    je bios_pulse_true
+    cmp al, 'C'
+    je bios_pulse_true
+    clc
+    ret
+
+bios_pulse_true:
+    stc
+    ret
+
+is_bios_reset_key:
+    cmp ah, SCAN_R
+    je bios_reset_true
+    cmp al, 'r'
+    je bios_reset_true
+    cmp al, 'R'
+    je bios_reset_true
+    clc
+    ret
+
+bios_reset_true:
+    stc
     ret
 
 latch_bios_key:

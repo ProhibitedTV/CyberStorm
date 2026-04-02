@@ -2,6 +2,7 @@ process_play_input:
     ; Only consumed actions set action_taken; that flag is what grants hunters
     ; exactly one responding turn.
     mov byte ptr [action_taken], 0
+    mov byte ptr [frontend_action], FRONTEND_ACTION_NONE
 IF DEBUG_RUNTIME_VERIFY
     mov byte ptr [verify_action_pending], 0
 ENDIF

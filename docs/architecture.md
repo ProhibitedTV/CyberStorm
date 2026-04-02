@@ -59,7 +59,7 @@ Register assumptions that matter:
 The runtime state in [src/game/state.asm](../src/game/state.asm) is grouped like this:
 
 - Frontend/game mode state: `game_state`, `sector_num`, resources, player position, exit position, RNG, frame timing, attract/demo timers.
-- Input latches: `pressed_*`, `any_key_pending`, and keyboard debug counters.
+- Input state: `pressed_*`, `any_key_pending`, raw BIOS debug fields, and the semantic frontend-action/debug counters.
 - Rendering scratch: text and rectangle temporaries reused by draw routines.
 - World data: `enemies` and `map_tiles`.
 - Lookup tables and strings: row offsets, message/template tables, UI text.
@@ -72,6 +72,8 @@ Important layout contracts:
 - `score_total`, `sector_score`, and `sector_score_table` back the mastery layer. The sector counters are reset per zone and the score table is meant to stay comparable on end screens.
 - `spoof_timer` / `spoof_x` / `spoof_y` are gameplay state, not render scratch. Hunter AI reads them during enemy turns and effects/HUD read them during rendering.
 - `title_idle_ticks` is frontend-only state for the attract timer. `demo_active`, `demo_action_*`, and `demo_script_ptr` drive scripted playback through the normal gameplay input path.
+- `frontend_action`, `frontend_last_action`, and `frontend_event_count` are the small semantic bridge between BIOS keys and the splash/title/outro state machine. They are also what the debug overlay uses to diagnose "input vs freeze" reports.
+- `verify_mode`, `verify_frontend_scenario`, and `verify_frontend_*` reuse the shared PASS/FAIL verify scenes for both replay verification and debug-only frontend verification.
 - `key_down` and `key_pressed` must stay adjacent because reset code clears them as one contiguous region.
 - `map_row_offsets` must stay synchronized with `MAP_W`, because `map_index` trusts the table instead of multiplying at runtime.
 - `template_offset_table` is a flat pool of byte offsets into the banked ASCII layout payload at `MAP_BANK_SEG`. `sector_template_start` and `sector_template_count` define which slice belongs to each 1-based sector.
@@ -93,8 +95,8 @@ That ordering is intentional: the frame reflects the freshly updated frontend/au
 Input flow:
 
 - [src/game/input.asm](../src/game/input.asm) polls BIOS keyboard services through `INT 16h`.
-- Each frame drains the BIOS key queue and latches recognized controls into `pressed_enter`, `pressed_w`, and so on.
-- In supported release builds, `Enter` is frontend-only, `R` is the in-run reset key, and attract-mode takeover still accepts any key.
+- Each frame drains the BIOS key queue, records the last raw scan/ASCII pair, derives one semantic frontend action, and also latches recognized gameplay controls into `pressed_enter`, `pressed_w`, and so on.
+- In supported release builds, `Enter` / `Space` / `WASD` / arrows start from splash/title, `Enter` / `Space` continue from win/lose/verify scenes, `R` is the in-run reset key, and attract-mode takeover accepts the same supported frontend/gameplay controls rather than every raw BIOS key.
 - The gameplay loop consumes the `pressed_*` latches directly.
 - Attract/demo playback does not bypass gameplay. It injects the same `pressed_*` latches the live game uses, so replayed turns stay deterministic and exercise the normal rules.
 - The older raw IRQ1 hook is still present as a legacy path, but it is not the default runtime behavior.
@@ -221,7 +223,27 @@ This is intentionally lightweight rather than emulator-driven. It is meant to ca
 
 The build writes the results to `build\cyberstorm-replay-report.txt`. When gameplay changes are intentional, that report includes suggested replacement `Expected` blocks so the demo source can be updated reviewably.
 
-## 13. Headless VM Smoke Harness
+## 13. Frontend Verification
+
+CyberStorm now has a dedicated debug-only frontend verification lane in [scripts/frontend-verify.ps1](../scripts/frontend-verify.ps1).
+
+Its contract is:
+
+- it never changes the supported release image; verification is debug-only
+- it does not depend on VirtualBox keyboard injection
+- it boots synthetic frontend scenarios for `splash-to-title`, `title-to-start`, and `title-to-attract`
+- the runtime injects semantic frontend events internally and then stops on shared `STATE_VERIFY_PASS` / `STATE_VERIFY_FAIL` scenes
+- those scenes keep the same fixed marker geometry and signature-bit strips that the other verification lanes already use
+
+The frontend verification signature is intentionally compact:
+
+- low byte: observed `game_state`
+- bit `8`: `demo_active`
+- bit `9`: `run_start_enter_guard > 0`
+
+That is enough to prove the terminal frontend state machine outcome without adding a separate result-screen format.
+
+## 14. Headless VM Smoke Harness
 
 CyberStorm also has a lightweight VirtualBox smoke lane in [scripts/vm-smoke.ps1](../scripts/vm-smoke.ps1).
 
@@ -229,7 +251,7 @@ Its contract is intentionally narrow:
 
 - it only targets the workspace VirtualBox VM and current release floppy image
 - it uses attract-mode timing instead of flaky key injection
-- it proves the VM can boot far enough to reach splash, title, and the attract wait window
+- it proves the VM can boot far enough to reach the splash/title window and the later attract wait window
 - it captures one screenshot plus the active VBox log for post-failure inspection
 
 The build can invoke this path with `-VmSmoke`, but it stays opt-in so normal builds do not require VirtualBox. The smoke artifacts are:
@@ -238,7 +260,7 @@ The build can invoke this path with `-VmSmoke`, but it stays opt-in so normal bu
 - `build\vm-smoke\cyberstorm-vm-smoke.png`
 - `build\vm-smoke\cyberstorm-vm-smoke.log`
 
-## 14. Runtime Replay Verification
+## 15. Runtime Replay Verification
 
 CyberStorm now also has a debug-only runtime verification lane in [scripts/runtime-verify.ps1](../scripts/runtime-verify.ps1). This closes the loop between the host-side replay model and the actual booted game.
 
@@ -264,7 +286,7 @@ The runtime verification signature intentionally stays compact but meaningful. I
 
 That signature is computed after every consumed demo action and compared against the generated checkpoint table. A mismatch lands on the fail scene with both signatures visible.
 
-## 15. Reproducible Showcase Capture
+## 16. Reproducible Showcase Capture
 
 [scripts/capture-showcase.ps1](../scripts/capture-showcase.ps1) turns the deterministic demo/runtime-verification lanes into a public-facing artifact pipeline.
 

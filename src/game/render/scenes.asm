@@ -75,50 +75,38 @@ splash_frame_ready:
     cmp byte ptr [splash_ticks], SPLASH_REVEAL_LOGO
     jb splash_scene_ui_gate
 
-    mov bx, 96
-    mov dx, 28
+    mov bx, 128
+    mov dx, 42
     mov si, PRESENT_BANNER_SPLASH_LOGO_OFFSET
-    call draw_presentation_asset_2x
+    call draw_presentation_asset_1x
 
     cmp byte ptr [splash_ticks], SPLASH_REVEAL_WORDMARK
     jb splash_scene_ui_gate
 
-    mov bx, 88
-    mov dx, 74
+    mov bx, 120
+    mov dx, 64
     mov si, PRESENT_BANNER_SPLASH_WORDMARK_OFFSET
-    call draw_presentation_asset_2x
-
-    mov bx, 104
-    mov dx, 86
-    mov si, offset splash_brand
-    mov ah, PAL_CYAN2
-    call draw_text_big
-
-    mov bx, 138
-    mov dx, 108
-    mov si, offset splash_subtitle
-    mov ah, PAL_WHITE
-    call draw_text_small
+    call draw_presentation_asset_1x
 
 splash_scene_ui_gate:
     cmp byte ptr [splash_ticks], SPLASH_REVEAL_UI
     jb splash_scene_done
 
     mov bx, 60
-    mov dx, 126
+    mov dx, 110
     mov si, offset splash_tagline
     mov ah, PAL_CYAN
     call draw_text_small
 
     mov bx, 78
-    mov dx, 142
+    mov dx, 132
     mov cx, 164
     mov bp, 8
     mov al, PAL_PANEL2
     call fill_rect
 
     mov bx, 76
-    mov dx, 140
+    mov dx, 150
     mov cx, 168
     mov bp, 12
     mov al, PAL_CYAN
@@ -132,7 +120,7 @@ splash_scene_ui_gate:
     mov cx, ax
     jcxz splash_bar_done
     mov bx, 80
-    mov dx, 144
+    mov dx, 154
     mov bp, 4
     test byte ptr [anim_phase], 1
     jz splash_bar_base
@@ -147,7 +135,7 @@ splash_bar_ready:
 
 splash_bar_done:
     mov bx, 92
-    mov dx, 156
+    mov dx, 146
     mov si, offset splash_skip
     test byte ptr [anim_phase], 1
     jz splash_skip_dim
@@ -759,10 +747,24 @@ draw_verify_scene_common:
 
     mov bx, 68
     mov dx, 42
+    cmp byte ptr [verify_mode], VERIFY_MODE_FRONTEND
+    je verify_headline_frontend
     cmp byte ptr [game_state], STATE_VERIFY_PASS
     jne verify_headline_fail
     mov si, offset verify_pass_headline
     mov ah, PAL_CYAN2
+    jmp verify_headline_ready
+
+verify_headline_frontend:
+    cmp byte ptr [game_state], STATE_VERIFY_PASS
+    jne verify_headline_frontend_fail
+    mov si, offset frontend_verify_pass_headline
+    mov ah, PAL_CYAN2
+    jmp verify_headline_ready
+
+verify_headline_frontend_fail:
+    mov si, offset frontend_verify_fail_headline
+    mov ah, PAL_RED2
     jmp verify_headline_ready
 
 verify_headline_fail:
@@ -774,6 +776,8 @@ verify_headline_ready:
 
     mov bx, 68
     mov dx, 60
+    cmp byte ptr [verify_mode], VERIFY_MODE_FRONTEND
+    je verify_subject_frontend
     mov si, offset verify_demo_label
     mov ah, PAL_WHITE
     call draw_text_small
@@ -784,15 +788,40 @@ verify_headline_ready:
     call get_verify_scene_accent_color
     mov ah, al
     call draw_text_small
+    jmp verify_subject_done
+
+verify_subject_frontend:
+    mov si, offset verify_scenario_label
+    mov ah, PAL_WHITE
+    call draw_text_small
+
+    mov bx, 98
+    mov dx, 60
+    call get_frontend_verify_scenario_name_ptr
+    call get_verify_scene_accent_color
+    mov ah, al
+    call draw_text_small
+
+verify_subject_done:
 
     mov bx, 68
     mov dx, 72
+    cmp byte ptr [verify_mode], VERIFY_MODE_FRONTEND
+    je verify_detail_frontend
     call get_current_template_scenario_name_ptr
+    jmp verify_detail_ready
+
+verify_detail_frontend:
+    call get_frontend_verify_detail_ptr
+
+verify_detail_ready:
     mov ah, PAL_WHITE
     call draw_text_small
 
     mov bx, 68
     mov dx, 86
+    cmp byte ptr [verify_mode], VERIFY_MODE_FRONTEND
+    je verify_body_frontend
     cmp byte ptr [game_state], STATE_VERIFY_PASS
     jne verify_body_fail
     mov si, offset verify_line_1
@@ -805,10 +834,32 @@ verify_body_fail:
 
 verify_body_ready:
     call draw_text_small
+    jmp verify_step_label_gate
 
+verify_body_frontend:
+    cmp byte ptr [game_state], STATE_VERIFY_PASS
+    jne verify_body_frontend_fail
+    mov si, offset frontend_verify_line_1
+    mov ah, PAL_WHITE
+    jmp verify_body_ready
+
+verify_body_frontend_fail:
+    mov si, offset frontend_verify_line_2
+    mov ah, PAL_WHITE
+    jmp verify_body_ready
+
+verify_step_label_gate:
     mov bx, 68
     mov dx, 102
+    cmp byte ptr [verify_mode], VERIFY_MODE_FRONTEND
+    je verify_step_frontend
     mov si, offset verify_step_label
+    jmp verify_step_label_ready
+
+verify_step_frontend:
+    mov si, offset verify_event_label
+
+verify_step_label_ready:
     mov ah, PAL_WHITE
     call draw_text_small
 

@@ -40,6 +40,8 @@ ENDIF
     mov word ptr [demo_script_ptr], 0
 IF DEBUG_DEMO_BOOT
     call start_selected_demo_run
+ELSEIF DEBUG_FRONTEND_VERIFY
+    call start_frontend_verify_scenario
 ELSEIF DEBUG_START_IN_GAME
     call start_new_run
 ELSE
@@ -75,17 +77,18 @@ main_loop:
     jmp main_loop
 
 handle_splash_input:
-    cmp byte ptr [pressed_enter], 0
+    call frontend_start_key_pending
+    cmp al, 0
     je splash_check_skip
-    mov byte ptr [pressed_enter], 0
-    mov byte ptr [any_key_pending], 0
+    call clear_pressed_latches
     call start_new_run
     jmp main_loop
 
 splash_check_skip:
-    cmp byte ptr [any_key_pending], 0
+    call frontend_activity_pending
+    cmp al, 0
     je main_loop
-    mov byte ptr [any_key_pending], 0
+    call clear_pressed_latches
 
 skip_splash:
     call reset_keyboard_state
@@ -93,8 +96,6 @@ skip_splash:
     jmp main_loop
 
 handle_frontend_start_input:
-    ; Release builds keep Enter as the only visible title-screen start key.
-    ; Other keys still reset the attract timer, but they do not launch a run.
     call frontend_start_key_pending
     cmp al, 0
     jne frontend_start_now
@@ -105,7 +106,7 @@ handle_frontend_start_input:
     jmp main_loop
 
 handle_frontend_continue_input:
-    call frontend_start_key_pending
+    call frontend_continue_key_pending
     cmp al, 0
     jne frontend_start_now
     call frontend_activity_pending
@@ -115,7 +116,7 @@ handle_frontend_continue_input:
     jmp main_loop
 
 handle_verify_continue_input:
-    call frontend_start_key_pending
+    call frontend_continue_key_pending
     cmp al, 0
     jne verify_return_title
     call frontend_activity_pending
@@ -139,7 +140,8 @@ IF DEBUG_DEMO_BOOT
     call process_demo_input
     jmp main_loop
 ELSE
-    cmp byte ptr [any_key_pending], 0
+    call frontend_takeover_key_pending
+    cmp al, 0
     jne demo_takeover_now
     call process_demo_input
     jmp main_loop
@@ -170,6 +172,13 @@ wait_frame_tick_done:
     ret
 
 update_frontend_state:
+IF DEBUG_FRONTEND_VERIFY
+    call update_frontend_verify_state
+    cmp byte ptr [game_state], STATE_VERIFY_PASS
+    je frontend_state_done
+    cmp byte ptr [game_state], STATE_VERIFY_FAIL
+    je frontend_state_done
+ENDIF
     cmp byte ptr [game_state], STATE_SPLASH
     je frontend_update_splash
     cmp byte ptr [game_state], STATE_TITLE
@@ -199,6 +208,9 @@ frontend_update_splash:
     jmp frontend_state_done
 
 frontend_update_title:
+    call frontend_start_key_pending
+    cmp al, 0
+    jne frontend_state_done
     call frontend_activity_pending
     cmp al, 0
     jne frontend_title_has_input
@@ -219,40 +231,45 @@ frontend_state_done:
     ret
 
 frontend_start_key_pending:
-    cmp byte ptr [pressed_enter], 0
-    jne title_input_yes
+    cmp byte ptr [frontend_action], FRONTEND_ACTION_START
+    jne frontend_start_key_no
+    mov al, 1
+    ret
+
+frontend_start_key_no:
+    xor al, al
+    ret
+
+frontend_continue_key_pending:
+    cmp byte ptr [frontend_action], FRONTEND_ACTION_CONTINUE
+    jne frontend_continue_key_no
+    mov al, 1
+    ret
+
+frontend_continue_key_no:
+    xor al, al
+    ret
+
+frontend_takeover_key_pending:
+    mov al, [frontend_action]
+    cmp al, FRONTEND_ACTION_CONTINUE
+    je frontend_takeover_yes
+    cmp al, FRONTEND_ACTION_MOVE
+    je frontend_takeover_yes
+    cmp al, FRONTEND_ACTION_PULSE
+    je frontend_takeover_yes
+    cmp al, FRONTEND_ACTION_RESET
+    je frontend_takeover_yes
     xor al, al
     ret
 
 frontend_activity_pending:
-    cmp byte ptr [pressed_enter], 0
-    jne title_input_yes
-    cmp byte ptr [pressed_w], 0
-    jne title_input_yes
-    cmp byte ptr [pressed_a], 0
-    jne title_input_yes
-    cmp byte ptr [pressed_s], 0
-    jne title_input_yes
-    cmp byte ptr [pressed_d], 0
-    jne title_input_yes
-    cmp byte ptr [pressed_r], 0
-    jne title_input_yes
-    cmp byte ptr [pressed_c], 0
-    jne title_input_yes
-    cmp byte ptr [pressed_up], 0
-    jne title_input_yes
-    cmp byte ptr [pressed_left], 0
-    jne title_input_yes
-    cmp byte ptr [pressed_right], 0
-    jne title_input_yes
-    cmp byte ptr [pressed_down], 0
-    jne title_input_yes
-    cmp byte ptr [any_key_pending], 0
-    jne title_input_yes
+    cmp byte ptr [frontend_action], FRONTEND_ACTION_NONE
+    jne frontend_takeover_yes
     xor al, al
     ret
 
-title_input_yes:
+frontend_takeover_yes:
     mov al, 1
     ret
 
@@ -281,6 +298,10 @@ clear_runtime_verify_state:
     mov byte ptr [verify_result_demo_index], 0
     mov word ptr [verify_expected_signature], 0
     mov word ptr [verify_observed_signature], 0
+    mov byte ptr [verify_mode], VERIFY_MODE_REPLAY
+    mov byte ptr [verify_frontend_scenario], FRONTEND_VERIFY_NONE
+    mov byte ptr [verify_frontend_ticks], 0
+    mov byte ptr [verify_frontend_event_fired], 0
     ret
 
 start_new_run:
@@ -325,6 +346,38 @@ start_selected_demo_run:
     call clear_runtime_verify_state
     mov bl, DEBUG_DEMO_INDEX
     call start_demo_by_index
+    ret
+
+start_frontend_verify_scenario:
+    call reset_keyboard_state
+    call clear_demo_playback_state
+    call clear_runtime_verify_state
+    mov byte ptr [verify_mode], VERIFY_MODE_FRONTEND
+    mov al, DEBUG_FRONTEND_SCENARIO
+    cmp al, FRONTEND_VERIFY_SPLASH_TO_TITLE
+    jb frontend_verify_default
+    cmp al, FRONTEND_VERIFY_TITLE_TO_ATTRACT
+    jbe frontend_verify_scenario_ready
+
+frontend_verify_default:
+    mov al, FRONTEND_VERIFY_TITLE_TO_START
+
+frontend_verify_scenario_ready:
+    mov byte ptr [verify_frontend_scenario], al
+    mov byte ptr [game_state], STATE_TITLE
+    mov byte ptr [title_idle_ticks], 0
+    mov byte ptr [splash_ticks], 0
+    cmp al, FRONTEND_VERIFY_SPLASH_TO_TITLE
+    jne frontend_verify_check_attract
+    mov byte ptr [game_state], STATE_SPLASH
+    ret
+
+frontend_verify_check_attract:
+    cmp al, FRONTEND_VERIFY_TITLE_TO_ATTRACT
+    jne frontend_verify_start_ready
+    mov byte ptr [title_idle_ticks], TITLE_ATTRACT_DELAY - 4
+
+frontend_verify_start_ready:
     ret
 
 start_demo_by_index:
@@ -464,6 +517,175 @@ get_demo_name_ptr:
     mov bl, [verify_result_demo_index]
     shl bx, 1
     mov si, word ptr [demo_name_table + bx]
+    ret
+
+get_frontend_verify_scenario_name_ptr:
+    mov al, [verify_frontend_scenario]
+    cmp al, FRONTEND_VERIFY_SPLASH_TO_TITLE
+    je frontend_verify_name_splash
+    cmp al, FRONTEND_VERIFY_TITLE_TO_ATTRACT
+    je frontend_verify_name_attract
+    mov si, offset frontend_verify_title_start_name
+    ret
+
+frontend_verify_name_splash:
+    mov si, offset frontend_verify_splash_name
+    ret
+
+frontend_verify_name_attract:
+    mov si, offset frontend_verify_title_attract_name
+    ret
+
+get_frontend_verify_detail_ptr:
+    mov al, [verify_frontend_scenario]
+    cmp al, FRONTEND_VERIFY_SPLASH_TO_TITLE
+    je frontend_verify_detail_splash
+    cmp al, FRONTEND_VERIFY_TITLE_TO_ATTRACT
+    je frontend_verify_detail_attract
+    mov si, offset frontend_verify_title_start_detail
+    ret
+
+frontend_verify_detail_splash:
+    mov si, offset frontend_verify_splash_detail
+    ret
+
+frontend_verify_detail_attract:
+    mov si, offset frontend_verify_title_attract_detail
+    ret
+
+update_frontend_verify_state:
+    cmp byte ptr [verify_mode], VERIFY_MODE_FRONTEND
+    jne frontend_verify_update_done
+    cmp byte ptr [game_state], STATE_VERIFY_PASS
+    je frontend_verify_update_done
+    cmp byte ptr [game_state], STATE_VERIFY_FAIL
+    je frontend_verify_update_done
+    cmp byte ptr [verify_frontend_ticks], 255
+    je frontend_verify_tick_ready
+    inc byte ptr [verify_frontend_ticks]
+
+frontend_verify_tick_ready:
+    call maybe_fire_frontend_verify_event
+    call maybe_finish_frontend_verify
+
+frontend_verify_update_done:
+    ret
+
+maybe_fire_frontend_verify_event:
+    cmp byte ptr [verify_frontend_event_fired], 0
+    jne frontend_verify_event_done
+    mov al, [verify_frontend_scenario]
+    cmp al, FRONTEND_VERIFY_TITLE_TO_ATTRACT
+    je frontend_verify_event_done
+    cmp byte ptr [verify_frontend_ticks], 2
+    jb frontend_verify_event_done
+    cmp al, FRONTEND_VERIFY_SPLASH_TO_TITLE
+    jne frontend_verify_event_start
+    mov al, FRONTEND_ACTION_ACTIVITY
+    call inject_frontend_verify_action
+    ret
+
+frontend_verify_event_start:
+    mov al, FRONTEND_ACTION_START
+    call inject_frontend_verify_action
+
+frontend_verify_event_done:
+    ret
+
+inject_frontend_verify_action:
+    mov byte ptr [verify_frontend_event_fired], 1
+    mov [frontend_action], al
+    mov [frontend_last_action], al
+    cmp byte ptr [frontend_event_count], 99
+    jae frontend_verify_action_done
+    inc byte ptr [frontend_event_count]
+
+frontend_verify_action_done:
+    ret
+
+maybe_finish_frontend_verify:
+    mov al, [verify_frontend_scenario]
+    cmp al, FRONTEND_VERIFY_SPLASH_TO_TITLE
+    je frontend_verify_expect_title
+    cmp al, FRONTEND_VERIFY_TITLE_TO_ATTRACT
+    je frontend_verify_expect_attract
+    cmp byte ptr [game_state], STATE_PLAYING
+    jne frontend_verify_timeout_check
+    cmp byte ptr [demo_active], 0
+    jne frontend_verify_timeout_check
+    jmp frontend_verify_finalize
+
+frontend_verify_expect_title:
+    cmp byte ptr [game_state], STATE_TITLE
+    je frontend_verify_finalize
+    jmp frontend_verify_timeout_check
+
+frontend_verify_expect_attract:
+    cmp byte ptr [game_state], STATE_PLAYING
+    jne frontend_verify_timeout_check
+    cmp byte ptr [demo_active], 0
+    je frontend_verify_timeout_check
+    jmp frontend_verify_finalize
+
+frontend_verify_timeout_check:
+    cmp byte ptr [verify_frontend_ticks], FRONTEND_VERIFY_TIMEOUT_TICKS
+    jb frontend_verify_finish_done
+
+frontend_verify_finalize:
+    mov al, [frontend_event_count]
+    mov [verify_action_index], al
+    call get_frontend_verify_expected_signature
+    mov [verify_expected_signature], ax
+    call compute_frontend_verify_signature
+    mov [verify_observed_signature], ax
+    mov ax, [verify_expected_signature]
+    cmp ax, [verify_observed_signature]
+    jne frontend_verify_fail
+    mov byte ptr [game_state], STATE_VERIFY_PASS
+    ret
+
+frontend_verify_fail:
+    mov byte ptr [game_state], STATE_VERIFY_FAIL
+
+frontend_verify_finish_done:
+    ret
+
+get_frontend_verify_expected_signature:
+    mov ax, STATE_TITLE
+    mov bl, [verify_frontend_scenario]
+    cmp bl, FRONTEND_VERIFY_SPLASH_TO_TITLE
+    je frontend_verify_expected_ready
+    mov ax, STATE_PLAYING
+    cmp bl, FRONTEND_VERIFY_TITLE_TO_ATTRACT
+    jne frontend_verify_expected_start
+    or ax, 0100h
+    jmp frontend_verify_expected_ready
+
+frontend_verify_expected_start:
+    or ax, 0200h
+
+frontend_verify_expected_ready:
+    mov bl, DEBUG_FRONTEND_CORRUPT_SCENARIO
+    cmp bl, [verify_frontend_scenario]
+    jne frontend_verify_expected_done
+    xor ax, 0001h
+
+frontend_verify_expected_done:
+    ret
+
+compute_frontend_verify_signature:
+    xor ax, ax
+    mov al, [game_state]
+    cmp byte ptr [demo_active], 0
+    je frontend_verify_sig_guard
+    or ax, 0100h
+
+frontend_verify_sig_guard:
+    cmp byte ptr [run_start_enter_guard], 0
+    je frontend_verify_sig_done
+    or ax, 0200h
+
+frontend_verify_sig_done:
     ret
 
 verify_runtime_checkpoint:

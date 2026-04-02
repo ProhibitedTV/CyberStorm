@@ -52,6 +52,12 @@ verify_action_index db 0
 verify_result_demo_index db 0
 verify_expected_signature dw 0
 verify_observed_signature dw 0
+; verify_mode reuses the shared PASS/FAIL scenes for both replay verification
+; and the debug-only frontend trust scenarios.
+verify_mode db VERIFY_MODE_REPLAY
+verify_frontend_scenario db FRONTEND_VERIFY_NONE
+verify_frontend_ticks db 0
+verify_frontend_event_fired db 0
 last_game_state db 0FFh
 feedback_timer db 0
 ; The runner's last committed step lets flanking hunters aim one tile ahead
@@ -82,9 +88,15 @@ key_extended db 0
 any_key_pending db 0
 input_event_count db 0
 input_last_code db 0
+input_last_ascii db 0
 input_check_count db 0
 input_poll_count db 0
 input_last_polled db 0
+; frontend_action is the current semantic action for splash/title/outro flow.
+; frontend_last_action preserves the most recent semantic event for debugging.
+frontend_action db FRONTEND_ACTION_NONE
+frontend_last_action db FRONTEND_ACTION_NONE
+frontend_event_count db 0
 pressed_enter db 0
 pressed_w db 0
 pressed_a db 0
@@ -170,15 +182,15 @@ text_msg_spoof    db 'TERMINAL SPOOF LIVE. HUNTERS PULL TO THE GATE.', 0
 splash_brand    db 'BITRIVER', 0
 splash_subtitle db 'SOFTWARE', 0
 splash_tagline  db 'BOOTSTRAPPING WORLDS FROM BARE METAL.', 0
-splash_skip     db 'ENTER TO RUN  ANY KEY TO SKIP', 0
+splash_skip     db 'ENTER SPACE OR MOVE TO RUN  ANY KEY TO SKIP', 0
 
 title_logo    db 'CYBERSTORM', 0
 title_line_1  db 'NO OS. NO SHELL. JUST THE BREACH.', 0
 title_line_2  db 'TURN BASED INFILTRATION IN RAW VGA.', 0
 title_line_3  db 'TAKE 4 SHARDS. OPEN THE GATE. REPEAT.', 0
-title_line_4  db 'PRESS ENTER TO JACK IN.', 0
+title_line_4  db 'PRESS ENTER SPACE OR MOVE TO JACK IN.', 0
 title_prompt  db 'IDLE STARTS AN ATTRACT RUN.', 0
-demo_takeover_text db 'ANY KEY TAKES OVER.', 0
+demo_takeover_text db 'ENTER SPACE OR LIVE KEYS TAKE OVER.', 0
 IF DEBUG_BUILD
 ; Temporary title-scene diagnostics used while hardening keyboard support.
 debug_keys_text db 'KEYS', 0
@@ -192,7 +204,10 @@ debug_tag_text   db 'DBG', 0
 debug_state_tag  db 'GS', 0
 debug_demo_tag   db 'DM', 0
 debug_guard_tag  db 'GD', 0
-debug_key_tag    db 'LK', 0
+debug_scan_tag   db 'KS', 0
+debug_ascii_tag  db 'KA', 0
+debug_frontend_action_tag db 'FA', 0
+debug_frontend_events_tag db 'FE', 0
 debug_backend_tag db 'AB', 0
 debug_audio_mode_tag db 'AM', 0
 debug_sfx_tag    db 'FX', 0
@@ -212,13 +227,25 @@ win_line_3    db 'THE STORM BENT. THE BREACH HELD.', 0
 lose_line_1   db 'SEVERED', 0
 lose_line_2   db 'THE STORM CLOSED BEFORE THE BREACH.', 0
 lose_line_3   db 'REBUILD THE LINE. RUN IT AGAIN.', 0
-replay_prompt db 'PRESS ENTER TO RUN AGAIN.', 0
+replay_prompt db 'PRESS ENTER OR SPACE TO RUN AGAIN.', 0
 verify_pass_headline db 'REPLAY PASS', 0
 verify_fail_headline db 'REPLAY FAIL', 0
 verify_line_1 db 'LIVE RUNTIME MATCHED THE AUTHORED DEMO CONTRACT.', 0
 verify_line_2 db 'THE BOOTED GAME DIVERGED FROM THE EXPECTED CHECKPOINT.', 0
 verify_demo_label db 'DEMO', 0
+verify_scenario_label db 'SCN', 0
 verify_step_label db 'ACT', 0
+verify_event_label db 'EVT', 0
 verify_expect_label db 'EXP', 0
 verify_observe_label db 'OBS', 0
-verify_prompt db 'ENTER RETURNS TO TITLE.', 0
+verify_prompt db 'ENTER OR SPACE RETURNS TO TITLE.', 0
+frontend_verify_pass_headline db 'FRONTEND PASS', 0
+frontend_verify_fail_headline db 'FRONTEND FAIL', 0
+frontend_verify_line_1 db 'SYNTHETIC FRONTEND INPUT REACHED THE EXPECTED STATE.', 0
+frontend_verify_line_2 db 'THE FRONTEND STATE MACHINE DIVERGED FROM EXPECTATION.', 0
+frontend_verify_splash_name db 'SPLASH TO TITLE', 0
+frontend_verify_title_start_name db 'TITLE TO START', 0
+frontend_verify_title_attract_name db 'TITLE TO ATTRACT', 0
+frontend_verify_splash_detail db 'EXPECT TITLE ENTRY AFTER NON START INPUT.', 0
+frontend_verify_title_start_detail db 'EXPECT LIVE RUN ENTRY FROM A START ACTION.', 0
+frontend_verify_title_attract_detail db 'EXPECT ATTRACT HANDOFF AFTER IDLE TIMEOUT.', 0

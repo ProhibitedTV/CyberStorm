@@ -719,7 +719,7 @@ render_debug_overlay:
 
     mov bx, 120
     mov dx, 40
-    mov si, offset debug_key_tag
+    mov si, offset debug_scan_tag
     mov ah, PAL_CYAN
     call draw_text_small
 
@@ -731,17 +731,53 @@ render_debug_overlay:
 
     mov bx, 150
     mov dx, 40
+    mov si, offset debug_ascii_tag
+    mov ah, PAL_CYAN
+    call draw_text_small
+
+    mov al, [input_last_ascii]
+    mov ah, PAL_WHITE
+    mov bx, 162
+    mov dx, 40
+    call draw_byte_hex_small
+
+    mov bx, 180
+    mov dx, 40
+    mov si, offset debug_frontend_action_tag
+    mov ah, PAL_CYAN
+    call draw_text_small
+
+    mov al, [frontend_last_action]
+    mov ah, PAL_WHITE
+    mov bx, 192
+    mov dx, 40
+    call draw_digit_small
+
+    mov bx, 204
+    mov dx, 40
+    mov si, offset debug_frontend_events_tag
+    mov ah, PAL_CYAN
+    call draw_text_small
+
+    mov al, [frontend_event_count]
+    mov ah, PAL_WHITE
+    mov bx, 216
+    mov dx, 40
+    call draw_two_digit_small
+
+    mov bx, 234
+    mov dx, 40
     mov si, offset debug_backend_tag
     mov ah, PAL_CYAN
     call draw_text_small
 
     mov al, [audio_backend]
     mov ah, PAL_WHITE
-    mov bx, 162
+    mov bx, 246
     mov dx, 40
     call draw_digit_small
 
-    mov bx, 174
+    mov bx, 258
     mov dx, 40
     mov si, offset debug_audio_mode_tag
     mov ah, PAL_CYAN
@@ -749,35 +785,35 @@ render_debug_overlay:
 
     mov al, [audio_mode_value]
     mov ah, PAL_WHITE
-    mov bx, 186
+    mov bx, 270
     mov dx, 40
     call draw_digit_small
 
-    mov bx, 198
-    mov dx, 40
+    mov bx, 18
+    mov dx, 50
     mov si, offset debug_sfx_tag
     mov ah, PAL_CYAN
     call draw_text_small
 
     mov al, [sound_id]
     mov ah, PAL_WHITE
-    mov bx, 210
-    mov dx, 40
+    mov bx, 30
+    mov dx, 50
     call draw_two_digit_small
 
-    mov bx, 228
-    mov dx, 40
+    mov bx, 48
+    mov dx, 50
     mov si, offset debug_sfx_timer_tag
     mov ah, PAL_CYAN
     call draw_text_small
 
     mov al, [sound_timer]
     mov ah, PAL_WHITE
-    mov bx, 240
-    mov dx, 40
+    mov bx, 60
+    mov dx, 50
     call draw_two_digit_small
 
-    mov bx, 18
+    mov bx, 78
     mov dx, 50
     mov si, offset debug_sector_tag
     mov ah, PAL_CYAN
@@ -785,11 +821,11 @@ render_debug_overlay:
 
     mov al, [sector_num]
     mov ah, PAL_WHITE
-    mov bx, 24
+    mov bx, 84
     mov dx, 50
     call draw_digit_small
 
-    mov bx, 36
+    mov bx, 96
     mov dx, 50
     mov si, offset debug_x_tag
     mov ah, PAL_CYAN
@@ -797,11 +833,11 @@ render_debug_overlay:
 
     mov al, [player_x]
     mov ah, PAL_WHITE
-    mov bx, 42
+    mov bx, 102
     mov dx, 50
     call draw_two_digit_small
 
-    mov bx, 60
+    mov bx, 120
     mov dx, 50
     mov si, offset debug_y_tag
     mov ah, PAL_CYAN
@@ -809,11 +845,11 @@ render_debug_overlay:
 
     mov al, [player_y]
     mov ah, PAL_WHITE
-    mov bx, 66
+    mov bx, 126
     mov dx, 50
     call draw_two_digit_small
 
-    mov bx, 84
+    mov bx, 144
     mov dx, 50
     mov si, offset debug_shield_tag
     mov ah, PAL_CYAN
@@ -821,11 +857,11 @@ render_debug_overlay:
 
     mov al, [shield_count]
     mov ah, PAL_WHITE
-    mov bx, 90
+    mov bx, 150
     mov dx, 50
     call draw_digit_small
 
-    mov bx, 102
+    mov bx, 162
     mov dx, 50
     mov si, offset debug_pulse_tag
     mov ah, PAL_CYAN
@@ -833,11 +869,11 @@ render_debug_overlay:
 
     mov al, [pulse_count]
     mov ah, PAL_WHITE
-    mov bx, 108
+    mov bx, 168
     mov dx, 50
     call draw_digit_small
 
-    mov bx, 120
+    mov bx, 180
     mov dx, 50
     mov si, offset debug_data_tag
     mov ah, PAL_CYAN
@@ -845,11 +881,11 @@ render_debug_overlay:
 
     mov al, [data_count]
     mov ah, PAL_WHITE
-    mov bx, 126
+    mov bx, 186
     mov dx, 50
     call draw_digit_small
 
-    mov bx, 138
+    mov bx, 198
     mov dx, 50
     mov si, offset debug_enemy_tag
     mov ah, PAL_CYAN
@@ -857,7 +893,7 @@ render_debug_overlay:
 
     call count_live_enemies
     mov ah, PAL_WHITE
-    mov bx, 144
+    mov bx, 204
     mov dx, 50
     call draw_two_digit_small
     ret

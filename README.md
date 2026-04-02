@@ -47,7 +47,7 @@ CyberStorm is small enough to inspect, but it is no longer a single opaque assem
 
 ![CyberStorm boot flow](docs/readme/boot-flow.svg)
 
-The boot sector at `LBA 0` loads stage two from `LBA 1..42` into `1000:0000`, then stage two loads the map bank from `LBA 43..50` into `7000:0000` and the presentation bank from `LBA 51..89` into `7800:0000` before entering VGA gameplay.
+The boot sector at `LBA 0` loads stage two from `LBA 1..49` into `1000:0000`, then stage two loads the map bank from `LBA 50..57` into `7000:0000` and the presentation bank from `LBA 58..96` into `7800:0000` before entering VGA gameplay.
 
 ### Runtime Layout
 
@@ -92,11 +92,12 @@ Launch it:
 powershell -ExecutionPolicy Bypass -File .\scripts\start-vm.ps1
 ```
 
-If you leave the title screen alone for a few seconds, CyberStorm now auto-starts an authored attract/demo run. Press any key during the demo to jump into a fresh live run.
+If you leave the title screen alone for a few seconds, CyberStorm now auto-starts an authored attract/demo run. Press `Enter`, `Space`, `WASD`, arrows, `C`, or `R` during the demo to jump into a fresh live run.
 
 ### Release Controls
 
-- `Enter`: start from splash/title and replay from win/lose
+- `Enter`, `Space`, `WASD`, or arrow keys: start from splash/title
+- `Enter` or `Space`: replay from win/lose or return from verify screens
 - `WASD` or arrow keys: move
 - `C`: EMP pulse
 - `R`: restart the current run
@@ -108,9 +109,9 @@ These values come from the current [build/cyberstorm-build-report.txt](build/cyb
 | Fact | Current build |
 | --- | --- |
 | Boot code | `132 / 510` bytes |
-| Stage two | `20993` bytes across `42` sectors |
+| Stage two | `25057` bytes across `49` sectors |
 | Banked payloads | maps `3780` bytes across `8` sectors, presentation `19968` bytes across `39` sectors |
-| Bank LBA ranges | map `43..50`, presentation `51..89` |
+| Bank LBA ranges | map `50..57`, presentation `58..96` |
 | Content set | `3` sectors, `9` maps, `9` breach scenarios, `3` demos, `5` music themes, `13` presentation assets |
 | Balance sweep | `36` deterministic scenarios |
 | Release audio policy | `SFX_ONLY` by default |
@@ -171,7 +172,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\build.ps1 `
 Useful switches:
 
 - `-DebugSeed <0..65535>` forces the same `16-bit` RNG seed on every new run
-- `-DebugOverlay` shows compact live state in-game, including `GS/DM/GD/LK/AB/AM/FX/FT` for state, demo, guard, last key, audio backend, audio mode, active SFX, and SFX timer
+- `-DebugOverlay` shows compact live state in-game, including `GS/DM/GD/KS/KA/FA/FE/AB/AM/FX/FT` for state, demo, guard, raw scan, ASCII, last semantic frontend action, frontend event count, audio backend, audio mode, active SFX, and SFX timer
 - `-DebugStartInGame` skips splash/title and boots directly into a run
 - `-DebugStartSector <n>` starts every new run from a chosen sector
 
@@ -239,6 +240,31 @@ The regression harness checks the binary/runtime contract that is easiest to acc
 - presence of `boot.lst` and `game.lst` for post-failure inspection
 
 The normal build runs this automatically and writes [build/cyberstorm-regression-report.txt](build/cyberstorm-regression-report.txt).
+
+### Frontend Verification
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\frontend-verify.ps1
+```
+
+Or from the full build:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\build.ps1 -FrontendVerify
+```
+
+This debug-only lane proves the first-run state machine without VirtualBox key injection. It:
+
+- boots dedicated splash/title/attract verification scenarios
+- injects synthetic semantic frontend events inside the runtime
+- waits for a shared `FRONTEND PASS` or `FRONTEND FAIL` scene
+- samples fixed verification markers from the screenshot instead of relying on OCR
+- records expected and observed terminal states beside the VBox log
+
+Artifacts:
+
+- [build/cyberstorm-frontend-verify-report.txt](build/cyberstorm-frontend-verify-report.txt)
+- [build/frontend-verify/](build/frontend-verify)
 
 ### VM Smoke
 
@@ -322,9 +348,10 @@ CyberStorm now has a layered confidence model:
 
 1. content validation during generation
 2. replay-model validation in [scripts/replay-harness.ps1](scripts/replay-harness.ps1)
-3. runtime replay verification in [scripts/runtime-verify.ps1](scripts/runtime-verify.ps1)
-4. release boot smoke in [scripts/vm-smoke.ps1](scripts/vm-smoke.ps1)
-5. reproducible public showcase capture in [scripts/capture-showcase.ps1](scripts/capture-showcase.ps1)
+3. frontend verification in [scripts/frontend-verify.ps1](scripts/frontend-verify.ps1)
+4. runtime replay verification in [scripts/runtime-verify.ps1](scripts/runtime-verify.ps1)
+5. release boot smoke in [scripts/vm-smoke.ps1](scripts/vm-smoke.ps1)
+6. reproducible public showcase capture in [scripts/capture-showcase.ps1](scripts/capture-showcase.ps1)
 
 ### Key Build Outputs
 

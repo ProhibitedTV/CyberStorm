@@ -23,6 +23,7 @@ if ([string]::IsNullOrWhiteSpace($ReportPath)) {
     $ReportPath = Join-Path $buildDir 'cyberstorm-vm-smoke-report.txt'
 }
 
+$titleScreenshotPath = Join-Path $artifactDir 'cyberstorm-vm-smoke-title.png'
 $screenshotPath = Join-Path $artifactDir 'cyberstorm-vm-smoke.png'
 $logCopyPath = Join-Path $artifactDir 'cyberstorm-vm-smoke.log'
 $targetPath = Join-Path $root ("deploy\virtualbox\{0}\Logs\VBox.log" -f $VmName)
@@ -117,9 +118,11 @@ New-Item -ItemType Directory -Force -Path $artifactDir | Out-Null
 
 $status = 'PASS'
 $summaryLines = @()
-$artifactPaths = @($ReportPath, $screenshotPath, $logCopyPath)
+$artifactPaths = @($ReportPath, $titleScreenshotPath, $screenshotPath, $logCopyPath)
 $audioModeValue = Get-AsmEquValue -SourcePath $AudioConfigPath -Name 'AUDIO_MODE'
 $audioModeName = if ($audioModeValue -eq 1) { 'EXPERIMENTAL_MUSIC' } else { 'SFX_ONLY' }
+$titleCaptureSeconds = [Math]::Max(8, ($WaitSeconds - 6))
+$attractCaptureSeconds = $WaitSeconds - $titleCaptureSeconds
 
 try {
     Stop-VmIfRunning -Name $VmName
@@ -127,7 +130,15 @@ try {
     Stop-VmIfRunning -Name $VmName
 
     Start-HeadlessVm -Name $VmName
-    Start-Sleep -Seconds $WaitSeconds
+    Start-Sleep -Seconds $titleCaptureSeconds
+    Invoke-VBoxManage -Arguments @('controlvm', $VmName, 'screenshotpng', $titleScreenshotPath) | Out-Null
+    if (-not (Test-Path -LiteralPath $titleScreenshotPath)) {
+        throw ("VM smoke title screenshot was not created: {0}" -f $titleScreenshotPath)
+    }
+
+    if ($attractCaptureSeconds -gt 0) {
+        Start-Sleep -Seconds $attractCaptureSeconds
+    }
 
     if (-not (Test-Path -LiteralPath $targetPath)) {
         throw ("VBox log was not found after smoke boot: {0}" -f $targetPath)
@@ -184,7 +195,9 @@ try {
         ("Wait: {0}s (targets splash -> title -> attract demo)" -f $WaitSeconds)
         ("Audio mode: {0}" -f $audioModeName)
         ("Audio controller: SB16 via {0} (host default {1})" -f $hostAudioDriver, $defaultAudioDriver)
-        'Capture: screenshotpng succeeded after the attract wait window.'
+        ("Title capture: screenshotpng succeeded after {0}s in the title/presentation window." -f $titleCaptureSeconds)
+        ("Attract capture: screenshotpng succeeded after the full {0}s smoke window." -f $WaitSeconds)
+        ("Title screenshot: {0}" -f $titleScreenshotPath)
         ("Screenshot: {0}" -f $screenshotPath)
         ("VBox log: {0}" -f $logCopyPath)
     )

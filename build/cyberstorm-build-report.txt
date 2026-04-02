@@ -1,5 +1,5 @@
 CyberStorm Build Report
-Generated: 2026-04-01 17:32:53 -06:00
+Generated: 2026-04-02 09:11:06 -06:00
 
 Toolchain
   Assembler: MASM
@@ -29,8 +29,8 @@ Generated Art
 Generated Content
   Presentation source: C:\Users\RhythmicCarnage\Desktop\CyberStorm\assets\presentation.psd1
   Presentation include: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\generated_presentation_content.inc
-  Presentation banners: 4 (64x24, 1536 bytes each, 6144 bytes total)
-  Presentation summary: splash@0, title@1536, win@3072, lose@4608
+  Presentation assets: 13 (64x24, 1536 bytes each, 19968 bytes total)
+  Presentation layout: splash_logo@0, splash_wordmark@1536, title_logo@3072, title_tagline@4608, title_prompt@6144, demo_badge@7680, sector1_card@9216, sector2_card@10752, sector3_card@12288, win_banner@13824, win_plate@15360, lose_banner@16896, lose_plate@18432
   Sector source: C:\Users\RhythmicCarnage\Desktop\CyberStorm\assets\sectors.psd1
   Sector include: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\generated_sector_content.inc
   Maps include: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\generated_maps.inc
@@ -38,11 +38,14 @@ Generated Content
   Maps: 9 (28x15 each, 3780 bytes total)
   Templates: S1 x3, S2 x3, S3 x3
   Rules: S1: surge=0 terminal=1 bonus=0 flank<48 warden<0 | S2: surge=3 terminal=2 bonus=0 flank<112 warden<0 | S3: surge=4 terminal=2 bonus=1 flank<176 warden<80
+  Anchors: S1: sector1_map_a(T1/S0/E0), sector1_map_b(T1/S0/E1), sector1_map_c(T1/S0/E1) | S2: sector2_map_a(T2/S2/E1), sector2_map_b(T2/S2/E1), sector2_map_c(T2/S2/E1) | S3: sector3_map_a(T2/S3/E1), sector3_map_b(T2/S3/E1), sector3_map_c(T2/S3/E1)
+  Scenarios: S1: sector1_map_a=FORK SPIKE, sector1_map_b=CROSSLANE LURE, sector1_map_c=SPINE THREAD | S2: sector2_map_a=FURNACE FORK, sector2_map_b=HINGE BAIT, sector2_map_c=ARC WEAVE | S3: sector3_map_a=LOCKSTEP BREACH, sector3_map_b=UPLINK CHOKE, sector3_map_c=FINAL CORRIDOR
+  Shard pools: S1: sector1_map_a(6:19x11), sector1_map_b(6:20x11), sector1_map_c(6:21x11) | S2: sector2_map_a(6:20x13), sector2_map_b(6:21x11), sector2_map_c(6:19x11) | S3: sector3_map_a(6:19x11), sector3_map_b(6:20x13), sector3_map_c(6:20x13)
   Demo source: C:\Users\RhythmicCarnage\Desktop\CyberStorm\assets\demos.psd1
   Demo include: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\generated_demos.inc
   Demos: 3
-  Demo steps: 25
-  Demo summary: SCOUT ATTRACT (S1, 8 steps), SURGE ATTRACT (S2, 8 steps), WARDEN ATTRACT (S3, 9 steps)
+  Demo steps: 24
+  Demo summary: SCOUT ATTRACT (S1, 8 steps), SURGE ATTRACT (S2, 7 steps), WARDEN ATTRACT (S3, 9 steps)
   Music source: C:\Users\RhythmicCarnage\Desktop\CyberStorm\assets\music.psd1
   Music include: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\generated_music.inc
   Themes: 5
@@ -52,9 +55,9 @@ Generated Content
 Replay Harness
   Report: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-replay-report.txt
   Scenarios: 3
-  SCOUT ATTRACT: PLAYING|S1|sector1_map_c|P7,13|H5|C2|D1|K0|E5|SCORE100|A10|HITS0|PU1|SP0|RNG0x173E
-  SURGE ATTRACT: PLAYING|S2|sector2_map_b|P7,13|H5|C3|D1|K2|E5|SCORE240|A10|HITS0|PU1|SP0|RNG0xD0E5
-  WARDEN ATTRACT: PLAYING|S3|sector3_map_c|P6,13|H5|C4|D0|K1|E9|SCORE70|A7|HITS0|PU1|SP0|RNG0x60D3
+  SCOUT ATTRACT: PLAYING|S1|sector1_map_c|P7,13|H5|C2|D1|K0|E5|SCORE100|A10|HITS0|PU1|SP0|RNG0x764A
+  SURGE ATTRACT: PLAYING|S2|sector2_map_b|P8,11|H5|C3|D1|K1|E6|SCORE170|A13|HITS0|PU1|SP0|RNG0xA7CC
+  WARDEN ATTRACT: PLAYING|S3|sector3_map_c|P6,13|H5|C4|D1|K0|E10|SCORE100|A7|HITS0|PU1|SP0|RNG0x88BA
 
 Balance Harness
   Report: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-balance-report.txt
@@ -63,35 +66,32 @@ Balance Harness
   Scenarios: 36
   Seeds: 0x1234, 0xACE1, 0xBEEF, 0x0F0F
   Scenarios: 36 deterministic spawn sweeps
-  S1 SCOUT: path 35-37, branches 16-72, slack>=184, terminal-safe>=181, enemy-safe>=181, nearest enemy 12-17, mix R 81.7% F 18.3% W 0%
-  S2 SURGE: path 37-41, branches 10-34, slack>=175, terminal-safe>=177, enemy-safe>=177, nearest enemy 12-16, mix R 58.3% F 41.7% W 0%
-  S3 WARDEN: path 37-45, branches 10-11, slack>=171, terminal-safe>=177, enemy-safe>=177, nearest enemy 12-15, mix R 25% F 41.7% W 33.3%
+  S1 SCOUT: path 35-37, branches 16-72, slack>=184, terminal-safe>=181, enemy-safe>=181, nearest enemy 12-21, mix R 66.7% F 33.3% W 0%
+    Anchors: sector1_map_a(T1/S0/E0), sector1_map_b(T1/S0/E1), sector1_map_c(T1/S0/E1)
+    Scenarios: sector1_map_a=FORK SPIKE, sector1_map_b=CROSSLANE LURE, sector1_map_c=SPINE THREAD
+  S2 SURGE: path 37-41, branches 10-34, slack>=175, terminal-safe>=177, enemy-safe>=177, nearest enemy 12-17, mix R 50% F 50% W 0%
+    Anchors: sector2_map_a(T2/S2/E1), sector2_map_b(T2/S2/E1), sector2_map_c(T2/S2/E1)
+    Scenarios: sector2_map_a=FURNACE FORK, sector2_map_b=HINGE BAIT, sector2_map_c=ARC WEAVE
+  S3 WARDEN: path 37-45, branches 10-11, slack>=171, terminal-safe>=177, enemy-safe>=177, nearest enemy 12-16, mix R 31.7% F 34.2% W 34.2%
+    Anchors: sector3_map_a(T2/S3/E1), sector3_map_b(T2/S3/E1), sector3_map_c(T2/S3/E1)
+    Scenarios: sector3_map_a=LOCKSTEP BREACH, sector3_map_b=UPLINK CHOKE, sector3_map_c=FINAL CORRIDOR
 
 Regression Harness
   Report: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-regression-report.txt
   Boot sector: 512 bytes, signature 0x55AA, LBA 0 matches both image files
-  Stage two: 19417 bytes, 38 sectors, GAME_SECTORS matches, entry near jmp to 0x0F4E
-  Map bank: 3780 bytes (4096 padded), 8 sectors, LBA 39..46
-  Presentation bank: 6144 bytes (6144 padded), 12 sectors, LBA 47..58
-  Images: .img and .vfd match exactly, unused tail zero-filled from byte 30208
+  Stage two: 20993 bytes, 42 sectors, GAME_SECTORS matches, entry near jmp to 0x0F4E
+  Map bank: 3780 bytes (4096 padded), 8 sectors, LBA 43..50
+  Presentation bank: 19968 bytes (19968 padded), 39 sectors, LBA 51..89
+  Images: .img and .vfd match exactly, unused tail zero-filled from byte 46080
   Diagnostics: boot.lst and game.lst are present for post-failure inspection
 
 VM Smoke
-  Report: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-vm-smoke-report.txt
-  Status: PASS
-  VM: CyberStorm
-  Frontend: headless
-  Wait: 14s (targets splash -> title -> attract demo)
-  Audio mode: SFX_ONLY
-  Audio controller: SB16 via HostAudioWas (host default HostAudioWas)
-  Capture: screenshotpng succeeded after the attract wait window.
-  Screenshot: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\vm-smoke\cyberstorm-vm-smoke.png
-  VBox log: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\vm-smoke\cyberstorm-vm-smoke.log
+  Status: skipped (use -VmSmoke to boot the headless VirtualBox smoke path).
 
 Asset Banks
   Layout include: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\generated_bank_layout.inc
-  Map bank: 3780 bytes (4096 padded), 8 sectors, LBA 39..46, load 0x7000:0000, payload C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-map-bank.bin
-  Presentation bank: 6144 bytes (6144 padded), 12 sectors, LBA 47..58, load 0x7800:0000, payload C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-presentation-bank.bin
+  Map bank: 3780 bytes (4096 padded), 8 sectors, LBA 43..50, load 0x7000:0000, payload C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-map-bank.bin
+  Presentation bank: 19968 bytes (19968 padded), 39 sectors, LBA 51..89, load 0x7800:0000, payload C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-presentation-bank.bin
 
 Screenshots
   Housekeeping: kept 6 source screenshots, removed 0, rotated 3 README slots
@@ -102,20 +102,20 @@ Screenshots
 Layout
   Boot code bytes: 132 / 510
   Boot code free bytes: 378
-  Stage2 bytes: 19417
-  Stage2 free bytes before 64 KiB limit: 46119
-  Stage2 padded bytes: 19456
-  Stage2 sectors: 38
-  Image bytes used: 29853 / 1474560
-  Image free bytes: 1444707
-  Disk footprint bytes: 30208 / 1474560
-  Disk footprint free bytes: 1444352
+  Stage2 bytes: 20993
+  Stage2 free bytes before 64 KiB limit: 44543
+  Stage2 padded bytes: 21504
+  Stage2 sectors: 42
+  Image bytes used: 45253 / 1474560
+  Image free bytes: 1429307
+  Disk footprint bytes: 46080 / 1474560
+  Disk footprint free bytes: 1428480
   Boot load address: 0000:7C00 (phys 0x00007C00)
   Stage2 load address: 0x1000:0x0000 (phys 0x00010000)
   Boot signature: 0x55AA @ byte 510
-  Stage2 LBA range: 1..38
+  Stage2 LBA range: 1..42
   Boot section: .text$mn (relocations applied: 3)
-  Stage2 section: .text$mn (relocations applied: 835)
+  Stage2 section: .text$mn (relocations applied: 895)
   Assembler warnings: boot=1, stage2=1
   Boot 'start' symbol offset: 0x0000
   Stage2 'start' symbol offset: 0x0F4E

@@ -31,6 +31,7 @@ render_game_effects:
 
 effect_draw_sector:
     call draw_sector_entry_flash
+    call draw_sector_entry_card
     jmp effects_done
 
 effect_draw_spoof:
@@ -466,6 +467,59 @@ sector_entry_wipe_ready:
     mov dx, MAP_PIXEL_Y + 62
     mov bp, 1
     call fill_rect
+    ret
+
+draw_sector_entry_card:
+    ; The sector card rides the opening feedback window only, so it brands the
+    ; breach without hiding the board for long once the run starts moving again.
+    call get_major_feedback_stage
+    cmp al, SECTOR_CARD_STAGE_LIMIT
+    jae sector_entry_card_done
+    push ax
+    mov bx, 68
+    mov dx, 48
+    xor ah, ah
+    add dx, ax
+    call get_sector_card_asset_offset
+    call draw_presentation_asset_2x
+    mov bx, 108
+    mov dx, 58
+    call get_sector_name_ptr
+    call get_sector_title_color
+    mov ah, al
+    call draw_text_small
+    ; Scenario callouts sit on the existing sector-entry card so authored
+    ; breach routes read as part of the same intro beat as the transition wipe.
+    mov bx, 90
+    mov dx, 72
+    call get_current_template_scenario_name_ptr
+    mov ah, PAL_WHITE
+    call draw_text_small
+    mov bx, 76
+    mov dx, 84
+    call get_current_template_scenario_entry_ptr
+    mov ah, PAL_WHITE
+    call draw_text_small
+    pop ax
+
+sector_entry_card_done:
+    ret
+
+get_sector_card_asset_offset:
+    mov al, [sector_num]
+    cmp al, 2
+    je sector_card_furnace
+    cmp al, 3
+    je sector_card_lock
+    mov si, PRESENT_BANNER_SECTOR1_CARD_OFFSET
+    ret
+
+sector_card_furnace:
+    mov si, PRESENT_BANNER_SECTOR2_CARD_OFFSET
+    ret
+
+sector_card_lock:
+    mov si, PRESENT_BANNER_SECTOR3_CARD_OFFSET
     ret
 
 draw_damage_flash:

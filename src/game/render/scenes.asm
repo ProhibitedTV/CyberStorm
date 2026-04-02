@@ -60,31 +60,46 @@ splash_frame_base:
 splash_frame_ready:
     call draw_rect_outline
 
-    mov bx, 96
-    mov dx, 42
-    mov si, PRESENT_BANNER_SPLASH_OFFSET
-    call draw_presentation_banner_2x
+    cmp byte ptr [splash_ticks], SPLASH_REVEAL_LOGO
+    jb splash_scene_ui_gate
 
-    mov bx, 108
-    mov dx, 98
+    mov bx, 96
+    mov dx, 28
+    mov si, PRESENT_BANNER_SPLASH_LOGO_OFFSET
+    call draw_presentation_asset_2x
+
+    cmp byte ptr [splash_ticks], SPLASH_REVEAL_WORDMARK
+    jb splash_scene_ui_gate
+
+    mov bx, 88
+    mov dx, 74
+    mov si, PRESENT_BANNER_SPLASH_WORDMARK_OFFSET
+    call draw_presentation_asset_2x
+
+    mov bx, 104
+    mov dx, 86
     mov si, offset splash_brand
     mov ah, PAL_CYAN2
     call draw_text_big
 
-    mov bx, 150
-    mov dx, 124
+    mov bx, 138
+    mov dx, 108
     mov si, offset splash_subtitle
     mov ah, PAL_WHITE
     call draw_text_small
 
-    mov bx, 68
-    mov dx, 136
+splash_scene_ui_gate:
+    cmp byte ptr [splash_ticks], SPLASH_REVEAL_UI
+    jb splash_scene_done
+
+    mov bx, 60
+    mov dx, 126
     mov si, offset splash_tagline
     mov ah, PAL_CYAN
     call draw_text_small
 
     mov bx, 78
-    mov dx, 146
+    mov dx, 142
     mov cx, 164
     mov bp, 8
     mov al, PAL_PANEL2
@@ -119,7 +134,7 @@ splash_bar_ready:
     call fill_rect
 
 splash_bar_done:
-    mov bx, 104
+    mov bx, 92
     mov dx, 156
     mov si, offset splash_skip
     test byte ptr [anim_phase], 1
@@ -132,6 +147,7 @@ splash_skip_dim:
 
 splash_skip_ready:
     call draw_text_small
+splash_scene_done:
     ret
 
 draw_title_scene:
@@ -157,36 +173,43 @@ title_frame_dim:
 title_frame_ready:
     call draw_rect_outline
 
-    mov bx, 150
-    mov dx, 40
-    mov si, PRESENT_BANNER_TITLE_OFFSET
-    call draw_presentation_banner_2x
+    mov bx, 96
+    mov dx, 28
+    mov si, PRESENT_BANNER_TITLE_LOGO_OFFSET
+    call draw_presentation_asset_2x
 
-    mov bx, 34
-    mov dx, 42
+    mov bx, 74
+    mov dx, 48
     mov si, offset title_logo
     mov ah, PAL_CYAN2
     call draw_text_big
 
+    mov bx, 92
+    mov dx, 82
+    mov si, PRESENT_BANNER_TITLE_TAGLINE_OFFSET
+    call draw_presentation_asset_2x
+
     mov bx, 42
-    mov dx, 84
+    mov dx, 96
     mov si, offset title_line_1
     mov ah, PAL_WHITE
     call draw_text_small
 
     mov bx, 42
-    mov dx, 96
+    mov dx, 108
     mov si, offset title_line_2
     mov ah, PAL_WHITE
     call draw_text_small
 
-    mov bx, 42
-    mov dx, 108
-    mov si, offset title_line_3
-    mov ah, PAL_WHITE
-    call draw_text_small
+    test byte ptr [anim_phase], 2
+    jz title_prompt_skip_asset
+    mov bx, 90
+    mov dx, 114
+    mov si, PRESENT_BANNER_TITLE_PROMPT_OFFSET
+    call draw_presentation_asset_2x
 
-    mov bx, 62
+title_prompt_skip_asset:
+    mov bx, 78
     mov dx, 132
     mov si, offset title_line_4
     test byte ptr [anim_phase], 2
@@ -200,11 +223,12 @@ title_prompt_amber:
 title_line_ready:
     call draw_text_small
 
-    mov bx, 74
-    mov dx, 150
+    mov bx, 70
+    mov dx, 144
     mov si, offset title_prompt
     mov ah, PAL_CYAN
     call draw_text_small
+    call draw_title_demo_arm_badge
 
 IF DEBUG_BUILD
     mov bx, 42
@@ -302,10 +326,10 @@ win_frame_base:
 win_frame_ready:
     call draw_rect_outline
 
-    mov bx, 134
-    mov dx, 42
-    mov si, PRESENT_BANNER_WIN_OFFSET
-    call draw_presentation_banner_2x
+    mov bx, 96
+    mov dx, 38
+    mov si, PRESENT_BANNER_WIN_BANNER_OFFSET
+    call draw_presentation_asset_2x
     xor ax, ax
     mov al, [state_ticks]
     mov cx, ax
@@ -347,6 +371,14 @@ win_bar_color_ready:
     mov dx, 96
     call fill_rect
 
+    cmp byte ptr [state_ticks], END_REVEAL_BODY
+    jb win_scene_headline_gate
+    mov bx, 74
+    mov dx, 104
+    mov si, PRESENT_BANNER_WIN_PLATE_OFFSET
+    call draw_presentation_asset_2x
+
+win_scene_headline_gate:
     ; End scenes now reveal in headline/body/stats/prompt phases so the sound
     ; and accent bars land before the replay prompt appears.
     cmp byte ptr [state_ticks], END_REVEAL_HEADLINE
@@ -507,10 +539,10 @@ lose_frame_base:
 lose_frame_ready:
     call draw_rect_outline
 
-    mov bx, 134
-    mov dx, 42
-    mov si, PRESENT_BANNER_LOSE_OFFSET
-    call draw_presentation_banner_2x
+    mov bx, 96
+    mov dx, 38
+    mov si, PRESENT_BANNER_LOSE_BANNER_OFFSET
+    call draw_presentation_asset_2x
     xor ax, ax
     mov al, [state_ticks]
     mov cx, ax
@@ -552,6 +584,14 @@ lose_bar_color_ready:
     mov dx, 96
     call fill_rect
 
+    cmp byte ptr [state_ticks], END_REVEAL_BODY
+    jb lose_scene_headline_gate
+    mov bx, 74
+    mov dx, 104
+    mov si, PRESENT_BANNER_LOSE_PLATE_OFFSET
+    call draw_presentation_asset_2x
+
+lose_scene_headline_gate:
     cmp byte ptr [state_ticks], END_REVEAL_HEADLINE
     jb lose_scene_done
 
@@ -675,4 +715,21 @@ lose_prompt_dim:
 lose_prompt_ready:
     call draw_text_small
 lose_scene_done:
+    ret
+
+draw_title_demo_arm_badge:
+    ; Once the title has been idle for a while, arm the attract demo visually
+    ; before the handoff so the player can read the coming transition.
+    cmp byte ptr [title_idle_ticks], TITLE_BADGE_DELAY
+    jb title_demo_badge_done
+    mov bx, 20
+    mov dx, 106
+    mov si, PRESENT_BANNER_DEMO_BADGE_OFFSET
+    call draw_presentation_asset_2x
+    mov bx, 42
+    mov dx, 124
+    mov si, offset demo_text
+    mov ah, PAL_WHITE
+    call draw_text_small
+title_demo_badge_done:
     ret

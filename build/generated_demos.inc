@@ -21,13 +21,12 @@ demo_script_0 db DEMO_ACTION_WAIT, 8
               db DEMO_ACTION_END, 0
 
 ; Demo 2: SURGE ATTRACT
-demo_script_1 db DEMO_ACTION_WAIT, 6
-              db DEMO_ACTION_RIGHT, 5
-              db DEMO_ACTION_UP, 1
+demo_script_1 db DEMO_ACTION_WAIT, 4
+              db DEMO_ACTION_RIGHT, 8
+              db DEMO_ACTION_UP, 4
+              db DEMO_ACTION_RIGHT, 2
               db DEMO_ACTION_PULSE, 1
               db DEMO_ACTION_LEFT, 2
-              db DEMO_ACTION_UP, 2
-              db DEMO_ACTION_RIGHT, 2
               db DEMO_ACTION_WAIT, 5
               db DEMO_ACTION_END, 0
 

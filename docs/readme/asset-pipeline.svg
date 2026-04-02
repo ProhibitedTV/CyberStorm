@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1100" height="520" viewBox="0 0 1100 520" role="img" aria-labelledby="title desc">
   <title id="title">CyberStorm asset pipeline</title>
-  <desc id="desc">A pipeline diagram showing source-of-truth visuals, sectors, and music flowing through the build into generated includes, a banked map payload, and final runtime modules.</desc>
+  <desc id="desc">A pipeline diagram showing source-of-truth visuals, presentation assets, sectors, demos, and music flowing through the build into generated includes, banked payloads, and final runtime modules.</desc>
   <defs>
     <style>
       .title { font: 700 28px 'Segoe UI', Arial, sans-serif; fill: #0f172a; }
@@ -16,7 +16,7 @@
   </defs>
 
   <text x="40" y="42" class="title">How Assets Become Assembly</text>
-  <text x="40" y="68" class="subtitle">scripts/build.ps1 generates reviewable assembly include files and one banked map payload from readable source files.</text>
+  <text x="40" y="68" class="subtitle">scripts/build.ps1 generates reviewable assembly include files plus banked map and presentation payloads from readable source files.</text>
 
   <rect x="390" y="92" width="320" height="56" rx="16" fill="#0f172a" stroke="#38bdf8" stroke-width="2"/>
   <text x="414" y="126" class="label">scripts/build.ps1</text>
@@ -40,12 +40,13 @@
   <text x="352" y="246" class="body">validated MASM data for</text>
   <text x="352" y="266" class="body">sprites and tiles</text>
 
-  <rect x="330" y="302" width="270" height="112" rx="16" fill="#0f172a" stroke="#f59e0b" stroke-width="2"/>
+  <rect x="330" y="302" width="270" height="124" rx="16" fill="#0f172a" stroke="#f59e0b" stroke-width="2"/>
   <text x="352" y="332" class="label">Generated content + bank</text>
-  <text x="352" y="356" class="body">generated_sector_content.inc</text>
-  <text x="352" y="376" class="body">generated_maps.inc</text>
-  <text x="352" y="396" class="body">generated_bank_layout.inc</text>
-  <text x="352" y="416" class="body">cyberstorm-map-bank.bin</text>
+  <text x="352" y="354" class="body">generated_presentation_content.inc</text>
+  <text x="352" y="374" class="body">generated_sector_content.inc</text>
+  <text x="352" y="394" class="body">generated_maps.inc</text>
+  <text x="352" y="414" class="body">generated_bank_layout.inc</text>
+  <text x="352" y="434" class="body">map + presentation banks</text>
 
   <rect x="330" y="438" width="270" height="52" rx="16" fill="#0f172a" stroke="#22c55e" stroke-width="2"/>
   <text x="352" y="470" class="label">build/generated_music.inc</text>
@@ -55,12 +56,13 @@
   <text x="692" y="246" class="body">includes generated art</text>
   <text x="692" y="266" class="body">plus palette/font data</text>
 
-  <rect x="670" y="302" width="200" height="112" rx="16" fill="#0f172a" stroke="#f59e0b" stroke-width="2"/>
+  <rect x="670" y="302" width="200" height="124" rx="16" fill="#0f172a" stroke="#f59e0b" stroke-width="2"/>
   <text x="692" y="332" class="label">Runtime consumers</text>
-  <text x="692" y="356" class="body">state.asm</text>
-  <text x="692" y="376" class="body">gameplay.asm</text>
-  <text x="692" y="396" class="body">banks.asm</text>
-  <text x="692" y="416" class="body">banked maps at 7000:0000</text>
+  <text x="692" y="354" class="body">state.asm</text>
+  <text x="692" y="374" class="body">gameplay.asm</text>
+  <text x="692" y="394" class="body">scenes.asm + hud.asm</text>
+  <text x="692" y="414" class="body">banks.asm</text>
+  <text x="692" y="434" class="body">maps at 7000 and scene kit at 7800</text>
 
   <rect x="670" y="438" width="200" height="52" rx="16" fill="#0f172a" stroke="#22c55e" stroke-width="2"/>
   <text x="692" y="470" class="label">src/game/audio.asm</text>

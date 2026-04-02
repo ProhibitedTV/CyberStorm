@@ -25,7 +25,7 @@ The asset-bank system now emits two raw runtime payloads:
 - `build\generated_maps.inc` remains the human-reviewable rendering of the authored map pool
 - `build\cyberstorm-map-bank.bin` is the runtime payload copied into later floppy sectors
 - `build\generated_presentation_content.inc` remains the human-reviewable rendering of the banked scene-banner offsets
-- `build\cyberstorm-presentation-bank.bin` is the runtime payload for splash/title/end presentation art
+- `build\cyberstorm-presentation-bank.bin` is the runtime payload for the banked presentation scene kit used by splash/title/demo/sector-entry/end scenes
 - `build\generated_bank_layout.inc` tells stage two where that bank lives on disk and how large it is
 
 ## Presentation Source
@@ -53,6 +53,8 @@ The generator validates banner order, row width/height, unknown legend tokens, n
 - sector title and intro copy
 - per-sector authored rule values
 - the map pool for each sector
+- per-map `Scenario` blocks for breach names, entry copy, and shard candidate pools
+- optional per-map `Anchors` blocks for terminals, surges, and explicit enemy seeds
 
 Current rule fields:
 
@@ -68,6 +70,33 @@ Each sector also owns a `Maps` array. Every map must provide:
 - a valid assembly label `Name`
 - exactly `MAP_H` rows
 - exactly `MAP_W` characters per row
+
+Every map now provides a `Scenario` table:
+
+- `Name = '...'`
+- `Entry = '...'`
+- `ShardPool = @('x,y', ...)`
+
+Current shard-pool rules:
+
+- every map must provide exactly `SHARD_POOL_COUNT` coordinates
+- shard-pool coordinates must be unique
+- shard-pool coordinates must sit on authored floor tiles
+- shard-pool coordinates cannot overlap start, exit, or authored anchors
+- the runtime still only places `SHARD_COUNT` shards, chosen deterministically from that authored pool
+
+Maps can also provide an optional `Anchors` table. Phase-1 anchor types are:
+
+- `Terminals = @('x,y', ...)`
+- `Surges = @('x,y', ...)`
+- `Enemies = @(@{ X = ..; Y = ..; Kind = 'RUSHER|FLANKER|WARDEN' }, ...)`
+
+Anchors are hybrid content, not extra budget. They consume the same sector counts that the random placement path would otherwise use, so the runtime flow is:
+
+1. copy the authored ASCII layout
+2. place anchored terminals, surges, and enemies
+3. place `SHARD_COUNT` shards from the authored scenario pool
+4. random-fill any remaining terminal, surge, and enemy budget
 
 The build validates the sector count against `TOTAL_SECTORS` in [src/game/constants.inc](../src/game/constants.inc).
 
@@ -103,6 +132,16 @@ The content generators try to fail early with actionable errors:
 - map geometry mismatches
 - non-ASCII content
 - duplicate map names
+- anchor coordinates outside the playable bounds
+- anchors placed on walls, start, or exit
+- duplicate anchor occupancy across anchor types
+- enemy anchors that violate the safe-zone contract
+- anchor counts that exceed sector budgets
+- shard-pool coordinates outside the playable bounds
+- shard-pool coordinates placed on walls, start, or exit
+- duplicate shard-pool coordinates
+- shard-pool coordinates overlapping authored anchors
+- unsupported enemy kind tokens
 - malformed music events
 - sector count drifting away from the runtime contract
 - bank payloads drifting beyond the current per-bank 64 KiB runtime window

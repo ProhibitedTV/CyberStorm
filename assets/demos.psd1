@@ -19,7 +19,7 @@
                 Hits = 0
                 PulsesUsed = 1
                 Spoof = 0
-                Rng = 0x173E
+                Rng = 0x764A
             }
             Steps = @(
                 'WAIT 8'
@@ -40,27 +40,26 @@
                 State = 'PLAYING'
                 Sector = 2
                 Map = 'sector2_map_b'
-                Player = '7,13'
+                Player = '8,11'
                 Shields = 5
                 Pulses = 3
                 Data = 1
-                Kills = 2
-                AliveEnemies = 5
-                Score = 240
-                Actions = 10
+                Kills = 1
+                AliveEnemies = 6
+                Score = 170
+                Actions = 13
                 Hits = 0
                 PulsesUsed = 1
                 Spoof = 0
-                Rng = 0xD0E5
+                Rng = 0xA7CC
             }
             Steps = @(
-                'WAIT 6'
-                'RIGHT 5'
-                'UP 1'
+                'WAIT 4'
+                'RIGHT 8'
+                'UP 4'
+                'RIGHT 2'
                 'PULSE 1'
                 'LEFT 2'
-                'UP 2'
-                'RIGHT 2'
                 'WAIT 5'
             )
         }
@@ -75,15 +74,15 @@
                 Player = '6,13'
                 Shields = 5
                 Pulses = 4
-                Data = 0
-                Kills = 1
-                AliveEnemies = 9
-                Score = 70
+                Data = 1
+                Kills = 0
+                AliveEnemies = 10
+                Score = 100
                 Actions = 7
                 Hits = 0
                 PulsesUsed = 1
                 Spoof = 0
-                Rng = 0x60D3
+                Rng = 0x88BA
             }
             Steps = @(
                 'WAIT 6'

@@ -200,8 +200,12 @@ spoof_status_digit_ready:
 draw_demo_status:
     cmp byte ptr [demo_active], 0
     je demo_status_done
-    mov bx, 258
+    mov bx, 156
     mov dx, 36
+    mov si, PRESENT_BANNER_DEMO_BADGE_OFFSET
+    call draw_presentation_asset_2x
+    mov bx, 262
+    mov dx, 44
     mov si, offset demo_text
     test byte ptr [anim_phase], 1
     jz demo_status_base
@@ -212,6 +216,11 @@ demo_status_base:
     mov ah, PAL_CYAN2
 
 demo_status_draw:
+    call draw_text_small
+    mov bx, 258
+    mov dx, 54
+    mov si, offset demo_takeover_text
+    mov ah, PAL_WHITE
     call draw_text_small
 
 demo_status_done:
@@ -237,6 +246,20 @@ get_sector_intro_ptr:
     mov si, word ptr [sector_intro_table + bx]
     ret
 
+get_current_template_scenario_name_ptr:
+    xor bx, bx
+    mov bl, [current_template_index]
+    shl bx, 1
+    mov si, word ptr [template_scenario_name_table + bx]
+    ret
+
+get_current_template_scenario_entry_ptr:
+    xor bx, bx
+    mov bl, [current_template_index]
+    shl bx, 1
+    mov si, word ptr [template_scenario_entry_table + bx]
+    ret
+
 get_message_text_ptr:
     mov al, [message_id]
     cmp al, MSG_SECTOR
@@ -248,7 +271,7 @@ get_message_text_ptr:
     ret
 
 message_text_ptr_sector:
-    call get_sector_intro_ptr
+    call get_current_template_scenario_entry_ptr
     ret
 
 get_sector_accent_color:

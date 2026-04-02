@@ -640,8 +640,11 @@ keep_pulse_count:
     mov byte ptr [exit_x], EXIT_COL
     mov byte ptr [exit_y], EXIT_ROW
     call set_exit_locked
+    call place_anchored_terminals
+    call place_anchored_surge_fields
+    call place_anchored_enemies
+    call place_template_shards
     call place_terminals
-    call place_shards
     call place_surge_fields
     call place_enemies
     ret
@@ -702,6 +705,7 @@ select_sector_template:
     add al, dl
 
 template_index_ready:
+    mov [current_template_index], al
     xor ah, ah
     shl ax, 1
     mov bx, ax
@@ -731,14 +735,17 @@ open_exit:
     call set_tile
     ret
 
-place_shards:
+place_template_shards:
+    mov byte ptr [shard_pool_pick_mask], 0
     mov cx, SHARD_COUNT
 
-place_shard_loop:
-    call random_floor_position
+place_template_shard_loop:
+    push cx
+    call choose_template_shard_position
     mov dl, TILE_SHARD
     call set_tile
-    loop place_shard_loop
+    pop cx
+    loop place_template_shard_loop
     ret
 
 get_sector_surge_count:
@@ -771,10 +778,174 @@ get_sector_warden_engage_distance:
     mov al, [sector_rule_warden_engage_distance + bx]
     ret
 
+get_current_template_terminal_anchor_count:
+    xor cx, cx
+    xor bx, bx
+    mov bl, [current_template_index]
+    mov cl, [template_terminal_anchor_count + bx]
+    ret
+
+get_current_template_surge_anchor_count:
+    xor cx, cx
+    xor bx, bx
+    mov bl, [current_template_index]
+    mov cl, [template_surge_anchor_count + bx]
+    ret
+
+get_current_template_enemy_anchor_count:
+    xor cx, cx
+    xor bx, bx
+    mov bl, [current_template_index]
+    mov cl, [template_enemy_anchor_count + bx]
+    ret
+
+load_current_template_terminal_anchor_data:
+    xor bx, bx
+    mov bl, [current_template_index]
+    xor cx, cx
+    mov cl, [template_terminal_anchor_count + bx]
+    shl bx, 1
+    mov di, word ptr [template_terminal_anchor_offset + bx]
+    add di, offset terminal_anchor_table
+    ret
+
+load_current_template_surge_anchor_data:
+    xor bx, bx
+    mov bl, [current_template_index]
+    xor cx, cx
+    mov cl, [template_surge_anchor_count + bx]
+    shl bx, 1
+    mov di, word ptr [template_surge_anchor_offset + bx]
+    add di, offset surge_anchor_table
+    ret
+
+load_current_template_enemy_anchor_data:
+    ; Generated encounter anchors stay flat and tiny: each selected template
+    ; points into compact [x,y] or [x,y,kind] byte tables.
+    xor bx, bx
+    mov bl, [current_template_index]
+    xor cx, cx
+    mov cl, [template_enemy_anchor_count + bx]
+    shl bx, 1
+    mov di, word ptr [template_enemy_anchor_offset + bx]
+    add di, offset enemy_anchor_table
+    ret
+
+get_current_template_shard_pool_count:
+    xor cx, cx
+    xor bx, bx
+    mov bl, [current_template_index]
+    mov cl, [template_shard_pool_count + bx]
+    ret
+
+load_current_template_shard_pool_data:
+    ; Scenario shard pools stay small on purpose: each selected template points
+    ; at a compact [x,y] list, and sector load chooses SHARD_COUNT unique picks.
+    xor bx, bx
+    mov bl, [current_template_index]
+    xor cx, cx
+    mov cl, [template_shard_pool_count + bx]
+    shl bx, 1
+    mov di, word ptr [template_shard_pool_offset + bx]
+    add di, offset shard_pool_table
+    ret
+
+place_anchored_terminals:
+    call load_current_template_terminal_anchor_data
+    jcxz place_anchored_terminals_done
+
+place_anchored_terminal_loop:
+    mov bl, [di]
+    mov bh, [di + 1]
+    mov dl, TILE_TERMINAL
+    call set_tile
+    add di, 2
+    loop place_anchored_terminal_loop
+
+place_anchored_terminals_done:
+    ret
+
+place_anchored_surge_fields:
+    call load_current_template_surge_anchor_data
+    jcxz place_anchored_surges_done
+
+place_anchored_surges_loop:
+    mov bl, [di]
+    mov bh, [di + 1]
+    mov dl, TILE_SURGE
+    call set_tile
+    add di, 2
+    loop place_anchored_surges_loop
+
+place_anchored_surges_done:
+    ret
+
+find_free_enemy_slot:
+    mov si, offset enemies
+
+find_free_enemy_slot_loop:
+    cmp byte ptr [si + ENEMY_ALIVE], 0
+    je find_free_enemy_slot_done
+    add si, ENEMY_SIZE
+    jmp find_free_enemy_slot_loop
+
+find_free_enemy_slot_done:
+    ret
+
+place_anchored_enemies:
+    call load_current_template_enemy_anchor_data
+    jcxz place_anchored_enemies_done
+
+place_anchored_enemy_loop:
+    push cx
+    call find_free_enemy_slot
+    mov byte ptr [si + ENEMY_ALIVE], 1
+    mov al, [di]
+    mov [si + ENEMY_X], al
+    mov al, [di + 1]
+    mov [si + ENEMY_Y], al
+    mov al, [di + 2]
+    mov [si + ENEMY_KIND], al
+    add di, 3
+    pop cx
+    loop place_anchored_enemy_loop
+
+place_anchored_enemies_done:
+    ret
+
+choose_template_shard_position:
+    call load_current_template_shard_pool_data
+    mov dl, cl
+
+choose_template_shard_retry:
+    call random_word
+    mov bl, dl
+    xor ah, ah
+    div bl
+    mov bl, ah
+    xor bh, bh
+    mov al, 1
+    mov cl, bl
+    shl al, cl
+    mov ah, [shard_pool_pick_mask]
+    test ah, al
+    jnz choose_template_shard_retry
+    or ah, al
+    mov [shard_pool_pick_mask], ah
+    shl bx, 1
+    mov si, di
+    add si, bx
+    mov bl, [si]
+    mov bh, [si + 1]
+    ret
+
 place_surge_fields:
-    ; Sector hazards stay table-free and tiny here: sector 2 is dense with arc
-    ; nodes, while sector 3 turns the same system into a harsher lockout field.
     call get_sector_surge_count
+    mov al, cl
+    call get_current_template_surge_anchor_count
+    sub al, cl
+    mov cl, al
+    xor ch, ch
     jcxz place_surge_done
 
 place_surge_loop:
@@ -788,6 +959,11 @@ place_surge_done:
 
 place_terminals:
     call get_sector_terminal_count
+    mov al, cl
+    call get_current_template_terminal_anchor_count
+    sub al, cl
+    mov cl, al
+    xor ch, ch
     jcxz place_terminals_done
 
 place_terminal_loop:
@@ -801,6 +977,12 @@ place_terminals_done:
 
 place_enemies:
     call get_sector_enemy_count
+    mov al, cl
+    call get_current_template_enemy_anchor_count
+    sub al, cl
+    mov cl, al
+    xor ch, ch
+    jcxz place_enemies_done
     mov si, offset enemies
 
 place_enemy_find_slot:
@@ -819,6 +1001,7 @@ place_enemy_here:
     add si, ENEMY_SIZE
     dec cl
     jnz place_enemy_find_slot
+place_enemies_done:
     ret
 
 roll_enemy_kind:
@@ -896,6 +1079,18 @@ rand_enemy_space_ok:
     mov di, 0FFFFh
     call find_enemy_at
     jc rand_enemy_retry
+    pop si
+    ret
+
+random_shard_position:
+    ; Shards still use the normal random floor flow, but the authored encounter
+    ; pass places enemies earlier, so shard rolls now skip occupied enemy tiles.
+    push si
+rand_shard_retry:
+    call random_floor_position
+    mov di, 0FFFFh
+    call find_enemy_at
+    jc rand_shard_retry
     pop si
     ret
 

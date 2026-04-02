@@ -15,6 +15,14 @@
             Maps = @(
                 @{
                     Name = 'sector1_map_a'
+                    Scenario = @{
+                        Name = 'FORK SPIKE'
+                        Entry = 'LEFT FORK FIRST. CUT CENTER BEFORE THE PINCH.'
+                        ShardPool = @('5,13', '8,9', '13,7', '18,9', '19,5', '23,3')
+                    }
+                    Anchors = @{
+                        Terminals = @('10,7')
+                    }
                     Rows = @(
                         '############################'
                         '#..........#...............#'
@@ -35,6 +43,17 @@
                 }
                 @{
                     Name = 'sector1_map_b'
+                    Scenario = @{
+                        Name = 'CROSSLANE LURE'
+                        Entry = 'THE FIRST FLANK CROSSES MID. DO NOT CHASE BLIND.'
+                        ShardPool = @('4,13', '8,11', '11,9', '16,7', '20,11', '23,3')
+                    }
+                    Anchors = @{
+                        Terminals = @('8,7')
+                        Enemies = @(
+                            @{ X = 18; Y = 7; Kind = 'FLANKER' }
+                        )
+                    }
                     Rows = @(
                         '############################'
                         '#....#..............#......#'
@@ -55,6 +74,17 @@
                 }
                 @{
                     Name = 'sector1_map_c'
+                    Scenario = @{
+                        Name = 'SPINE THREAD'
+                        Entry = 'CROSS EARLY. THE RIGHT LANE TIGHTENS FAST.'
+                        ShardPool = @('4,13', '9,11', '15,13', '15,9', '19,11', '24,3')
+                    }
+                    Anchors = @{
+                        Terminals = @('10,7')
+                        Enemies = @(
+                            @{ X = 20; Y = 7; Kind = 'FLANKER' }
+                        )
+                    }
                     Rows = @(
                         '############################'
                         '#..........#.....#.........#'
@@ -90,6 +120,18 @@
             Maps = @(
                 @{
                     Name = 'sector2_map_a'
+                    Scenario = @{
+                        Name = 'FURNACE FORK'
+                        Entry = 'HOT MIDLINE SHARDS PAY OFF IF YOU SELL THE CHASE.'
+                        ShardPool = @('5,13', '11,11', '14,7', '17,5', '20,3', '24,1')
+                    }
+                    Anchors = @{
+                        Terminals = @('10,7', '20,9')
+                        Surges = @('14,5', '22,7')
+                        Enemies = @(
+                            @{ X = 20; Y = 11; Kind = 'FLANKER' }
+                        )
+                    }
                     Rows = @(
                         '############################'
                         '#......#....#.........#....#'
@@ -110,6 +152,18 @@
                 }
                 @{
                     Name = 'sector2_map_b'
+                    Scenario = @{
+                        Name = 'HINGE BAIT'
+                        Entry = 'THE SAFE LOOP IS SLOW. THE HOT HINGE PAYS FASTER.'
+                        ShardPool = @('4,13', '10,11', '12,9', '15,7', '20,5', '24,3')
+                    }
+                    Anchors = @{
+                        Terminals = @('7,7', '18,7')
+                        Surges = @('11,9', '20,11')
+                        Enemies = @(
+                            @{ X = 18; Y = 11; Kind = 'FLANKER' }
+                        )
+                    }
                     Rows = @(
                         '############################'
                         '#....#......#....#.........#'
@@ -130,6 +184,18 @@
                 }
                 @{
                     Name = 'sector2_map_c'
+                    Scenario = @{
+                        Name = 'ARC WEAVE'
+                        Entry = 'PULL HUNTERS THROUGH CENTER SURGES, THEN SLIP OUT.'
+                        ShardPool = @('6,13', '10,11', '14,7', '16,3', '21,5', '24,11')
+                    }
+                    Anchors = @{
+                        Terminals = @('8,7', '18,11')
+                        Surges = @('14,5', '22,9')
+                        Enemies = @(
+                            @{ X = 22; Y = 11; Kind = 'FLANKER' }
+                        )
+                    }
                     Rows = @(
                         '############################'
                         '#.........#....#...........#'
@@ -165,6 +231,18 @@
             Maps = @(
                 @{
                     Name = 'sector3_map_a'
+                    Scenario = @{
+                        Name = 'LOCKSTEP BREACH'
+                        Entry = 'THE GATE LANE IS LIVE EARLY. DO NOT ARRIVE LATE.'
+                        ShardPool = @('6,13', '10,7', '15,9', '16,3', '19,7', '24,3')
+                    }
+                    Anchors = @{
+                        Terminals = @('10,9', '20,11')
+                        Surges = @('13,5', '22,5', '22,11')
+                        Enemies = @(
+                            @{ X = 21; Y = 3; Kind = 'WARDEN' }
+                        )
+                    }
                     Rows = @(
                         '############################'
                         '#....#...........#.........#'
@@ -185,6 +263,18 @@
                 }
                 @{
                     Name = 'sector3_map_b'
+                    Scenario = @{
+                        Name = 'UPLINK CHOKE'
+                        Entry = 'THE UPPER GRID IS RICH, BUT THE WARDEN OWNS IT.'
+                        ShardPool = @('4,13', '9,11', '15,7', '18,5', '20,1', '23,3')
+                    }
+                    Anchors = @{
+                        Terminals = @('9,7', '18,9')
+                        Surges = @('14,5', '21,7', '20,11')
+                        Enemies = @(
+                            @{ X = 21; Y = 3; Kind = 'WARDEN' }
+                        )
+                    }
                     Rows = @(
                         '############################'
                         '#....#.....#....#.....#....#'
@@ -205,6 +295,18 @@
                 }
                 @{
                     Name = 'sector3_map_c'
+                    Scenario = @{
+                        Name = 'FINAL CORRIDOR'
+                        Entry = 'THE LAST SHARD LINE RUNS STRAIGHT INTO THE EXIT.'
+                        ShardPool = @('4,13', '9,11', '15,9', '19,5', '19,3', '23,1')
+                    }
+                    Anchors = @{
+                        Terminals = @('10,7', '19,11')
+                        Surges = @('13,5', '21,7', '22,11')
+                        Enemies = @(
+                            @{ X = 21; Y = 3; Kind = 'WARDEN' }
+                        )
+                    }
                     Rows = @(
                         '############################'
                         '#......#....#.......#......#'

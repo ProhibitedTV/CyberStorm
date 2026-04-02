@@ -84,6 +84,7 @@ function Get-RequiredConstants {
         'START_PULSES',
         'MAX_PULSES',
         'SHARD_COUNT',
+        'SHARD_POOL_COUNT',
         'SPOOF_TURNS',
         'SURGE_PLAYER_DAMAGE',
         'ENEMY_SPAWN_STEP',
@@ -492,6 +493,232 @@ function Select-SectorMap {
     return $maps[$selectedIndex]
 }
 
+function ConvertTo-AnchorPoint {
+    param(
+        [string]$Token,
+        $Constants,
+        [string]$Context
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Token) -or $Token -notmatch '^\s*(\d+)\s*,\s*(\d+)\s*$') {
+        throw ("{0} must use 'x,y' coordinates inside the playable bounds. Received: '{1}'." -f $Context, $Token)
+    }
+
+    $x = [int]$Matches[1]
+    $y = [int]$Matches[2]
+    if ($x -lt $Constants.PLAY_MIN_X -or $x -gt $Constants.PLAY_MAX_X -or $y -lt $Constants.PLAY_MIN_Y -or $y -gt $Constants.PLAY_MAX_Y) {
+        throw ("{0} coordinate ({1},{2}) is outside the playable bounds." -f $Context, $x, $y)
+    }
+
+    return [pscustomobject]@{
+        X = $x
+        Y = $y
+    }
+}
+
+function Get-MapAnchors {
+    param(
+        $Map,
+        $State,
+        $Constants,
+        $Sectors
+    )
+
+    $rules = Get-SectorRules -Sectors $Sectors -SectorId $State.SectorNum
+    $enemyBudget = Get-SectorEnemyCount -State $State -Constants $Constants -Sectors $Sectors
+    $anchors = if ($Map.ContainsKey('Anchors')) { $Map.Anchors } else { @{} }
+    if (-not ($anchors -is [System.Collections.IDictionary])) {
+        throw ("Map '{0}' anchors must be a hashtable." -f $Map.Name)
+    }
+
+    $occupied = New-Object 'System.Collections.Generic.HashSet[string]' ([System.StringComparer]::Ordinal)
+    $enemyKindLookup = @{
+        RUSHER = 'RUSHER'
+        FLANKER = 'FLANKER'
+        WARDEN = 'WARDEN'
+    }
+    $terminalAnchors = New-Object 'System.Collections.Generic.List[object]'
+    $surgeAnchors = New-Object 'System.Collections.Generic.List[object]'
+    $enemyAnchors = New-Object 'System.Collections.Generic.List[object]'
+    $rows = @($Map.Rows | ForEach-Object { [string]$_ })
+
+    $terminalEntries = @()
+    if ($anchors.ContainsKey('Terminals')) { $terminalEntries += @($anchors['Terminals']) }
+    $surgeEntries = @()
+    if ($anchors.ContainsKey('Surges')) { $surgeEntries += @($anchors['Surges']) }
+    $enemyEntries = @()
+    if ($anchors.ContainsKey('Enemies')) { $enemyEntries += @($anchors['Enemies']) }
+
+    if ($terminalEntries.Count -gt [int]$rules.TerminalCount) {
+        throw ("Map '{0}' defines {1} terminal anchors, but the sector budget is {2}." -f $Map.Name, $terminalEntries.Count, $rules.TerminalCount)
+    }
+
+    if ($surgeEntries.Count -gt [int]$rules.SurgeCount) {
+        throw ("Map '{0}' defines {1} surge anchors, but the sector budget is {2}." -f $Map.Name, $surgeEntries.Count, $rules.SurgeCount)
+    }
+
+    if ($enemyEntries.Count -gt $enemyBudget) {
+        throw ("Map '{0}' defines {1} enemy anchors, but the sector budget is {2}." -f $Map.Name, $enemyEntries.Count, $enemyBudget)
+    }
+
+    foreach ($token in $terminalEntries) {
+        $anchor = ConvertTo-AnchorPoint -Token ([string]$token) -Constants $Constants -Context ("Terminal anchor in {0}" -f $Map.Name)
+        if (([string]$rows[$anchor.Y]).ToCharArray()[$anchor.X] -eq '#') {
+            throw ("Terminal anchor ({0},{1}) in map '{2}' must sit on a floor tile." -f $anchor.X, $anchor.Y, $Map.Name)
+        }
+
+        if (($anchor.X -eq $Constants.START_X -and $anchor.Y -eq $Constants.START_Y) -or ($anchor.X -eq $Constants.EXIT_COL -and $anchor.Y -eq $Constants.EXIT_ROW)) {
+            throw ("Terminal anchor ({0},{1}) in map '{2}' cannot sit on the start or exit tile." -f $anchor.X, $anchor.Y, $Map.Name)
+        }
+
+        $anchorKey = ("{0},{1}" -f $anchor.X, $anchor.Y)
+        if (-not $occupied.Add($anchorKey)) {
+            throw ("Map '{0}' defines multiple anchors on tile ({1},{2})." -f $Map.Name, $anchor.X, $anchor.Y)
+        }
+
+        $terminalAnchors.Add($anchor)
+    }
+
+    foreach ($token in $surgeEntries) {
+        $anchor = ConvertTo-AnchorPoint -Token ([string]$token) -Constants $Constants -Context ("Surge anchor in {0}" -f $Map.Name)
+        if (([string]$rows[$anchor.Y]).ToCharArray()[$anchor.X] -eq '#') {
+            throw ("Surge anchor ({0},{1}) in map '{2}' must sit on a floor tile." -f $anchor.X, $anchor.Y, $Map.Name)
+        }
+
+        if (($anchor.X -eq $Constants.START_X -and $anchor.Y -eq $Constants.START_Y) -or ($anchor.X -eq $Constants.EXIT_COL -and $anchor.Y -eq $Constants.EXIT_ROW)) {
+            throw ("Surge anchor ({0},{1}) in map '{2}' cannot sit on the start or exit tile." -f $anchor.X, $anchor.Y, $Map.Name)
+        }
+
+        $anchorKey = ("{0},{1}" -f $anchor.X, $anchor.Y)
+        if (-not $occupied.Add($anchorKey)) {
+            throw ("Map '{0}' defines multiple anchors on tile ({1},{2})." -f $Map.Name, $anchor.X, $anchor.Y)
+        }
+
+        $surgeAnchors.Add($anchor)
+    }
+
+    foreach ($entry in $enemyEntries) {
+        if (-not ($entry -is [System.Collections.IDictionary])) {
+            throw ("Enemy anchors in map '{0}' must be hashtables with X, Y, and Kind." -f $Map.Name)
+        }
+
+        $x = [int]$entry.X
+        $y = [int]$entry.Y
+        $kind = ([string]$entry.Kind).Trim().ToUpperInvariant()
+        if ($x -lt $Constants.PLAY_MIN_X -or $x -gt $Constants.PLAY_MAX_X -or $y -lt $Constants.PLAY_MIN_Y -or $y -gt $Constants.PLAY_MAX_Y) {
+            throw ("Enemy anchor ({0},{1}) in map '{2}' is outside the playable bounds." -f $x, $y, $Map.Name)
+        }
+
+        if (([string]$rows[$y]).ToCharArray()[$x] -eq '#') {
+            throw ("Enemy anchor ({0},{1}) in map '{2}' must sit on a floor tile." -f $x, $y, $Map.Name)
+        }
+
+        if (($x -eq $Constants.START_X -and $y -eq $Constants.START_Y) -or ($x -eq $Constants.EXIT_COL -and $y -eq $Constants.EXIT_ROW)) {
+            throw ("Enemy anchor ({0},{1}) in map '{2}' cannot sit on the start or exit tile." -f $x, $y, $Map.Name)
+        }
+
+        if ($x -le $Constants.SAFE_X_MAX -and $y -ge $Constants.SAFE_Y_MIN) {
+            throw ("Enemy anchor ({0},{1}) in map '{2}' violates the enemy safe-zone contract." -f $x, $y, $Map.Name)
+        }
+
+        if (-not $enemyKindLookup.ContainsKey($kind)) {
+            throw ("Enemy anchor ({0},{1}) in map '{2}' used unsupported Kind '{3}'." -f $x, $y, $Map.Name, $entry.Kind)
+        }
+
+        $anchorKey = ("{0},{1}" -f $x, $y)
+        if (-not $occupied.Add($anchorKey)) {
+            throw ("Map '{0}' defines multiple anchors on tile ({1},{2})." -f $Map.Name, $x, $y)
+        }
+
+        $enemyAnchors.Add([pscustomobject]@{
+            X = $x
+            Y = $y
+            Kind = [string]$enemyKindLookup[$kind]
+        })
+    }
+
+    return [pscustomobject]@{
+        Terminals = $terminalAnchors.ToArray()
+        Surges = $surgeAnchors.ToArray()
+        Enemies = $enemyAnchors.ToArray()
+    }
+}
+
+function Get-MapScenario {
+    param(
+        $Map,
+        $Anchors,
+        $Constants
+    )
+
+    if (-not $Map.ContainsKey('Scenario')) {
+        throw ("Map '{0}' is missing its Scenario block." -f $Map.Name)
+    }
+
+    $scenario = $Map.Scenario
+    if (-not ($scenario -is [System.Collections.IDictionary])) {
+        throw ("Map '{0}' scenario must be a hashtable." -f $Map.Name)
+    }
+
+    foreach ($requiredKey in @('Name', 'Entry', 'ShardPool')) {
+        if (-not $scenario.ContainsKey($requiredKey)) {
+            throw ("Map '{0}' scenario is missing '{1}'." -f $Map.Name, $requiredKey)
+        }
+    }
+
+    $scenarioName = [string]$scenario.Name
+    $scenarioEntry = [string]$scenario.Entry
+    if ([string]::IsNullOrWhiteSpace($scenarioName)) {
+        throw ("Map '{0}' scenario must define a non-empty Name." -f $Map.Name)
+    }
+
+    if ([string]::IsNullOrWhiteSpace($scenarioEntry)) {
+        throw ("Map '{0}' scenario must define a non-empty Entry." -f $Map.Name)
+    }
+
+    $occupied = New-Object 'System.Collections.Generic.HashSet[string]' ([System.StringComparer]::Ordinal)
+    foreach ($anchor in @($Anchors.Terminals) + @($Anchors.Surges) + @($Anchors.Enemies)) {
+        [void]$occupied.Add(("{0},{1}" -f $anchor.X, $anchor.Y))
+    }
+
+    $poolEntries = @($scenario.ShardPool)
+    if ($poolEntries.Count -ne $Constants.SHARD_POOL_COUNT) {
+        throw ("Map '{0}' scenario must define exactly {1} shard-pool coordinates." -f $Map.Name, $Constants.SHARD_POOL_COUNT)
+    }
+
+    $seenPool = New-Object 'System.Collections.Generic.HashSet[string]' ([System.StringComparer]::Ordinal)
+    $rows = @($Map.Rows | ForEach-Object { [string]$_ })
+    $pool = New-Object 'System.Collections.Generic.List[object]'
+
+    foreach ($token in $poolEntries) {
+        $point = ConvertTo-AnchorPoint -Token ([string]$token) -Constants $Constants -Context ("Shard pool in {0}" -f $Map.Name)
+        if (([string]$rows[$point.Y]).ToCharArray()[$point.X] -eq '#') {
+            throw ("Shard-pool coordinate ({0},{1}) in map '{2}' must sit on a floor tile." -f $point.X, $point.Y, $Map.Name)
+        }
+
+        if (($point.X -eq $Constants.START_X -and $point.Y -eq $Constants.START_Y) -or ($point.X -eq $Constants.EXIT_COL -and $point.Y -eq $Constants.EXIT_ROW)) {
+            throw ("Shard-pool coordinate ({0},{1}) in map '{2}' cannot sit on the start or exit tile." -f $point.X, $point.Y, $Map.Name)
+        }
+
+        $key = ("{0},{1}" -f $point.X, $point.Y)
+        if ($occupied.Contains($key)) {
+            throw ("Shard-pool coordinate ({0},{1}) in map '{2}' overlaps an authored anchor." -f $point.X, $point.Y, $Map.Name)
+        }
+
+        if (-not $seenPool.Add($key)) {
+            throw ("Map '{0}' scenario defines duplicate shard-pool tile ({1},{2})." -f $Map.Name, $point.X, $point.Y)
+        }
+
+        $pool.Add($point)
+    }
+
+    return [pscustomobject]@{
+        Name = $scenarioName
+        Entry = $scenarioEntry
+        ShardPool = $pool.ToArray()
+    }
+}
+
 function Copy-SectorLayout {
     param(
         $State,
@@ -610,6 +837,22 @@ function Get-RandomEnemyPosition {
     }
 }
 
+function Get-RandomShardPosition {
+    param(
+        $State,
+        $Constants
+    )
+
+    while ($true) {
+        $position = Get-RandomFloorPosition -State $State -Constants $Constants
+        if ((Find-EnemyIndex -State $State -X $position.X -Y $position.Y) -ge 0) {
+            continue
+        }
+
+        return $position
+    }
+}
+
 function Roll-EnemyKind {
     param(
         $State,
@@ -631,29 +874,64 @@ function Roll-EnemyKind {
     return 'RUSHER'
 }
 
+function Place-AnchoredTerminals {
+    param(
+        $State,
+        $Constants,
+        [object[]]$Anchors
+    )
+
+    foreach ($anchor in $Anchors) {
+        Set-Tile -State $State -Constants $Constants -X $anchor.X -Y $anchor.Y -Tile 'TERMINAL'
+    }
+}
+
 function Place-Terminals {
     param(
         $State,
         $Constants,
-        $Sectors
+        $Sectors,
+        [int]$AnchorCount = 0
     )
 
     $rules = Get-SectorRules -Sectors $Sectors -SectorId $State.SectorNum
-    for ($i = 0; $i -lt [int]$rules.TerminalCount; $i++) {
+    $remainingCount = [int]$rules.TerminalCount - $AnchorCount
+    for ($i = 0; $i -lt $remainingCount; $i++) {
         $position = Get-RandomTerminalPosition -State $State -Constants $Constants
         Set-Tile -State $State -Constants $Constants -X $position.X -Y $position.Y -Tile 'TERMINAL'
     }
 }
 
-function Place-Shards {
+function Place-ScenarioShards {
     param(
         $State,
-        $Constants
+        $Constants,
+        [object[]]$ShardPool
     )
 
+    $available = New-Object 'System.Collections.Generic.List[object]'
+    foreach ($point in $ShardPool) {
+        $available.Add($point)
+    }
+
     for ($i = 0; $i -lt $Constants.SHARD_COUNT; $i++) {
-        $position = Get-RandomFloorPosition -State $State -Constants $Constants
-        Set-Tile -State $State -Constants $Constants -X $position.X -Y $position.Y -Tile 'SHARD'
+        $word = Get-NextRngWord -State $State.Rng
+        $index = ($word -band 0xFF) % $available.Count
+        $point = $available[$index]
+        Set-Tile -State $State -Constants $Constants -X $point.X -Y $point.Y -Tile 'SHARD'
+        $available.RemoveAt($index)
+    }
+}
+
+function Place-AnchoredSurges {
+    param(
+        $State,
+        $Constants,
+        [object[]]$Anchors
+    )
+
+    foreach ($anchor in $Anchors) {
+        Set-Tile -State $State -Constants $Constants -X $anchor.X -Y $anchor.Y -Tile 'SURGE'
     }
 }
 
@@ -661,13 +939,42 @@ function Place-Surges {
     param(
         $State,
         $Constants,
-        $Sectors
+        $Sectors,
+        [int]$AnchorCount = 0
     )
 
     $rules = Get-SectorRules -Sectors $Sectors -SectorId $State.SectorNum
-    for ($i = 0; $i -lt [int]$rules.SurgeCount; $i++) {
+    $remainingCount = [int]$rules.SurgeCount - $AnchorCount
+    for ($i = 0; $i -lt $remainingCount; $i++) {
         $position = Get-RandomFloorPosition -State $State -Constants $Constants
         Set-Tile -State $State -Constants $Constants -X $position.X -Y $position.Y -Tile 'SURGE'
+    }
+}
+
+function Get-FreeEnemySlot {
+    param($State)
+
+    foreach ($enemy in $State.Enemies) {
+        if (-not $enemy.Alive) {
+            return $enemy
+        }
+    }
+
+    throw 'Encounter placement exhausted the enemy table.'
+}
+
+function Place-AnchoredEnemies {
+    param(
+        $State,
+        [object[]]$Anchors
+    )
+
+    foreach ($anchor in $Anchors) {
+        $enemy = Get-FreeEnemySlot -State $State
+        $enemy.Alive = $true
+        $enemy.X = $anchor.X
+        $enemy.Y = $anchor.Y
+        $enemy.Kind = [string]$anchor.Kind
     }
 }
 
@@ -675,13 +982,14 @@ function Place-Enemies {
     param(
         $State,
         $Constants,
-        $Sectors
+        $Sectors,
+        [int]$AnchorCount = 0
     )
 
-    $enemyCount = Get-SectorEnemyCount -State $State -Constants $Constants -Sectors $Sectors
+    $enemyCount = (Get-SectorEnemyCount -State $State -Constants $Constants -Sectors $Sectors) - $AnchorCount
     for ($i = 0; $i -lt $enemyCount; $i++) {
         $position = Get-RandomEnemyPosition -State $State -Constants $Constants
-        $enemy = $State.Enemies[$i]
+        $enemy = Get-FreeEnemySlot -State $State
         $enemy.Alive = $true
         $enemy.X = $position.X
         $enemy.Y = $position.Y
@@ -711,6 +1019,8 @@ function Load-ReplaySector {
 
     $map = Select-SectorMap -State $State -Sectors $Sectors
     $State.CurrentMapName = [string]$map.Name
+    $anchors = Get-MapAnchors -Map $map -State $State -Constants $Constants -Sectors $Sectors
+    $scenario = Get-MapScenario -Map $map -Anchors $anchors -Constants $Constants
     Copy-SectorLayout -State $State -Constants $Constants -Map $map
 
     $State.PlayerX = $Constants.START_X
@@ -718,10 +1028,13 @@ function Load-ReplaySector {
     $State.ExitX = $Constants.EXIT_COL
     $State.ExitY = $Constants.EXIT_ROW
     Set-ExitLocked -State $State -Constants $Constants
-    Place-Terminals -State $State -Constants $Constants -Sectors $Sectors
-    Place-Shards -State $State -Constants $Constants
-    Place-Surges -State $State -Constants $Constants -Sectors $Sectors
-    Place-Enemies -State $State -Constants $Constants -Sectors $Sectors
+    Place-AnchoredTerminals -State $State -Constants $Constants -Anchors $anchors.Terminals
+    Place-AnchoredSurges -State $State -Constants $Constants -Anchors $anchors.Surges
+    Place-AnchoredEnemies -State $State -Anchors $anchors.Enemies
+    Place-ScenarioShards -State $State -Constants $Constants -ShardPool $scenario.ShardPool
+    Place-Terminals -State $State -Constants $Constants -Sectors $Sectors -AnchorCount $anchors.Terminals.Count
+    Place-Surges -State $State -Constants $Constants -Sectors $Sectors -AnchorCount $anchors.Surges.Count
+    Place-Enemies -State $State -Constants $Constants -Sectors $Sectors -AnchorCount $anchors.Enemies.Count
 }
 
 function Get-ProjectedPlayerTarget {

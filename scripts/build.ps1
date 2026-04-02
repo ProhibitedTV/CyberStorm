@@ -852,6 +852,40 @@ function Add-AsmDataLines {
     }
 }
 
+function Get-MapRowChar {
+    param(
+        [string[]]$Rows,
+        [int]$X,
+        [int]$Y
+    )
+
+    return ([string]$Rows[$Y])[$X]
+}
+
+function ConvertTo-AnchorPoint {
+    param(
+        [string]$Token,
+        [string]$Context,
+        [int]$MapWidth,
+        [int]$MapHeight
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Token) -or $Token -notmatch '^\s*(\d+)\s*,\s*(\d+)\s*$') {
+        throw ("{0} must use 'x,y' coordinates inside the playable bounds. Received: '{1}'." -f $Context, $Token)
+    }
+
+    $x = [int]$Matches[1]
+    $y = [int]$Matches[2]
+    if ($x -lt 1 -or $x -gt ($MapWidth - 2) -or $y -lt 1 -or $y -gt ($MapHeight - 2)) {
+        throw ("{0} coordinate ({1},{2}) is outside the playable bounds 1..{3}, 1..{4}." -f $Context, $x, $y, ($MapWidth - 2), ($MapHeight - 2))
+    }
+
+    return [pscustomobject]@{
+        X = $x
+        Y = $y
+    }
+}
+
 function Write-GeneratedSectorIncludes {
     param(
         [string]$SourcePath,
@@ -859,7 +893,17 @@ function Write-GeneratedSectorIncludes {
         [string]$MapsOutputPath,
         [int]$ExpectedSectorCount,
         [int]$ExpectedMapWidth,
-        [int]$ExpectedMapHeight
+        [int]$ExpectedMapHeight,
+        [int]$ExpectedShardPoolCount,
+        [int]$StartX,
+        [int]$StartY,
+        [int]$ExitX,
+        [int]$ExitY,
+        [int]$SafeXMax,
+        [int]$SafeYMin,
+        [int]$EnemySpawnStep,
+        [int]$EnemySpawnBase,
+        [int]$MaxEnemies
     )
 
     $contentData = Import-StructuredDataFile -SourcePath $SourcePath -Label 'sector content source'
@@ -890,6 +934,8 @@ function Write-GeneratedSectorIncludes {
     $templateOffsets = New-Object 'System.Collections.Generic.List[string]'
     $nameRefs = New-Object 'System.Collections.Generic.List[string]'
     $introRefs = New-Object 'System.Collections.Generic.List[string]'
+    $scenarioNameRefs = New-Object 'System.Collections.Generic.List[string]'
+    $scenarioEntryRefs = New-Object 'System.Collections.Generic.List[string]'
     $surgeCounts = New-Object 'System.Collections.Generic.List[string]'
     $terminalCounts = New-Object 'System.Collections.Generic.List[string]'
     $enemyBonuses = New-Object 'System.Collections.Generic.List[string]'
@@ -898,8 +944,29 @@ function Write-GeneratedSectorIncludes {
     $wardenDistances = New-Object 'System.Collections.Generic.List[string]'
     $templateSummary = New-Object 'System.Collections.Generic.List[string]'
     $ruleSummary = New-Object 'System.Collections.Generic.List[string]'
+    $anchorSummary = New-Object 'System.Collections.Generic.List[string]'
+    $scenarioSummary = New-Object 'System.Collections.Generic.List[string]'
+    $shardPoolSummary = New-Object 'System.Collections.Generic.List[string]'
+    $templateTerminalOffsets = New-Object 'System.Collections.Generic.List[string]'
+    $templateTerminalAnchorCounts = New-Object 'System.Collections.Generic.List[string]'
+    $templateSurgeOffsets = New-Object 'System.Collections.Generic.List[string]'
+    $templateSurgeAnchorCounts = New-Object 'System.Collections.Generic.List[string]'
+    $templateEnemyOffsets = New-Object 'System.Collections.Generic.List[string]'
+    $templateEnemyAnchorCounts = New-Object 'System.Collections.Generic.List[string]'
+    $templateShardPoolOffsets = New-Object 'System.Collections.Generic.List[string]'
+    $templateShardPoolCounts = New-Object 'System.Collections.Generic.List[string]'
     $seenMapNames = New-Object 'System.Collections.Generic.HashSet[string]' ([System.StringComparer]::Ordinal)
     $mapPayloadBytes = New-Object 'System.Collections.Generic.List[byte]'
+    $terminalAnchorBytes = New-Object 'System.Collections.Generic.List[byte]'
+    $surgeAnchorBytes = New-Object 'System.Collections.Generic.List[byte]'
+    $enemyAnchorBytes = New-Object 'System.Collections.Generic.List[byte]'
+    $shardPoolBytes = New-Object 'System.Collections.Generic.List[byte]'
+    $mapScenarioRecords = New-Object 'System.Collections.Generic.List[object]'
+    $enemyKindLookup = @{
+        RUSHER = 0
+        FLANKER = 1
+        WARDEN = 2
+    }
 
     $mapCount = 0
     $mapBytes = 0
@@ -975,10 +1042,17 @@ function Write-GeneratedSectorIncludes {
         $wardenDistances.Add($wardenDistance.ToString())
         $templateSummary.Add(("S{0} x{1}" -f $sectorId, $maps.Count))
         $ruleSummary.Add(("S{0}: surge={1} terminal={2} bonus={3} flank<{4} warden<{5}" -f $sectorId, $surgeCount, $terminalCount, $enemyBonus, $flankerThreshold, $wardenThreshold))
+        $sectorEnemyCount = ($sectorId * $EnemySpawnStep) + $EnemySpawnBase + $enemyBonus
+        if ($sectorEnemyCount -gt $MaxEnemies) {
+            throw ("Sector {0} enemy budget ({1}) exceeds MAX_ENEMIES ({2})." -f $sectorId, $sectorEnemyCount, $MaxEnemies)
+        }
 
         $sectorLabel = ("sector{0}" -f $sectorId)
         $nameRefs.Add(("offset {0}_name" -f $sectorLabel))
         $introRefs.Add(("offset {0}_intro" -f $sectorLabel))
+        $sectorAnchorParts = New-Object 'System.Collections.Generic.List[string]'
+        $sectorScenarioParts = New-Object 'System.Collections.Generic.List[string]'
+        $sectorShardPoolParts = New-Object 'System.Collections.Generic.List[string]'
 
         $mapLines.Add(("; Sector {0} - {1}" -f $sectorId, $title))
         foreach ($map in $maps) {
@@ -999,6 +1073,19 @@ function Write-GeneratedSectorIncludes {
             if ($rows.Count -ne $ExpectedMapHeight) {
                 throw ("Map '{0}' in {1} declared {2} rows, expected {3}." -f $mapName, $SourcePath, $rows.Count, $ExpectedMapHeight)
             }
+
+            $anchors = @{}
+            if ($map.ContainsKey('Anchors')) {
+                $anchors = $map['Anchors']
+                if (-not ($anchors -is [System.Collections.IDictionary])) {
+                    throw ("Map '{0}' anchors in {1} must be a hashtable." -f $mapName, $SourcePath)
+                }
+            }
+
+            $occupiedAnchors = New-Object 'System.Collections.Generic.HashSet[string]' ([System.StringComparer]::Ordinal)
+            $terminalAnchors = New-Object 'System.Collections.Generic.List[object]'
+            $surgeAnchors = New-Object 'System.Collections.Generic.List[object]'
+            $enemyAnchors = New-Object 'System.Collections.Generic.List[object]'
 
             $indent = (' ' * ($mapName.Length + 1)) + 'db '
             $templateOffsets.Add($mapPayloadBytes.Count.ToString())
@@ -1021,11 +1108,219 @@ function Write-GeneratedSectorIncludes {
                 }
             }
 
+            $terminalEntries = @()
+            if ($anchors.ContainsKey('Terminals')) { $terminalEntries += @($anchors['Terminals']) }
+            $surgeEntries = @()
+            if ($anchors.ContainsKey('Surges')) { $surgeEntries += @($anchors['Surges']) }
+            $enemyEntries = @()
+            if ($anchors.ContainsKey('Enemies')) { $enemyEntries += @($anchors['Enemies']) }
+
+            if ($terminalEntries.Count -gt $terminalCount) {
+                throw ("Map '{0}' in sector {1} defines {2} terminal anchors, but the sector budget is {3}." -f $mapName, $sectorId, $terminalEntries.Count, $terminalCount)
+            }
+
+            if ($surgeEntries.Count -gt $surgeCount) {
+                throw ("Map '{0}' in sector {1} defines {2} surge anchors, but the sector budget is {3}." -f $mapName, $sectorId, $surgeEntries.Count, $surgeCount)
+            }
+
+            if ($enemyEntries.Count -gt $sectorEnemyCount) {
+                throw ("Map '{0}' in sector {1} defines {2} enemy anchors, but the sector budget is {3}." -f $mapName, $sectorId, $enemyEntries.Count, $sectorEnemyCount)
+            }
+
+            foreach ($token in $terminalEntries) {
+                $anchor = ConvertTo-AnchorPoint -Token ([string]$token) -Context ("Terminal anchor in {0}" -f $mapName) -MapWidth $ExpectedMapWidth -MapHeight $ExpectedMapHeight
+                if ((Get-MapRowChar -Rows $rows -X $anchor.X -Y $anchor.Y) -eq '#') {
+                    throw ("Terminal anchor ({0},{1}) in map '{2}' must sit on a floor tile." -f $anchor.X, $anchor.Y, $mapName)
+                }
+
+                if (($anchor.X -eq $StartX -and $anchor.Y -eq $StartY) -or ($anchor.X -eq $ExitX -and $anchor.Y -eq $ExitY)) {
+                    throw ("Terminal anchor ({0},{1}) in map '{2}' cannot sit on the start or exit tile." -f $anchor.X, $anchor.Y, $mapName)
+                }
+
+                $anchorKey = ("{0},{1}" -f $anchor.X, $anchor.Y)
+                if (-not $occupiedAnchors.Add($anchorKey)) {
+                    throw ("Map '{0}' defines multiple anchors on tile ({1},{2})." -f $mapName, $anchor.X, $anchor.Y)
+                }
+
+                $terminalAnchors.Add($anchor)
+            }
+
+            foreach ($token in $surgeEntries) {
+                $anchor = ConvertTo-AnchorPoint -Token ([string]$token) -Context ("Surge anchor in {0}" -f $mapName) -MapWidth $ExpectedMapWidth -MapHeight $ExpectedMapHeight
+                if ((Get-MapRowChar -Rows $rows -X $anchor.X -Y $anchor.Y) -eq '#') {
+                    throw ("Surge anchor ({0},{1}) in map '{2}' must sit on a floor tile." -f $anchor.X, $anchor.Y, $mapName)
+                }
+
+                if (($anchor.X -eq $StartX -and $anchor.Y -eq $StartY) -or ($anchor.X -eq $ExitX -and $anchor.Y -eq $ExitY)) {
+                    throw ("Surge anchor ({0},{1}) in map '{2}' cannot sit on the start or exit tile." -f $anchor.X, $anchor.Y, $mapName)
+                }
+
+                $anchorKey = ("{0},{1}" -f $anchor.X, $anchor.Y)
+                if (-not $occupiedAnchors.Add($anchorKey)) {
+                    throw ("Map '{0}' defines multiple anchors on tile ({1},{2})." -f $mapName, $anchor.X, $anchor.Y)
+                }
+
+                $surgeAnchors.Add($anchor)
+            }
+
+            foreach ($enemyEntry in $enemyEntries) {
+                if (-not ($enemyEntry -is [System.Collections.IDictionary])) {
+                    throw ("Enemy anchors in map '{0}' must be hashtables with X, Y, and Kind." -f $mapName)
+                }
+
+                foreach ($requiredKey in @('X', 'Y', 'Kind')) {
+                    if (-not $enemyEntry.ContainsKey($requiredKey)) {
+                        throw ("Enemy anchor in map '{0}' is missing '{1}'." -f $mapName, $requiredKey)
+                    }
+                }
+
+                $x = [int]$enemyEntry['X']
+                $y = [int]$enemyEntry['Y']
+                $kindToken = ([string]$enemyEntry['Kind']).Trim().ToUpperInvariant()
+                if ($x -lt 1 -or $x -gt ($ExpectedMapWidth - 2) -or $y -lt 1 -or $y -gt ($ExpectedMapHeight - 2)) {
+                    throw ("Enemy anchor ({0},{1}) in map '{2}' is outside the playable bounds 1..{3}, 1..{4}." -f $x, $y, $mapName, ($ExpectedMapWidth - 2), ($ExpectedMapHeight - 2))
+                }
+
+                if ((Get-MapRowChar -Rows $rows -X $x -Y $y) -eq '#') {
+                    throw ("Enemy anchor ({0},{1}) in map '{2}' must sit on a floor tile." -f $x, $y, $mapName)
+                }
+
+                if (($x -eq $StartX -and $y -eq $StartY) -or ($x -eq $ExitX -and $y -eq $ExitY)) {
+                    throw ("Enemy anchor ({0},{1}) in map '{2}' cannot sit on the start or exit tile." -f $x, $y, $mapName)
+                }
+
+                if ($x -le $SafeXMax -and $y -ge $SafeYMin) {
+                    throw ("Enemy anchor ({0},{1}) in map '{2}' violates the enemy safe-zone contract." -f $x, $y, $mapName)
+                }
+
+                if (-not $enemyKindLookup.ContainsKey($kindToken)) {
+                    throw ("Enemy anchor ({0},{1}) in map '{2}' used unsupported Kind '{3}'." -f $x, $y, $mapName, $enemyEntry['Kind'])
+                }
+
+                $anchorKey = ("{0},{1}" -f $x, $y)
+                if (-not $occupiedAnchors.Add($anchorKey)) {
+                    throw ("Map '{0}' defines multiple anchors on tile ({1},{2})." -f $mapName, $x, $y)
+                }
+
+                $enemyAnchors.Add([pscustomobject]@{
+                    X = $x
+                    Y = $y
+                    Kind = $kindToken
+                    KindValue = [int]$enemyKindLookup[$kindToken]
+                })
+            }
+
+            if (-not $map.ContainsKey('Scenario')) {
+                throw ("Map '{0}' in {1} is missing its Scenario block." -f $mapName, $SourcePath)
+            }
+
+            $scenario = $map['Scenario']
+            if (-not ($scenario -is [System.Collections.IDictionary])) {
+                throw ("Map '{0}' scenario in {1} must be a hashtable." -f $mapName, $SourcePath)
+            }
+
+            foreach ($requiredScenarioKey in @('Name', 'Entry', 'ShardPool')) {
+                if (-not $scenario.ContainsKey($requiredScenarioKey)) {
+                    throw ("Map '{0}' scenario in {1} is missing '{2}'." -f $mapName, $SourcePath, $requiredScenarioKey)
+                }
+            }
+
+            $scenarioName = [string]$scenario['Name']
+            $scenarioEntry = [string]$scenario['Entry']
+            if ([string]::IsNullOrWhiteSpace($scenarioName)) {
+                throw ("Map '{0}' scenario in {1} must define a non-empty Name." -f $mapName, $SourcePath)
+            }
+
+            if ([string]::IsNullOrWhiteSpace($scenarioEntry)) {
+                throw ("Map '{0}' scenario in {1} must define a non-empty Entry." -f $mapName, $SourcePath)
+            }
+
+            $shardPoolEntries = @($scenario['ShardPool'])
+            if ($shardPoolEntries.Count -ne $ExpectedShardPoolCount) {
+                throw ("Map '{0}' scenario in {1} must define exactly {2} shard-pool coordinates. Received: {3}" -f $mapName, $SourcePath, $ExpectedShardPoolCount, $shardPoolEntries.Count)
+            }
+
+            $shardPoolAnchors = New-Object 'System.Collections.Generic.List[object]'
+            $seenShardPoolTiles = New-Object 'System.Collections.Generic.HashSet[string]' ([System.StringComparer]::Ordinal)
+            $shardMinX = [int]::MaxValue
+            $shardMaxX = 0
+            $shardMinY = [int]::MaxValue
+            $shardMaxY = 0
+
+            foreach ($token in $shardPoolEntries) {
+                $point = ConvertTo-AnchorPoint -Token ([string]$token) -Context ("Shard pool in {0}" -f $mapName) -MapWidth $ExpectedMapWidth -MapHeight $ExpectedMapHeight
+                if ((Get-MapRowChar -Rows $rows -X $point.X -Y $point.Y) -eq '#') {
+                    throw ("Shard-pool coordinate ({0},{1}) in map '{2}' must sit on a floor tile." -f $point.X, $point.Y, $mapName)
+                }
+
+                if (($point.X -eq $StartX -and $point.Y -eq $StartY) -or ($point.X -eq $ExitX -and $point.Y -eq $ExitY)) {
+                    throw ("Shard-pool coordinate ({0},{1}) in map '{2}' cannot sit on the start or exit tile." -f $point.X, $point.Y, $mapName)
+                }
+
+                $pointKey = ("{0},{1}" -f $point.X, $point.Y)
+                if ($occupiedAnchors.Contains($pointKey)) {
+                    throw ("Shard-pool coordinate ({0},{1}) in map '{2}' overlaps an authored anchor tile." -f $point.X, $point.Y, $mapName)
+                }
+
+                if (-not $seenShardPoolTiles.Add($pointKey)) {
+                    throw ("Map '{0}' scenario defines duplicate shard-pool tile ({1},{2})." -f $mapName, $point.X, $point.Y)
+                }
+
+                $shardMinX = [Math]::Min($shardMinX, $point.X)
+                $shardMaxX = [Math]::Max($shardMaxX, $point.X)
+                $shardMinY = [Math]::Min($shardMinY, $point.Y)
+                $shardMaxY = [Math]::Max($shardMaxY, $point.Y)
+                $shardPoolAnchors.Add($point)
+            }
+
+            $templateTerminalOffsets.Add($terminalAnchorBytes.Count.ToString())
+            $templateTerminalAnchorCounts.Add($terminalAnchors.Count.ToString())
+            foreach ($anchor in $terminalAnchors) {
+                $terminalAnchorBytes.Add([byte]$anchor.X)
+                $terminalAnchorBytes.Add([byte]$anchor.Y)
+            }
+
+            $templateSurgeOffsets.Add($surgeAnchorBytes.Count.ToString())
+            $templateSurgeAnchorCounts.Add($surgeAnchors.Count.ToString())
+            foreach ($anchor in $surgeAnchors) {
+                $surgeAnchorBytes.Add([byte]$anchor.X)
+                $surgeAnchorBytes.Add([byte]$anchor.Y)
+            }
+
+            $templateEnemyOffsets.Add($enemyAnchorBytes.Count.ToString())
+            $templateEnemyAnchorCounts.Add($enemyAnchors.Count.ToString())
+            foreach ($anchor in $enemyAnchors) {
+                $enemyAnchorBytes.Add([byte]$anchor.X)
+                $enemyAnchorBytes.Add([byte]$anchor.Y)
+                $enemyAnchorBytes.Add([byte]$anchor.KindValue)
+            }
+
+            $scenarioNameRefs.Add(("offset {0}_scenario_name" -f $mapName))
+            $scenarioEntryRefs.Add(("offset {0}_scenario_entry" -f $mapName))
+            $templateShardPoolOffsets.Add($shardPoolBytes.Count.ToString())
+            $templateShardPoolCounts.Add($shardPoolAnchors.Count.ToString())
+            foreach ($point in $shardPoolAnchors) {
+                $shardPoolBytes.Add([byte]$point.X)
+                $shardPoolBytes.Add([byte]$point.Y)
+            }
+
+            $mapScenarioRecords.Add([pscustomobject]@{
+                MapName = $mapName
+                ScenarioName = $scenarioName
+                ScenarioEntry = $scenarioEntry
+            })
+
             $mapLines.Add('')
             $mapCount += 1
             $mapBytes += ($ExpectedMapWidth * $ExpectedMapHeight)
+            $sectorAnchorParts.Add(("{0}(T{1}/S{2}/E{3})" -f $mapName, $terminalAnchors.Count, $surgeAnchors.Count, $enemyAnchors.Count))
+            $sectorScenarioParts.Add(("{0}={1}" -f $mapName, $scenarioName))
+            $sectorShardPoolParts.Add(("{0}({1}:{2}x{3})" -f $mapName, $shardPoolAnchors.Count, ($shardMaxX - $shardMinX + 1), ($shardMaxY - $shardMinY + 1)))
         }
 
+        $anchorSummary.Add(("S{0}: {1}" -f $sectorId, ($sectorAnchorParts -join ', ')))
+        $scenarioSummary.Add(("S{0}: {1}" -f $sectorId, ($sectorScenarioParts -join ', ')))
+        $shardPoolSummary.Add(("S{0}: {1}" -f $sectorId, ($sectorShardPoolParts -join ', ')))
         $templateBase += $maps.Count
     }
 
@@ -1039,9 +1334,33 @@ function Write-GeneratedSectorIncludes {
     Add-AsmDataLines -Lines $sectorLines -Label 'sector_template_start' -Directive 'db' -Values $templateStart.ToArray() -ValuesPerLine 8
     Add-AsmDataLines -Lines $sectorLines -Label 'sector_template_count' -Directive 'db' -Values $templateCount.ToArray() -ValuesPerLine 8
     Add-AsmDataLines -Lines $sectorLines -Label 'template_offset_table' -Directive 'dw' -Values $templateOffsets.ToArray() -ValuesPerLine 6
+    Add-AsmDataLines -Lines $sectorLines -Label 'template_terminal_anchor_offset' -Directive 'dw' -Values $templateTerminalOffsets.ToArray() -ValuesPerLine 6
+    Add-AsmDataLines -Lines $sectorLines -Label 'template_terminal_anchor_count' -Directive 'db' -Values $templateTerminalAnchorCounts.ToArray() -ValuesPerLine 8
+    Add-AsmDataLines -Lines $sectorLines -Label 'template_surge_anchor_offset' -Directive 'dw' -Values $templateSurgeOffsets.ToArray() -ValuesPerLine 6
+    Add-AsmDataLines -Lines $sectorLines -Label 'template_surge_anchor_count' -Directive 'db' -Values $templateSurgeAnchorCounts.ToArray() -ValuesPerLine 8
+    Add-AsmDataLines -Lines $sectorLines -Label 'template_enemy_anchor_offset' -Directive 'dw' -Values $templateEnemyOffsets.ToArray() -ValuesPerLine 6
+    Add-AsmDataLines -Lines $sectorLines -Label 'template_enemy_anchor_count' -Directive 'db' -Values $templateEnemyAnchorCounts.ToArray() -ValuesPerLine 8
+    Add-AsmDataLines -Lines $sectorLines -Label 'template_scenario_name_table' -Directive 'dw' -Values $scenarioNameRefs.ToArray() -ValuesPerLine 4
+    Add-AsmDataLines -Lines $sectorLines -Label 'template_scenario_entry_table' -Directive 'dw' -Values $scenarioEntryRefs.ToArray() -ValuesPerLine 4
+    Add-AsmDataLines -Lines $sectorLines -Label 'template_shard_pool_offset' -Directive 'dw' -Values $templateShardPoolOffsets.ToArray() -ValuesPerLine 6
+    Add-AsmDataLines -Lines $sectorLines -Label 'template_shard_pool_count' -Directive 'db' -Values $templateShardPoolCounts.ToArray() -ValuesPerLine 8
     Add-AsmDataLines -Lines $sectorLines -Label 'sector_name_table' -Directive 'dw' -Values $nameRefs.ToArray() -ValuesPerLine 3
     Add-AsmDataLines -Lines $sectorLines -Label 'sector_intro_table' -Directive 'dw' -Values $introRefs.ToArray() -ValuesPerLine 3
     $sectorLines.Add('')
+    Add-AsmDataLines -Lines $sectorLines -Label 'terminal_anchor_table' -Directive 'db' -Values (@($terminalAnchorBytes | ForEach-Object { $_.ToString() })) -ValuesPerLine 10
+    Add-AsmDataLines -Lines $sectorLines -Label 'surge_anchor_table' -Directive 'db' -Values (@($surgeAnchorBytes | ForEach-Object { $_.ToString() })) -ValuesPerLine 10
+    Add-AsmDataLines -Lines $sectorLines -Label 'enemy_anchor_table' -Directive 'db' -Values (@($enemyAnchorBytes | ForEach-Object { $_.ToString() })) -ValuesPerLine 12
+    Add-AsmDataLines -Lines $sectorLines -Label 'shard_pool_table' -Directive 'db' -Values (@($shardPoolBytes | ForEach-Object { $_.ToString() })) -ValuesPerLine 10
+    $sectorLines.Add('')
+
+    foreach ($record in $mapScenarioRecords) {
+        $sectorLines.Add(("{0}_scenario_name db {1}, 0" -f $record.MapName, (ConvertTo-AsmStringLiteral -Value ([string]$record.ScenarioName) -Context ("scenario name for {0}" -f $record.MapName))))
+        $sectorLines.Add(("{0}_scenario_entry db {1}, 0" -f $record.MapName, (ConvertTo-AsmStringLiteral -Value ([string]$record.ScenarioEntry) -Context ("scenario entry for {0}" -f $record.MapName))))
+    }
+
+    if ($mapScenarioRecords.Count -gt 0) {
+        $sectorLines.Add('')
+    }
 
     foreach ($sector in $sectors) {
         $sectorId = [int]$sector['Id']
@@ -1070,6 +1389,9 @@ function Write-GeneratedSectorIncludes {
         Geometry = ("{0}x{1}" -f $ExpectedMapWidth, $ExpectedMapHeight)
         TemplateSummary = ($templateSummary -join ', ')
         RuleSummary = ($ruleSummary -join ' | ')
+        AnchorSummary = ($anchorSummary -join ' | ')
+        ScenarioSummary = ($scenarioSummary -join ' | ')
+        ShardPoolSummary = ($shardPoolSummary -join ' | ')
     }
 }
 
@@ -1377,8 +1699,8 @@ function Write-GeneratedPresentationContent {
         throw ("Presentation source must define a 'Legend' table: {0}" -f $SourcePath)
     }
 
-    if (-not $presentationData.ContainsKey('Banners')) {
-        throw ("Presentation source must define a 'Banners' array: {0}" -f $SourcePath)
+    if ((-not $presentationData.ContainsKey('Assets')) -and (-not $presentationData.ContainsKey('Banners'))) {
+        throw ("Presentation source must define an 'Assets' array (or legacy 'Banners' array): {0}" -f $SourcePath)
     }
 
     $legend = $presentationData['Legend']
@@ -1405,10 +1727,25 @@ function Write-GeneratedPresentationContent {
         $legendMap[$token] = $paletteIndex
     }
 
-    $expectedBannerKeys = @('splash', 'title', 'win', 'lose')
-    $banners = @($presentationData['Banners'])
+    $expectedBannerKeys = @(
+        'splash_logo',
+        'splash_wordmark',
+        'title_logo',
+        'title_tagline',
+        'title_prompt',
+        'demo_badge',
+        'sector1_card',
+        'sector2_card',
+        'sector3_card',
+        'win_banner',
+        'win_plate',
+        'lose_banner',
+        'lose_plate'
+    )
+    $assetCollectionKey = if ($presentationData.ContainsKey('Assets')) { 'Assets' } else { 'Banners' }
+    $banners = @($presentationData[$assetCollectionKey])
     if ($banners.Count -ne $expectedBannerKeys.Count) {
-        throw ("Presentation source defined {0} banners, but the runtime expects {1}." -f $banners.Count, $expectedBannerKeys.Count)
+        throw ("Presentation source defined {0} assets, but the runtime expects {1}." -f $banners.Count, $expectedBannerKeys.Count)
     }
 
     $lines = New-Object 'System.Collections.Generic.List[string]'
@@ -1428,17 +1765,17 @@ function Write-GeneratedPresentationContent {
     foreach ($bannerIndex in 0..($banners.Count - 1)) {
         $banner = $banners[$bannerIndex]
         if (-not ($banner -is [System.Collections.IDictionary])) {
-            throw ("Each banner in {0} must be a hashtable." -f $SourcePath)
+            throw ("Each presentation asset in {0} must be a hashtable." -f $SourcePath)
         }
 
         $bannerKey = ([string]$banner['Key']).ToLowerInvariant()
         if ($bannerKey -ne $expectedBannerKeys[$bannerIndex]) {
-            throw ("Banner {0} in {1} must use key '{2}' to match the runtime order." -f ($bannerIndex + 1), $SourcePath, $expectedBannerKeys[$bannerIndex])
+            throw ("Presentation asset {0} in {1} must use key '{2}' to match the runtime order." -f ($bannerIndex + 1), $SourcePath, $expectedBannerKeys[$bannerIndex])
         }
 
         $rows = @($banner['Rows'])
         if ($rows.Count -ne $ExpectedBannerHeight) {
-            throw ("Banner '{0}' in {1} must define exactly {2} rows." -f $bannerKey, $SourcePath, $ExpectedBannerHeight)
+            throw ("Presentation asset '{0}' in {1} must define exactly {2} rows." -f $bannerKey, $SourcePath, $ExpectedBannerHeight)
         }
 
         $offset = $payload.Count
@@ -1451,18 +1788,18 @@ function Write-GeneratedPresentationContent {
             $row = [string]$rows[$rowIndex]
             foreach ($ch in $row.ToCharArray()) {
                 if ([int][char]$ch -gt 127) {
-                    throw ("Banner '{0}' row {1} in {2} must stay ASCII-only." -f $bannerKey, ($rowIndex + 1), $SourcePath)
+                    throw ("Presentation asset '{0}' row {1} in {2} must stay ASCII-only." -f $bannerKey, ($rowIndex + 1), $SourcePath)
                 }
             }
 
             if ($row.Length -ne $ExpectedBannerWidth) {
-                throw ("Banner '{0}' row {1} in {2} must be exactly {3} characters wide." -f $bannerKey, ($rowIndex + 1), $SourcePath, $ExpectedBannerWidth)
+                throw ("Presentation asset '{0}' row {1} in {2} must be exactly {3} characters wide." -f $bannerKey, ($rowIndex + 1), $SourcePath, $ExpectedBannerWidth)
             }
 
             foreach ($ch in $row.ToCharArray()) {
                 $token = [string]$ch
                 if (-not $legendMap.ContainsKey($token)) {
-                    throw ("Banner '{0}' row {1} in {2} used unknown legend token '{3}'." -f $bannerKey, ($rowIndex + 1), $SourcePath, $token)
+                    throw ("Presentation asset '{0}' row {1} in {2} used unknown legend token '{3}'." -f $bannerKey, ($rowIndex + 1), $SourcePath, $token)
                 }
 
                 $payload.Add([byte]$legendMap[$token])
@@ -2203,6 +2540,16 @@ foreach ($audioLine in $audioSummaryLines) {
 $expectedMapWidth = Get-AsmEquValue -SourcePath $constantsSourcePath -Name 'MAP_W'
 $expectedMapHeight = Get-AsmEquValue -SourcePath $constantsSourcePath -Name 'MAP_H'
 $expectedSectorCount = Get-AsmEquValue -SourcePath $constantsSourcePath -Name 'TOTAL_SECTORS'
+$startX = Get-AsmEquValue -SourcePath $constantsSourcePath -Name 'START_X'
+$startY = Get-AsmEquValue -SourcePath $constantsSourcePath -Name 'START_Y'
+$exitCol = Get-AsmEquValue -SourcePath $constantsSourcePath -Name 'EXIT_COL'
+$exitRow = Get-AsmEquValue -SourcePath $constantsSourcePath -Name 'EXIT_ROW'
+$safeXMax = Get-AsmEquValue -SourcePath $constantsSourcePath -Name 'SAFE_X_MAX'
+$safeYMin = Get-AsmEquValue -SourcePath $constantsSourcePath -Name 'SAFE_Y_MIN'
+$expectedShardPoolCount = Get-AsmEquValue -SourcePath $constantsSourcePath -Name 'SHARD_POOL_COUNT'
+$enemySpawnStep = Get-AsmEquValue -SourcePath $constantsSourcePath -Name 'ENEMY_SPAWN_STEP'
+$enemySpawnBase = Get-AsmEquValue -SourcePath $constantsSourcePath -Name 'ENEMY_SPAWN_BASE'
+$maxEnemies = Get-AsmEquValue -SourcePath $constantsSourcePath -Name 'MAX_ENEMIES'
 $expectedBannerWidth = Get-AsmEquValue -SourcePath $constantsSourcePath -Name 'PRESENT_BANNER_W'
 $expectedBannerHeight = Get-AsmEquValue -SourcePath $constantsSourcePath -Name 'PRESENT_BANNER_H'
 
@@ -2218,7 +2565,17 @@ $generatedSectors = Write-GeneratedSectorIncludes `
     -MapsOutputPath $generatedMapsPath `
     -ExpectedSectorCount $expectedSectorCount `
     -ExpectedMapWidth $expectedMapWidth `
-    -ExpectedMapHeight $expectedMapHeight
+    -ExpectedMapHeight $expectedMapHeight `
+    -ExpectedShardPoolCount $expectedShardPoolCount `
+    -StartX $startX `
+    -StartY $startY `
+    -ExitX $exitCol `
+    -ExitY $exitRow `
+    -SafeXMax $safeXMax `
+    -SafeYMin $safeYMin `
+    -EnemySpawnStep $enemySpawnStep `
+    -EnemySpawnBase $enemySpawnBase `
+    -MaxEnemies $maxEnemies
 $generatedDemos = Write-GeneratedDemoInclude `
     -SourcePath $demoSourcePath `
     -OutputPath $generatedDemosPath `
@@ -2241,8 +2598,8 @@ Write-Host ("Sizes   : {0}" -f $generatedArt.SizeSummary)
 $generatedContentLines = @(
     ("Presentation source: {0}" -f $generatedPresentation.SourcePath)
     ("Presentation include: {0}" -f $generatedPresentation.OutputPath)
-    ("Presentation banners: {0} ({1}x{2}, {3} bytes each, {4} bytes total)" -f $generatedPresentation.BannerCount, $expectedBannerWidth, $expectedBannerHeight, $generatedPresentation.BannerBytes, $generatedPresentation.TotalBytes)
-    ("Presentation summary: {0}" -f $generatedPresentation.BannerSummary)
+    ("Presentation assets: {0} ({1}x{2}, {3} bytes each, {4} bytes total)" -f $generatedPresentation.BannerCount, $expectedBannerWidth, $expectedBannerHeight, $generatedPresentation.BannerBytes, $generatedPresentation.TotalBytes)
+    ("Presentation layout: {0}" -f $generatedPresentation.BannerSummary)
     ("Sector source: {0}" -f $generatedSectors.SourcePath)
     ("Sector include: {0}" -f $generatedSectors.SectorOutputPath)
     ("Maps include: {0}" -f $generatedSectors.MapsOutputPath)
@@ -2250,6 +2607,9 @@ $generatedContentLines = @(
     ("Maps: {0} ({1} each, {2} bytes total)" -f $generatedSectors.MapCount, $generatedSectors.Geometry, $generatedSectors.MapBytes)
     ("Templates: {0}" -f $generatedSectors.TemplateSummary)
     ("Rules: {0}" -f $generatedSectors.RuleSummary)
+    ("Anchors: {0}" -f $generatedSectors.AnchorSummary)
+    ("Scenarios: {0}" -f $generatedSectors.ScenarioSummary)
+    ("Shard pools: {0}" -f $generatedSectors.ShardPoolSummary)
     ("Demo source: {0}" -f $generatedDemos.SourcePath)
     ("Demo include: {0}" -f $generatedDemos.OutputPath)
     ("Demos: {0}" -f $generatedDemos.DemoCount)

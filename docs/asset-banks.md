@@ -25,7 +25,7 @@ Asset banks are the path beyond that ceiling:
 CyberStorm now banks two authored payloads:
 
 - the sector map pool
-- fixed-size splash/title/end presentation banners
+- fixed-size 64x24 transparent presentation assets for splash, title, attract/demo, sector-entry, and ending scenes
 
 That means:
 
@@ -42,7 +42,7 @@ That means:
 The benefits are immediate:
 
 - all authored map templates no longer consume stage-two resident bytes, but gameplay still picks and copies them the same way at runtime
-- splash/title/end scenes can use richer art without growing stage two or touching the boot sector
+- splash/title/end scenes, attract/demo overlays, and sector-entry cards can use richer art without growing stage two or touching the boot sector
 
 ## Runtime Contract
 
@@ -98,7 +98,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\build.ps1
    - stage two booted correctly
    - the post-boot banks loaded successfully
    - sector templates are being copied from the banked map payload rather than stage-two labels
-   - splash/title/end scenes can read their banner art from the presentation bank
+   - splash/title/end scenes, attract/demo overlays, and sector-entry cards can read their scene-kit art from the presentation bank
 
 5. If startup fails with a text-mode bank error, inspect:
    - `build/generated_bank_layout.inc`

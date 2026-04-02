@@ -15,6 +15,7 @@
 ### For Players
 
 - **Three distinct sectors.** `Scout Grid`, `Surge Furnace`, and `Warden Lock` each push a different mix of routing, hazard, and pursuit pressure.
+- **Authored breach scenarios.** Every map now carries a named scenario and a semi-authored shard route, so runs stay readable without becoming fully scripted.
 - **Readable turn-based tension.** You move once, hunters answer once, and every bad turn is meant to stay understandable.
 - **Tactical systems without control bloat.** EMP pulses, surge nodes, spoof terminals, gate states, and elite hunters all live inside the same compact loop.
 - **A real arcade-style mastery layer.** Runs now track score, sector performance, and final rank without replacing the survival objective.
@@ -24,7 +25,7 @@
 
 - **A real boot path.** The build emits a bootable floppy image, not a host app wrapped in a fake shell.
 - **A compact but structured runtime.** Stage two stays inside a documented single-segment contract while still using modular render, gameplay, audio, and data layers.
-- **Generated content tooling.** Sprites, presentation banners, sectors, rules, demos, and music come from readable source files that generate MASM-friendly data at build time.
+- **Generated content tooling.** Sprites, banked presentation scene-kit assets, sectors, rules, demos, and music come from readable source files that generate MASM-friendly data at build time.
 - **Disciplined validation.** The build enforces boot/image layout, generated content shape, deterministic debug options, and a lightweight balance harness.
 
 ## Visual Gallery
@@ -46,7 +47,7 @@ CyberStorm is small enough to inspect, but it is no longer a single opaque assem
 
 ![CyberStorm boot flow](docs/readme/boot-flow.svg)
 
-The boot sector at `LBA 0` loads stage two from `LBA 1..38` into `1000:0000`, then stage two loads the current map bank from `LBA 39..46` into `7000:0000` before entering VGA gameplay.
+The boot sector at `LBA 0` loads stage two from `LBA 1..42` into `1000:0000`, then stage two loads the map bank from `LBA 43..50` into `7000:0000` and the presentation bank from `LBA 51..89` into `7800:0000` before entering VGA gameplay.
 
 ### Runtime Layout
 
@@ -60,7 +61,7 @@ The runtime keeps BIOS-owned low memory untouched, inherits the boot stack at `0
 
 ![CyberStorm asset pipeline](docs/readme/asset-pipeline.svg)
 
-[assets/visuals.psd1](assets/visuals.psd1), [assets/presentation.psd1](assets/presentation.psd1), [assets/sectors.psd1](assets/sectors.psd1), [assets/demos.psd1](assets/demos.psd1), and [assets/music.psd1](assets/music.psd1) are the readable source of truth. [scripts/build.ps1](scripts/build.ps1) turns them into generated includes plus banked map and presentation payloads that the runtime can load after boot.
+[assets/visuals.psd1](assets/visuals.psd1), [assets/presentation.psd1](assets/presentation.psd1), [assets/sectors.psd1](assets/sectors.psd1), [assets/demos.psd1](assets/demos.psd1), and [assets/music.psd1](assets/music.psd1) are the readable source of truth. [scripts/build.ps1](scripts/build.ps1) turns them into generated includes plus banked map and presentation payloads, and the sector source now includes hybrid authored encounter anchors, named breach scenarios, and 6-point shard candidate pools on top of map/rule data.
 
 ## Quickstart
 
@@ -107,10 +108,10 @@ These values come from the current [build/cyberstorm-build-report.txt](build/cyb
 | Fact | Current build |
 | --- | --- |
 | Boot code | `132 / 510` bytes |
-| Stage two | `19417` bytes across `38` sectors |
-| Banked payloads | maps `3780` bytes across `8` sectors, presentation `6144` bytes across `12` sectors |
-| Bank LBA ranges | map `39..46`, presentation `47..58` |
-| Content set | `3` sectors, `9` maps, `3` demos, `5` music themes, `4` presentation banners |
+| Stage two | `20993` bytes across `42` sectors |
+| Banked payloads | maps `3780` bytes across `8` sectors, presentation `19968` bytes across `39` sectors |
+| Bank LBA ranges | map `43..50`, presentation `51..89` |
+| Content set | `3` sectors, `9` maps, `9` breach scenarios, `3` demos, `5` music themes, `13` presentation assets |
 | Balance sweep | `36` deterministic scenarios |
 | Release audio policy | `SFX_ONLY` by default |
 | Video target | `320x200x256` in VGA mode `13h` |
@@ -199,6 +200,8 @@ powershell -ExecutionPolicy Bypass -File .\scripts\balance-harness.ps1
 The harness checks:
 
 - walkable start-to-exit paths for every authored map
+- authored encounter-anchor bounds, occupancy, floor-tile, and enemy-safe-zone rules
+- scenario shard-pool shape, overlap, and spread rules
 - placement slack for shards, surges, terminals, and enemies
 - safe-zone pressure constraints
 - sector rule sanity
@@ -213,7 +216,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\replay-harness.ps1
 The replay harness turns the authored attract demos into deterministic gameplay smoke tests:
 
 - replays the same seeded sector loads the title demos use
-- simulates movement, EMP use, hunter turns, spoof routing, surge hits, sector exits, and scoring
+- simulates authored anchor placement, scenario shard-pool selection, movement, EMP use, hunter turns, spoof routing, surge hits, sector exits, and scoring
 - compares the observed end state against the `Expected` block stored beside each demo in [assets/demos.psd1](assets/demos.psd1)
 - writes a report with suggested replacement expectation blocks if an intentional gameplay change shifted the result
 
@@ -254,12 +257,13 @@ The smoke path is deliberately attract-mode driven instead of key-injection driv
 - redeploys the workspace VM against the current release image
 - boots headless
 - waits long enough for splash -> title -> attract timing
-- captures a screenshot and VBox log
+- captures a title-window screenshot, a later smoke-window screenshot, and the active VBox log
 - fails if the log never reaches floppy boot or shows obvious guest failure markers
 
 Artifacts:
 
 - [build/cyberstorm-vm-smoke-report.txt](build/cyberstorm-vm-smoke-report.txt)
+- [build/vm-smoke/cyberstorm-vm-smoke-title.png](build/vm-smoke/cyberstorm-vm-smoke-title.png)
 - [build/vm-smoke/cyberstorm-vm-smoke.png](build/vm-smoke/cyberstorm-vm-smoke.png)
 - [build/vm-smoke/cyberstorm-vm-smoke.log](build/vm-smoke/cyberstorm-vm-smoke.log)
 
@@ -293,7 +297,7 @@ Artifacts:
 - [build/boot.lst](build/boot.lst): bootloader assembly listing
 - [build/game.lst](build/game.lst): stage-two assembly listing
 - [build/generated_art.inc](build/generated_art.inc): generated sprite/tile data as MASM sees it
-- [build/generated_presentation_content.inc](build/generated_presentation_content.inc): generated scene-banner offsets and sizes as MASM sees them
+- [build/generated_presentation_content.inc](build/generated_presentation_content.inc): generated scene-kit asset offsets and sizes as MASM sees them
 - [build/generated_demos.inc](build/generated_demos.inc): generated attract-mode scripts as MASM sees them
 - [build/generated_bank_layout.inc](build/generated_bank_layout.inc): runtime bank metadata
 - [build/cyberstorm-map-bank.bin](build/cyberstorm-map-bank.bin): raw post-boot map payload

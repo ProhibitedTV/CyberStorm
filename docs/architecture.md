@@ -26,7 +26,7 @@ Practical consequences:
 | `0000:7C00` downward | Active stack | Created by the boot sector and still used by stage two and the keyboard ISR. |
 | `1000:0000` upward | Stage two code + data | `DS` is set to `CS` on entry and the whole game assumes one shared segment. |
 | `7000:0000` | Map bank | Read-only authored map payload loaded by stage two after boot. |
-| `7800:0000` | Presentation bank | Read-only splash/title/end banner payload loaded after the map bank. |
+| `7800:0000` | Presentation bank | Read-only scene-kit payload for splash, title, attract/demo, sector-entry, and end screens. |
 | `9000:0000` | Backbuffer | 64,000-byte linear framebuffer used before presenting to VGA. |
 | `A000:0000` | VGA mode `13h` framebuffer | Final 320x200x8 output. |
 
@@ -43,7 +43,7 @@ Register assumptions that matter:
 
 - The first byte must remain executable because boot jumps to offset `0`.
 - `generated_bank_layout.inc` is build output, not source. It gives stage two the on-disk LBA/size contract for post-boot banks.
-- `generated_presentation_content.inc` is build output, not source. It gives scenes the offsets of the banked splash/title/end banners.
+- `generated_presentation_content.inc` is build output, not source. It gives scenes the offsets of the banked presentation scene kit.
 - `audio_config.inc` is build output, not source. It makes the release audio contract explicit before [src/game/audio.asm](../src/game/audio.asm) is assembled.
 - [src/game/state.asm](../src/game/state.asm) owns the global state layout.
 - [src/game/art.asm](../src/game/art.asm) is the visual-data wrapper and includes the build-generated sprite/tile bitmap include before the hand-authored palette/font data.
@@ -114,8 +114,10 @@ Map/tile rules:
 - Playable movement stays inside the interior rectangle `x = 1..26`, `y = 1..13`.
 - Tile IDs are semantic: floor, wall, shard, locked exit, open exit, surge, terminal.
 - Sector template source maps are ASCII and only `#` is treated as a wall. Every other byte becomes floor before dynamic objects are placed.
-- The authored sector source now lives outside assembly in `assets\sectors.psd1`, attract scripts live in `assets\demos.psd1`, music themes live in `assets\music.psd1`, and banked scene banners live in `assets\presentation.psd1`. These all build into reviewable `generated_*.inc` files before MASM runs.
+- The authored sector source now lives outside assembly in `assets\sectors.psd1`, attract scripts live in `assets\demos.psd1`, music themes live in `assets\music.psd1`, and banked presentation assets live in `assets\presentation.psd1`. These all build into reviewable `generated_*.inc` files before MASM runs.
 - Each sector now owns a small authored layout family rather than one fixed map. Sector 1 favors open pursuit lanes, sector 2 favors chambers and hinge corridors, and sector 3 favors tighter braided escape routes.
+- Each authored map now also defines a `Scenario` block with a short name, sector-entry copy, and a fixed 6-tile shard candidate pool.
+- Each authored map can also define a small optional `Anchors` block for terminals, surges, and explicit enemy kinds. Runtime sector loading copies the ASCII layout first, places those anchors, then chooses `SHARD_COUNT` unique shards from the authored scenario pool, then random-fills any remaining terminal, surge, and enemy budget.
 - Spoof terminals are placed dynamically after the authored layout is copied. They are single-use tiles that redirect hunter targeting toward the exit for a short fixed window.
 
 Render conventions:
@@ -150,7 +152,7 @@ CyberStorm now has two narrow post-boot bank paths:
 - `generated_bank_layout.inc` records each bank's starting LBA, size in sectors, and byte count.
 - [src/game/banks.asm](../src/game/banks.asm) loads the map bank into `MAP_BANK_SEG` and the presentation bank into `PRESENT_BANK_SEG` during `start`, before VGA mode is enabled.
 - Gameplay reads map templates through `template_offset_table` offsets into the map bank instead of embedding every map into stage two.
-- Splash/title/win/lose scenes read fixed-size banner art from the presentation bank through generated offset constants.
+- Splash/title/win/lose scenes, the attract HUD, and sector-entry presentation all read fixed-size 64x24 transparent assets from the presentation bank through generated offset constants.
 
 Current scope and limits:
 
@@ -179,6 +181,8 @@ CyberStorm now has a build-time balance harness in [scripts/balance-harness.ps1]
 The harness reads the authored sector source plus gameplay constants, then validates:
 
 - map reachability from start to exit
+- authored anchor bounds, occupancy, floor-tile, and enemy-safe-zone rules
+- scenario shard-pool bounds, uniqueness, anchor overlap, and spread
 - dynamic placement slack for shards, surges, terminals, and enemies
 - safe-zone spawn constraints
 - sector enemy/rule sanity
@@ -211,7 +215,7 @@ The important contract is:
 - [assets/demos.psd1](../assets/demos.psd1) is now both presentation content and a replay-test source of truth.
 - Each demo still defines `Name`, `StartSector`, `Seed`, and `Steps`.
 - Each demo also carries an `Expected` block describing the replay end state that should result from the current rules and content.
-- The replay harness simulates the same seeded sector load, map selection, placements, movement, EMP use, hunter turns, spoof windows, surge hits, exits, and scoring that the runtime uses.
+- The replay harness simulates the same seeded sector load, map selection, authored-anchor placement, scenario shard-pool selection, movement, EMP use, hunter turns, spoof windows, surge hits, exits, and scoring that the runtime uses.
 
 This is intentionally lightweight rather than emulator-driven. It is meant to catch "we changed a rule and the demos no longer land where we think they do" before someone boots a VM.
 

@@ -13,8 +13,69 @@ sector_template_start db 0, 3, 6
 sector_template_count db 3, 3, 3
 template_offset_table dw 0, 420, 840, 1260, 1680, 2100
                       dw 2520, 2940, 3360
+template_terminal_anchor_offset dw 0, 2, 4, 6, 10, 14
+                                dw 18, 22, 26
+template_terminal_anchor_count db 1, 1, 1, 2, 2, 2, 2, 2
+                               db 2
+template_surge_anchor_offset dw 0, 0, 0, 0, 4, 8
+                             dw 12, 18, 24
+template_surge_anchor_count db 0, 0, 0, 2, 2, 2, 3, 3
+                            db 3
+template_enemy_anchor_offset dw 0, 0, 3, 6, 9, 12
+                             dw 15, 18, 21
+template_enemy_anchor_count db 0, 1, 1, 1, 1, 1, 1, 1
+                            db 1
+template_scenario_name_table dw offset sector1_map_a_scenario_name, offset sector1_map_b_scenario_name, offset sector1_map_c_scenario_name, offset sector2_map_a_scenario_name
+                             dw offset sector2_map_b_scenario_name, offset sector2_map_c_scenario_name, offset sector3_map_a_scenario_name, offset sector3_map_b_scenario_name
+                             dw offset sector3_map_c_scenario_name
+template_scenario_entry_table dw offset sector1_map_a_scenario_entry, offset sector1_map_b_scenario_entry, offset sector1_map_c_scenario_entry, offset sector2_map_a_scenario_entry
+                              dw offset sector2_map_b_scenario_entry, offset sector2_map_c_scenario_entry, offset sector3_map_a_scenario_entry, offset sector3_map_b_scenario_entry
+                              dw offset sector3_map_c_scenario_entry
+template_shard_pool_offset dw 0, 12, 24, 36, 48, 60
+                           dw 72, 84, 96
+template_shard_pool_count db 6, 6, 6, 6, 6, 6, 6, 6
+                          db 6
 sector_name_table dw offset sector1_name, offset sector2_name, offset sector3_name
 sector_intro_table dw offset sector1_intro, offset sector2_intro, offset sector3_intro
+
+terminal_anchor_table db 10, 7, 8, 7, 10, 7, 10, 7, 20, 9
+                      db 7, 7, 18, 7, 8, 7, 18, 11, 10, 9
+                      db 20, 11, 9, 7, 18, 9, 10, 7, 19, 11
+surge_anchor_table db 14, 5, 22, 7, 11, 9, 20, 11, 14, 5
+                   db 22, 9, 13, 5, 22, 5, 22, 11, 14, 5
+                   db 21, 7, 20, 11, 13, 5, 21, 7, 22, 11
+enemy_anchor_table db 18, 7, 1, 20, 7, 1, 20, 11, 1, 18, 11, 1
+                   db 22, 11, 1, 21, 3, 2, 21, 3, 2, 21, 3, 2
+shard_pool_table db 5, 13, 8, 9, 13, 7, 18, 9, 19, 5
+                 db 23, 3, 4, 13, 8, 11, 11, 9, 16, 7
+                 db 20, 11, 23, 3, 4, 13, 9, 11, 15, 13
+                 db 15, 9, 19, 11, 24, 3, 5, 13, 11, 11
+                 db 14, 7, 17, 5, 20, 3, 24, 1, 4, 13
+                 db 10, 11, 12, 9, 15, 7, 20, 5, 24, 3
+                 db 6, 13, 10, 11, 14, 7, 16, 3, 21, 5
+                 db 24, 11, 6, 13, 10, 7, 15, 9, 16, 3
+                 db 19, 7, 24, 3, 4, 13, 9, 11, 15, 7
+                 db 18, 5, 20, 1, 23, 3, 4, 13, 9, 11
+                 db 15, 9, 19, 5, 19, 3, 23, 1
+
+sector1_map_a_scenario_name db "FORK SPIKE", 0
+sector1_map_a_scenario_entry db "LEFT FORK FIRST. CUT CENTER BEFORE THE PINCH.", 0
+sector1_map_b_scenario_name db "CROSSLANE LURE", 0
+sector1_map_b_scenario_entry db "THE FIRST FLANK CROSSES MID. DO NOT CHASE BLIND.", 0
+sector1_map_c_scenario_name db "SPINE THREAD", 0
+sector1_map_c_scenario_entry db "CROSS EARLY. THE RIGHT LANE TIGHTENS FAST.", 0
+sector2_map_a_scenario_name db "FURNACE FORK", 0
+sector2_map_a_scenario_entry db "HOT MIDLINE SHARDS PAY OFF IF YOU SELL THE CHASE.", 0
+sector2_map_b_scenario_name db "HINGE BAIT", 0
+sector2_map_b_scenario_entry db "THE SAFE LOOP IS SLOW. THE HOT HINGE PAYS FASTER.", 0
+sector2_map_c_scenario_name db "ARC WEAVE", 0
+sector2_map_c_scenario_entry db "PULL HUNTERS THROUGH CENTER SURGES, THEN SLIP OUT.", 0
+sector3_map_a_scenario_name db "LOCKSTEP BREACH", 0
+sector3_map_a_scenario_entry db "THE GATE LANE IS LIVE EARLY. DO NOT ARRIVE LATE.", 0
+sector3_map_b_scenario_name db "UPLINK CHOKE", 0
+sector3_map_b_scenario_entry db "THE UPPER GRID IS RICH, BUT THE WARDEN OWNS IT.", 0
+sector3_map_c_scenario_name db "FINAL CORRIDOR", 0
+sector3_map_c_scenario_entry db "THE LAST SHARD LINE RUNS STRAIGHT INTO THE EXIT.", 0
 
 sector1_name db "SCOUT", 0
 sector1_intro db "SCOUT GRID LIVE. OPEN LANES FAVOR CLEAN CHASES.", 0

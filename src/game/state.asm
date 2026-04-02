@@ -2,6 +2,12 @@
 ; adjacency assumptions below matter to the runtime.
 game_state   db STATE_TITLE
 sector_num   db 1
+; current_template_index keeps the selected authored map slot so hybrid anchor
+; placement can read the right generated tables after copy_sector_layout.
+current_template_index db 0
+; shard_pool_pick_mask is a sector-load scratch bitmask used while selecting
+; 4 unique live shard positions from the authored 6-tile scenario pool.
+shard_pool_pick_mask db 0
 shield_count db START_SHIELDS
 pulse_count  db START_PULSES
 data_count   db 0
@@ -130,8 +136,9 @@ rank_b_text db 'RANK B', 0
 rank_c_text db 'RANK C', 0
 rank_d_text db 'RANK D', 0
 
-; Sector template pools, authored rule tables, and sector-facing copy are
-; generated from assets\sectors.psd1 at build time.
+; Sector template pools, authored encounter anchors, scenario text, shard
+; candidate pools, rule tables, and sector-facing copy are generated from
+; assets\sectors.psd1 at build time.
 include generated_sector_content.inc
 ; Demo scripts are generated from assets\demos.psd1 as compact action/tick
 ; pairs so attract-mode content can scale without hand-editing ASM tables.
@@ -161,6 +168,7 @@ title_line_2  db 'TURN BASED INFILTRATION IN RAW VGA.', 0
 title_line_3  db 'TAKE 4 SHARDS. OPEN THE GATE. REPEAT.', 0
 title_line_4  db 'PRESS ENTER TO JACK IN.', 0
 title_prompt  db 'IDLE STARTS AN ATTRACT RUN.', 0
+demo_takeover_text db 'ANY KEY TAKES OVER.', 0
 IF DEBUG_BUILD
 ; Temporary title-scene diagnostics used while hardening keyboard support.
 debug_keys_text db 'KEYS', 0

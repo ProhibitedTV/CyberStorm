@@ -6,7 +6,12 @@ STATE_SPLASH   equ 4
 
 SPLASH_DURATION equ 54
 TITLE_ATTRACT_DELAY equ 90
+TITLE_BADGE_DELAY equ 72
 RUN_START_ENTER_GUARD_TICKS equ 6
+SPLASH_REVEAL_LOGO equ 4
+SPLASH_REVEAL_WORDMARK equ 12
+SPLASH_REVEAL_UI equ 18
+SECTOR_CARD_STAGE_LIMIT equ 6
 
 SCREEN_W      equ 320
 SCREEN_H      equ 200
@@ -142,6 +147,7 @@ ENEMY_RUSHER  equ 0
 ENEMY_FLANKER equ 1
 ENEMY_WARDEN  equ 2
 SHARD_COUNT   equ 4
+SHARD_POOL_COUNT equ 6
 
 ; Mastery scoring stays secondary to survival: most points come from core play,
 ; while a few sector-end bonuses reward cleaner and more efficient runs.
@@ -173,6 +179,9 @@ VGA_SEG        equ 0A000h
 
 ; Phase-2 presentation banners are fixed-size banked bitmaps so scenes can
 ; use richer art without adding more bulky static data to stage two.
+; Banked presentation assets are fixed-size 64x24 transparent bitmaps. They
+; are currently rendered through a shared 2x scene blitter so the bank can grow
+; without changing the in-memory art format or boot/runtime contract.
 PRESENT_BANNER_W     equ 64
 PRESENT_BANNER_H     equ 24
 PRESENT_BANNER_SCALE equ 2

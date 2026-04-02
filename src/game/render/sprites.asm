@@ -133,6 +133,13 @@ draw_sprite16_2x_done:
     pop ax
     ret
 
+draw_presentation_asset_2x:
+    ; Scene code uses this wrapper so banked presentation assets stay a named
+    ; scene-kit concept while draw_presentation_banner_2x remains the underlying
+    ; fixed-format 64x24 transparent blitter.
+    call draw_presentation_banner_2x
+    ret
+
 draw_presentation_banner_2x:
     ; Banked scene banners are transparent 64x24 bitmaps scaled 2x at draw
     ; time so splash/title/end scenes can use richer art without spending more

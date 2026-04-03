@@ -129,7 +129,7 @@ Map/tile rules:
 Render conventions:
 
 - The legacy 2D oracle still renders each logical tile as an `8 x 8` bitmap anchored by `MAP_PIXEL_X` / `MAP_PIXEL_Y`.
-- The default gameplay path now compiles floor strips and wall-edge runs into a transient low-poly room mesh, then projects props and actors as billboards inside the gameplay viewport.
+- The default gameplay path now compiles floor strips, lane trims, and wall-edge runs into a transient low-poly room mesh, then layers sector-specific gate/terminal/surge/shard meshes plus promoted runner/warden meshes into the gameplay viewport.
 - Dynamic tile changes mark the room mesh dirty through `set_tile`, so shard pickups, terminal use, surges, and gate-open transitions rebuild the room view without changing game rules.
 
 Entity rules:
@@ -160,7 +160,7 @@ CyberStorm now has three narrow post-boot bank paths:
 - Gameplay reads map templates through `template_offset_table` offsets into the map bank instead of embedding every map into stage two.
 - Splash/title/win/lose scenes, the attract HUD, and sector-entry presentation all read fixed-size 64x24 transparent assets from the presentation bank through generated offset constants.
 - The banked 3D scene renderer copies scene vertices/faces out of the geometry bank into bounded scratch buffers in [src/game/state.asm](../src/game/state.asm), then projects and painter-sorts them inside stage two.
-- The gameplay 3D renderer does not use the geometry bank for rooms. It compiles the active map into transient floor/wall geometry in stage two, reuses the same projection/raster core, and keeps the 2D gameplay renderer available behind the debug render switch.
+- The gameplay 3D renderer does not use the geometry bank for room slabs. It compiles the active map into transient floor/wall geometry in stage two, reuses the same projection/raster core, and then pulls kit-selected prop/actor meshes from the geometry bank while keeping the 2D gameplay renderer available behind the debug render switch.
 
 Current scope and limits:
 

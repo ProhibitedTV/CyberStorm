@@ -12,6 +12,20 @@ function V {
     }
 }
 
+function M {
+    param(
+        [double]$X,
+        [double]$Y,
+        [double]$Z
+    )
+
+    return @{
+        X = $X / 256.0
+        Y = $Y / 256.0
+        Z = $Z / 256.0
+    }
+}
+
 function Face {
     param(
         [int[]]$Indices,
@@ -34,6 +48,19 @@ function Face {
         @{ Key = 'wall_dark'; Base = 11; Dither = 12 }
         @{ Key = 'floor_dark'; Base = 13; Dither = 14 }
         @{ Key = 'gate_glow'; Base = 17; Dither = 7 }
+        @{ Key = 'player_core'; Base = 15; Dither = 7 }
+        @{ Key = 'player_trim'; Base = 6; Dither = 7 }
+        @{ Key = 'warden_core'; Base = 10; Dither = 7 }
+        @{ Key = 'warden_trim'; Base = 7; Dither = 10 }
+        @{ Key = 'vault_wall'; Base = 11; Dither = 6 }
+        @{ Key = 'vault_trim'; Base = 6; Dither = 7 }
+        @{ Key = 'furnace_wall'; Base = 10; Dither = 8 }
+        @{ Key = 'furnace_trim'; Base = 8; Dither = 7 }
+        @{ Key = 'lock_wall'; Base = 3; Dither = 10 }
+        @{ Key = 'lock_trim'; Base = 17; Dither = 10 }
+        @{ Key = 'console_cyan'; Base = 5; Dither = 7 }
+        @{ Key = 'console_amber'; Base = 8; Dither = 7 }
+        @{ Key = 'console_red'; Base = 10; Dither = 7 }
     )
     Scenes = @(
         @{
@@ -215,6 +242,292 @@ function Face {
                 (Face @(4, 5, 6, 7) 'panel_red'),
                 (Face @(8, 9, 7, 4) 'panel_dark'),
                 (Face @(5, 10, 11, 6) 'panel_white')
+            )
+        }
+    )
+    GameplayKits = @(
+        @{
+            Key = 'sector1'
+            FloorBase = 'floor_dark'
+            FloorTrim = 'panel_cyan'
+            WallBase = 'vault_wall'
+            WallTrim = 'vault_trim'
+            WallCap = 'panel_dark'
+            Lane = 'panel_cyan'
+            GateMesh = 'gate_vault'
+            TerminalMesh = 'terminal_vault'
+            SurgeMesh = 'surge_vault'
+            ShardMesh = 'shard_vault'
+        }
+        @{
+            Key = 'sector2'
+            FloorBase = 'floor_dark'
+            FloorTrim = 'panel_amber'
+            WallBase = 'furnace_wall'
+            WallTrim = 'furnace_trim'
+            WallCap = 'panel_dark'
+            Lane = 'panel_amber'
+            GateMesh = 'gate_furnace'
+            TerminalMesh = 'terminal_furnace'
+            SurgeMesh = 'surge_furnace'
+            ShardMesh = 'shard_furnace'
+        }
+        @{
+            Key = 'sector3'
+            FloorBase = 'panel_dark'
+            FloorTrim = 'lock_trim'
+            WallBase = 'lock_wall'
+            WallTrim = 'panel_red'
+            WallCap = 'panel_dark'
+            Lane = 'gate_glow'
+            GateMesh = 'gate_lock'
+            TerminalMesh = 'terminal_lock'
+            SurgeMesh = 'surge_lock'
+            ShardMesh = 'shard_lock'
+        }
+    )
+    Meshes = @(
+        @{
+            Key = 'gate_vault'
+            Vertices = @(
+                (M -140 0 -28), (M -84 0 -28), (M -84 280 -28), (M -140 280 -28),
+                (M 84 0 -28), (M 140 0 -28), (M 140 280 -28), (M 84 280 -28),
+                (M -116 280 -28), (M 116 280 -28), (M 116 336 -28), (M -116 336 -28),
+                (M -58 80 12), (M 58 80 12), (M 58 224 12), (M -58 224 12)
+            )
+            Faces = @(
+                (Face @(0, 1, 2, 3) 'vault_wall'),
+                (Face @(4, 5, 6, 7) 'vault_wall'),
+                (Face @(8, 9, 10, 11) 'vault_trim'),
+                (Face @(12, 13, 14, 15) 'gate_glow')
+            )
+        }
+        @{
+            Key = 'gate_furnace'
+            Vertices = @(
+                (M -144 0 -30), (M -86 0 -30), (M -86 286 -30), (M -144 286 -30),
+                (M 86 0 -30), (M 144 0 -30), (M 144 286 -30), (M 86 286 -30),
+                (M -120 286 -30), (M 120 286 -30), (M 120 348 -30), (M -120 348 -30),
+                (M -62 88 16), (M 62 88 16), (M 62 228 16), (M -62 228 16)
+            )
+            Faces = @(
+                (Face @(0, 1, 2, 3) 'furnace_wall'),
+                (Face @(4, 5, 6, 7) 'furnace_wall'),
+                (Face @(8, 9, 10, 11) 'panel_amber'),
+                (Face @(12, 13, 14, 15) 'gate_glow')
+            )
+        }
+        @{
+            Key = 'gate_lock'
+            Vertices = @(
+                (M -146 0 -30), (M -88 0 -30), (M -88 296 -30), (M -146 296 -30),
+                (M 88 0 -30), (M 146 0 -30), (M 146 296 -30), (M 88 296 -30),
+                (M -122 296 -30), (M 122 296 -30), (M 122 356 -30), (M -122 356 -30),
+                (M -64 92 16), (M 64 92 16), (M 64 236 16), (M -64 236 16)
+            )
+            Faces = @(
+                (Face @(0, 1, 2, 3) 'lock_wall'),
+                (Face @(4, 5, 6, 7) 'lock_wall'),
+                (Face @(8, 9, 10, 11) 'panel_red'),
+                (Face @(12, 13, 14, 15) 'gate_glow')
+            )
+        }
+        @{
+            Key = 'terminal_vault'
+            Vertices = @(
+                (M -56 0 -48), (M 56 0 -48), (M 56 0 48), (M -56 0 48),
+                (M -42 152 -38), (M 42 152 -38), (M 42 152 38), (M -42 152 38),
+                (M -36 168 16), (M 36 168 16), (M 28 286 -18), (M -28 286 -18)
+            )
+            Faces = @(
+                (Face @(0, 1, 5, 4) 'vault_wall'),
+                (Face @(1, 2, 6, 5) 'panel_dark'),
+                (Face @(2, 3, 7, 6) 'panel_dark'),
+                (Face @(3, 0, 4, 7) 'panel_dark'),
+                (Face @(4, 5, 6, 7) 'vault_trim'),
+                (Face @(8, 9, 10, 11) 'console_cyan')
+            )
+        }
+        @{
+            Key = 'terminal_furnace'
+            Vertices = @(
+                (M -60 0 -48), (M 60 0 -48), (M 60 0 48), (M -60 0 48),
+                (M -44 160 -40), (M 44 160 -40), (M 44 160 40), (M -44 160 40),
+                (M -38 176 18), (M 38 176 18), (M 30 294 -18), (M -30 294 -18)
+            )
+            Faces = @(
+                (Face @(0, 1, 5, 4) 'furnace_wall'),
+                (Face @(1, 2, 6, 5) 'panel_dark'),
+                (Face @(2, 3, 7, 6) 'panel_dark'),
+                (Face @(3, 0, 4, 7) 'panel_dark'),
+                (Face @(4, 5, 6, 7) 'panel_amber'),
+                (Face @(8, 9, 10, 11) 'console_amber')
+            )
+        }
+        @{
+            Key = 'terminal_lock'
+            Vertices = @(
+                (M -58 0 -48), (M 58 0 -48), (M 58 0 48), (M -58 0 48),
+                (M -42 156 -40), (M 42 156 -40), (M 42 156 40), (M -42 156 40),
+                (M -38 174 18), (M 38 174 18), (M 30 292 -18), (M -30 292 -18)
+            )
+            Faces = @(
+                (Face @(0, 1, 5, 4) 'lock_wall'),
+                (Face @(1, 2, 6, 5) 'panel_dark'),
+                (Face @(2, 3, 7, 6) 'panel_dark'),
+                (Face @(3, 0, 4, 7) 'panel_dark'),
+                (Face @(4, 5, 6, 7) 'panel_red'),
+                (Face @(8, 9, 10, 11) 'console_red')
+            )
+        }
+        @{
+            Key = 'surge_vault'
+            Vertices = @(
+                (M -42 0 -42), (M 42 0 -42), (M 42 0 42), (M -42 0 42),
+                (M -18 164 -18), (M 18 164 -18), (M 18 164 18), (M -18 164 18),
+                (M 0 308 0)
+            )
+            Faces = @(
+                (Face @(0, 1, 5, 4) 'panel_dark'),
+                (Face @(1, 2, 6, 5) 'panel_dark'),
+                (Face @(2, 3, 7, 6) 'panel_dark'),
+                (Face @(3, 0, 4, 7) 'panel_dark'),
+                (Face @(4, 5, 8) 'panel_cyan'),
+                (Face @(5, 6, 8) 'panel_white'),
+                (Face @(6, 7, 8) 'panel_cyan'),
+                (Face @(7, 4, 8) 'panel_white')
+            )
+        }
+        @{
+            Key = 'surge_furnace'
+            Vertices = @(
+                (M -42 0 -42), (M 42 0 -42), (M 42 0 42), (M -42 0 42),
+                (M -18 164 -18), (M 18 164 -18), (M 18 164 18), (M -18 164 18),
+                (M 0 316 0)
+            )
+            Faces = @(
+                (Face @(0, 1, 5, 4) 'panel_dark'),
+                (Face @(1, 2, 6, 5) 'panel_dark'),
+                (Face @(2, 3, 7, 6) 'panel_dark'),
+                (Face @(3, 0, 4, 7) 'panel_dark'),
+                (Face @(4, 5, 8) 'panel_amber'),
+                (Face @(5, 6, 8) 'panel_red'),
+                (Face @(6, 7, 8) 'panel_amber'),
+                (Face @(7, 4, 8) 'panel_red')
+            )
+        }
+        @{
+            Key = 'surge_lock'
+            Vertices = @(
+                (M -42 0 -42), (M 42 0 -42), (M 42 0 42), (M -42 0 42),
+                (M -18 164 -18), (M 18 164 -18), (M 18 164 18), (M -18 164 18),
+                (M 0 316 0)
+            )
+            Faces = @(
+                (Face @(0, 1, 5, 4) 'panel_dark'),
+                (Face @(1, 2, 6, 5) 'panel_dark'),
+                (Face @(2, 3, 7, 6) 'panel_dark'),
+                (Face @(3, 0, 4, 7) 'panel_dark'),
+                (Face @(4, 5, 8) 'gate_glow'),
+                (Face @(5, 6, 8) 'panel_red'),
+                (Face @(6, 7, 8) 'gate_glow'),
+                (Face @(7, 4, 8) 'panel_red')
+            )
+        }
+        @{
+            Key = 'shard_vault'
+            Vertices = @(
+                (M -44 0 -44), (M 44 0 -44), (M 44 0 44), (M -44 0 44),
+                (M -30 42 -30), (M 30 42 -30), (M 30 42 30), (M -30 42 30),
+                (M 0 210 0), (M 0 108 0)
+            )
+            Faces = @(
+                (Face @(0, 1, 5, 4) 'panel_dark'),
+                (Face @(1, 2, 6, 5) 'panel_dark'),
+                (Face @(2, 3, 7, 6) 'panel_dark'),
+                (Face @(3, 0, 4, 7) 'panel_dark'),
+                (Face @(4, 5, 8) 'panel_white'),
+                (Face @(5, 6, 8) 'panel_cyan'),
+                (Face @(6, 7, 8) 'panel_white'),
+                (Face @(7, 4, 8) 'panel_cyan'),
+                (Face @(4, 5, 9) 'panel_cyan'),
+                (Face @(6, 7, 9) 'panel_white')
+            )
+        }
+        @{
+            Key = 'shard_furnace'
+            Vertices = @(
+                (M -44 0 -44), (M 44 0 -44), (M 44 0 44), (M -44 0 44),
+                (M -30 42 -30), (M 30 42 -30), (M 30 42 30), (M -30 42 30),
+                (M 0 210 0), (M 0 108 0)
+            )
+            Faces = @(
+                (Face @(0, 1, 5, 4) 'panel_dark'),
+                (Face @(1, 2, 6, 5) 'panel_dark'),
+                (Face @(2, 3, 7, 6) 'panel_dark'),
+                (Face @(3, 0, 4, 7) 'panel_dark'),
+                (Face @(4, 5, 8) 'panel_amber'),
+                (Face @(5, 6, 8) 'panel_white'),
+                (Face @(6, 7, 8) 'panel_amber'),
+                (Face @(7, 4, 8) 'panel_white'),
+                (Face @(4, 5, 9) 'panel_red'),
+                (Face @(6, 7, 9) 'panel_amber')
+            )
+        }
+        @{
+            Key = 'shard_lock'
+            Vertices = @(
+                (M -44 0 -44), (M 44 0 -44), (M 44 0 44), (M -44 0 44),
+                (M -30 42 -30), (M 30 42 -30), (M 30 42 30), (M -30 42 30),
+                (M 0 210 0), (M 0 108 0)
+            )
+            Faces = @(
+                (Face @(0, 1, 5, 4) 'panel_dark'),
+                (Face @(1, 2, 6, 5) 'panel_dark'),
+                (Face @(2, 3, 7, 6) 'panel_dark'),
+                (Face @(3, 0, 4, 7) 'panel_dark'),
+                (Face @(4, 5, 8) 'gate_glow'),
+                (Face @(5, 6, 8) 'panel_white'),
+                (Face @(6, 7, 8) 'gate_glow'),
+                (Face @(7, 4, 8) 'panel_white'),
+                (Face @(4, 5, 9) 'panel_red'),
+                (Face @(6, 7, 9) 'gate_glow')
+            )
+        }
+        @{
+            Key = 'player_runner'
+            Vertices = @(
+                (M -38 0 -28), (M 38 0 -28), (M 38 0 28), (M -38 0 28),
+                (M -44 118 -20), (M 44 118 -20), (M 30 152 28), (M -30 152 28),
+                (M -18 252 -4), (M 18 252 -4), (M 0 318 -22)
+            )
+            Faces = @(
+                (Face @(0, 1, 5, 4) 'player_core'),
+                (Face @(1, 2, 6, 5) 'player_trim'),
+                (Face @(2, 3, 7, 6) 'player_core'),
+                (Face @(3, 0, 4, 7) 'player_trim'),
+                (Face @(4, 5, 9, 8) 'player_core'),
+                (Face @(5, 6, 9) 'player_trim'),
+                (Face @(6, 7, 8, 9) 'player_core'),
+                (Face @(8, 9, 10) 'panel_white')
+            )
+        }
+        @{
+            Key = 'warden'
+            Vertices = @(
+                (M -46 0 -34), (M 46 0 -34), (M 46 0 34), (M -46 0 34),
+                (M -56 136 -24), (M 56 136 -24), (M 40 188 34), (M -40 188 34),
+                (M -28 284 -6), (M 28 284 -6), (M 0 356 -30)
+            )
+            Faces = @(
+                (Face @(0, 1, 5, 4) 'warden_core'),
+                (Face @(1, 2, 6, 5) 'warden_trim'),
+                (Face @(2, 3, 7, 6) 'warden_core'),
+                (Face @(3, 0, 4, 7) 'warden_trim'),
+                (Face @(4, 5, 9, 8) 'warden_core'),
+                (Face @(5, 6, 9) 'panel_white'),
+                (Face @(6, 7, 8, 9) 'warden_core'),
+                (Face @(8, 9, 10) 'panel_red')
             )
         }
     )

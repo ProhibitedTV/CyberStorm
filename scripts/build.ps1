@@ -2010,16 +2010,29 @@ function Write-GeneratedGeometryInclude {
         throw ("Geometry source must define a 'Materials' array: {0}" -f $SourcePath)
     }
 
-    if (-not $geometryData.ContainsKey('Scenes')) {
-        throw ("Geometry source must define a 'Scenes' array: {0}" -f $SourcePath)
+    foreach ($requiredField in @('Scenes', 'GameplayKits', 'Meshes')) {
+        if (-not $geometryData.ContainsKey($requiredField)) {
+            throw ("Geometry source must define a '{0}' array: {1}" -f $requiredField, $SourcePath)
+        }
     }
 
     $expectedSceneKeys = @('splash', 'title', 'sector1', 'sector2', 'sector3', 'win', 'lose')
+    $expectedKitKeys = @('sector1', 'sector2', 'sector3')
     $materials = @($geometryData['Materials'])
     $scenes = @($geometryData['Scenes'])
+    $kits = @($geometryData['GameplayKits'])
+    $meshes = @($geometryData['Meshes'])
 
     if ($scenes.Count -ne $expectedSceneKeys.Count) {
         throw ("Geometry source defined {0} scenes, but the runtime expects {1}." -f $scenes.Count, $expectedSceneKeys.Count)
+    }
+
+    if ($kits.Count -ne $expectedKitKeys.Count) {
+        throw ("Geometry source defined {0} gameplay kits, but the runtime expects {1}." -f $kits.Count, $expectedKitKeys.Count)
+    }
+
+    if ($meshes.Count -lt 1) {
+        throw ("Geometry source must define at least one gameplay mesh: {0}" -f $SourcePath)
     }
 
     $materialMap = @{}
@@ -2064,6 +2077,8 @@ function Write-GeneratedGeometryInclude {
     $payload = New-Object 'System.Collections.Generic.List[byte]'
     $sceneSummary = New-Object 'System.Collections.Generic.List[string]'
     $sceneFaceSummary = New-Object 'System.Collections.Generic.List[string]'
+    $meshSummary = New-Object 'System.Collections.Generic.List[string]'
+    $kitSummary = New-Object 'System.Collections.Generic.List[string]'
     $sceneVertexOffsets = New-Object 'System.Collections.Generic.List[string]'
     $sceneVertexCounts = New-Object 'System.Collections.Generic.List[string]'
     $sceneFaceOffsets = New-Object 'System.Collections.Generic.List[string]'
@@ -2080,9 +2095,113 @@ function Write-GeneratedGeometryInclude {
     $scenePitchBases = New-Object 'System.Collections.Generic.List[string]'
     $scenePitchSteps = New-Object 'System.Collections.Generic.List[string]'
     $sceneProjectScales = New-Object 'System.Collections.Generic.List[string]'
+    $meshVertexOffsets = New-Object 'System.Collections.Generic.List[string]'
+    $meshVertexCounts = New-Object 'System.Collections.Generic.List[string]'
+    $meshFaceOffsets = New-Object 'System.Collections.Generic.List[string]'
+    $meshFaceCounts = New-Object 'System.Collections.Generic.List[string]'
+    $kitFloorBaseColor = New-Object 'System.Collections.Generic.List[string]'
+    $kitFloorBaseDither = New-Object 'System.Collections.Generic.List[string]'
+    $kitFloorTrimColor = New-Object 'System.Collections.Generic.List[string]'
+    $kitFloorTrimDither = New-Object 'System.Collections.Generic.List[string]'
+    $kitWallBaseColor = New-Object 'System.Collections.Generic.List[string]'
+    $kitWallBaseDither = New-Object 'System.Collections.Generic.List[string]'
+    $kitWallTrimColor = New-Object 'System.Collections.Generic.List[string]'
+    $kitWallTrimDither = New-Object 'System.Collections.Generic.List[string]'
+    $kitWallCapColor = New-Object 'System.Collections.Generic.List[string]'
+    $kitWallCapDither = New-Object 'System.Collections.Generic.List[string]'
+    $kitLaneColor = New-Object 'System.Collections.Generic.List[string]'
+    $kitLaneDither = New-Object 'System.Collections.Generic.List[string]'
+    $kitGateMesh = New-Object 'System.Collections.Generic.List[string]'
+    $kitTerminalMesh = New-Object 'System.Collections.Generic.List[string]'
+    $kitSurgeMesh = New-Object 'System.Collections.Generic.List[string]'
+    $kitShardMesh = New-Object 'System.Collections.Generic.List[string]'
 
     $sceneCount = 0
     $totalTriangles = 0
+    $meshMap = @{}
+    $meshTriangleMap = @{}
+
+    $appendGeometry = {
+        param(
+            [string]$OwnerKind,
+            [string]$OwnerKey,
+            [object[]]$Vertices,
+            [object[]]$Faces
+        )
+
+        if ($Vertices.Count -lt 3 -or $Vertices.Count -gt 255) {
+            throw ("{0} '{1}' in {2} must define 3..255 vertices. Found {3}." -f $OwnerKind, $OwnerKey, $SourcePath, $Vertices.Count)
+        }
+
+        if ($Faces.Count -lt 1) {
+            throw ("{0} '{1}' in {2} must define at least one face." -f $OwnerKind, $OwnerKey, $SourcePath)
+        }
+
+        $vertexOffset = $payload.Count
+        foreach ($vertexIndex in 0..($Vertices.Count - 1)) {
+            $vertex = $Vertices[$vertexIndex]
+            if (-not ($vertex -is [System.Collections.IDictionary])) {
+                throw ("{0} '{1}' vertex {2} in {3} must be a hashtable." -f $OwnerKind, $OwnerKey, $vertexIndex, $SourcePath)
+            }
+
+            Add-Int16Payload -Payload $payload -Value (ConvertTo-GeometryFixed88 -Value $vertex['X'] -Context ("{0} '{1}' vertex {2} X" -f $OwnerKind, $OwnerKey, $vertexIndex))
+            Add-Int16Payload -Payload $payload -Value (ConvertTo-GeometryFixed88 -Value $vertex['Y'] -Context ("{0} '{1}' vertex {2} Y" -f $OwnerKind, $OwnerKey, $vertexIndex))
+            Add-Int16Payload -Payload $payload -Value (ConvertTo-GeometryFixed88 -Value $vertex['Z'] -Context ("{0} '{1}' vertex {2} Z" -f $OwnerKind, $OwnerKey, $vertexIndex))
+        }
+
+        $faceOffset = $payload.Count
+        $triangleCount = 0
+        foreach ($faceIndex in 0..($Faces.Count - 1)) {
+            $face = $Faces[$faceIndex]
+            if (-not ($face -is [System.Collections.IDictionary])) {
+                throw ("{0} '{1}' face {2} in {3} must be a hashtable." -f $OwnerKind, $OwnerKey, $faceIndex, $SourcePath)
+            }
+
+            $materialKey = ([string]$face['Material']).ToLowerInvariant()
+            if (-not $materialMap.ContainsKey($materialKey)) {
+                throw ("{0} '{1}' face {2} in {3} referenced unknown material '{4}'." -f $OwnerKind, $OwnerKey, $faceIndex, $SourcePath, $materialKey)
+            }
+
+            $indices = @($face['Indices'])
+            if ($indices.Count -lt 3) {
+                throw ("{0} '{1}' face {2} in {3} must define at least 3 indices." -f $OwnerKind, $OwnerKey, $faceIndex, $SourcePath)
+            }
+
+            $fanBase = [int]$indices[0]
+            if ($fanBase -lt 0 -or $fanBase -ge $Vertices.Count) {
+                throw ("{0} '{1}' face {2} in {3} referenced vertex index {4} outside 0..{5}." -f $OwnerKind, $OwnerKey, $faceIndex, $SourcePath, $fanBase, ($Vertices.Count - 1))
+            }
+
+            for ($triIndex = 1; $triIndex -lt ($indices.Count - 1); $triIndex++) {
+                $tri = @($fanBase, [int]$indices[$triIndex], [int]$indices[$triIndex + 1])
+                foreach ($corner in $tri) {
+                    if ($corner -lt 0 -or $corner -ge $Vertices.Count) {
+                        throw ("{0} '{1}' face {2} in {3} referenced vertex index {4} outside 0..{5}." -f $OwnerKind, $OwnerKey, $faceIndex, $SourcePath, $corner, ($Vertices.Count - 1))
+                    }
+                }
+
+                foreach ($corner in $tri) {
+                    $payload.Add([byte]$corner)
+                }
+
+                $payload.Add([byte]$materialMap[$materialKey].Base)
+                $payload.Add([byte]$materialMap[$materialKey].Dither)
+                $payload.Add([byte]0)
+                $triangleCount += 1
+            }
+        }
+
+        if ($triangleCount -gt 255) {
+            throw ("{0} '{1}' in {2} expands to {3} triangles, which exceeds the 255-face table limit." -f $OwnerKind, $OwnerKey, $SourcePath, $triangleCount)
+        }
+
+        return [pscustomobject]@{
+            VertexOffset = $vertexOffset
+            VertexCount = $Vertices.Count
+            FaceOffset = $faceOffset
+            TriangleCount = $triangleCount
+        }
+    }
 
     foreach ($sceneIndex in 0..($scenes.Count - 1)) {
         $scene = $scenes[$sceneIndex]
@@ -2106,72 +2225,11 @@ function Write-GeneratedGeometryInclude {
         }
 
         $vertices = @($scene['Vertices'])
-        if ($vertices.Count -lt 3 -or $vertices.Count -gt 255) {
-            throw ("Geometry scene '{0}' in {1} must define 3..255 vertices. Found {2}." -f $sceneKey, $SourcePath, $vertices.Count)
-        }
-
         $faces = @($scene['Faces'])
-        if ($faces.Count -lt 1) {
-            throw ("Geometry scene '{0}' in {1} must define at least one face." -f $sceneKey, $SourcePath)
-        }
-
-        $vertexOffset = $payload.Count
-        foreach ($vertexIndex in 0..($vertices.Count - 1)) {
-            $vertex = $vertices[$vertexIndex]
-            if (-not ($vertex -is [System.Collections.IDictionary])) {
-                throw ("Geometry scene '{0}' vertex {1} in {2} must be a hashtable." -f $sceneKey, $vertexIndex, $SourcePath)
-            }
-
-            Add-Int16Payload -Payload $payload -Value (ConvertTo-GeometryFixed88 -Value $vertex['X'] -Context ("Scene '{0}' vertex {1} X" -f $sceneKey, $vertexIndex))
-            Add-Int16Payload -Payload $payload -Value (ConvertTo-GeometryFixed88 -Value $vertex['Y'] -Context ("Scene '{0}' vertex {1} Y" -f $sceneKey, $vertexIndex))
-            Add-Int16Payload -Payload $payload -Value (ConvertTo-GeometryFixed88 -Value $vertex['Z'] -Context ("Scene '{0}' vertex {1} Z" -f $sceneKey, $vertexIndex))
-        }
-
-        $faceOffset = $payload.Count
-        $triangleCount = 0
-        foreach ($faceIndex in 0..($faces.Count - 1)) {
-            $face = $faces[$faceIndex]
-            if (-not ($face -is [System.Collections.IDictionary])) {
-                throw ("Geometry scene '{0}' face {1} in {2} must be a hashtable." -f $sceneKey, $faceIndex, $SourcePath)
-            }
-
-            $materialKey = ([string]$face['Material']).ToLowerInvariant()
-            if (-not $materialMap.ContainsKey($materialKey)) {
-                throw ("Geometry scene '{0}' face {1} in {2} referenced unknown material '{3}'." -f $sceneKey, $faceIndex, $SourcePath, $materialKey)
-            }
-
-            $indices = @($face['Indices'])
-            if ($indices.Count -lt 3) {
-                throw ("Geometry scene '{0}' face {1} in {2} must define at least 3 indices." -f $sceneKey, $faceIndex, $SourcePath)
-            }
-
-            $fanBase = [int]$indices[0]
-            if ($fanBase -lt 0 -or $fanBase -ge $vertices.Count) {
-                throw ("Geometry scene '{0}' face {1} in {2} referenced vertex index {3} outside 0..{4}." -f $sceneKey, $faceIndex, $SourcePath, $fanBase, ($vertices.Count - 1))
-            }
-
-            for ($triIndex = 1; $triIndex -lt ($indices.Count - 1); $triIndex++) {
-                $tri = @($fanBase, [int]$indices[$triIndex], [int]$indices[$triIndex + 1])
-                foreach ($corner in $tri) {
-                    if ($corner -lt 0 -or $corner -ge $vertices.Count) {
-                        throw ("Geometry scene '{0}' face {1} in {2} referenced vertex index {3} outside 0..{4}." -f $sceneKey, $faceIndex, $SourcePath, $corner, ($vertices.Count - 1))
-                    }
-                }
-
-                foreach ($corner in $tri) {
-                    $payload.Add([byte]$corner)
-                }
-
-                $payload.Add([byte]$materialMap[$materialKey].Base)
-                $payload.Add([byte]$materialMap[$materialKey].Dither)
-                $payload.Add([byte]0)
-                $triangleCount += 1
-            }
-        }
-
-        if ($triangleCount -gt 255) {
-            throw ("Geometry scene '{0}' in {1} expands to {2} triangles, which exceeds the 255-face scene table limit." -f $sceneKey, $SourcePath, $triangleCount)
-        }
+        $packedScene = & $appendGeometry -OwnerKind 'Geometry scene' -OwnerKey $sceneKey -Vertices $vertices -Faces $faces
+        $vertexOffset = $packedScene.VertexOffset
+        $faceOffset = $packedScene.FaceOffset
+        $triangleCount = $packedScene.TriangleCount
 
         $sceneSymbol = "SCENE3D_{0}" -f $sceneKey.ToUpperInvariant()
         $cameraX = ConvertTo-GeometryFixed88 -Value $camera['X'] -Context ("Scene '{0}' camera X" -f $sceneKey)
@@ -2241,8 +2299,106 @@ function Write-GeneratedGeometryInclude {
         $totalTriangles += $triangleCount
     }
 
+    foreach ($meshIndex in 0..($meshes.Count - 1)) {
+        $mesh = $meshes[$meshIndex]
+        if (-not ($mesh -is [System.Collections.IDictionary])) {
+            throw ("Each geometry mesh in {0} must be a hashtable." -f $SourcePath)
+        }
+
+        $meshKey = ([string]$mesh['Key']).ToLowerInvariant()
+        if ([string]::IsNullOrWhiteSpace($meshKey) -or $meshKey -notmatch '^[a-z0-9_]+$') {
+            throw ("Geometry mesh keys in {0} must be lowercase alphanumeric identifiers with underscores. Found '{1}'." -f $SourcePath, $meshKey)
+        }
+
+        if ($meshMap.ContainsKey($meshKey)) {
+            throw ("Geometry mesh '{0}' is defined more than once in {1}." -f $meshKey, $SourcePath)
+        }
+
+        $vertices = @($mesh['Vertices'])
+        $faces = @($mesh['Faces'])
+        $packedMesh = & $appendGeometry -OwnerKind 'Geometry mesh' -OwnerKey $meshKey -Vertices $vertices -Faces $faces
+        $meshSymbol = "GAME3D_MESH_{0}" -f $meshKey.ToUpperInvariant()
+        $lines.Add(("{0}_INDEX EQU {1}" -f $meshSymbol, $meshIndex))
+        $lines.Add(("{0}_VERTEX_OFFSET EQU {1}" -f $meshSymbol, $packedMesh.VertexOffset))
+        $lines.Add(("{0}_VERTEX_COUNT EQU {1}" -f $meshSymbol, $packedMesh.VertexCount))
+        $lines.Add(("{0}_FACE_OFFSET EQU {1}" -f $meshSymbol, $packedMesh.FaceOffset))
+        $lines.Add(("{0}_FACE_COUNT EQU {1}" -f $meshSymbol, $packedMesh.TriangleCount))
+        $lines.Add('')
+
+        $meshVertexOffsets.Add($packedMesh.VertexOffset.ToString())
+        $meshVertexCounts.Add($packedMesh.VertexCount.ToString())
+        $meshFaceOffsets.Add($packedMesh.FaceOffset.ToString())
+        $meshFaceCounts.Add($packedMesh.TriangleCount.ToString())
+        $meshSummary.Add(("{0}:{1} tris" -f $meshKey, $packedMesh.TriangleCount))
+        $meshMap[$meshKey] = [pscustomobject]@{
+            Index = $meshIndex
+            TriangleCount = $packedMesh.TriangleCount
+        }
+        $meshTriangleMap[$meshKey] = $packedMesh.TriangleCount
+        $totalTriangles += $packedMesh.TriangleCount
+    }
+
+    foreach ($kitIndex in 0..($kits.Count - 1)) {
+        $kit = $kits[$kitIndex]
+        if (-not ($kit -is [System.Collections.IDictionary])) {
+            throw ("Each geometry gameplay kit in {0} must be a hashtable." -f $SourcePath)
+        }
+
+        $kitKey = ([string]$kit['Key']).ToLowerInvariant()
+        if ($kitKey -ne $expectedKitKeys[$kitIndex]) {
+            throw ("Geometry gameplay kit {0} in {1} must use key '{2}' to match the runtime sector order." -f ($kitIndex + 1), $SourcePath, $expectedKitKeys[$kitIndex])
+        }
+
+        $materialFields = @('FloorBase', 'FloorTrim', 'WallBase', 'WallTrim', 'WallCap', 'Lane')
+        $materialRefs = @{}
+        foreach ($field in $materialFields) {
+            $materialKey = ([string]$kit[$field]).ToLowerInvariant()
+            if ([string]::IsNullOrWhiteSpace($materialKey) -or -not $materialMap.ContainsKey($materialKey)) {
+                throw ("Gameplay kit '{0}' in {1} must reference a known material for '{2}'." -f $kitKey, $SourcePath, $field)
+            }
+
+            $materialRefs[$field] = $materialMap[$materialKey]
+        }
+
+        $meshFields = @('GateMesh', 'TerminalMesh', 'SurgeMesh', 'ShardMesh')
+        $meshRefs = @{}
+        foreach ($field in $meshFields) {
+            $meshKey = ([string]$kit[$field]).ToLowerInvariant()
+            if ([string]::IsNullOrWhiteSpace($meshKey) -or -not $meshMap.ContainsKey($meshKey)) {
+                throw ("Gameplay kit '{0}' in {1} must reference a known mesh for '{2}'." -f $kitKey, $SourcePath, $field)
+            }
+
+            $meshRefs[$field] = $meshMap[$meshKey]
+        }
+
+        $kitSymbol = "GAME3D_KIT_{0}" -f $kitKey.ToUpperInvariant()
+        $lines.Add(("{0}_INDEX EQU {1}" -f $kitSymbol, $kitIndex))
+        $lines.Add('')
+
+        $kitFloorBaseColor.Add($materialRefs['FloorBase'].Base.ToString())
+        $kitFloorBaseDither.Add($materialRefs['FloorBase'].Dither.ToString())
+        $kitFloorTrimColor.Add($materialRefs['FloorTrim'].Base.ToString())
+        $kitFloorTrimDither.Add($materialRefs['FloorTrim'].Dither.ToString())
+        $kitWallBaseColor.Add($materialRefs['WallBase'].Base.ToString())
+        $kitWallBaseDither.Add($materialRefs['WallBase'].Dither.ToString())
+        $kitWallTrimColor.Add($materialRefs['WallTrim'].Base.ToString())
+        $kitWallTrimDither.Add($materialRefs['WallTrim'].Dither.ToString())
+        $kitWallCapColor.Add($materialRefs['WallCap'].Base.ToString())
+        $kitWallCapDither.Add($materialRefs['WallCap'].Dither.ToString())
+        $kitLaneColor.Add($materialRefs['Lane'].Base.ToString())
+        $kitLaneDither.Add($materialRefs['Lane'].Dither.ToString())
+        $kitGateMesh.Add($meshRefs['GateMesh'].Index.ToString())
+        $kitTerminalMesh.Add($meshRefs['TerminalMesh'].Index.ToString())
+        $kitSurgeMesh.Add($meshRefs['SurgeMesh'].Index.ToString())
+        $kitShardMesh.Add($meshRefs['ShardMesh'].Index.ToString())
+
+        $kitSummary.Add(("{0}: floor {1}/{2}, wall {3}/{4}, props {5}|{6}|{7}|{8}" -f $kitKey, $kit['FloorBase'], $kit['FloorTrim'], $kit['WallBase'], $kit['WallTrim'], $kit['GateMesh'], $kit['TerminalMesh'], $kit['SurgeMesh'], $kit['ShardMesh']))
+    }
+
     $lines.Add(("SCENE3D_COUNT EQU {0}" -f $sceneCount))
     $lines.Add(("SCENE3D_MATERIAL_COUNT EQU {0}" -f $materials.Count))
+    $lines.Add(("GAME3D_MESH_COUNT EQU {0}" -f $meshes.Count))
+    $lines.Add(("GAME3D_KIT_COUNT EQU {0}" -f $kits.Count))
     $lines.Add('')
     Add-AsmDataLines -Lines $lines -Label 'scene3d_vertex_offset_table' -Directive 'dw' -Values $sceneVertexOffsets.ToArray() -ValuesPerLine 4
     $lines.Add('')
@@ -2275,6 +2431,31 @@ function Write-GeneratedGeometryInclude {
     Add-AsmDataLines -Lines $lines -Label 'scene3d_pitch_step_table' -Directive 'db' -Values $scenePitchSteps.ToArray() -ValuesPerLine 8
     $lines.Add('')
     Add-AsmDataLines -Lines $lines -Label 'scene3d_project_scale_table' -Directive 'dw' -Values $sceneProjectScales.ToArray() -ValuesPerLine 4
+    $lines.Add('')
+    Add-AsmDataLines -Lines $lines -Label 'game3d_mesh_vertex_offset_table' -Directive 'dw' -Values $meshVertexOffsets.ToArray() -ValuesPerLine 4
+    $lines.Add('')
+    Add-AsmDataLines -Lines $lines -Label 'game3d_mesh_vertex_count_table' -Directive 'db' -Values $meshVertexCounts.ToArray() -ValuesPerLine 8
+    $lines.Add('')
+    Add-AsmDataLines -Lines $lines -Label 'game3d_mesh_face_offset_table' -Directive 'dw' -Values $meshFaceOffsets.ToArray() -ValuesPerLine 4
+    $lines.Add('')
+    Add-AsmDataLines -Lines $lines -Label 'game3d_mesh_face_count_table' -Directive 'db' -Values $meshFaceCounts.ToArray() -ValuesPerLine 8
+    $lines.Add('')
+    Add-AsmDataLines -Lines $lines -Label 'game3d_kit_floor_base_color_table' -Directive 'db' -Values $kitFloorBaseColor.ToArray() -ValuesPerLine 8
+    Add-AsmDataLines -Lines $lines -Label 'game3d_kit_floor_base_dither_table' -Directive 'db' -Values $kitFloorBaseDither.ToArray() -ValuesPerLine 8
+    Add-AsmDataLines -Lines $lines -Label 'game3d_kit_floor_trim_color_table' -Directive 'db' -Values $kitFloorTrimColor.ToArray() -ValuesPerLine 8
+    Add-AsmDataLines -Lines $lines -Label 'game3d_kit_floor_trim_dither_table' -Directive 'db' -Values $kitFloorTrimDither.ToArray() -ValuesPerLine 8
+    Add-AsmDataLines -Lines $lines -Label 'game3d_kit_wall_base_color_table' -Directive 'db' -Values $kitWallBaseColor.ToArray() -ValuesPerLine 8
+    Add-AsmDataLines -Lines $lines -Label 'game3d_kit_wall_base_dither_table' -Directive 'db' -Values $kitWallBaseDither.ToArray() -ValuesPerLine 8
+    Add-AsmDataLines -Lines $lines -Label 'game3d_kit_wall_trim_color_table' -Directive 'db' -Values $kitWallTrimColor.ToArray() -ValuesPerLine 8
+    Add-AsmDataLines -Lines $lines -Label 'game3d_kit_wall_trim_dither_table' -Directive 'db' -Values $kitWallTrimDither.ToArray() -ValuesPerLine 8
+    Add-AsmDataLines -Lines $lines -Label 'game3d_kit_wall_cap_color_table' -Directive 'db' -Values $kitWallCapColor.ToArray() -ValuesPerLine 8
+    Add-AsmDataLines -Lines $lines -Label 'game3d_kit_wall_cap_dither_table' -Directive 'db' -Values $kitWallCapDither.ToArray() -ValuesPerLine 8
+    Add-AsmDataLines -Lines $lines -Label 'game3d_kit_lane_color_table' -Directive 'db' -Values $kitLaneColor.ToArray() -ValuesPerLine 8
+    Add-AsmDataLines -Lines $lines -Label 'game3d_kit_lane_dither_table' -Directive 'db' -Values $kitLaneDither.ToArray() -ValuesPerLine 8
+    Add-AsmDataLines -Lines $lines -Label 'game3d_kit_gate_mesh_table' -Directive 'db' -Values $kitGateMesh.ToArray() -ValuesPerLine 8
+    Add-AsmDataLines -Lines $lines -Label 'game3d_kit_terminal_mesh_table' -Directive 'db' -Values $kitTerminalMesh.ToArray() -ValuesPerLine 8
+    Add-AsmDataLines -Lines $lines -Label 'game3d_kit_surge_mesh_table' -Directive 'db' -Values $kitSurgeMesh.ToArray() -ValuesPerLine 8
+    Add-AsmDataLines -Lines $lines -Label 'game3d_kit_shard_mesh_table' -Directive 'db' -Values $kitShardMesh.ToArray() -ValuesPerLine 8
 
     Set-Content -LiteralPath $OutputPath -Encoding ascii -Value $lines
     Assert-PathExists -Path $OutputPath -Label 'generated geometry include'
@@ -2283,12 +2464,184 @@ function Write-GeneratedGeometryInclude {
         SourcePath = $SourcePath
         OutputPath = $OutputPath
         SceneCount = $sceneCount
+        MeshCount = $meshes.Count
+        KitCount = $kits.Count
         MaterialCount = $materials.Count
         TotalBytes = $payload.Count
         TriangleCount = $totalTriangles
         SceneSummary = ($sceneSummary -join ', ')
         FaceSummary = ($sceneFaceSummary -join ', ')
+        MeshSummary = ($meshSummary -join ', ')
+        KitSummary = ($kitSummary -join ' | ')
+        MeshTriangleMap = $meshTriangleMap
         BankPayloadBytes = $payload.ToArray()
+    }
+}
+
+function Get-GameplayGeometryBudgetSummary {
+    param(
+        [string]$SectorSourcePath,
+        [string]$GeometrySourcePath,
+        [System.Collections.IDictionary]$MeshTriangleMap,
+        [int]$ExpectedMapWidth,
+        [int]$ExpectedMapHeight,
+        [int]$ExitColumn,
+        [int]$ShardCount,
+        [int]$FaceBudget
+    )
+
+    $sectorData = Import-StructuredDataFile -SourcePath $SectorSourcePath -Label 'sector source'
+    $geometryData = Import-StructuredDataFile -SourcePath $GeometrySourcePath -Label 'geometry source'
+    $sectors = @($sectorData['Sectors'])
+    $kits = @($geometryData['GameplayKits'])
+    $kitMap = @{}
+    foreach ($kit in $kits) {
+        $kitKey = ([string]$kit['Key']).ToLowerInvariant()
+        $kitMap[$kitKey] = $kit
+    }
+
+    $summaryLines = New-Object 'System.Collections.Generic.List[string]'
+    $warningLines = New-Object 'System.Collections.Generic.List[string]'
+
+    foreach ($sector in $sectors) {
+        $sectorId = [int]$sector['Id']
+        $kit = $kitMap[("sector{0}" -f $sectorId)]
+        $rules = $sector['Rules']
+        $maps = @($sector['Maps'])
+        $gateTris = [int]$MeshTriangleMap[([string]$kit['GateMesh']).ToLowerInvariant()]
+        $terminalTris = [int]$MeshTriangleMap[([string]$kit['TerminalMesh']).ToLowerInvariant()]
+        $surgeTris = [int]$MeshTriangleMap[([string]$kit['SurgeMesh']).ToLowerInvariant()]
+        $shardTris = [int]$MeshTriangleMap[([string]$kit['ShardMesh']).ToLowerInvariant()]
+        $templateParts = New-Object 'System.Collections.Generic.List[string]'
+        $structuralCounts = New-Object 'System.Collections.Generic.List[int]'
+        $dynamicPropFaces = $gateTris + ([int]$rules['TerminalCount'] * $terminalTris) + ([int]$rules['SurgeCount'] * $surgeTris) + ($ShardCount * $shardTris)
+
+        foreach ($map in $maps) {
+            $rows = @($map['Rows'] | ForEach-Object { [string]$_ })
+            $floorRuns = 0
+            $floorTrimRuns = 0
+            for ($y = 0; $y -lt $ExpectedMapHeight; $y++) {
+                $inside = $false
+                for ($x = 0; $x -lt $ExpectedMapWidth; $x++) {
+                    $walkable = $rows[$y][$x] -ne '#'
+                    if ($walkable) {
+                        if (-not $inside) {
+                            $floorRuns += 1
+                            $inside = $true
+                        }
+                    } else {
+                        $inside = $false
+                    }
+                }
+
+                if ((($y + $sectorId) % 2) -eq 0) {
+                    $x = 0
+                    while ($x -lt $ExpectedMapWidth) {
+                        if ($rows[$y][$x] -eq '#') {
+                            $x += 1
+                            continue
+                        }
+
+                        $runStart = $x
+                        while ($x -lt $ExpectedMapWidth -and $rows[$y][$x] -ne '#') {
+                            $x += 1
+                        }
+
+                        if (($x - $runStart) -gt 2) {
+                            $floorTrimRuns += 1
+                        }
+                    }
+                }
+            }
+
+            $northRuns = 0
+            $southRuns = 0
+            for ($y = 0; $y -lt $ExpectedMapHeight; $y++) {
+                $northInside = $false
+                $southInside = $false
+                for ($x = 0; $x -lt $ExpectedMapWidth; $x++) {
+                    $isWall = $rows[$y][$x] -eq '#'
+                    $northVisible = $isWall -and ($y -eq 0 -or $rows[$y - 1][$x] -ne '#')
+                    $southVisible = $isWall -and ($y -eq ($ExpectedMapHeight - 1) -or $rows[$y + 1][$x] -ne '#')
+                    if ($northVisible) {
+                        if (-not $northInside) {
+                            $northRuns += 1
+                            $northInside = $true
+                        }
+                    } else {
+                        $northInside = $false
+                    }
+
+                    if ($southVisible) {
+                        if (-not $southInside) {
+                            $southRuns += 1
+                            $southInside = $true
+                        }
+                    } else {
+                        $southInside = $false
+                    }
+                }
+            }
+
+            $westRuns = 0
+            $eastRuns = 0
+            for ($x = 0; $x -lt $ExpectedMapWidth; $x++) {
+                $westInside = $false
+                $eastInside = $false
+                for ($y = 0; $y -lt $ExpectedMapHeight; $y++) {
+                    $isWall = $rows[$y][$x] -eq '#'
+                    $westVisible = $isWall -and ($x -eq 0 -or $rows[$y][$x - 1] -ne '#')
+                    $eastVisible = $isWall -and ($x -eq ($ExpectedMapWidth - 1) -or $rows[$y][$x + 1] -ne '#')
+                    if ($westVisible) {
+                        if (-not $westInside) {
+                            $westRuns += 1
+                            $westInside = $true
+                        }
+                    } else {
+                        $westInside = $false
+                    }
+
+                    if ($eastVisible) {
+                        if (-not $eastInside) {
+                            $eastRuns += 1
+                            $eastInside = $true
+                        }
+                    } else {
+                        $eastInside = $false
+                    }
+                }
+            }
+
+            $laneTiles = 0
+            $exitColumnIndex = [Math]::Max(0, [Math]::Min($ExpectedMapWidth - 1, $ExitColumn))
+            for ($y = 0; $y -lt $ExpectedMapHeight; $y++) {
+                if ($rows[$y][$exitColumnIndex] -ne '#') {
+                    $laneTiles += 1
+                    if ($laneTiles -ge 5) {
+                        break
+                    }
+                }
+            }
+
+            $structuralFaces = ($floorRuns * 2) + ($floorTrimRuns * 2) + (($northRuns + $southRuns + $westRuns + $eastRuns) * 2) + ($laneTiles * 2)
+            $structuralCounts.Add($structuralFaces)
+            $templateParts.Add(("{0}={1}+{2}" -f ([string]$map['Name']), $structuralFaces, $dynamicPropFaces))
+        }
+
+        $minFaces = ($structuralCounts | Measure-Object -Minimum).Minimum
+        $maxFaces = ($structuralCounts | Measure-Object -Maximum).Maximum
+        $summaryLines.Add(("S{0}: room {1}-{2} faces + props {3} tris ({4})" -f $sectorId, $minFaces, $maxFaces, $dynamicPropFaces, ($templateParts -join ', ')))
+
+        if ($maxFaces -gt $FaceBudget) {
+            $warningLines.Add(("Sector {0} room kit estimate reaches {1} structural faces, which exceeds the configured runtime face budget of {2}." -f $sectorId, $maxFaces, $FaceBudget))
+        } elseif ($maxFaces -gt [int]($FaceBudget * 0.85)) {
+            $warningLines.Add(("Sector {0} room kit estimate reaches {1} structural faces, which is above 85%% of the configured runtime face budget ({2})." -f $sectorId, $maxFaces, $FaceBudget))
+        }
+    }
+
+    return [pscustomobject]@{
+        SummaryLines = $summaryLines.ToArray()
+        WarningLines = $warningLines.ToArray()
     }
 }
 
@@ -2733,10 +3086,14 @@ function Write-BuildReport {
         [string]$GeneratedGeometrySource,
         [string]$GeneratedGeometryInclude,
         [int]$GeneratedGeometrySceneCount,
+        [int]$GeneratedGeometryMeshCount,
+        [int]$GeneratedGeometryKitCount,
         [int]$GeneratedGeometryMaterialCount,
         [int]$GeneratedGeometryBytes,
         [int]$GeneratedGeometryTriangles,
         [string]$GeneratedGeometrySummary,
+        [string]$GeneratedGeometryMeshSummary,
+        [string]$GeneratedGeometryKitSummary,
         [string]$GeneratedGeometryFaceSummary,
         [string[]]$GeneratedContentLines,
         [string[]]$ReplayHarnessLines,
@@ -2838,10 +3195,14 @@ function Write-BuildReport {
         ("  Source file: {0}" -f $GeneratedGeometrySource)
         ("  Generated include: {0}" -f $GeneratedGeometryInclude)
         ("  Scene count: {0}" -f $GeneratedGeometrySceneCount)
+        ("  Mesh count: {0}" -f $GeneratedGeometryMeshCount)
+        ("  Gameplay kit count: {0}" -f $GeneratedGeometryKitCount)
         ("  Material count: {0}" -f $GeneratedGeometryMaterialCount)
         ("  Bank bytes: {0}" -f $GeneratedGeometryBytes)
         ("  Triangle count: {0}" -f $GeneratedGeometryTriangles)
         ("  Scene summary: {0}" -f $GeneratedGeometrySummary)
+        ("  Mesh summary: {0}" -f $GeneratedGeometryMeshSummary)
+        ("  Gameplay kit summary: {0}" -f $GeneratedGeometryKitSummary)
         ("  Face summary: {0}" -f $GeneratedGeometryFaceSummary)
     )
 
@@ -3181,6 +3542,8 @@ $enemySpawnBase = Get-AsmEquValue -SourcePath $constantsSourcePath -Name 'ENEMY_
 $maxEnemies = Get-AsmEquValue -SourcePath $constantsSourcePath -Name 'MAX_ENEMIES'
 $expectedBannerWidth = Get-AsmEquValue -SourcePath $constantsSourcePath -Name 'PRESENT_BANNER_W'
 $expectedBannerHeight = Get-AsmEquValue -SourcePath $constantsSourcePath -Name 'PRESENT_BANNER_H'
+$game3dFaceBudget = Get-AsmEquValue -SourcePath $constantsSourcePath -Name 'SCENE3D_MAX_FACES'
+$shardCount = Get-AsmEquValue -SourcePath $constantsSourcePath -Name 'SHARD_COUNT'
 
 $generatedArt = Write-GeneratedArtInclude -SourcePath $artSourcePath -OutputPath $generatedArtPath
 $generatedPresentation = Write-GeneratedPresentationContent `
@@ -3208,6 +3571,15 @@ $generatedSectors = Write-GeneratedSectorIncludes `
     -EnemySpawnStep $enemySpawnStep `
     -EnemySpawnBase $enemySpawnBase `
     -MaxEnemies $maxEnemies
+$gameplayGeometryBudget = Get-GameplayGeometryBudgetSummary `
+    -SectorSourcePath $sectorSourcePath `
+    -GeometrySourcePath $geometrySourcePath `
+    -MeshTriangleMap $generatedGeometry.MeshTriangleMap `
+    -ExpectedMapWidth $expectedMapWidth `
+    -ExpectedMapHeight $expectedMapHeight `
+    -ExitColumn $exitCol `
+    -ShardCount $shardCount `
+    -FaceBudget $game3dFaceBudget
 $generatedDemos = Write-GeneratedDemoInclude `
     -SourcePath $demoSourcePath `
     -OutputPath $generatedDemosPath `
@@ -3238,6 +3610,7 @@ Write-Host ("Include : {0}" -f $generatedArt.OutputPath)
 Write-Host ("Bitmaps : {0}" -f $generatedArt.AssetCount)
 Write-Host ("Bytes   : {0}" -f $generatedArt.TotalBytes)
 Write-Host ("Sizes   : {0}" -f $generatedArt.SizeSummary)
+Write-Host ("Geometry scenes: {0}, meshes: {1}, kits: {2}, tris: {3}" -f $generatedGeometry.SceneCount, $generatedGeometry.MeshCount, $generatedGeometry.KitCount, $generatedGeometry.TriangleCount)
 
 $generatedContentLines = @(
     ("Presentation source: {0}" -f $generatedPresentation.SourcePath)
@@ -3247,10 +3620,15 @@ $generatedContentLines = @(
     ("Geometry source: {0}" -f $generatedGeometry.SourcePath)
     ("Geometry include: {0}" -f $generatedGeometry.OutputPath)
     ("Geometry scenes: {0}" -f $generatedGeometry.SceneCount)
+    ("Geometry meshes: {0}" -f $generatedGeometry.MeshCount)
+    ("Geometry gameplay kits: {0}" -f $generatedGeometry.KitCount)
     ("Geometry materials: {0}" -f $generatedGeometry.MaterialCount)
     ("Geometry bank bytes: {0}" -f $generatedGeometry.TotalBytes)
     ("Geometry triangles: {0}" -f $generatedGeometry.TriangleCount)
     ("Geometry summary: {0}" -f $generatedGeometry.SceneSummary)
+    ("Geometry mesh summary: {0}" -f $generatedGeometry.MeshSummary)
+    ("Geometry gameplay kit summary: {0}" -f $generatedGeometry.KitSummary)
+    ("Gameplay room structural budgets: {0}" -f ($gameplayGeometryBudget.SummaryLines -join ' | '))
     ("Sector source: {0}" -f $generatedSectors.SourcePath)
     ("Sector include: {0}" -f $generatedSectors.SectorOutputPath)
     ("Maps include: {0}" -f $generatedSectors.MapsOutputPath)
@@ -3425,6 +3803,9 @@ if ($null -ne $replayHarness.WarningLines -and @($replayHarness.WarningLines).Co
 }
 if ($null -ne $balanceHarness.WarningLines -and @($balanceHarness.WarningLines).Count -gt 0) {
     $warnings = @($warnings) + @($balanceHarness.WarningLines)
+}
+if ($null -ne $gameplayGeometryBudget.WarningLines -and @($gameplayGeometryBudget.WarningLines).Count -gt 0) {
+    $warnings = @($warnings) + @($gameplayGeometryBudget.WarningLines)
 }
 
 $floppy = New-Object byte[] $layout.FloppyBytes
@@ -3611,10 +3992,14 @@ Write-BuildReport `
     -GeneratedGeometrySource $generatedGeometry.SourcePath `
     -GeneratedGeometryInclude $generatedGeometry.OutputPath `
     -GeneratedGeometrySceneCount $generatedGeometry.SceneCount `
+    -GeneratedGeometryMeshCount $generatedGeometry.MeshCount `
+    -GeneratedGeometryKitCount $generatedGeometry.KitCount `
     -GeneratedGeometryMaterialCount $generatedGeometry.MaterialCount `
     -GeneratedGeometryBytes $generatedGeometry.TotalBytes `
     -GeneratedGeometryTriangles $generatedGeometry.TriangleCount `
     -GeneratedGeometrySummary $generatedGeometry.SceneSummary `
+    -GeneratedGeometryMeshSummary $generatedGeometry.MeshSummary `
+    -GeneratedGeometryKitSummary $generatedGeometry.KitSummary `
     -GeneratedGeometryFaceSummary $generatedGeometry.FaceSummary `
     -GeneratedContentLines $generatedContentLines `
     -ReplayHarnessLines $replayHarnessLines `

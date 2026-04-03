@@ -100,6 +100,13 @@ game3d_room_vertex_count dw 0
 game3d_emit_flags db 0
 game3d_camera_yaw_current db GAME3D_YAW_DEFAULT
 game3d_camera_yaw_target  db GAME3D_YAW_DEFAULT
+game3d_mesh_index db 0
+game3d_mesh_yaw db 0
+game3d_mesh_face_flags db 0
+game3d_mesh_vertex_base dw 0
+game3d_mesh_world_x dw 0
+game3d_mesh_world_y dw 0
+game3d_mesh_world_z dw 0
 key_extended db 0
 any_key_pending db 0
 input_event_count db 0
@@ -279,6 +286,7 @@ debug_shield_tag db 'H', 0
 debug_pulse_tag  db 'P', 0
 debug_data_tag   db 'D', 0
 debug_enemy_tag  db 'E', 0
+debug_overflow_tag db 'GO', 0
 ENDIF
 
 win_line_1    db 'VAULT', 0

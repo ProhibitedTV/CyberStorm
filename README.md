@@ -27,6 +27,7 @@
 - **A compact but structured runtime.** Stage two stays inside a documented single-segment contract while still using modular render, gameplay, audio, and data layers.
 - **Generated content tooling.** Sprites, banked presentation assets, low-poly scene geometry, sectors, rules, demos, and music come from readable source files that generate MASM-friendly data at build time.
 - **A real software 3D render path.** Splash, title, sector-entry cards, end screens, and now live gameplay all run through a flat-shaded low-poly renderer, while `-DebugRender2D` still keeps the legacy 2D oracle available for parity work.
+- **Integrated low-poly world kits.** The gameplay view now uses sector-specific room materials plus real gate, terminal, surge, shard, runner, and warden meshes instead of treating 3D as a front-end-only trick.
 - **Disciplined validation.** The build enforces boot/image layout, generated content shape, deterministic debug options, and a lightweight balance harness.
 
 ## Visual Gallery
@@ -110,10 +111,10 @@ These values come from the current [build/cyberstorm-build-report.txt](build/cyb
 | Fact | Current build |
 | --- | --- |
 | Boot code | `132 / 510` bytes |
-| Stage two | `43994` bytes across `86` sectors |
-| Banked payloads | maps `3780` bytes across `8` sectors, presentation `19968` bytes across `39` sectors, geometry `960` bytes across `2` sectors |
-| Bank LBA ranges | map `87..94`, presentation `95..133`, geometry `134..135` |
-| Content set | `3` sectors, `9` maps, `9` breach scenarios, `3` demos, `5` music themes, `13` presentation assets, `7` geometry scenes |
+| Stage two | `41616` bytes across `82` sectors |
+| Banked payloads | maps `3780` bytes across `8` sectors, presentation `19968` bytes across `39` sectors, geometry `2934` bytes across `6` sectors |
+| Bank LBA ranges | map `83..90`, presentation `91..129`, geometry `130..135` |
+| Content set | `3` sectors, `9` maps, `9` breach scenarios, `3` demos, `5` music themes, `13` presentation assets, `7` geometry scenes, `14` meshes, `3` gameplay kits |
 | Balance sweep | `36` deterministic scenarios |
 | Release audio policy | `SFX_ONLY` by default |
 | Video target | `320x200x256` in VGA mode `13h` |
@@ -391,12 +392,12 @@ CyberStorm now has a layered confidence model:
 - [build/game.lst](build/game.lst): stage-two assembly listing
 - [build/generated_art.inc](build/generated_art.inc): generated sprite/tile data as MASM sees it
 - [build/generated_presentation_content.inc](build/generated_presentation_content.inc): generated scene-kit asset offsets and sizes as MASM sees them
-- [build/generated_geometry.inc](build/generated_geometry.inc): generated scene/camera tables and geometry-bank offsets as MASM sees them
+- [build/generated_geometry.inc](build/generated_geometry.inc): generated scene/camera tables, gameplay-kit tables, and mesh offsets as MASM sees them
 - [build/generated_demos.inc](build/generated_demos.inc): generated attract-mode scripts as MASM sees them
 - [build/generated_bank_layout.inc](build/generated_bank_layout.inc): runtime bank metadata
 - [build/cyberstorm-map-bank.bin](build/cyberstorm-map-bank.bin): raw post-boot map payload
 - [build/cyberstorm-presentation-bank.bin](build/cyberstorm-presentation-bank.bin): raw post-boot presentation payload
-- [build/cyberstorm-geometry-bank.bin](build/cyberstorm-geometry-bank.bin): raw post-boot low-poly scene payload
+- [build/cyberstorm-geometry-bank.bin](build/cyberstorm-geometry-bank.bin): raw post-boot low-poly scene and mesh payload
 - [build/cyberstorm-replay-report.txt](build/cyberstorm-replay-report.txt): deterministic replay smoke summary and suggested expectation updates
 - [build/cyberstorm-balance-report.txt](build/cyberstorm-balance-report.txt): fairness and deterministic sweep summary
 - [build/cyberstorm-regression-report.txt](build/cyberstorm-regression-report.txt): boot/image contract summary for the shipped floppy artifacts

@@ -20,6 +20,12 @@ load_required_asset_banks:
     mov si, offset text_presentation_bank_error
     call load_asset_bank_or_fail
 
+    mov ax, GEOMETRY_BANK_LBA
+    mov cx, GEOMETRY_BANK_SECTORS
+    mov dx, GEOMETRY_BANK_SEG
+    mov si, offset text_geometry_bank_error
+    call load_asset_bank_or_fail
+
 load_required_asset_banks_done:
     pop es
     pop dx
@@ -124,3 +130,4 @@ fatal_asset_bank_spin:
 
 text_map_bank_error db 'CYBERSTORM MAP BANK ERROR', 0
 text_presentation_bank_error db 'CYBERSTORM PRESENTATION BANK ERROR', 0
+text_geometry_bank_error db 'CYBERSTORM GEOMETRY BANK ERROR', 0

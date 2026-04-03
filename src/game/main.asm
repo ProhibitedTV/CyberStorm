@@ -14,6 +14,8 @@ start:
     mov byte ptr [last_game_state], 0FFh
     mov byte ptr [feedback_timer], 0
     mov byte ptr [state_ticks], 0
+    mov byte ptr [scene_render_mode], DEBUG_SCENE_RENDER_MODE
+    mov byte ptr [gameplay_render_mode], DEBUG_GAMEPLAY_RENDER_MODE
 
 IF DEBUG_FORCE_SEED
     mov word ptr [rng_state], DEBUG_SEED_VALUE

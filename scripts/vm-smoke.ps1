@@ -23,6 +23,7 @@ if ([string]::IsNullOrWhiteSpace($ReportPath)) {
     $ReportPath = Join-Path $buildDir 'cyberstorm-vm-smoke-report.txt'
 }
 
+$startupScreenshotPath = Join-Path $artifactDir 'cyberstorm-vm-smoke-startup.png'
 $titleScreenshotPath = Join-Path $artifactDir 'cyberstorm-vm-smoke-title.png'
 $screenshotPath = Join-Path $artifactDir 'cyberstorm-vm-smoke.png'
 $logCopyPath = Join-Path $artifactDir 'cyberstorm-vm-smoke.log'
@@ -164,10 +165,15 @@ New-Item -ItemType Directory -Force -Path $artifactDir | Out-Null
 
 $status = 'PASS'
 $summaryLines = @()
-$artifactPaths = @($ReportPath, $titleScreenshotPath, $screenshotPath, $logCopyPath)
+$artifactPaths = @($ReportPath, $startupScreenshotPath, $titleScreenshotPath, $screenshotPath, $logCopyPath)
 $audioModeValue = Get-AsmEquValue -SourcePath $AudioConfigPath -Name 'AUDIO_MODE'
 $audioModeName = if ($audioModeValue -eq 1) { 'EXPERIMENTAL_MUSIC' } else { 'SFX_ONLY' }
-$titleCaptureSeconds = [Math]::Max(8, ($WaitSeconds - 6))
+$startupCaptureSeconds = 2
+$titleCaptureSeconds = [Math]::Min(($WaitSeconds - 2), 6)
+if ($titleCaptureSeconds -le $startupCaptureSeconds) {
+    $titleCaptureSeconds = $startupCaptureSeconds + 1
+}
+$titleSleepSeconds = $titleCaptureSeconds - $startupCaptureSeconds
 $attractCaptureSeconds = $WaitSeconds - $titleCaptureSeconds
 
 try {
@@ -176,7 +182,16 @@ try {
     Stop-VmIfRunning -Name $VmName
 
     Start-HeadlessVm -Name $VmName
-    Start-Sleep -Seconds $titleCaptureSeconds
+    Start-Sleep -Seconds $startupCaptureSeconds
+    Invoke-VBoxManage -Arguments @('controlvm', $VmName, 'screenshotpng', $startupScreenshotPath) | Out-Null
+    if (-not (Test-Path -LiteralPath $startupScreenshotPath)) {
+        throw ("VM smoke startup screenshot was not created: {0}" -f $startupScreenshotPath)
+    }
+
+    if ($titleSleepSeconds -gt 0) {
+        Start-Sleep -Seconds $titleSleepSeconds
+    }
+
     Invoke-VBoxManage -Arguments @('controlvm', $VmName, 'screenshotpng', $titleScreenshotPath) | Out-Null
     if (-not (Test-Path -LiteralPath $titleScreenshotPath)) {
         throw ("VM smoke title screenshot was not created: {0}" -f $titleScreenshotPath)
@@ -241,8 +256,10 @@ try {
         ("Wait: {0}s (targets splash -> title -> attract demo)" -f $WaitSeconds)
         ("Audio mode: {0}" -f $audioModeName)
         ("Audio controller: SB16 via {0} (host default {1})" -f $hostAudioDriver, $defaultAudioDriver)
-        ("Splash/title expectation: screenshotpng succeeded after {0}s in the boot -> splash -> title window." -f $titleCaptureSeconds)
+        ("Startup expectation: screenshotpng succeeded after {0}s inside the boot -> splash window." -f $startupCaptureSeconds)
+        ("Title expectation: screenshotpng succeeded after {0}s in the splash -> title window." -f $titleCaptureSeconds)
         ("Attract expectation: screenshotpng succeeded after the full {0}s smoke window." -f $WaitSeconds)
+        ("Startup screenshot: {0}" -f $startupScreenshotPath)
         ("Title screenshot: {0}" -f $titleScreenshotPath)
         ("Screenshot: {0}" -f $screenshotPath)
         ("VBox log: {0}" -f $logCopyPath)

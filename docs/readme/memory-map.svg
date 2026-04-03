@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="960" height="620" viewBox="0 0 960 620" role="img" aria-labelledby="title desc">
   <title id="title">CyberStorm memory map</title>
-  <desc id="desc">A simplified memory map showing the BIOS-owned low memory, the inherited boot stack, stage two, the banked map segment, the backbuffer, and VGA memory.</desc>
+  <desc id="desc">A simplified memory map showing the BIOS-owned low memory, the inherited boot stack, stage two, the banked map, presentation, and geometry segments, the backbuffer, and VGA memory.</desc>
   <defs>
     <style>
       .title { font: 700 28px 'Segoe UI', Arial, sans-serif; fill: #0f172a; }
@@ -35,24 +35,25 @@
   <text x="40" y="338" class="addr">1000:0000</text>
   <rect x="220" y="300" width="420" height="88" rx="14" fill="#0f172a" stroke="#22d3ee" stroke-width="2"/>
   <text x="242" y="328" class="label">Stage Two Code + Data</text>
-  <text x="242" y="350" class="body">20993 bytes loaded from LBA 1..42.</text>
+  <text x="242" y="350" class="body">43994 bytes loaded from LBA 1..86.</text>
   <text x="242" y="370" class="body">DS = CS here; the game assumes a shared segment.</text>
   <text x="242" y="390" class="body">Entry is byte 0 of src/game.asm, which jumps to start.</text>
 
   <text x="40" y="440" class="addr">7000:0000</text>
   <rect x="220" y="404" width="420" height="72" rx="14" fill="#0f172a" stroke="#f59e0b" stroke-width="2"/>
   <text x="242" y="432" class="label">Banked Content</text>
-  <text x="242" y="454" class="body">Map bank at 7000:0000 from LBA 43..50.</text>
-  <text x="242" y="474" class="body">Presentation bank at 7800:0000 from LBA 51..89.</text>
+  <text x="242" y="454" class="body">Map bank at 7000:0000 from LBA 87..94.</text>
+  <text x="242" y="474" class="body">Presentation bank at 7800:0000 from LBA 95..133.</text>
+  <text x="242" y="494" class="body">Geometry bank at 8000:0000 from LBA 134..135.</text>
 
-  <text x="40" y="526" class="addr">9000:0000</text>
-  <rect x="220" y="492" width="420" height="54" rx="14" fill="#0f172a" stroke="#22c55e" stroke-width="2"/>
-  <text x="242" y="524" class="label">Backbuffer</text>
-  <text x="390" y="524" class="body">64000-byte off-screen framebuffer</text>
+  <text x="40" y="536" class="addr">9000:0000</text>
+  <rect x="220" y="502" width="420" height="54" rx="14" fill="#0f172a" stroke="#22c55e" stroke-width="2"/>
+  <text x="242" y="534" class="label">Backbuffer</text>
+  <text x="390" y="534" class="body">64000-byte off-screen framebuffer</text>
 
-  <text x="40" y="586" class="addr">A000:0000</text>
-  <rect x="220" y="554" width="420" height="46" rx="12" fill="#0f172a" stroke="#22c55e" stroke-width="2"/>
-  <text x="242" y="583" class="label">VGA Mode 13h Framebuffer</text>
+  <text x="40" y="596" class="addr">A000:0000</text>
+  <rect x="220" y="564" width="420" height="46" rx="12" fill="#0f172a" stroke="#22c55e" stroke-width="2"/>
+  <text x="242" y="593" class="label">VGA Mode 13h Framebuffer</text>
 
   <rect x="690" y="208" width="220" height="150" rx="16" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"/>
   <text x="712" y="238" class="addr">Key assumptions</text>

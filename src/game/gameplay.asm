@@ -659,6 +659,7 @@ keep_pulse_count:
     mov byte ptr [spoof_timer], 0
     mov byte ptr [spoof_x], START_X
     mov byte ptr [spoof_y], START_Y
+    call game3d_reset_room_state
     call reset_sector_mastery
     call clear_enemy_pressure
     call clear_enemy_table
@@ -761,6 +762,7 @@ open_exit:
     mov bh, [exit_y]
     mov dl, TILE_EXIT_OPEN
     call set_tile
+    call set_effect_focus_tile
     ret
 
 place_template_shards:
@@ -1533,6 +1535,7 @@ set_tile:
     call map_index
     mov [map_tiles + si], dl
     pop bx
+    call game3d_mark_room_dirty
     ret
 
 map_index:

@@ -1,6 +1,7 @@
 render_game_screen:
     call draw_game_panels
     call render_game_status
+IF DEBUG_GAMEPLAY_RENDER_MODE EQ GAMEPLAY_RENDER_MODE_2D
     call render_map
     ; Base tiles are fully opaque, so the structural backdrop has to sit just
     ; above them while ambient marks/effects/actors layer upward from there.
@@ -9,6 +10,9 @@ render_game_screen:
     call render_game_effects
     call render_enemies
     call render_player
+ELSE
+    call render_gameplay_3d
+ENDIF
 IF DEBUG_OVERLAY
     call render_debug_overlay
 ENDIF

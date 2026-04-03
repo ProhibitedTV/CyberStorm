@@ -268,13 +268,13 @@ try {
     Ensure-VmRegistered -Name $VmName
     $vmSmokeReport = Join-Path $buildDir 'cyberstorm-vm-smoke-report.txt'
     $vmSmokeResult = & $VmSmokeScriptPath -ReportPath $vmSmokeReport
-    $titleSource = Join-Path $buildDir 'vm-smoke\cyberstorm-vm-smoke-title.png'
+    $titleSource = Join-Path $buildDir 'vm-smoke\cyberstorm-vm-smoke-startup.png'
     $titleTarget = Join-Path $artifactDir 'showcase-title.png'
     Copy-Item -LiteralPath $titleSource -Destination $titleTarget -Force
     $artifactPaths.Add($titleTarget)
     $summaryLines.Add(("title: {0}" -f $titleTarget))
     $reportLines.Add('Role: title')
-    $reportLines.Add(("  Source: release VM smoke"))
+    $reportLines.Add(("  Source: release VM smoke startup frame"))
     $reportLines.Add(("  Screenshot: {0}" -f $titleTarget))
     $reportLines.Add('')
 

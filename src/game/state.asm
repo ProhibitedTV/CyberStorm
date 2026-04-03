@@ -84,6 +84,22 @@ music_theme  db MUSIC_THEME_NONE
 music_ticks  db 0
 music_note   db MUSIC_NOTE_REST
 music_ptr    dw 0
+scene_render_mode db SCENE_RENDER_MODE_3D
+gameplay_render_mode db GAMEPLAY_RENDER_MODE_3D
+scene3d_active db 0
+scene3d_index  db 0
+scene3d_face_count db 0
+scene3d_vertex_count dw 0
+scene3d_vertex_source dw offset scene3d_vertex_raw
+scene3d_face_source dw offset scene3d_face_raw
+game3d_rendering_active db 0
+game3d_room_dirty db 1
+game3d_room_overflow db 0
+game3d_room_face_count db 0
+game3d_room_vertex_count dw 0
+game3d_emit_flags db 0
+game3d_camera_yaw_current db GAME3D_YAW_DEFAULT
+game3d_camera_yaw_target  db GAME3D_YAW_DEFAULT
 key_extended db 0
 any_key_pending db 0
 input_event_count db 0
@@ -122,6 +138,46 @@ rect_w         dw 0
 rect_h         dw 0
 text_color     db 0
 glyph_row_bits db 0
+
+scene3d_clip_left   dw 0
+scene3d_clip_top    dw 0
+scene3d_clip_right  dw SCREEN_W - 1
+scene3d_clip_bottom dw SCREEN_H - 1
+scene3d_center_x    dw SCREEN_W / 2
+scene3d_center_y    dw SCREEN_H / 2
+scene3d_project_scale dw 112
+scene3d_cam_x       dw 0
+scene3d_cam_y       dw 0
+scene3d_cam_z       dw 0
+scene3d_yaw_angle   db 0
+scene3d_pitch_angle db 0
+scene3d_tick        db 0
+scene3d_temp_x      dw 0
+scene3d_temp_y      dw 0
+scene3d_temp_z      dw 0
+scene3d_temp_u      dw 0
+scene3d_temp_v      dw 0
+scene3d_temp_w      dw 0
+scene3d_temp_l      dw 0
+scene3d_temp_r      dw 0
+scene3d_tri_x0      dw 0
+scene3d_tri_y0      dw 0
+scene3d_tri_x1      dw 0
+scene3d_tri_y1      dw 0
+scene3d_tri_x2      dw 0
+scene3d_tri_y2      dw 0
+scene3d_temp_color  db 0
+scene3d_temp_dither db 0
+scene3d_temp_face   db 0
+scene3d_vertex_x    dw SCENE3D_MAX_VERTICES dup (0)
+scene3d_vertex_y    dw SCENE3D_MAX_VERTICES dup (0)
+scene3d_vertex_z    dw SCENE3D_MAX_VERTICES dup (0)
+scene3d_vertex_raw  db SCENE3D_MAX_VERTICES * SCENE3D_VERTEX_BYTES dup (0)
+scene3d_face_depth  dw SCENE3D_MAX_FACES dup (0)
+scene3d_face_order  db SCENE3D_MAX_FACES dup (0)
+scene3d_face_raw    db SCENE3D_MAX_FACES * SCENE3D_FACE_BYTES dup (0)
+game3d_room_vertex_raw db SCENE3D_MAX_VERTICES * SCENE3D_VERTEX_BYTES dup (0)
+game3d_room_face_raw   db SCENE3D_MAX_FACES * SCENE3D_FACE_BYTES dup (0)
 
 ; Enemy slot layout: [alive, x, y, kind].
 enemies db MAX_ENEMIES * ENEMY_SIZE dup (0)
@@ -165,6 +221,9 @@ include generated_demos.inc
 ; Replay verification tables are generated from scripts\replay-harness.ps1 so
 ; the live runtime can prove it still matches the deterministic host model.
 include generated_runtime_verify.inc
+; Low-poly scene geometry is generated from assets\geometry.psd1 into a banked
+; payload plus scene/camera metadata tables for the phase-1 3D renderer.
+include generated_geometry.inc
 
 text_msg_sector   db 'SECTOR LIVE. LIFT 4 SHARDS TO CRACK THE GATE.', 0
 text_msg_block    db 'BLACK ICE HOLDS. CUT A DIFFERENT LINE.', 0
@@ -182,7 +241,8 @@ text_msg_spoof    db 'TERMINAL SPOOF LIVE. HUNTERS PULL TO THE GATE.', 0
 splash_brand    db 'BITRIVER', 0
 splash_subtitle db 'SOFTWARE', 0
 splash_tagline  db 'BOOTSTRAPPING WORLDS FROM BARE METAL.', 0
-splash_skip     db 'ENTER SPACE OR MOVE TO RUN  ANY KEY TO SKIP', 0
+splash_run_prompt  db 'ENTER SPACE OR MOVE TO RUN', 0
+splash_skip_prompt db 'OTHER KEYS SKIP TO TITLE', 0
 
 title_logo    db 'CYBERSTORM', 0
 title_line_1  db 'NO OS. NO SHELL. JUST THE BREACH.', 0

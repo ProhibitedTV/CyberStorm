@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1000" height="420" viewBox="0 0 1000 420" role="img" aria-labelledby="title desc">
   <title id="title">CyberStorm boot flow</title>
-  <desc id="desc">A simple flow diagram showing BIOS loading the boot sector, the boot sector loading stage two, stage two loading the map and presentation banks, and the game entering VGA mode 13h.</desc>
+  <desc id="desc">A simple flow diagram showing BIOS loading the boot sector, the boot sector loading stage two, stage two loading the map, presentation, and geometry banks, and the game entering VGA mode 13h.</desc>
   <defs>
     <style>
       .title { font: 700 28px 'Segoe UI', Arial, sans-serif; fill: #0f172a; }
@@ -16,7 +16,7 @@
   </defs>
 
   <text x="40" y="42" class="title">CyberStorm Boot Flow</text>
-  <text x="40" y="68" class="subtitle">Current build facts: boot sector at LBA 0, stage two at LBA 1..42, map bank at LBA 43..50, presentation bank at LBA 51..89.</text>
+  <text x="40" y="68" class="subtitle">Current build facts: boot sector at LBA 0, stage two at LBA 1..86, map bank at LBA 87..94, presentation bank at LBA 95..133, geometry bank at LBA 134..135.</text>
 
   <rect x="40" y="110" width="170" height="120" rx="18" fill="#0f172a" stroke="#38bdf8" stroke-width="2"/>
   <text x="60" y="142" class="label">1. BIOS Entry</text>
@@ -30,24 +30,24 @@
   <text x="250" y="170" class="body">132 bytes of code</text>
   <text x="250" y="190" class="body">plus 0x55AA signature</text>
   <text x="250" y="214" class="body">Uses INT 13h to read</text>
-  <text x="250" y="234" class="body">the next 42 sectors</text>
+  <text x="250" y="234" class="body">the next 86 sectors</text>
 
   <rect x="420" y="110" width="170" height="120" rx="18" fill="#0f172a" stroke="#38bdf8" stroke-width="2"/>
   <text x="440" y="142" class="label">3. Stage Two</text>
-  <text x="440" y="170" class="body">LBA 1..42</text>
-  <text x="440" y="190" class="body">20993 bytes loaded to</text>
+  <text x="440" y="170" class="body">LBA 1..86</text>
+  <text x="440" y="190" class="body">30451 bytes loaded to</text>
   <text x="440" y="210" class="body">1000:0000</text>
   <text x="440" y="234" class="body">Entry byte 0 jumps into</text>
   <text x="440" y="254" class="body">the runtime in game.asm</text>
 
   <rect x="610" y="110" width="170" height="120" rx="18" fill="#0f172a" stroke="#f59e0b" stroke-width="2"/>
   <text x="630" y="142" class="label">4. Asset Banks</text>
-  <text x="630" y="170" class="body">Map bank at LBA 43..50</text>
+  <text x="630" y="170" class="body">Map bank at LBA 87..94</text>
   <text x="630" y="190" class="body">3780 bytes payload</text>
   <text x="630" y="210" class="body">Presentation bank at</text>
-  <text x="630" y="230" class="body">LBA 51..89, 19968 bytes</text>
-  <text x="630" y="250" class="body">Loaded to 7000:0000 and</text>
-  <text x="630" y="270" class="body">7800:0000 by banks.asm</text>
+  <text x="630" y="230" class="body">LBA 95..133, 19968 bytes</text>
+  <text x="630" y="250" class="body">Geometry bank at LBA 134..135</text>
+  <text x="630" y="270" class="body">Loaded to 7000/7800/8000</text>
 
   <rect x="800" y="110" width="160" height="120" rx="18" fill="#0f172a" stroke="#22c55e" stroke-width="2"/>
   <text x="820" y="142" class="label">5. VGA Runtime</text>
@@ -69,11 +69,13 @@
   <text x="445" y="298" class="chip">Map bank: 7000:0000</text>
   <rect x="628" y="318" width="206" height="30" rx="15" fill="#fef3c7"/>
   <text x="645" y="338" class="chip">Present bank: 7800:0000</text>
+  <rect x="628" y="358" width="206" height="30" rx="15" fill="#fef3c7"/>
+  <text x="645" y="378" class="chip">Geometry bank: 8000:0000</text>
   <rect x="628" y="278" width="158" height="30" rx="15" fill="#dcfce7"/>
   <text x="645" y="298" class="chip">Backbuffer: 9000:0000</text>
   <rect x="802" y="278" width="158" height="30" rx="15" fill="#dcfce7"/>
   <text x="819" y="298" class="chip">VGA: A000:0000</text>
 
   <text x="40" y="352" class="note">What this shows: the build keeps the floppy layout and the runtime load addresses aligned with the documented boot contract.</text>
-  <text x="40" y="374" class="note">The boot sector loads stage two, stage two loads the banked maps and presentation scene kit, and the game enters raw VGA without DOS or a host runtime.</text>
+  <text x="40" y="374" class="note">The boot sector loads stage two, stage two loads the banked maps, presentation scene kit, and low-poly geometry payload, and the game enters raw VGA without DOS or a host runtime.</text>
 </svg>

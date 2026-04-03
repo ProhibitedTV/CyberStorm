@@ -5,6 +5,7 @@ param(
     [string]$Stage2BinaryPath = (Join-Path (Join-Path $PSScriptRoot '..') 'build\cyberstorm-stage2.bin'),
     [string]$MapBankBinaryPath = (Join-Path (Join-Path $PSScriptRoot '..') 'build\cyberstorm-map-bank.bin'),
     [string]$PresentationBankBinaryPath = (Join-Path (Join-Path $PSScriptRoot '..') 'build\cyberstorm-presentation-bank.bin'),
+    [string]$GeometryBankBinaryPath = (Join-Path (Join-Path $PSScriptRoot '..') 'build\cyberstorm-geometry-bank.bin'),
     [string]$ImagePath = (Join-Path (Join-Path $PSScriptRoot '..') 'build\cyberstorm.img'),
     [string]$VfdPath = (Join-Path (Join-Path $PSScriptRoot '..') 'build\cyberstorm.vfd'),
     [string]$BootListPath = (Join-Path (Join-Path $PSScriptRoot '..') 'build\boot.lst'),
@@ -236,6 +237,7 @@ Assert-PathExists -Path $BootBinaryPath -Label 'boot binary'
 Assert-PathExists -Path $Stage2BinaryPath -Label 'stage-two binary'
 Assert-PathExists -Path $MapBankBinaryPath -Label 'map bank binary'
 Assert-PathExists -Path $PresentationBankBinaryPath -Label 'presentation bank binary'
+Assert-PathExists -Path $GeometryBankBinaryPath -Label 'geometry bank binary'
 Assert-PathExists -Path $ImagePath -Label 'disk image'
 Assert-PathExists -Path $VfdPath -Label 'floppy image'
 Assert-PathExists -Path $BootListPath -Label 'boot listing'
@@ -245,6 +247,7 @@ $bootBytes = [IO.File]::ReadAllBytes($BootBinaryPath)
 $stage2Bytes = [IO.File]::ReadAllBytes($Stage2BinaryPath)
 $mapBankBytes = [IO.File]::ReadAllBytes($MapBankBinaryPath)
 $presentationBankBytes = [IO.File]::ReadAllBytes($PresentationBankBinaryPath)
+$geometryBankBytes = [IO.File]::ReadAllBytes($GeometryBankBinaryPath)
 $imageBytes = [IO.File]::ReadAllBytes($ImagePath)
 $vfdBytes = [IO.File]::ReadAllBytes($VfdPath)
 
@@ -279,6 +282,10 @@ $presentationBankLba = Get-AsmEquValue -SourcePath $BankLayoutPath -Name 'PRESEN
 $presentationBankSectors = Get-AsmEquValue -SourcePath $BankLayoutPath -Name 'PRESENT_BANK_SECTORS'
 $configuredPresentationBankBytes = Get-AsmEquValue -SourcePath $BankLayoutPath -Name 'PRESENT_BANK_BYTES'
 $presentationBankPaddedBytes = Get-AsmEquValue -SourcePath $BankLayoutPath -Name 'PRESENT_BANK_PADDED_BYTES'
+$geometryBankLba = Get-AsmEquValue -SourcePath $BankLayoutPath -Name 'GEOMETRY_BANK_LBA'
+$geometryBankSectors = Get-AsmEquValue -SourcePath $BankLayoutPath -Name 'GEOMETRY_BANK_SECTORS'
+$configuredGeometryBankBytes = Get-AsmEquValue -SourcePath $BankLayoutPath -Name 'GEOMETRY_BANK_BYTES'
+$geometryBankPaddedBytes = Get-AsmEquValue -SourcePath $BankLayoutPath -Name 'GEOMETRY_BANK_PADDED_BYTES'
 
 if ($configuredMapBankBytes -ne $mapBankBytes.Length) {
     throw ("MAP_BANK_BYTES says {0}, but cyberstorm-map-bank.bin is {1} bytes." -f $configuredMapBankBytes, $mapBankBytes.Length)
@@ -314,6 +321,23 @@ if ($presentationBankLba -ne $expectedPresentationBankLba) {
     throw ("PRESENT_BANK_LBA says {0}, but the bank should begin immediately after the map bank at LBA {1}." -f $presentationBankLba, $expectedPresentationBankLba)
 }
 
+if ($configuredGeometryBankBytes -ne $geometryBankBytes.Length) {
+    throw ("GEOMETRY_BANK_BYTES says {0}, but cyberstorm-geometry-bank.bin is {1} bytes." -f $configuredGeometryBankBytes, $geometryBankBytes.Length)
+}
+
+if ($geometryBankPaddedBytes -ne ($geometryBankSectors * $layout.SectorBytes)) {
+    throw ("GEOMETRY_BANK_PADDED_BYTES says {0}, but GEOMETRY_BANK_SECTORS implies {1} bytes." -f $geometryBankPaddedBytes, ($geometryBankSectors * $layout.SectorBytes))
+}
+
+if ($geometryBankPaddedBytes -gt $layout.AssetBankLoadLimitBytes) {
+    throw ("Geometry bank occupies {0} padded bytes, which exceeds the current single-segment bank load limit ({1})." -f $geometryBankPaddedBytes, $layout.AssetBankLoadLimitBytes)
+}
+
+$expectedGeometryBankLba = $presentationBankLba + $presentationBankSectors
+if ($geometryBankLba -ne $expectedGeometryBankLba) {
+    throw ("GEOMETRY_BANK_LBA says {0}, but the bank should begin immediately after the presentation bank at LBA {1}." -f $geometryBankLba, $expectedGeometryBankLba)
+}
+
 if ($imageBytes.Length -ne $layout.FloppyBytes) {
     throw ("cyberstorm.img must be {0} bytes. Found {1}." -f $layout.FloppyBytes, $imageBytes.Length)
 }
@@ -330,8 +354,10 @@ Assert-ImageRangeMatches -ImageBytes $imageBytes -Offset ($mapBankLba * $layout.
 Assert-ZeroFill -Bytes $imageBytes -Offset (($mapBankLba * $layout.SectorBytes) + $mapBankBytes.Length) -Length ($mapBankPaddedBytes - $mapBankBytes.Length) -Label 'Map bank sector padding'
 Assert-ImageRangeMatches -ImageBytes $imageBytes -Offset ($presentationBankLba * $layout.SectorBytes) -ExpectedBytes $presentationBankBytes -Label 'Presentation bank image range'
 Assert-ZeroFill -Bytes $imageBytes -Offset (($presentationBankLba * $layout.SectorBytes) + $presentationBankBytes.Length) -Length ($presentationBankPaddedBytes - $presentationBankBytes.Length) -Label 'Presentation bank sector padding'
+Assert-ImageRangeMatches -ImageBytes $imageBytes -Offset ($geometryBankLba * $layout.SectorBytes) -ExpectedBytes $geometryBankBytes -Label 'Geometry bank image range'
+Assert-ZeroFill -Bytes $imageBytes -Offset (($geometryBankLba * $layout.SectorBytes) + $geometryBankBytes.Length) -Length ($geometryBankPaddedBytes - $geometryBankBytes.Length) -Label 'Geometry bank sector padding'
 
-$diskFootprintBytes = $layout.SectorBytes + $stage2PaddedBytes + $mapBankPaddedBytes + $presentationBankPaddedBytes
+$diskFootprintBytes = $layout.SectorBytes + $stage2PaddedBytes + $mapBankPaddedBytes + $presentationBankPaddedBytes + $geometryBankPaddedBytes
 Assert-ZeroFill -Bytes $imageBytes -Offset $diskFootprintBytes -Length ($layout.FloppyBytes - $diskFootprintBytes) -Label 'Unused floppy tail'
 
 $entryInfo = Get-StageEntryInfo -Stage2Bytes $stage2Bytes
@@ -343,6 +369,7 @@ $summaryLines.Add(("Boot sector: 512 bytes, signature 0x55AA, LBA 0 matches both
 $summaryLines.Add(("Stage two: {0} bytes, {1} sectors, GAME_SECTORS matches, entry {2}" -f $stage2Bytes.Length, $stage2Sectors, $entryInfo.Description))
 $summaryLines.Add(("Map bank: {0} bytes ({1} padded), {2} sectors, LBA {3}..{4}" -f $mapBankBytes.Length, $mapBankPaddedBytes, $mapBankSectors, $mapBankLba, ($mapBankLba + $mapBankSectors - 1)))
 $summaryLines.Add(("Presentation bank: {0} bytes ({1} padded), {2} sectors, LBA {3}..{4}" -f $presentationBankBytes.Length, $presentationBankPaddedBytes, $presentationBankSectors, $presentationBankLba, ($presentationBankLba + $presentationBankSectors - 1)))
+$summaryLines.Add(("Geometry bank: {0} bytes ({1} padded), {2} sectors, LBA {3}..{4}" -f $geometryBankBytes.Length, $geometryBankPaddedBytes, $geometryBankSectors, $geometryBankLba, ($geometryBankLba + $geometryBankSectors - 1)))
 $summaryLines.Add(("Images: .img and .vfd match exactly, unused tail zero-filled from byte {0}" -f $diskFootprintBytes))
 $summaryLines.Add(("Diagnostics: boot.lst and game.lst are present for post-failure inspection"))
 
@@ -354,6 +381,7 @@ $reportLines.Add(("  Boot sector: 512 bytes, signature 0x55AA, boot code limit s
 $reportLines.Add(("  Stage2: {0} bytes, {1} sectors, load {2}:{3}, entry {4}" -f $stage2Bytes.Length, $stage2Sectors, (Format-Hex16 $layout.Stage2LoadSegment), (Format-Hex16 $layout.Stage2LoadOffset), $entryInfo.Description))
 $reportLines.Add(("  Map bank: {0} bytes ({1} padded), {2} sectors, LBA {3}..{4}" -f $mapBankBytes.Length, $mapBankPaddedBytes, $mapBankSectors, $mapBankLba, ($mapBankLba + $mapBankSectors - 1)))
 $reportLines.Add(("  Presentation bank: {0} bytes ({1} padded), {2} sectors, LBA {3}..{4}" -f $presentationBankBytes.Length, $presentationBankPaddedBytes, $presentationBankSectors, $presentationBankLba, ($presentationBankLba + $presentationBankSectors - 1)))
+$reportLines.Add(("  Geometry bank: {0} bytes ({1} padded), {2} sectors, LBA {3}..{4}" -f $geometryBankBytes.Length, $geometryBankPaddedBytes, $geometryBankSectors, $geometryBankLba, ($geometryBankLba + $geometryBankSectors - 1)))
 $reportLines.Add(("  Disk image: {0} bytes, occupied through byte {1}, unused tail zero-filled" -f $layout.FloppyBytes, ($diskFootprintBytes - 1)))
 $reportLines.Add('')
 $reportLines.Add('Artifacts')
@@ -361,6 +389,7 @@ $reportLines.Add(("  Boot binary: {0}" -f $BootBinaryPath))
 $reportLines.Add(("  Stage-two binary: {0}" -f $Stage2BinaryPath))
 $reportLines.Add(("  Map bank binary: {0}" -f $MapBankBinaryPath))
 $reportLines.Add(("  Presentation bank binary: {0}" -f $PresentationBankBinaryPath))
+$reportLines.Add(("  Geometry bank binary: {0}" -f $GeometryBankBinaryPath))
 $reportLines.Add(("  Disk image: {0}" -f $ImagePath))
 $reportLines.Add(("  Floppy image: {0}" -f $VfdPath))
 $reportLines.Add(("  Listings: {0}, {1}" -f $BootListPath, $GameListPath))

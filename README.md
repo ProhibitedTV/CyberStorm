@@ -25,7 +25,8 @@
 
 - **A real boot path.** The build emits a bootable floppy image, not a host app wrapped in a fake shell.
 - **A compact but structured runtime.** Stage two stays inside a documented single-segment contract while still using modular render, gameplay, audio, and data layers.
-- **Generated content tooling.** Sprites, banked presentation scene-kit assets, sectors, rules, demos, and music come from readable source files that generate MASM-friendly data at build time.
+- **Generated content tooling.** Sprites, banked presentation assets, low-poly scene geometry, sectors, rules, demos, and music come from readable source files that generate MASM-friendly data at build time.
+- **A real software 3D render path.** Splash, title, sector-entry cards, end screens, and now live gameplay all run through a flat-shaded low-poly renderer, while `-DebugRender2D` still keeps the legacy 2D oracle available for parity work.
 - **Disciplined validation.** The build enforces boot/image layout, generated content shape, deterministic debug options, and a lightweight balance harness.
 
 ## Visual Gallery
@@ -47,7 +48,7 @@ CyberStorm is small enough to inspect, but it is no longer a single opaque assem
 
 ![CyberStorm boot flow](docs/readme/boot-flow.svg)
 
-The boot sector at `LBA 0` loads stage two from `LBA 1..49` into `1000:0000`, then stage two loads the map bank from `LBA 50..57` into `7000:0000` and the presentation bank from `LBA 58..96` into `7800:0000` before entering VGA gameplay.
+The boot sector at `LBA 0` loads stage two from `LBA 1..86` into `1000:0000`, then stage two loads the map bank from `LBA 87..94` into `7000:0000`, the presentation bank from `LBA 95..133` into `7800:0000`, and the geometry bank from `LBA 134..135` into `8000:0000` before entering VGA gameplay.
 
 ### Runtime Layout
 
@@ -55,13 +56,13 @@ The boot sector at `LBA 0` loads stage two from `LBA 1..49` into `1000:0000`, th
 
 ![CyberStorm runtime modules](docs/readme/runtime-modules.svg)
 
-The runtime keeps BIOS-owned low memory untouched, inherits the boot stack at `0000:7C00`, runs stage two from a single segment at `1000:0000`, and uses a backbuffer at `9000:0000` before presenting to VGA memory at `A000:0000`.
+The runtime keeps BIOS-owned low memory untouched, inherits the boot stack at `0000:7C00`, runs stage two from a single segment at `1000:0000`, stages maps/presentation/geometry in conventional-memory banks, and uses a backbuffer at `9000:0000` before presenting to VGA memory at `A000:0000`.
 
 ### Asset And Content Pipeline
 
 ![CyberStorm asset pipeline](docs/readme/asset-pipeline.svg)
 
-[assets/visuals.psd1](assets/visuals.psd1), [assets/presentation.psd1](assets/presentation.psd1), [assets/sectors.psd1](assets/sectors.psd1), [assets/demos.psd1](assets/demos.psd1), and [assets/music.psd1](assets/music.psd1) are the readable source of truth. [scripts/build.ps1](scripts/build.ps1) turns them into generated includes plus banked map and presentation payloads, and the sector source now includes hybrid authored encounter anchors, named breach scenarios, and 6-point shard candidate pools on top of map/rule data.
+[assets/visuals.psd1](assets/visuals.psd1), [assets/presentation.psd1](assets/presentation.psd1), [assets/geometry.psd1](assets/geometry.psd1), [assets/sectors.psd1](assets/sectors.psd1), [assets/demos.psd1](assets/demos.psd1), and [assets/music.psd1](assets/music.psd1) are the readable source of truth. [scripts/build.ps1](scripts/build.ps1) turns them into generated includes plus banked map, presentation, and geometry payloads, and the sector source now includes hybrid authored encounter anchors, named breach scenarios, and 6-point shard candidate pools on top of map/rule data.
 
 ## Quickstart
 
@@ -109,14 +110,14 @@ These values come from the current [build/cyberstorm-build-report.txt](build/cyb
 | Fact | Current build |
 | --- | --- |
 | Boot code | `132 / 510` bytes |
-| Stage two | `25057` bytes across `49` sectors |
-| Banked payloads | maps `3780` bytes across `8` sectors, presentation `19968` bytes across `39` sectors |
-| Bank LBA ranges | map `50..57`, presentation `58..96` |
-| Content set | `3` sectors, `9` maps, `9` breach scenarios, `3` demos, `5` music themes, `13` presentation assets |
+| Stage two | `43994` bytes across `86` sectors |
+| Banked payloads | maps `3780` bytes across `8` sectors, presentation `19968` bytes across `39` sectors, geometry `960` bytes across `2` sectors |
+| Bank LBA ranges | map `87..94`, presentation `95..133`, geometry `134..135` |
+| Content set | `3` sectors, `9` maps, `9` breach scenarios, `3` demos, `5` music themes, `13` presentation assets, `7` geometry scenes |
 | Balance sweep | `36` deterministic scenarios |
 | Release audio policy | `SFX_ONLY` by default |
 | Video target | `320x200x256` in VGA mode `13h` |
-| Runtime model | Single-segment `16-bit` real mode |
+| Runtime model | Single-segment `16-bit` real mode with low-poly scenes and a first gameplay-room 3D renderer |
 
 ## Why This Is A Strong AI-Assisted Development Example
 
@@ -175,6 +176,8 @@ Useful switches:
 - `-DebugOverlay` shows compact live state in-game, including `GS/DM/GD/KS/KA/FA/FE/AB/AM/FX/FT` for state, demo, guard, raw scan, ASCII, last semantic frontend action, frontend event count, audio backend, audio mode, active SFX, and SFX timer
 - `-DebugStartInGame` skips splash/title and boots directly into a run
 - `-DebugStartSector <n>` starts every new run from a chosen sector
+- `-DebugRender2D` keeps the legacy 2D scene/gameplay oracle available while the 3D room path evolves
+- `-DebugRender3D` forces the low-poly scene plus gameplay-room renderer explicitly in debug builds
 
 ### Audio Modes
 
@@ -361,6 +364,7 @@ CyberStorm now has a layered confidence model:
 - [build/cyberstorm-stage2.bin](build/cyberstorm-stage2.bin)
 - [build/generated_art.inc](build/generated_art.inc)
 - [build/generated_presentation_content.inc](build/generated_presentation_content.inc)
+- [build/generated_geometry.inc](build/generated_geometry.inc)
 - [build/generated_sector_content.inc](build/generated_sector_content.inc)
 - [build/generated_maps.inc](build/generated_maps.inc)
 - [build/generated_demos.inc](build/generated_demos.inc)
@@ -368,6 +372,7 @@ CyberStorm now has a layered confidence model:
 - [build/generated_bank_layout.inc](build/generated_bank_layout.inc)
 - [build/cyberstorm-map-bank.bin](build/cyberstorm-map-bank.bin)
 - [build/cyberstorm-presentation-bank.bin](build/cyberstorm-presentation-bank.bin)
+- [build/cyberstorm-geometry-bank.bin](build/cyberstorm-geometry-bank.bin)
 - [build/cyberstorm-replay-report.txt](build/cyberstorm-replay-report.txt)
 - [build/cyberstorm-balance-report.txt](build/cyberstorm-balance-report.txt)
 - [build/cyberstorm-regression-report.txt](build/cyberstorm-regression-report.txt)
@@ -386,10 +391,12 @@ CyberStorm now has a layered confidence model:
 - [build/game.lst](build/game.lst): stage-two assembly listing
 - [build/generated_art.inc](build/generated_art.inc): generated sprite/tile data as MASM sees it
 - [build/generated_presentation_content.inc](build/generated_presentation_content.inc): generated scene-kit asset offsets and sizes as MASM sees them
+- [build/generated_geometry.inc](build/generated_geometry.inc): generated scene/camera tables and geometry-bank offsets as MASM sees them
 - [build/generated_demos.inc](build/generated_demos.inc): generated attract-mode scripts as MASM sees them
 - [build/generated_bank_layout.inc](build/generated_bank_layout.inc): runtime bank metadata
 - [build/cyberstorm-map-bank.bin](build/cyberstorm-map-bank.bin): raw post-boot map payload
 - [build/cyberstorm-presentation-bank.bin](build/cyberstorm-presentation-bank.bin): raw post-boot presentation payload
+- [build/cyberstorm-geometry-bank.bin](build/cyberstorm-geometry-bank.bin): raw post-boot low-poly scene payload
 - [build/cyberstorm-replay-report.txt](build/cyberstorm-replay-report.txt): deterministic replay smoke summary and suggested expectation updates
 - [build/cyberstorm-balance-report.txt](build/cyberstorm-balance-report.txt): fairness and deterministic sweep summary
 - [build/cyberstorm-regression-report.txt](build/cyberstorm-regression-report.txt): boot/image contract summary for the shipped floppy artifacts

@@ -50,66 +50,558 @@ render_present:
     ret
 
 draw_splash_scene:
-    mov bx, 48
-    mov dx, 34
-    mov cx, 224
-    mov bp, 124
-    mov al, PAL_PANEL
-    call fill_rect
+IF DEBUG_SCENE_RENDER_MODE EQ SCENE_RENDER_MODE_2D
+    call draw_splash_scene_2d
+ELSE
+    call draw_splash_scene_3d
+ENDIF
+    ret
 
-    mov bx, 44
-    mov dx, 30
-    mov cx, 232
-    mov bp, 132
-    test byte ptr [anim_phase], 1
-    jz splash_frame_base
-    mov al, PAL_CYAN2
-    jmp splash_frame_ready
+draw_splash_scene_2d:
+    ; The startup splash now reads as a studio ident instead of a flat panel:
+    ; the floor grid and pylons establish depth first, then the BitRiver mark
+    ; rises in, and finally the existing prompt/progress UI comes online.
+    call draw_splash_backdrop
+    call draw_splash_floor_grid
 
-splash_frame_base:
-    mov al, PAL_CYAN
+    cmp byte ptr [splash_ticks], SPLASH_REVEAL_PYLONS
+    jb splash_scene_logo_gate
+    call draw_splash_pylons
 
-splash_frame_ready:
-    call draw_rect_outline
-
+splash_scene_logo_gate:
     cmp byte ptr [splash_ticks], SPLASH_REVEAL_LOGO
     jb splash_scene_ui_gate
-
-    mov bx, 128
-    mov dx, 42
-    mov si, PRESENT_BANNER_SPLASH_LOGO_OFFSET
-    call draw_presentation_asset_1x
-
-    cmp byte ptr [splash_ticks], SPLASH_REVEAL_WORDMARK
-    jb splash_scene_ui_gate
-
-    mov bx, 120
-    mov dx, 64
-    mov si, PRESENT_BANNER_SPLASH_WORDMARK_OFFSET
-    call draw_presentation_asset_1x
+    call draw_splash_brand_stack
 
 splash_scene_ui_gate:
     cmp byte ptr [splash_ticks], SPLASH_REVEAL_UI
     jb splash_scene_done
+    call draw_splash_ui
+splash_scene_done:
+    ret
 
-    mov bx, 60
-    mov dx, 110
+draw_splash_backdrop:
+    push ax
+    push bx
+    push cx
+    push dx
+    push bp
+
+    mov bx, 0
+    mov dx, 0
+    mov cx, SCREEN_W
+    mov bp, SCREEN_H
+    mov al, PAL_BG0
+    call fill_rect
+
+    mov bx, 0
+    mov dx, 92
+    mov cx, SCREEN_W
+    mov bp, 108
+    mov al, PAL_BG1
+    call fill_rect
+
+    mov bx, 46
+    mov dx, 74
+    mov cx, 228
+    mov bp, 1
+    mov al, PAL_PANEL2
+    call fill_rect
+
+    mov bx, 62
+    mov dx, 78
+    mov cx, 196
+    mov bp, 1
+    mov al, PAL_CYAN
+    call fill_rect
+
+    mov bx, 88
+    mov dx, 82
+    mov cx, 144
+    mov bp, 2
+    test byte ptr [anim_phase], 1
+    jz splash_horizon_dim
+    mov al, PAL_CYAN2
+    jmp splash_horizon_ready
+
+splash_horizon_dim:
+    mov al, PAL_CYAN
+
+splash_horizon_ready:
+    call fill_rect
+
+    mov bx, 112
+    mov dx, 86
+    mov cx, 96
+    mov bp, 5
+    mov al, PAL_PANEL
+    call fill_rect
+
+    mov bx, 130
+    mov dx, 90
+    mov cx, 60
+    mov bp, 5
+    mov al, PAL_PANEL2
+    call fill_rect
+
+    pop bp
+    pop dx
+    pop cx
+    pop bx
+    pop ax
+    ret
+
+draw_splash_floor_grid:
+    call draw_splash_grid_rungs
+    call draw_splash_grid_rails
+    call draw_splash_lane_markers
+    ret
+
+draw_splash_grid_rungs:
+    push ax
+    push bx
+    push cx
+    push dx
+    push si
+    push di
+    push bp
+    xor si, si
+    xor di, di
+
+splash_grid_rung_loop:
+    cmp di, 8
+    jae splash_grid_rungs_done
+    mov al, [splash_grid_reveal_ticks + di]
+    cmp byte ptr [splash_ticks], al
+    jb splash_grid_rung_next
+    mov bx, [splash_grid_lefts + si]
+    mov dx, [splash_grid_rows + si]
+    mov cx, [splash_grid_widths + si]
+    mov bp, 1
+    mov al, [splash_grid_colors + di]
+    call fill_rect
+
+splash_grid_rung_next:
+    add si, 2
+    inc di
+    jmp splash_grid_rung_loop
+
+splash_grid_rungs_done:
+    pop bp
+    pop di
+    pop si
+    pop dx
+    pop cx
+    pop bx
+    pop ax
+    ret
+
+draw_splash_grid_rails:
+    push ax
+    push bx
+    push cx
+    push dx
+    push si
+    push di
+    push bp
+    xor si, si
+    mov di, 1
+    test byte ptr [anim_phase], 1
+    jz splash_grid_rails_dim
+    mov al, PAL_CYAN2
+    jmp splash_grid_rails_color_ready
+
+splash_grid_rails_dim:
+    mov al, PAL_CYAN
+
+splash_grid_rails_color_ready:
+splash_grid_rail_loop:
+    cmp di, 8
+    jae splash_grid_rails_done
+    mov ah, [splash_grid_reveal_ticks + di]
+    cmp byte ptr [splash_ticks], ah
+    jb splash_grid_rail_next
+
+    mov dx, [splash_grid_rows + si]
+    mov bp, [splash_grid_rows + si + 2]
+    sub bp, dx
+
+    mov bx, [splash_grid_lefts + si + 2]
+    mov cx, 2
+    call fill_rect
+
+    mov bx, [splash_grid_lefts + si + 2]
+    mov cx, [splash_grid_widths + si + 2]
+    add bx, cx
+    sub bx, 2
+    mov cx, 2
+    call fill_rect
+
+splash_grid_rail_next:
+    add si, 2
+    inc di
+    jmp splash_grid_rail_loop
+
+splash_grid_rails_done:
+    pop bp
+    pop di
+    pop si
+    pop dx
+    pop cx
+    pop bx
+    pop ax
+    ret
+
+draw_splash_lane_markers:
+    push ax
+    push bx
+    push cx
+    push dx
+    push si
+    push di
+    push bp
+    xor ax, ax
+    mov al, [splash_ticks]
+    and ax, 7
+    shl ax, 1
+    mov si, ax
+    xor di, di
+
+splash_lane_marker_loop:
+    cmp di, 8
+    jae splash_lane_markers_done
+    mov dx, [splash_lane_rows + di]
+    add dx, si
+    cmp dx, 188
+    ja splash_lane_marker_next
+    mov cx, [splash_lane_widths + di]
+    mov bx, 160
+    mov ax, cx
+    shr ax, 1
+    sub bx, ax
+    test byte ptr [anim_phase], 1
+    jz splash_lane_marker_dim
+    mov al, PAL_WHITE
+    jmp splash_lane_marker_color_ready
+
+splash_lane_marker_dim:
+    mov al, PAL_CYAN2
+
+splash_lane_marker_color_ready:
+    mov bp, 2
+    call fill_rect
+
+splash_lane_marker_next:
+    add di, 2
+    jmp splash_lane_marker_loop
+
+splash_lane_markers_done:
+    pop bp
+    pop di
+    pop si
+    pop dx
+    pop cx
+    pop bx
+    pop ax
+    ret
+
+draw_splash_pylons:
+    push ax
+    push bx
+    push cx
+    push dx
+    push bp
+    test byte ptr [anim_phase], 1
+    jz splash_pylon_frame_dim
+    mov al, PAL_CYAN2
+    jmp splash_pylon_frame_ready
+
+splash_pylon_frame_dim:
+    mov al, PAL_CYAN
+
+splash_pylon_frame_ready:
+    mov bx, 36
+    mov dx, 40
+    mov cx, 26
+    mov bp, 60
+    call draw_rect_outline
+
+    mov bx, 258
+    mov dx, 40
+    mov cx, 26
+    mov bp, 60
+    call draw_rect_outline
+
+    mov bx, 66
+    mov dx, 54
+    mov cx, 18
+    mov bp, 40
+    call draw_rect_outline
+
+    mov bx, 236
+    mov dx, 54
+    mov cx, 18
+    mov bp, 40
+    call draw_rect_outline
+
+    mov bx, 42
+    mov dx, 48
+    mov cx, 14
+    mov bp, 1
+    mov al, PAL_PANEL2
+    call fill_rect
+    mov dx, 62
+    call fill_rect
+    mov dx, 76
+    call fill_rect
+
+    mov bx, 264
+    mov dx, 48
+    mov cx, 14
+    mov bp, 1
+    call fill_rect
+    mov dx, 62
+    call fill_rect
+    mov dx, 76
+    call fill_rect
+
+    mov bx, 72
+    mov dx, 62
+    mov cx, 8
+    mov bp, 1
+    call fill_rect
+    mov dx, 74
+    call fill_rect
+
+    mov bx, 240
+    mov dx, 62
+    mov cx, 8
+    mov bp, 1
+    call fill_rect
+    mov dx, 74
+    call fill_rect
+
+    test byte ptr [anim_phase], 1
+    jz splash_pylon_scan_dim
+    mov al, PAL_WHITE
+    jmp splash_pylon_scan_ready
+
+splash_pylon_scan_dim:
+    mov al, PAL_CYAN2
+
+splash_pylon_scan_ready:
+    mov bx, 47
+    mov dx, 46
+    mov cx, 2
+    mov bp, 44
+    call fill_rect
+
+    mov bx, 271
+    mov dx, 46
+    mov cx, 2
+    mov bp, 44
+    call fill_rect
+
+    mov bx, 73
+    mov dx, 58
+    mov cx, 2
+    mov bp, 28
+    call fill_rect
+
+    mov bx, 245
+    mov dx, 58
+    mov cx, 2
+    mov bp, 28
+    call fill_rect
+
+    pop bp
+    pop dx
+    pop cx
+    pop bx
+    pop ax
+    ret
+
+draw_splash_brand_stack:
+    push ax
+    push bx
+    push cx
+    push dx
+    push si
+    push bp
+
+    xor ax, ax
+    mov al, [splash_ticks]
+    cmp al, SPLASH_REVEAL_WORDMARK
+    jae splash_logo_lift_ready
+    mov bl, SPLASH_REVEAL_WORDMARK
+    sub bl, al
+    shr bl, 1
+    xor bh, bh
+    mov ax, bx
+
+splash_logo_lift_ready:
+    mov dx, 44
+    add dx, ax
+    mov bx, 102
+    mov cx, 116
+    mov bp, 42
+    mov al, PAL_PANEL
+    call fill_rect
+
+    mov dx, 42
+    add dx, ax
+    mov bx, 100
+    mov cx, 120
+    mov bp, 46
+    test byte ptr [anim_phase], 1
+    jz splash_logo_frame_dim
+    mov al, PAL_CYAN2
+    jmp splash_logo_frame_ready
+
+splash_logo_frame_dim:
+    mov al, PAL_CYAN
+
+splash_logo_frame_ready:
+    call draw_rect_outline
+
+    mov bx, 128
+    mov dx, 48
+    add dx, ax
+    mov si, PRESENT_BANNER_SPLASH_LOGO_OFFSET
+    call draw_presentation_asset_1x
+
+    mov bx, 126
+    mov dx, 78
+    add dx, ax
+    mov cx, 68
+    mov bp, 1
+    mov al, PAL_AMBER
+    call fill_rect
+
+    cmp byte ptr [splash_ticks], SPLASH_REVEAL_WORDMARK
+    jb splash_brand_stack_done
+
+    xor ax, ax
+    mov al, [splash_ticks]
+    cmp al, SPLASH_REVEAL_UI
+    jae splash_word_lift_ready
+    mov bl, SPLASH_REVEAL_UI
+    sub bl, al
+    shr bl, 1
+    xor bh, bh
+    mov ax, bx
+
+splash_word_lift_ready:
+    mov bx, 128
+    mov dx, 78
+    add dx, ax
+    mov si, PRESENT_BANNER_SPLASH_WORDMARK_OFFSET
+    call draw_presentation_asset_1x
+
+    mov bx, 113
+    mov dx, 83
+    add dx, ax
+    mov si, offset splash_brand
+    mov ah, PAL_PANEL2
+    call draw_text_big
+
+    mov bx, 112
+    mov dx, 82
+    add dx, ax
+    mov si, offset splash_brand
+    mov ah, PAL_WHITE
+    call draw_text_big
+
+    mov bx, 110
+    mov dx, 98
+    add dx, ax
+    mov cx, 100
+    mov bp, 8
+    mov al, PAL_PANEL2
+    call fill_rect
+
+    mov bx, 108
+    mov dx, 96
+    add dx, ax
+    mov cx, 104
+    mov bp, 12
+    test byte ptr [anim_phase], 1
+    jz splash_brand_plate_dim
+    mov al, PAL_CYAN2
+    jmp splash_brand_plate_ready
+
+splash_brand_plate_dim:
+    mov al, PAL_CYAN
+
+splash_brand_plate_ready:
+    call draw_rect_outline
+
+    mov bx, 138
+    mov dx, 100
+    add dx, ax
+    mov si, offset splash_subtitle
+    mov ah, PAL_PANEL2
+    call draw_text_small
+
+    mov bx, 137
+    mov dx, 99
+    add dx, ax
+    mov si, offset splash_subtitle
+    mov ah, PAL_AMBER
+    call draw_text_small
+
+    mov bx, 126
+    mov dx, 92
+    add dx, ax
+    mov cx, 76
+    mov bp, 1
+    mov al, PAL_WHITE
+    call fill_rect
+
+    mov bx, 132
+    mov dx, 109
+    add dx, ax
+    mov cx, 64
+    mov bp, 1
+    mov al, PAL_AMBER
+    call fill_rect
+
+splash_brand_stack_done:
+    pop bp
+    pop si
+    pop dx
+    pop cx
+    pop bx
+    pop ax
+    ret
+
+draw_splash_ui:
+    mov bx, 53
+    mov dx, 126
     mov si, offset splash_tagline
     mov ah, PAL_CYAN
     call draw_text_small
 
     mov bx, 78
-    mov dx, 132
+    mov dx, 148
     mov cx, 164
     mov bp, 8
     mov al, PAL_PANEL2
     call fill_rect
 
     mov bx, 76
-    mov dx, 150
+    mov dx, 146
     mov cx, 168
     mov bp, 12
+    test byte ptr [anim_phase], 1
+    jz splash_ui_frame_dim
+    mov al, PAL_WHITE
+    jmp splash_ui_frame_ready
+
+splash_ui_frame_dim:
     mov al, PAL_CYAN
+
+splash_ui_frame_ready:
     call draw_rect_outline
 
     xor ax, ax
@@ -117,10 +609,15 @@ splash_scene_ui_gate:
     mov cx, ax
     shl ax, 1
     add ax, cx
+    cmp ax, 160
+    jbe splash_bar_clamped
+    mov ax, 160
+
+splash_bar_clamped:
     mov cx, ax
-    jcxz splash_bar_done
+    jcxz splash_ui_prompt
     mov bx, 80
-    mov dx, 154
+    mov dx, 150
     mov bp, 4
     test byte ptr [anim_phase], 1
     jz splash_bar_base
@@ -133,24 +630,37 @@ splash_bar_base:
 splash_bar_ready:
     call fill_rect
 
-splash_bar_done:
-    mov bx, 92
-    mov dx, 146
-    mov si, offset splash_skip
-    test byte ptr [anim_phase], 1
-    jz splash_skip_dim
+splash_ui_prompt:
+    mov bx, 79
+    mov dx, 166
+    mov si, offset splash_run_prompt
     mov ah, PAL_WHITE
-    jmp splash_skip_ready
+    call draw_text_small
 
-splash_skip_dim:
+    mov bx, 88
+    mov dx, 176
+    mov si, offset splash_skip_prompt
+    test byte ptr [anim_phase], 1
+    jz splash_prompt_dim
+    mov ah, PAL_WHITE
+    jmp splash_prompt_ready
+
+splash_prompt_dim:
     mov ah, PAL_AMBER
 
-splash_skip_ready:
+splash_prompt_ready:
     call draw_text_small
-splash_scene_done:
     ret
 
 draw_title_scene:
+IF DEBUG_SCENE_RENDER_MODE EQ SCENE_RENDER_MODE_2D
+    call draw_title_scene_overlay
+ELSE
+    call draw_title_scene_3d
+ENDIF
+    ret
+
+draw_title_scene_overlay:
     mov bx, 24
     mov dx, 26
     mov cx, 272
@@ -292,6 +802,14 @@ title_cursor_off:
     ret
 
 draw_win_scene:
+IF DEBUG_SCENE_RENDER_MODE EQ SCENE_RENDER_MODE_2D
+    call draw_win_scene_overlay
+ELSE
+    call draw_win_scene_3d
+ENDIF
+    ret
+
+draw_win_scene_overlay:
     mov bx, 30
     mov dx, 34
     mov cx, 260
@@ -505,6 +1023,14 @@ win_scene_done:
     ret
 
 draw_lose_scene:
+IF DEBUG_SCENE_RENDER_MODE EQ SCENE_RENDER_MODE_2D
+    call draw_lose_scene_overlay
+ELSE
+    call draw_lose_scene_3d
+ENDIF
+    ret
+
+draw_lose_scene_overlay:
     mov bx, 30
     mov dx, 34
     mov cx, 260
@@ -1018,3 +1544,11 @@ draw_title_demo_arm_badge:
     call draw_text_small
 title_demo_badge_done:
     ret
+
+splash_grid_rows       dw 92, 100, 110, 122, 136, 152, 170, 188
+splash_grid_lefts      dw 140, 124, 106, 84, 58, 34, 10, 0
+splash_grid_widths     dw 40, 72, 108, 152, 204, 252, 300, 320
+splash_grid_reveal_ticks db 0, 1, 2, 4, 6, 8, 10, 12
+splash_grid_colors     db PAL_PANEL2, PAL_PANEL2, PAL_CYAN, PAL_PANEL2, PAL_CYAN, PAL_PANEL2, PAL_CYAN2, PAL_CYAN
+splash_lane_rows       dw 104, 126, 150, 176
+splash_lane_widths     dw 4, 8, 12, 18

@@ -19,6 +19,10 @@ include game\main.asm
 include game\gameplay.asm
 include game\render\framebuffer.asm
 include game\render\primitives.asm
+include game\render\3d_math.asm
+include game\render\3d_raster.asm
+include game\render\3d_scene.asm
+include game\render\3d_gameplay.asm
 include game\render\palette.asm
 include game\render\text.asm
 include game\render\sprites.asm

@@ -592,6 +592,14 @@ sector_entry_wipe_ready:
     ret
 
 draw_sector_entry_card:
+IF DEBUG_SCENE_RENDER_MODE EQ SCENE_RENDER_MODE_2D
+    call draw_sector_entry_card_overlay
+ELSE
+    call draw_sector_entry_card_3d
+ENDIF
+    ret
+
+draw_sector_entry_card_overlay:
     ; The sector card rides the opening feedback window only, so it brands the
     ; breach without hiding the board for long once the run starts moving again.
     call get_major_feedback_stage

@@ -27,6 +27,7 @@ Practical consequences:
 | `1000:0000` upward | Stage two code + data | `DS` is set to `CS` on entry and the whole game assumes one shared segment. |
 | `7000:0000` | Map bank | Read-only authored map payload loaded by stage two after boot. |
 | `7800:0000` | Presentation bank | Read-only scene-kit payload for splash, title, attract/demo, sector-entry, and end screens. |
+| `8000:0000` | Geometry bank | Read-only low-poly scene payload for the phase-1 3D renderer. |
 | `9000:0000` | Backbuffer | 64,000-byte linear framebuffer used before presenting to VGA. |
 | `A000:0000` | VGA mode `13h` framebuffer | Final 320x200x8 output. |
 
@@ -44,7 +45,9 @@ Register assumptions that matter:
 - The first byte must remain executable because boot jumps to offset `0`.
 - `generated_bank_layout.inc` is build output, not source. It gives stage two the on-disk LBA/size contract for post-boot banks.
 - `generated_presentation_content.inc` is build output, not source. It gives scenes the offsets of the banked presentation scene kit.
+- `generated_geometry.inc` is build output, not source. It gives the phase-1 3D renderer scene/camera tables plus geometry-bank offsets and counts.
 - `audio_config.inc` is build output, not source. It makes the release audio contract explicit before [src/game/audio.asm](../src/game/audio.asm) is assembled.
+- [src/game/render/3d_math.asm](../src/game/render/3d_math.asm), [src/game/render/3d_raster.asm](../src/game/render/3d_raster.asm), [src/game/render/3d_scene.asm](../src/game/render/3d_scene.asm), and [src/game/render/3d_gameplay.asm](../src/game/render/3d_gameplay.asm) are the current software-3D render path. Scenes come from the geometry bank, while gameplay now compiles the live tile map into a transient room mesh and renders actors/props as projected billboards.
 - [src/game/state.asm](../src/game/state.asm) owns the global state layout.
 - [src/game/art.asm](../src/game/art.asm) is the visual-data wrapper and includes the build-generated sprite/tile bitmap include before the hand-authored palette/font data.
 - [src/game/state.asm](../src/game/state.asm) now includes generated sector metadata/rule tables from the content pipeline.
@@ -104,6 +107,7 @@ Input flow:
 Render flow:
 
 - [src/game/render/scenes.asm](../src/game/render/scenes.asm) selects the scene for the current `game_state`.
+- In the default release build, splash/title/sector-entry/end scenes go through the flat-shaded 3D path, and gameplay now uses the first room-mesh 3D renderer with a chase-style camera. `DEBUG_SCENE_RENDER_MODE = 0` plus `DEBUG_GAMEPLAY_RENDER_MODE = 0` keep the older 2D scene/gameplay implementation available as a compile-time oracle.
 - The frame always renders into `BACKBUFFER_SEG`.
 - [src/game/render/framebuffer.asm](../src/game/render/framebuffer.asm) waits for vertical blank, then copies the backbuffer to `A000:0000`.
 - Primitive draw helpers compute offsets into whatever segment is currently loaded into `ES`.
@@ -124,9 +128,9 @@ Map/tile rules:
 
 Render conventions:
 
-- Each logical tile is currently rendered as an `8 x 8` bitmap.
-- `MAP_PIXEL_X` / `MAP_PIXEL_Y` anchor the tilemap inside the VGA frame.
-- Player and enemy sprites are drawn after tiles, so they visually sit on top of the map.
+- The legacy 2D oracle still renders each logical tile as an `8 x 8` bitmap anchored by `MAP_PIXEL_X` / `MAP_PIXEL_Y`.
+- The default gameplay path now compiles floor strips and wall-edge runs into a transient low-poly room mesh, then projects props and actors as billboards inside the gameplay viewport.
+- Dynamic tile changes mark the room mesh dirty through `set_tile`, so shard pickups, terminal use, surges, and gate-open transitions rebuild the room view without changing game rules.
 
 Entity rules:
 
@@ -148,13 +152,15 @@ The gameplay runtime in [src/game/gameplay.asm](../src/game/gameplay.asm) is int
 
 ## 8. Asset Banks
 
-CyberStorm now has two narrow post-boot bank paths:
+CyberStorm now has three narrow post-boot bank paths:
 
-- The build appends `cyberstorm-map-bank.bin` and `cyberstorm-presentation-bank.bin` after stage two on the floppy image.
+- The build appends `cyberstorm-map-bank.bin`, `cyberstorm-presentation-bank.bin`, and `cyberstorm-geometry-bank.bin` after stage two on the floppy image.
 - `generated_bank_layout.inc` records each bank's starting LBA, size in sectors, and byte count.
-- [src/game/banks.asm](../src/game/banks.asm) loads the map bank into `MAP_BANK_SEG` and the presentation bank into `PRESENT_BANK_SEG` during `start`, before VGA mode is enabled.
+- [src/game/banks.asm](../src/game/banks.asm) loads the map bank into `MAP_BANK_SEG`, the presentation bank into `PRESENT_BANK_SEG`, and the geometry bank into `GEOMETRY_BANK_SEG` during `start`, before VGA mode is enabled.
 - Gameplay reads map templates through `template_offset_table` offsets into the map bank instead of embedding every map into stage two.
 - Splash/title/win/lose scenes, the attract HUD, and sector-entry presentation all read fixed-size 64x24 transparent assets from the presentation bank through generated offset constants.
+- The banked 3D scene renderer copies scene vertices/faces out of the geometry bank into bounded scratch buffers in [src/game/state.asm](../src/game/state.asm), then projects and painter-sorts them inside stage two.
+- The gameplay 3D renderer does not use the geometry bank for rooms. It compiles the active map into transient floor/wall geometry in stage two, reuses the same projection/raster core, and keeps the 2D gameplay renderer available behind the debug render switch.
 
 Current scope and limits:
 

@@ -206,10 +206,11 @@ function Invoke-DemoCapture {
     )
 
     $role = [string]$Demo.CaptureRole
+    $reportRole = if ($role -eq 'gameplay') { 'gameplay-demo' } else { $role }
     $demoId = [string]$Demo.Id
-    $shotPath = Join-Path $ArtifactDir ("showcase-{0}.png" -f $role)
-    $rawShotPath = Join-Path $ArtifactDir ("showcase-{0}-{1}.png" -f $role, $demoId)
-    $logPath = Join-Path $ArtifactDir ("showcase-{0}-{1}.log" -f $role, $demoId)
+    $shotPath = Join-Path $ArtifactDir ("showcase-{0}.png" -f $reportRole)
+    $rawShotPath = Join-Path $ArtifactDir ("showcase-{0}-{1}.png" -f $reportRole, $demoId)
+    $logPath = Join-Path $ArtifactDir ("showcase-{0}-{1}.log" -f $reportRole, $demoId)
 
     Invoke-ChildBuild -ExtraArguments @(
         '-DebugBuild',
@@ -231,12 +232,56 @@ function Invoke-DemoCapture {
 
     Copy-Item -LiteralPath $vboxLogPath -Destination $logPath -Force
     return [pscustomobject]@{
-        Role = $role
+        Role = $reportRole
+        SourceRole = $role
         Name = [string]$Demo.Name
         ScreenshotPath = $shotPath
         RawScreenshotPath = $rawShotPath
         LogPath = $logPath
         WaitSeconds = (Get-CaptureWaitSeconds -Demo $Demo)
+    }
+}
+
+function Invoke-DirectGameplayCapture {
+    param(
+        [string]$ArtifactDir
+    )
+
+    $shotPath = Join-Path $ArtifactDir 'showcase-gameplay.png'
+    $rawShotPath = Join-Path $ArtifactDir 'showcase-gameplay-direct.png'
+    $logPath = Join-Path $ArtifactDir 'showcase-gameplay-direct.log'
+    $waitSeconds = 6
+
+    Invoke-ChildBuild -ExtraArguments @(
+        '-DebugBuild',
+        '-DebugRender3D',
+        '-DebugStartInGame',
+        '-DebugStartSector',
+        '1',
+        '-DebugSeed',
+        '4660'
+    )
+
+    Stop-VmIfRunning -Name $VmName
+    Ensure-VmRegistered -Name $VmName
+    Stop-VmIfRunning -Name $VmName
+    Start-HeadlessVm -Name $VmName
+    Start-Sleep -Seconds $waitSeconds
+    Invoke-VBoxManage -Arguments @('controlvm', $VmName, 'screenshotpng', $rawShotPath) | Out-Null
+    Copy-Item -LiteralPath $rawShotPath -Destination $shotPath -Force
+    if (-not (Test-Path -LiteralPath $vboxLogPath)) {
+        throw ("VBox log was not found after direct gameplay boot: {0}" -f $vboxLogPath)
+    }
+
+    Copy-Item -LiteralPath $vboxLogPath -Destination $logPath -Force
+    return [pscustomobject]@{
+        Role = 'gameplay'
+        Name = 'TACTICAL GAMEPLAY'
+        ScreenshotPath = $shotPath
+        RawScreenshotPath = $rawShotPath
+        LogPath = $logPath
+        WaitSeconds = $waitSeconds
+        Source = 'direct-to-game tactical sector 1 debug boot'
     }
 }
 
@@ -293,6 +338,19 @@ try {
         $reportLines.Add(("  VBox log: {0}" -f $capture.LogPath))
         $reportLines.Add('')
     }
+
+    $gameplayCapture = Invoke-DirectGameplayCapture -ArtifactDir $artifactDir
+    $artifactPaths.Add($gameplayCapture.ScreenshotPath)
+    $artifactPaths.Add($gameplayCapture.RawScreenshotPath)
+    $artifactPaths.Add($gameplayCapture.LogPath)
+    $summaryLines.Add(("gameplay: {0}" -f $gameplayCapture.ScreenshotPath))
+    $reportLines.Add('Role: gameplay')
+    $reportLines.Add(("  Source: {0}" -f $gameplayCapture.Source))
+    $reportLines.Add(("  Wait: {0}s" -f $gameplayCapture.WaitSeconds))
+    $reportLines.Add(("  Screenshot: {0}" -f $gameplayCapture.ScreenshotPath))
+    $reportLines.Add(("  Raw screenshot: {0}" -f $gameplayCapture.RawScreenshotPath))
+    $reportLines.Add(("  VBox log: {0}" -f $gameplayCapture.LogPath))
+    $reportLines.Add('')
 
     $runtimeVerifyResult = & $RuntimeVerifyScriptPath `
         -Assembler $Assembler `

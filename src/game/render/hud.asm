@@ -27,23 +27,16 @@ draw_game_panels:
     call fill_rect
 
     mov bx, 12
-    mov dx, 36
-    mov cx, 232
-    mov bp, 128
-    mov al, PAL_PANEL
-    call fill_rect
-
-    mov bx, 252
-    mov dx, 36
-    mov cx, 56
-    mov bp, 128
+    mov dx, 30
+    mov cx, 296
+    mov bp, 140
     mov al, PAL_PANEL
     call fill_rect
 
     mov bx, 12
-    mov dx, 170
+    mov dx, 172
     mov cx, 296
-    mov bp, 20
+    mov bp, 18
     mov al, PAL_PANEL
     call fill_rect
 
@@ -55,21 +48,15 @@ draw_game_panels:
     call draw_rect_outline
 
     mov bx, 10
-    mov dx, 34
-    mov cx, 236
-    mov bp, 132
-    call draw_rect_outline
-
-    mov bx, 250
-    mov dx, 34
-    mov cx, 60
-    mov bp, 132
+    mov dx, 28
+    mov cx, 300
+    mov bp, 144
     call draw_rect_outline
 
     mov bx, 10
-    mov dx, 168
+    mov dx, 170
     mov cx, 300
-    mov bp, 24
+    mov bp, 22
     call draw_rect_outline
 
     mov bx, 14
@@ -78,7 +65,7 @@ draw_game_panels:
     mov bp, 1
     call fill_rect
 
-    mov dx, 169
+    mov dx, 171
     call fill_rect
     ret
 
@@ -102,7 +89,7 @@ render_game_status:
     mov ah, al
     call draw_text_small
 
-    mov bx, 174
+    mov bx, 178
     mov dx, 15
     mov si, offset data_text
     mov ah, PAL_WHITE
@@ -110,11 +97,11 @@ render_game_status:
 
     mov al, [data_count]
     mov ah, PAL_AMBER
-    mov bx, 200
+    mov bx, 204
     mov dx, 15
     call draw_digit_small
 
-    mov bx, 214
+    mov bx, 218
     mov dx, 15
     mov si, offset kills_text
     mov ah, PAL_WHITE
@@ -122,27 +109,27 @@ render_game_status:
 
     mov al, [kill_count]
     mov ah, PAL_AMBER
-    mov bx, 248
+    mov bx, 252
     mov dx, 15
     call draw_two_digit_small
 
     call draw_spoof_status
     call draw_demo_status
 
-    mov bx, 258
-    mov dx, 46
+    mov bx, 188
+    mov dx, 175
     mov si, offset shield_text
     mov ah, PAL_WHITE
     call draw_text_small
 
-    mov bx, 258
-    mov dx, 88
+    mov bx, 188
+    mov dx, 183
     mov si, offset pulse_text
     mov ah, PAL_WHITE
     call draw_text_small
 
-    mov bx, 258
-    mov dx, 130
+    mov bx, 266
+    mov dx, 175
     mov si, offset gate_text
     mov ah, PAL_WHITE
     call draw_text_small
@@ -154,14 +141,22 @@ render_game_status:
     call draw_message_banner
     call get_message_text_ptr
     mov bx, 18
-    mov dx, 175
+    mov dx, 176
     call get_message_text_color
     mov ah, al
     call draw_text_small
 
     mov bx, 18
     mov dx, 184
+    cmp byte ptr [demo_active], 0
+    je game_status_controls_normal
+    mov si, offset demo_takeover_text
+    jmp game_status_controls_draw
+
+game_status_controls_normal:
     mov si, offset controls_text
+
+game_status_controls_draw:
     call get_sector_accent_color
     mov ah, al
     call draw_text_small
@@ -205,12 +200,8 @@ spoof_status_digit_ready:
 draw_demo_status:
     cmp byte ptr [demo_active], 0
     je demo_status_done
-    mov bx, 156
-    mov dx, 36
-    mov si, PRESENT_BANNER_DEMO_BADGE_OFFSET
-    call draw_presentation_asset_2x
-    mov bx, 262
-    mov dx, 44
+    mov bx, 146
+    mov dx, 15
     mov si, offset demo_text
     test byte ptr [anim_phase], 1
     jz demo_status_base
@@ -221,11 +212,6 @@ demo_status_base:
     mov ah, PAL_CYAN2
 
 demo_status_draw:
-    call draw_text_small
-    mov bx, 258
-    mov dx, 54
-    mov si, offset demo_takeover_text
-    mov ah, PAL_WHITE
     call draw_text_small
 
 demo_status_done:
@@ -314,8 +300,8 @@ sector_title_lock:
     ret
 
 draw_shield_meter:
-    mov bx, 258
-    mov dx, 58
+    mov bx, 224
+    mov dx, 175
     mov cx, 5
     xor di, di
 
@@ -323,8 +309,8 @@ shield_meter_loop:
     push bx
     push dx
     push cx
-    mov cx, 12
-    mov bp, 8
+    mov cx, 8
+    mov bp, 6
     mov al, PAL_PANEL2
     call fill_rect
     pop cx
@@ -336,8 +322,8 @@ shield_meter_loop:
     jae shield_meter_next
     push bx
     push dx
-    mov cx, 12
-    mov bp, 8
+    mov cx, 8
+    mov bp, 6
     cmp byte ptr [feedback_timer], 0
     je shield_meter_feedback_done
     mov al, [message_id]
@@ -370,14 +356,14 @@ shield_meter_color_ready:
     pop bx
 
 shield_meter_next:
-    add dx, 12
+    add bx, 10
     inc di
     loop shield_meter_loop
     ret
 
 draw_pulse_meter:
-    mov bx, 258
-    mov dx, 100
+    mov bx, 224
+    mov dx, 183
     mov cx, 5
     xor di, di
 
@@ -385,8 +371,8 @@ pulse_meter_loop:
     push bx
     push dx
     push cx
-    mov cx, 12
-    mov bp, 8
+    mov cx, 8
+    mov bp, 6
     cmp byte ptr [feedback_timer], 0
     je pulse_meter_bg_ready
     mov al, [message_id]
@@ -412,8 +398,8 @@ pulse_meter_bg_draw:
     jae pulse_meter_next
     push bx
     push dx
-    mov cx, 12
-    mov bp, 8
+    mov cx, 8
+    mov bp, 6
     cmp byte ptr [feedback_timer], 0
     je pulse_meter_fill_ready
     mov al, [message_id]
@@ -437,22 +423,22 @@ pulse_meter_color_ready:
     pop bx
 
 pulse_meter_next:
-    add dx, 12
+    add bx, 10
     inc di
     loop pulse_meter_loop
     ret
 
 draw_gate_meter:
-    mov bx, 258
-    mov dx, 142
-    mov cx, 40
-    mov bp, 10
+    mov bx, 264
+    mov dx, 184
+    mov cx, 36
+    mov bp, 4
     mov al, PAL_PANEL2
     call fill_rect
-    mov bx, 260
-    mov dx, 144
+    mov bx, 264
+    mov dx, 184
     mov cx, 36
-    mov bp, 6
+    mov bp, 4
     test byte ptr [anim_phase], 1
     jz gate_meter_locked_base
     mov al, PAL_RED2
@@ -465,10 +451,10 @@ gate_meter_locked_ready:
     call fill_rect
     cmp byte ptr [data_count], SHARD_COUNT
     jne gate_meter_partial
-    mov bx, 260
-    mov dx, 144
+    mov bx, 264
+    mov dx, 184
     mov cx, 36
-    mov bp, 6
+    mov bp, 4
     test byte ptr [anim_phase], 1
     jz gate_open_base
     mov al, PAL_WHITE
@@ -486,9 +472,9 @@ gate_meter_partial:
     add ax, cx
     mov cx, ax
     jcxz gate_meter_done
-    mov bx, 260
-    mov dx, 144
-    mov bp, 6
+    mov bx, 264
+    mov dx, 184
+    mov bp, 4
     cmp byte ptr [feedback_timer], 0
     je gate_meter_partial_ready
     mov al, [message_id]
@@ -527,8 +513,8 @@ draw_message_banner:
     cmp byte ptr [feedback_timer], 0
     je message_banner_done
     mov bx, 16
-    mov dx, 172
-    mov cx, 288
+    mov dx, 174
+    mov cx, 164
     mov bp, 8
     call get_message_banner_color
     call fill_rect
@@ -545,7 +531,7 @@ draw_message_banner_glint:
     xor bx, bx
     mov bl, [anim_phase]
     and bl, 0Fh
-    shl bx, 4
+    shl bx, 3
     add bx, 20
     jmp banner_glint_ready
 
@@ -553,12 +539,12 @@ banner_glint_sound:
     xor bx, bx
     mov bl, [sound_phase]
     and bl, 07h
-    shl bx, 5
+    shl bx, 4
     add bx, 24
 
 banner_glint_ready:
-    mov dx, 173
-    mov cx, 18
+    mov dx, 175
+    mov cx, 14
     mov bp, 1
     mov al, PAL_WHITE
     call fill_rect

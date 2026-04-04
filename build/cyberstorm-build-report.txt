@@ -1,5 +1,5 @@
 CyberStorm Build Report
-Generated: 2026-04-03 19:31:40 -06:00
+Generated: 2026-04-03 20:15:39 -06:00
 
 Toolchain
   Assembler: MASM
@@ -62,7 +62,9 @@ Generated Content
   Geometry summary: splash: 3 groups, 60 ticks, 36 verts, 18 tris, view 320x200+0,0, title: 3 groups, 48 ticks/loop 48, 24 verts, 12 tris, view 320x200+0,0, sector1: 3 groups, 8 ticks, 16 verts, 8 tris, view 152x64+56,42, sector2: 3 groups, 8 ticks, 16 verts, 8 tris, view 152x64+56,42, sector3: 3 groups, 8 ticks, 16 verts, 8 tris, view 152x64+56,42, win: 3 groups, 24 ticks, 16 verts, 8 tris, view 320x200+0,0, lose: 3 groups, 24 ticks, 16 verts, 8 tris, view 320x200+0,0
   Geometry mesh summary: gate_vault:8 tris, gate_furnace:8 tris, gate_lock:8 tris, terminal_vault:12 tris, terminal_furnace:12 tris, terminal_lock:12 tris, surge_vault:12 tris, surge_furnace:12 tris, surge_lock:12 tris, shard_vault:14 tris, shard_furnace:14 tris, shard_lock:14 tris, player_runner:14 tris, warden:14 tris
   Geometry gameplay kit summary: sector1: floor floor_dark/panel_cyan, wall vault_wall/vault_trim, props gate_vault|terminal_vault|surge_vault|shard_vault | sector2: floor floor_dark/panel_amber, wall furnace_wall/furnace_trim, props gate_furnace|terminal_furnace|surge_furnace|shard_furnace | sector3: floor panel_dark/lock_trim, wall lock_wall/panel_red, props gate_lock|terminal_lock|surge_lock|shard_lock
-  Gameplay room structural headroom: S1: structural 160-178/252 (headroom 74-92), props 76 tris (sector1_map_a=160 (headroom 92, view south), sector1_map_b=168 (headroom 84, view east), sector1_map_c=178 (headroom 74, view west)) | S2: structural 146-178/252 (headroom 74-106), props 124 tris (sector2_map_a=146 (headroom 106, view north), sector2_map_b=178 (headroom 74, view north), sector2_map_c=166 (headroom 86, view north)) | S3: structural 166-214/252 (headroom 38-86), props 136 tris (sector3_map_a=180 (headroom 72, view north), sector3_map_b=214 (headroom 38, view north), sector3_map_c=166 (headroom 86, view north))
+  Gameplay camera: fixed tactical 3/4 diorama
+  Gameplay viewport: 292x136 at 14,32
+  Gameplay room structural headroom: S1: structural 118-124/252 (headroom 128-134, view tactical-nw), props 76 tris (sector1_map_a=118 (headroom 134, view tactical-nw), sector1_map_b=124 (headroom 128, view tactical-nw), sector1_map_c=122 (headroom 130, view tactical-nw)) | S2: structural 106-122/252 (headroom 130-146, view tactical-nw), props 124 tris (sector2_map_a=106 (headroom 146, view tactical-nw), sector2_map_b=122 (headroom 130, view tactical-nw), sector2_map_c=118 (headroom 134, view tactical-nw)) | S3: structural 114-146/252 (headroom 106-138, view tactical-nw), props 136 tris (sector3_map_a=120 (headroom 132, view tactical-nw), sector3_map_b=146 (headroom 106, view tactical-nw), sector3_map_c=114 (headroom 138, view tactical-nw))
   Sector source: C:\Users\RhythmicCarnage\Desktop\CyberStorm\assets\sectors.psd1
   Sector include: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\generated_sector_content.inc
   Maps include: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\generated_maps.inc
@@ -142,7 +144,8 @@ Runtime Verify
   Status: skipped (use -RuntimeVerify to boot debug-only replay verification demos in VirtualBox).
 
 Showcase Capture
-  Status: skipped (use -CaptureShowcase to generate deterministic boot/demo/verification screenshots).
+  Status: skipped (use -CaptureShowcase to generate deterministic startup/direct-game/demo/verification screenshots).
+  Selection: branding uses the startup ident, gameplay uses a direct-to-game tactical 3D boot, and payoff uses ending/hazard verification shots.
 
 Asset Banks
   Layout include: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\generated_bank_layout.inc
@@ -152,8 +155,8 @@ Asset Banks
 
 Screenshots
   Housekeeping: kept 6 source screenshots, removed 0, rotated 3 README slots
-  readme-shot-1.png [title] <- cyberstorm-asset-pipeline-boot.png
-  readme-shot-2.png [gameplay] <- cyberstorm-sector-layouts-boot.png
+  readme-shot-1.png [title] <- cyberstorm-sector-layouts-boot.png
+  readme-shot-2.png [gameplay] <- cyberstorm-asset-pipeline-boot.png
   readme-shot-3.png [payoff] <- cyberstorm-music-boot.png
 
 Layout

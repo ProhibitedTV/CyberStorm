@@ -2690,6 +2690,8 @@ function Get-GameplayGeometryBudgetSummary {
         $kit = $kitMap[("sector{0}" -f $sectorId)]
         $rules = $sector['Rules']
         $maps = @($sector['Maps'])
+        $playMinY = 1
+        $playMaxY = $ExpectedMapHeight - 2
         $gateTris = [int]$MeshTriangleMap[([string]$kit['GateMesh']).ToLowerInvariant()]
         $terminalTris = [int]$MeshTriangleMap[([string]$kit['TerminalMesh']).ToLowerInvariant()]
         $surgeTris = [int]$MeshTriangleMap[([string]$kit['SurgeMesh']).ToLowerInvariant()]
@@ -2702,6 +2704,12 @@ function Get-GameplayGeometryBudgetSummary {
             $rows = @($map['Rows'] | ForEach-Object { [string]$_ })
             $floorRuns = 1
             $floorTrimRuns = 1
+            $decorativeTrimRuns = 0
+            for ($y = ($playMinY + 1); $y -lt $playMaxY; $y++) {
+                if ((($y + $sectorId) % 2) -eq 0) {
+                    $decorativeTrimRuns += 1
+                }
+            }
 
             $northRuns = 0
             $southRuns = 0
@@ -2761,25 +2769,17 @@ function Get-GameplayGeometryBudgetSummary {
                 }
             }
 
-            $baseFaces = ($floorRuns * 2) + ($floorTrimRuns * 2)
-            $compileViews = @(
-                [pscustomobject]@{ Key = 'north'; Faces = $baseFaces + (($southRuns + $westRuns + $eastRuns) * 2) }
-                [pscustomobject]@{ Key = 'south'; Faces = $baseFaces + (($northRuns + $westRuns + $eastRuns) * 2) }
-                [pscustomobject]@{ Key = 'east';  Faces = $baseFaces + (($northRuns + $southRuns + $westRuns) * 2) }
-                [pscustomobject]@{ Key = 'west';  Faces = $baseFaces + (($northRuns + $southRuns + $eastRuns) * 2) }
-            )
-            $orderedViews = @($compileViews | Sort-Object -Property @{ Expression = 'Faces'; Ascending = $true }, @{ Expression = 'Key'; Ascending = $true })
-            $minStructuralFaces = $orderedViews[0].Faces
-            $maxStructuralFaces = $orderedViews[$orderedViews.Count - 1].Faces
-            $minHeadroom = $FaceBudget - $maxStructuralFaces
+            $baseFaces = ($floorRuns * 2) + ($floorTrimRuns * 2) + ($decorativeTrimRuns * 2)
+            $structuralFaces = $baseFaces + (($northRuns + $westRuns) * 2)
+            $headroom = $FaceBudget - $structuralFaces
 
-            $structuralCounts.Add($maxStructuralFaces)
-            $templateParts.Add(("{0}={1} (headroom {2}, view {3})" -f ([string]$map['Name']), $maxStructuralFaces, $minHeadroom, $orderedViews[$orderedViews.Count - 1].Key))
+            $structuralCounts.Add($structuralFaces)
+            $templateParts.Add(("{0}={1} (headroom {2}, view tactical-nw)" -f ([string]$map['Name']), $structuralFaces, $headroom))
         }
 
         $minFaces = ($structuralCounts | Measure-Object -Minimum).Minimum
         $maxFaces = ($structuralCounts | Measure-Object -Maximum).Maximum
-        $summaryLines.Add(("S{0}: structural {1}-{2}/{3} (headroom {4}-{5}), props {6} tris ({7})" -f $sectorId, $minFaces, $maxFaces, $FaceBudget, ($FaceBudget - $maxFaces), ($FaceBudget - $minFaces), $dynamicPropFaces, ($templateParts -join ', ')))
+        $summaryLines.Add(("S{0}: structural {1}-{2}/{3} (headroom {4}-{5}, view tactical-nw), props {6} tris ({7})" -f $sectorId, $minFaces, $maxFaces, $FaceBudget, ($FaceBudget - $maxFaces), ($FaceBudget - $minFaces), $dynamicPropFaces, ($templateParts -join ', ')))
 
         if ($maxFaces -gt $FaceBudget) {
             $warningLines.Add(("Sector {0} room kit estimate reaches {1} structural faces, which exceeds the configured runtime face budget of {2}." -f $sectorId, $maxFaces, $FaceBudget))
@@ -3744,6 +3744,10 @@ $generatedMusic = Write-GeneratedMusicInclude -SourcePath $musicSourcePath -Outp
 $mapBankLoadSegment = Get-AsmEquValue -SourcePath $constantsSourcePath -Name 'MAP_BANK_SEG'
 $presentationBankLoadSegment = Get-AsmEquValue -SourcePath $constantsSourcePath -Name 'PRESENT_BANK_SEG'
 $geometryBankLoadSegment = Get-AsmEquValue -SourcePath $constantsSourcePath -Name 'GEOMETRY_BANK_SEG'
+$game3dViewX = Get-AsmEquValue -SourcePath $constantsSourcePath -Name 'GAME3D_VIEW_X'
+$game3dViewY = Get-AsmEquValue -SourcePath $constantsSourcePath -Name 'GAME3D_VIEW_Y'
+$game3dViewW = Get-AsmEquValue -SourcePath $constantsSourcePath -Name 'GAME3D_VIEW_W'
+$game3dViewH = Get-AsmEquValue -SourcePath $constantsSourcePath -Name 'GAME3D_VIEW_H'
 [IO.File]::WriteAllBytes($mapBankBinPath, $generatedSectors.MapPayloadBytes)
 Assert-PathExists -Path $mapBankBinPath -Label 'generated map bank payload'
 [IO.File]::WriteAllBytes($presentationBankBinPath, $generatedPresentation.BankPayloadBytes)
@@ -3776,6 +3780,8 @@ $generatedContentLines = @(
     ("Geometry summary: {0}" -f $generatedGeometry.SceneSummary)
     ("Geometry mesh summary: {0}" -f $generatedGeometry.MeshSummary)
     ("Geometry gameplay kit summary: {0}" -f $generatedGeometry.KitSummary)
+    ("Gameplay camera: fixed tactical 3/4 diorama")
+    ("Gameplay viewport: {0}x{1} at {2},{3}" -f $game3dViewW, $game3dViewH, $game3dViewX, $game3dViewY)
     ("Gameplay room structural headroom: {0}" -f ($gameplayGeometryBudget.SummaryLines -join ' | '))
     ("Sector source: {0}" -f $generatedSectors.SourcePath)
     ("Sector include: {0}" -f $generatedSectors.SectorOutputPath)
@@ -4085,6 +4091,7 @@ foreach ($runtimeVerifyLine in $runtimeVerifyLines) {
 }
 
 $showcaseArtifacts = @()
+$showcaseSourceSelection = 'Selection: branding uses the startup ident, gameplay uses a direct-to-game tactical 3D boot, and payoff uses ending/hazard verification shots.'
 if ($CaptureShowcase.IsPresent) {
     $showcaseResult = & $showcaseCaptureScript `
         -Assembler $Assembler `
@@ -4095,16 +4102,19 @@ if ($CaptureShowcase.IsPresent) {
         -ReportPath $showcaseReportPath
     $showcaseCaptureLines = @(
         ("Report: {0}" -f $showcaseResult.ReportPath)
+        $showcaseSourceSelection
     ) + @($showcaseResult.SummaryLines)
     $showcaseArtifacts = @($showcaseResult.ArtifactPaths)
 } else {
     $showcaseCaptureLines = @(
-        'Status: skipped (use -CaptureShowcase to generate deterministic boot/demo/verification screenshots).'
+        'Status: skipped (use -CaptureShowcase to generate deterministic startup/direct-game/demo/verification screenshots).'
+        $showcaseSourceSelection
     )
     Set-Content -LiteralPath $showcaseReportPath -Encoding ascii -Value @(
         'CyberStorm Showcase Capture Report'
         ("Generated: {0}" -f (Get-Date -Format 'yyyy-MM-dd HH:mm:ss K'))
         'Status: skipped'
+        $showcaseSourceSelection
         'Run scripts/build.ps1 -CaptureShowcase or scripts/capture-showcase.ps1 to generate deterministic public-gallery screenshots.'
     )
 }

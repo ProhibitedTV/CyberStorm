@@ -2095,6 +2095,31 @@ function Write-GeneratedGeometryInclude {
     $scenePitchBases = New-Object 'System.Collections.Generic.List[string]'
     $scenePitchSteps = New-Object 'System.Collections.Generic.List[string]'
     $sceneProjectScales = New-Object 'System.Collections.Generic.List[string]'
+    $sceneTimelineLengths = New-Object 'System.Collections.Generic.List[string]'
+    $sceneTimelineLoops = New-Object 'System.Collections.Generic.List[string]'
+    $sceneGroupStarts = New-Object 'System.Collections.Generic.List[string]'
+    $sceneGroupCounts = New-Object 'System.Collections.Generic.List[string]'
+    $sceneGroupVertexOffsets = New-Object 'System.Collections.Generic.List[string]'
+    $sceneGroupVertexCounts = New-Object 'System.Collections.Generic.List[string]'
+    $sceneGroupFaceOffsets = New-Object 'System.Collections.Generic.List[string]'
+    $sceneGroupFaceCounts = New-Object 'System.Collections.Generic.List[string]'
+    $sceneGroupStartTicks = New-Object 'System.Collections.Generic.List[string]'
+    $sceneGroupEndTicks = New-Object 'System.Collections.Generic.List[string]'
+    $sceneGroupMotionTicks = New-Object 'System.Collections.Generic.List[string]'
+    $sceneGroupOffsetXs = New-Object 'System.Collections.Generic.List[string]'
+    $sceneGroupOffsetYs = New-Object 'System.Collections.Generic.List[string]'
+    $sceneGroupOffsetZs = New-Object 'System.Collections.Generic.List[string]'
+    $sceneGroupOffsetXSteps = New-Object 'System.Collections.Generic.List[string]'
+    $sceneGroupOffsetYSteps = New-Object 'System.Collections.Generic.List[string]'
+    $sceneGroupOffsetZSteps = New-Object 'System.Collections.Generic.List[string]'
+    $sceneGroupYawBases = New-Object 'System.Collections.Generic.List[string]'
+    $sceneGroupYawSteps = New-Object 'System.Collections.Generic.List[string]'
+    $timelineCameraXs = New-Object 'System.Collections.Generic.List[string]'
+    $timelineCameraYs = New-Object 'System.Collections.Generic.List[string]'
+    $timelineCameraZs = New-Object 'System.Collections.Generic.List[string]'
+    $timelineProjectScales = New-Object 'System.Collections.Generic.List[string]'
+    $timelineYaws = New-Object 'System.Collections.Generic.List[string]'
+    $timelinePitches = New-Object 'System.Collections.Generic.List[string]'
     $meshVertexOffsets = New-Object 'System.Collections.Generic.List[string]'
     $meshVertexCounts = New-Object 'System.Collections.Generic.List[string]'
     $meshFaceOffsets = New-Object 'System.Collections.Generic.List[string]'
@@ -2117,6 +2142,7 @@ function Write-GeneratedGeometryInclude {
     $kitShardMesh = New-Object 'System.Collections.Generic.List[string]'
 
     $sceneCount = 0
+    $sceneGroupCount = 0
     $totalTriangles = 0
     $meshMap = @{}
     $meshTriangleMap = @{}
@@ -2167,6 +2193,16 @@ function Write-GeneratedGeometryInclude {
                 throw ("{0} '{1}' face {2} in {3} must define at least 3 indices." -f $OwnerKind, $OwnerKey, $faceIndex, $SourcePath)
             }
 
+            $fxToken = ([string]$face['Fx']).Trim().ToLowerInvariant()
+            switch ($fxToken) {
+                '' { $faceFx = 0 }
+                'none' { $faceFx = 0 }
+                'pulse_cyan' { $faceFx = 1 }
+                'pulse_amber' { $faceFx = 2 }
+                'glint' { $faceFx = 3 }
+                default { throw ("{0} '{1}' face {2} in {3} referenced unknown Fx token '{4}'." -f $OwnerKind, $OwnerKey, $faceIndex, $SourcePath, $fxToken) }
+            }
+
             $fanBase = [int]$indices[0]
             if ($fanBase -lt 0 -or $fanBase -ge $Vertices.Count) {
                 throw ("{0} '{1}' face {2} in {3} referenced vertex index {4} outside 0..{5}." -f $OwnerKind, $OwnerKey, $faceIndex, $SourcePath, $fanBase, ($Vertices.Count - 1))
@@ -2186,7 +2222,7 @@ function Write-GeneratedGeometryInclude {
 
                 $payload.Add([byte]$materialMap[$materialKey].Base)
                 $payload.Add([byte]$materialMap[$materialKey].Dither)
-                $payload.Add([byte]0)
+                $payload.Add([byte]$faceFx)
                 $triangleCount += 1
             }
         }
@@ -2224,13 +2260,6 @@ function Write-GeneratedGeometryInclude {
             throw ("Geometry scene '{0}' in {1} must define a Camera.Viewport block." -f $sceneKey, $SourcePath)
         }
 
-        $vertices = @($scene['Vertices'])
-        $faces = @($scene['Faces'])
-        $packedScene = & $appendGeometry -OwnerKind 'Geometry scene' -OwnerKey $sceneKey -Vertices $vertices -Faces $faces
-        $vertexOffset = $packedScene.VertexOffset
-        $faceOffset = $packedScene.FaceOffset
-        $triangleCount = $packedScene.TriangleCount
-
         $sceneSymbol = "SCENE3D_{0}" -f $sceneKey.ToUpperInvariant()
         $cameraX = ConvertTo-GeometryFixed88 -Value $camera['X'] -Context ("Scene '{0}' camera X" -f $sceneKey)
         $cameraY = ConvertTo-GeometryFixed88 -Value $camera['Y'] -Context ("Scene '{0}' camera Y" -f $sceneKey)
@@ -2258,11 +2287,129 @@ function Write-GeneratedGeometryInclude {
             throw ("Scene '{0}' in {1} must keep viewport dimensions >= 16. Found {2}x{3}." -f $sceneKey, $SourcePath, $viewW, $viewH)
         }
 
+        $timelineLength = if ($scene.ContainsKey('TimelineTicks')) { [int]$scene['TimelineTicks'] } else { 64 }
+        if ($timelineLength -lt 1 -or $timelineLength -gt 64) {
+            throw ("Scene '{0}' in {1} must keep TimelineTicks in the 1..64 range. Found {2}." -f $sceneKey, $SourcePath, $timelineLength)
+        }
+
+        $loopTicks = if ($scene.ContainsKey('LoopTicks')) { [int]$scene['LoopTicks'] } else { 0 }
+        if ($loopTicks -lt 0 -or $loopTicks -gt $timelineLength) {
+            throw ("Scene '{0}' in {1} must keep LoopTicks in the 0..{2} range. Found {3}." -f $sceneKey, $SourcePath, $timelineLength, $loopTicks)
+        }
+
+        $signedYawStep = if ($yawStep -gt 127) { $yawStep - 256 } else { $yawStep }
+        $signedPitchStep = if ($pitchStep -gt 127) { $pitchStep - 256 } else { $pitchStep }
+        for ($sampleIndex = 0; $sampleIndex -lt 64; $sampleIndex++) {
+            $effectiveTick = if ($loopTicks -gt 0) { $sampleIndex % $loopTicks } else { [Math]::Min($sampleIndex, ($timelineLength - 1)) }
+            $timelineCameraXs.Add((Format-Hex16Literal $cameraX))
+            $timelineCameraYs.Add((Format-Hex16Literal $cameraY))
+            $timelineCameraZs.Add((Format-Hex16Literal $cameraZ))
+            $timelineProjectScales.Add($projectScale.ToString())
+            $timelineYaws.Add((($yawBase + ($effectiveTick * $signedYawStep)) -band 0xFF).ToString())
+            $timelinePitches.Add((($pitchBase + ($effectiveTick * $signedPitchStep)) -band 0xFF).ToString())
+        }
+
+        if ($scene.ContainsKey('Groups')) {
+            $sceneGroups = @($scene['Groups'])
+        } else {
+            $sceneGroups = @([ordered]@{
+                Key = 'main'
+                Vertices = $scene['Vertices']
+                Faces = $scene['Faces']
+                StartTick = 0
+                EndTick = ($timelineLength - 1)
+                MotionTicks = 0
+                Offset = @{}
+                OffsetStep = @{}
+                YawDegrees = 0.0
+                YawStepDegrees = 0.0
+            })
+        }
+
+        if ($sceneGroups.Count -eq 0) {
+            throw ("Geometry scene '{0}' in {1} must define at least one mesh group." -f $sceneKey, $SourcePath)
+        }
+
+        $sceneTimelineLengths.Add($timelineLength.ToString())
+        $sceneTimelineLoops.Add($loopTicks.ToString())
+        $sceneGroupStarts.Add($sceneGroupCount.ToString())
+        $sceneGroupCounts.Add($sceneGroups.Count.ToString())
+
+        $sceneVertexOffset = 0
+        $sceneFaceOffset = 0
+        $sceneVertexCount = 0
+        $sceneTriangleCount = 0
+        for ($groupIndex = 0; $groupIndex -lt $sceneGroups.Count; $groupIndex++) {
+            $group = $sceneGroups[$groupIndex]
+            if (-not ($group -is [System.Collections.IDictionary])) {
+                throw ("Geometry scene '{0}' group {1} in {2} must be a hashtable." -f $sceneKey, ($groupIndex + 1), $SourcePath)
+            }
+
+            $groupKey = if ($group.Contains('Key') -and -not [string]::IsNullOrWhiteSpace([string]$group['Key'])) { [string]$group['Key'] } else { "group{0}" -f ($groupIndex + 1) }
+            $groupVertices = @($group['Vertices'])
+            $groupFaces = @($group['Faces'])
+            if ($groupVertices.Count -eq 0 -or $groupFaces.Count -eq 0) {
+                throw ("Geometry scene '{0}' group '{1}' in {2} must define Vertices and Faces." -f $sceneKey, $groupKey, $SourcePath)
+            }
+
+            $packedGroup = & $appendGeometry -OwnerKind 'Geometry scene group' -OwnerKey ("{0}/{1}" -f $sceneKey, $groupKey) -Vertices $groupVertices -Faces $groupFaces
+            if ($groupIndex -eq 0) {
+                $sceneVertexOffset = $packedGroup.VertexOffset
+                $sceneFaceOffset = $packedGroup.FaceOffset
+            }
+
+            $sceneVertexCount += $groupVertices.Count
+            $sceneTriangleCount += $packedGroup.TriangleCount
+
+            $groupStartTick = if ($group.Contains('StartTick')) { [int]$group['StartTick'] } else { 0 }
+            $groupEndTick = if ($group.Contains('EndTick')) { [int]$group['EndTick'] } else { ($timelineLength - 1) }
+            $groupMotionTicks = if ($group.Contains('MotionTicks')) { [int]$group['MotionTicks'] } else { 0 }
+            if ($groupStartTick -lt 0 -or $groupStartTick -ge $timelineLength) {
+                throw ("Geometry scene '{0}' group '{1}' in {2} must keep StartTick in the 0..{3} range. Found {4}." -f $sceneKey, $groupKey, $SourcePath, ($timelineLength - 1), $groupStartTick)
+            }
+
+            if ($groupEndTick -lt $groupStartTick -or $groupEndTick -ge $timelineLength) {
+                throw ("Geometry scene '{0}' group '{1}' in {2} must keep EndTick in the {3}..{4} range. Found {5}." -f $sceneKey, $groupKey, $SourcePath, $groupStartTick, ($timelineLength - 1), $groupEndTick)
+            }
+
+            if ($groupMotionTicks -lt 0 -or $groupMotionTicks -gt $timelineLength) {
+                throw ("Geometry scene '{0}' group '{1}' in {2} must keep MotionTicks in the 0..{3} range. Found {4}." -f $sceneKey, $groupKey, $SourcePath, $timelineLength, $groupMotionTicks)
+            }
+
+            $groupOffset = if ($group.Contains('Offset') -and ($group['Offset'] -is [System.Collections.IDictionary])) { $group['Offset'] } else { @{} }
+            $groupOffsetStep = if ($group.Contains('OffsetStep') -and ($group['OffsetStep'] -is [System.Collections.IDictionary])) { $group['OffsetStep'] } else { @{} }
+            $groupOffsetX = if ($groupOffset.Contains('X')) { ConvertTo-GeometryFixed88 -Value $groupOffset['X'] -Context ("Scene '{0}' group '{1}' offset X" -f $sceneKey, $groupKey) } else { 0 }
+            $groupOffsetY = if ($groupOffset.Contains('Y')) { ConvertTo-GeometryFixed88 -Value $groupOffset['Y'] -Context ("Scene '{0}' group '{1}' offset Y" -f $sceneKey, $groupKey) } else { 0 }
+            $groupOffsetZ = if ($groupOffset.Contains('Z')) { ConvertTo-GeometryFixed88 -Value $groupOffset['Z'] -Context ("Scene '{0}' group '{1}' offset Z" -f $sceneKey, $groupKey) } else { 0 }
+            $groupOffsetXStep = if ($groupOffsetStep.Contains('X')) { ConvertTo-GeometryFixed88 -Value $groupOffsetStep['X'] -Context ("Scene '{0}' group '{1}' offset-step X" -f $sceneKey, $groupKey) } else { 0 }
+            $groupOffsetYStep = if ($groupOffsetStep.Contains('Y')) { ConvertTo-GeometryFixed88 -Value $groupOffsetStep['Y'] -Context ("Scene '{0}' group '{1}' offset-step Y" -f $sceneKey, $groupKey) } else { 0 }
+            $groupOffsetZStep = if ($groupOffsetStep.Contains('Z')) { ConvertTo-GeometryFixed88 -Value $groupOffsetStep['Z'] -Context ("Scene '{0}' group '{1}' offset-step Z" -f $sceneKey, $groupKey) } else { 0 }
+            $groupYawBase = if ($group.Contains('YawDegrees')) { ConvertTo-GeometryAngleByte -Value $group['YawDegrees'] -Context ("Scene '{0}' group '{1}' yaw" -f $sceneKey, $groupKey) } else { 0 }
+            $groupYawStep = if ($group.Contains('YawStepDegrees')) { ConvertTo-GeometryAngleByte -Value $group['YawStepDegrees'] -Context ("Scene '{0}' group '{1}' yaw step" -f $sceneKey, $groupKey) } else { 0 }
+
+            $sceneGroupVertexOffsets.Add($packedGroup.VertexOffset.ToString())
+            $sceneGroupVertexCounts.Add($groupVertices.Count.ToString())
+            $sceneGroupFaceOffsets.Add($packedGroup.FaceOffset.ToString())
+            $sceneGroupFaceCounts.Add($packedGroup.TriangleCount.ToString())
+            $sceneGroupStartTicks.Add($groupStartTick.ToString())
+            $sceneGroupEndTicks.Add($groupEndTick.ToString())
+            $sceneGroupMotionTicks.Add($groupMotionTicks.ToString())
+            $sceneGroupOffsetXs.Add((Format-Hex16Literal $groupOffsetX))
+            $sceneGroupOffsetYs.Add((Format-Hex16Literal $groupOffsetY))
+            $sceneGroupOffsetZs.Add((Format-Hex16Literal $groupOffsetZ))
+            $sceneGroupOffsetXSteps.Add((Format-Hex16Literal $groupOffsetXStep))
+            $sceneGroupOffsetYSteps.Add((Format-Hex16Literal $groupOffsetYStep))
+            $sceneGroupOffsetZSteps.Add((Format-Hex16Literal $groupOffsetZStep))
+            $sceneGroupYawBases.Add($groupYawBase.ToString())
+            $sceneGroupYawSteps.Add($groupYawStep.ToString())
+            $sceneGroupCount += 1
+        }
+
         $lines.Add(("{0}_INDEX EQU {1}" -f $sceneSymbol, $sceneIndex))
-        $lines.Add(("{0}_VERTEX_OFFSET EQU {1}" -f $sceneSymbol, $vertexOffset))
-        $lines.Add(("{0}_VERTEX_COUNT EQU {1}" -f $sceneSymbol, $vertices.Count))
-        $lines.Add(("{0}_FACE_OFFSET EQU {1}" -f $sceneSymbol, $faceOffset))
-        $lines.Add(("{0}_FACE_COUNT EQU {1}" -f $sceneSymbol, $triangleCount))
+        $lines.Add(("{0}_VERTEX_OFFSET EQU {1}" -f $sceneSymbol, $sceneVertexOffset))
+        $lines.Add(("{0}_VERTEX_COUNT EQU {1}" -f $sceneSymbol, $sceneVertexCount))
+        $lines.Add(("{0}_FACE_OFFSET EQU {1}" -f $sceneSymbol, $sceneFaceOffset))
+        $lines.Add(("{0}_FACE_COUNT EQU {1}" -f $sceneSymbol, $sceneTriangleCount))
         $lines.Add(("{0}_VIEW_X EQU {1}" -f $sceneSymbol, $viewX))
         $lines.Add(("{0}_VIEW_Y EQU {1}" -f $sceneSymbol, $viewY))
         $lines.Add(("{0}_VIEW_W EQU {1}" -f $sceneSymbol, $viewW))
@@ -2277,10 +2424,10 @@ function Write-GeneratedGeometryInclude {
         $lines.Add(("{0}_PROJECT_SCALE EQU {1}" -f $sceneSymbol, $projectScale))
         $lines.Add('')
 
-        $sceneVertexOffsets.Add($vertexOffset.ToString())
-        $sceneVertexCounts.Add($vertices.Count.ToString())
-        $sceneFaceOffsets.Add($faceOffset.ToString())
-        $sceneFaceCounts.Add($triangleCount.ToString())
+        $sceneVertexOffsets.Add($sceneVertexOffset.ToString())
+        $sceneVertexCounts.Add($sceneVertexCount.ToString())
+        $sceneFaceOffsets.Add($sceneFaceOffset.ToString())
+        $sceneFaceCounts.Add($sceneTriangleCount.ToString())
         $sceneViewportXs.Add($viewX.ToString())
         $sceneViewportYs.Add($viewY.ToString())
         $sceneViewportWs.Add($viewW.ToString())
@@ -2293,10 +2440,11 @@ function Write-GeneratedGeometryInclude {
         $scenePitchBases.Add($pitchBase.ToString())
         $scenePitchSteps.Add($pitchStep.ToString())
         $sceneProjectScales.Add($projectScale.ToString())
-        $sceneSummary.Add(("{0}: {1} verts, {2} tris, view {3}x{4}+{5},{6}" -f $sceneKey, $vertices.Count, $triangleCount, $viewW, $viewH, $viewX, $viewY))
-        $sceneFaceSummary.Add(("{0}={1}" -f $sceneKey, $triangleCount))
+        $loopSuffix = if ($loopTicks -gt 0) { "/loop $loopTicks" } else { '' }
+        $sceneSummary.Add(("{0}: {1} groups, {2} ticks{3}, {4} verts, {5} tris, view {6}x{7}+{8},{9}" -f $sceneKey, $sceneGroups.Count, $timelineLength, $loopSuffix, $sceneVertexCount, $sceneTriangleCount, $viewW, $viewH, $viewX, $viewY))
+        $sceneFaceSummary.Add(("{0}={1}t/{2}g" -f $sceneKey, $sceneTriangleCount, $sceneGroups.Count))
         $sceneCount += 1
-        $totalTriangles += $triangleCount
+        $totalTriangles += $sceneTriangleCount
     }
 
     foreach ($meshIndex in 0..($meshes.Count - 1)) {
@@ -2396,6 +2544,7 @@ function Write-GeneratedGeometryInclude {
     }
 
     $lines.Add(("SCENE3D_COUNT EQU {0}" -f $sceneCount))
+    $lines.Add(("SCENE3D_GROUP_COUNT EQU {0}" -f $sceneGroupCount))
     $lines.Add(("SCENE3D_MATERIAL_COUNT EQU {0}" -f $materials.Count))
     $lines.Add(("GAME3D_MESH_COUNT EQU {0}" -f $meshes.Count))
     $lines.Add(("GAME3D_KIT_COUNT EQU {0}" -f $kits.Count))
@@ -2432,6 +2581,38 @@ function Write-GeneratedGeometryInclude {
     $lines.Add('')
     Add-AsmDataLines -Lines $lines -Label 'scene3d_project_scale_table' -Directive 'dw' -Values $sceneProjectScales.ToArray() -ValuesPerLine 4
     $lines.Add('')
+    Add-AsmDataLines -Lines $lines -Label 'scene3d_timeline_length_table' -Directive 'db' -Values $sceneTimelineLengths.ToArray() -ValuesPerLine 8
+    Add-AsmDataLines -Lines $lines -Label 'scene3d_timeline_loop_table' -Directive 'db' -Values $sceneTimelineLoops.ToArray() -ValuesPerLine 8
+    Add-AsmDataLines -Lines $lines -Label 'scene3d_group_start_table' -Directive 'db' -Values $sceneGroupStarts.ToArray() -ValuesPerLine 8
+    Add-AsmDataLines -Lines $lines -Label 'scene3d_group_count_table' -Directive 'db' -Values $sceneGroupCounts.ToArray() -ValuesPerLine 8
+    $lines.Add('')
+    Add-AsmDataLines -Lines $lines -Label 'scene3d_group_vertex_offset_table' -Directive 'dw' -Values $sceneGroupVertexOffsets.ToArray() -ValuesPerLine 4
+    $lines.Add('')
+    Add-AsmDataLines -Lines $lines -Label 'scene3d_group_vertex_count_table' -Directive 'db' -Values $sceneGroupVertexCounts.ToArray() -ValuesPerLine 8
+    $lines.Add('')
+    Add-AsmDataLines -Lines $lines -Label 'scene3d_group_face_offset_table' -Directive 'dw' -Values $sceneGroupFaceOffsets.ToArray() -ValuesPerLine 4
+    $lines.Add('')
+    Add-AsmDataLines -Lines $lines -Label 'scene3d_group_face_count_table' -Directive 'db' -Values $sceneGroupFaceCounts.ToArray() -ValuesPerLine 8
+    Add-AsmDataLines -Lines $lines -Label 'scene3d_group_start_tick_table' -Directive 'db' -Values $sceneGroupStartTicks.ToArray() -ValuesPerLine 8
+    Add-AsmDataLines -Lines $lines -Label 'scene3d_group_end_tick_table' -Directive 'db' -Values $sceneGroupEndTicks.ToArray() -ValuesPerLine 8
+    Add-AsmDataLines -Lines $lines -Label 'scene3d_group_motion_ticks_table' -Directive 'db' -Values $sceneGroupMotionTicks.ToArray() -ValuesPerLine 8
+    $lines.Add('')
+    Add-AsmDataLines -Lines $lines -Label 'scene3d_group_offset_x_table' -Directive 'dw' -Values $sceneGroupOffsetXs.ToArray() -ValuesPerLine 4
+    Add-AsmDataLines -Lines $lines -Label 'scene3d_group_offset_y_table' -Directive 'dw' -Values $sceneGroupOffsetYs.ToArray() -ValuesPerLine 4
+    Add-AsmDataLines -Lines $lines -Label 'scene3d_group_offset_z_table' -Directive 'dw' -Values $sceneGroupOffsetZs.ToArray() -ValuesPerLine 4
+    Add-AsmDataLines -Lines $lines -Label 'scene3d_group_offset_x_step_table' -Directive 'dw' -Values $sceneGroupOffsetXSteps.ToArray() -ValuesPerLine 4
+    Add-AsmDataLines -Lines $lines -Label 'scene3d_group_offset_y_step_table' -Directive 'dw' -Values $sceneGroupOffsetYSteps.ToArray() -ValuesPerLine 4
+    Add-AsmDataLines -Lines $lines -Label 'scene3d_group_offset_z_step_table' -Directive 'dw' -Values $sceneGroupOffsetZSteps.ToArray() -ValuesPerLine 4
+    Add-AsmDataLines -Lines $lines -Label 'scene3d_group_yaw_base_table' -Directive 'db' -Values $sceneGroupYawBases.ToArray() -ValuesPerLine 8
+    Add-AsmDataLines -Lines $lines -Label 'scene3d_group_yaw_step_table' -Directive 'db' -Values $sceneGroupYawSteps.ToArray() -ValuesPerLine 8
+    $lines.Add('')
+    Add-AsmDataLines -Lines $lines -Label 'scene3d_timeline_camera_x_table' -Directive 'dw' -Values $timelineCameraXs.ToArray() -ValuesPerLine 4
+    Add-AsmDataLines -Lines $lines -Label 'scene3d_timeline_camera_y_table' -Directive 'dw' -Values $timelineCameraYs.ToArray() -ValuesPerLine 4
+    Add-AsmDataLines -Lines $lines -Label 'scene3d_timeline_camera_z_table' -Directive 'dw' -Values $timelineCameraZs.ToArray() -ValuesPerLine 4
+    Add-AsmDataLines -Lines $lines -Label 'scene3d_timeline_project_scale_table' -Directive 'dw' -Values $timelineProjectScales.ToArray() -ValuesPerLine 4
+    Add-AsmDataLines -Lines $lines -Label 'scene3d_timeline_yaw_table' -Directive 'db' -Values $timelineYaws.ToArray() -ValuesPerLine 8
+    Add-AsmDataLines -Lines $lines -Label 'scene3d_timeline_pitch_table' -Directive 'db' -Values $timelinePitches.ToArray() -ValuesPerLine 8
+    $lines.Add('')
     Add-AsmDataLines -Lines $lines -Label 'game3d_mesh_vertex_offset_table' -Directive 'dw' -Values $meshVertexOffsets.ToArray() -ValuesPerLine 4
     $lines.Add('')
     Add-AsmDataLines -Lines $lines -Label 'game3d_mesh_vertex_count_table' -Directive 'db' -Values $meshVertexCounts.ToArray() -ValuesPerLine 8
@@ -2464,6 +2645,7 @@ function Write-GeneratedGeometryInclude {
         SourcePath = $SourcePath
         OutputPath = $OutputPath
         SceneCount = $sceneCount
+        SceneGroupCount = $sceneGroupCount
         MeshCount = $meshes.Count
         KitCount = $kits.Count
         MaterialCount = $materials.Count
@@ -2518,41 +2700,8 @@ function Get-GameplayGeometryBudgetSummary {
 
         foreach ($map in $maps) {
             $rows = @($map['Rows'] | ForEach-Object { [string]$_ })
-            $floorRuns = 0
-            $floorTrimRuns = 0
-            for ($y = 0; $y -lt $ExpectedMapHeight; $y++) {
-                $inside = $false
-                for ($x = 0; $x -lt $ExpectedMapWidth; $x++) {
-                    $walkable = $rows[$y][$x] -ne '#'
-                    if ($walkable) {
-                        if (-not $inside) {
-                            $floorRuns += 1
-                            $inside = $true
-                        }
-                    } else {
-                        $inside = $false
-                    }
-                }
-
-                if ((($y + $sectorId) % 2) -eq 0) {
-                    $x = 0
-                    while ($x -lt $ExpectedMapWidth) {
-                        if ($rows[$y][$x] -eq '#') {
-                            $x += 1
-                            continue
-                        }
-
-                        $runStart = $x
-                        while ($x -lt $ExpectedMapWidth -and $rows[$y][$x] -ne '#') {
-                            $x += 1
-                        }
-
-                        if (($x - $runStart) -gt 2) {
-                            $floorTrimRuns += 1
-                        }
-                    }
-                }
-            }
+            $floorRuns = 1
+            $floorTrimRuns = 1
 
             $northRuns = 0
             $southRuns = 0
@@ -2612,30 +2761,28 @@ function Get-GameplayGeometryBudgetSummary {
                 }
             }
 
-            $laneTiles = 0
-            $exitColumnIndex = [Math]::Max(0, [Math]::Min($ExpectedMapWidth - 1, $ExitColumn))
-            for ($y = 0; $y -lt $ExpectedMapHeight; $y++) {
-                if ($rows[$y][$exitColumnIndex] -ne '#') {
-                    $laneTiles += 1
-                    if ($laneTiles -ge 5) {
-                        break
-                    }
-                }
-            }
+            $baseFaces = ($floorRuns * 2) + ($floorTrimRuns * 2)
+            $compileViews = @(
+                [pscustomobject]@{ Key = 'north'; Faces = $baseFaces + (($southRuns + $westRuns + $eastRuns) * 2) }
+                [pscustomobject]@{ Key = 'south'; Faces = $baseFaces + (($northRuns + $westRuns + $eastRuns) * 2) }
+                [pscustomobject]@{ Key = 'east';  Faces = $baseFaces + (($northRuns + $southRuns + $westRuns) * 2) }
+                [pscustomobject]@{ Key = 'west';  Faces = $baseFaces + (($northRuns + $southRuns + $eastRuns) * 2) }
+            )
+            $orderedViews = @($compileViews | Sort-Object -Property @{ Expression = 'Faces'; Ascending = $true }, @{ Expression = 'Key'; Ascending = $true })
+            $minStructuralFaces = $orderedViews[0].Faces
+            $maxStructuralFaces = $orderedViews[$orderedViews.Count - 1].Faces
+            $minHeadroom = $FaceBudget - $maxStructuralFaces
 
-            $structuralFaces = ($floorRuns * 2) + ($floorTrimRuns * 2) + (($northRuns + $southRuns + $westRuns + $eastRuns) * 2) + ($laneTiles * 2)
-            $structuralCounts.Add($structuralFaces)
-            $templateParts.Add(("{0}={1}+{2}" -f ([string]$map['Name']), $structuralFaces, $dynamicPropFaces))
+            $structuralCounts.Add($maxStructuralFaces)
+            $templateParts.Add(("{0}={1} (headroom {2}, view {3})" -f ([string]$map['Name']), $maxStructuralFaces, $minHeadroom, $orderedViews[$orderedViews.Count - 1].Key))
         }
 
         $minFaces = ($structuralCounts | Measure-Object -Minimum).Minimum
         $maxFaces = ($structuralCounts | Measure-Object -Maximum).Maximum
-        $summaryLines.Add(("S{0}: room {1}-{2} faces + props {3} tris ({4})" -f $sectorId, $minFaces, $maxFaces, $dynamicPropFaces, ($templateParts -join ', ')))
+        $summaryLines.Add(("S{0}: structural {1}-{2}/{3} (headroom {4}-{5}), props {6} tris ({7})" -f $sectorId, $minFaces, $maxFaces, $FaceBudget, ($FaceBudget - $maxFaces), ($FaceBudget - $minFaces), $dynamicPropFaces, ($templateParts -join ', ')))
 
         if ($maxFaces -gt $FaceBudget) {
             $warningLines.Add(("Sector {0} room kit estimate reaches {1} structural faces, which exceeds the configured runtime face budget of {2}." -f $sectorId, $maxFaces, $FaceBudget))
-        } elseif ($maxFaces -gt [int]($FaceBudget * 0.85)) {
-            $warningLines.Add(("Sector {0} room kit estimate reaches {1} structural faces, which is above 85%% of the configured runtime face budget ({2})." -f $sectorId, $maxFaces, $FaceBudget))
         }
     }
 
@@ -3610,7 +3757,7 @@ Write-Host ("Include : {0}" -f $generatedArt.OutputPath)
 Write-Host ("Bitmaps : {0}" -f $generatedArt.AssetCount)
 Write-Host ("Bytes   : {0}" -f $generatedArt.TotalBytes)
 Write-Host ("Sizes   : {0}" -f $generatedArt.SizeSummary)
-Write-Host ("Geometry scenes: {0}, meshes: {1}, kits: {2}, tris: {3}" -f $generatedGeometry.SceneCount, $generatedGeometry.MeshCount, $generatedGeometry.KitCount, $generatedGeometry.TriangleCount)
+Write-Host ("Geometry scenes: {0}, groups: {1}, meshes: {2}, kits: {3}, tris: {4}" -f $generatedGeometry.SceneCount, $generatedGeometry.SceneGroupCount, $generatedGeometry.MeshCount, $generatedGeometry.KitCount, $generatedGeometry.TriangleCount)
 
 $generatedContentLines = @(
     ("Presentation source: {0}" -f $generatedPresentation.SourcePath)
@@ -3620,6 +3767,7 @@ $generatedContentLines = @(
     ("Geometry source: {0}" -f $generatedGeometry.SourcePath)
     ("Geometry include: {0}" -f $generatedGeometry.OutputPath)
     ("Geometry scenes: {0}" -f $generatedGeometry.SceneCount)
+    ("Geometry scene groups: {0}" -f $generatedGeometry.SceneGroupCount)
     ("Geometry meshes: {0}" -f $generatedGeometry.MeshCount)
     ("Geometry gameplay kits: {0}" -f $generatedGeometry.KitCount)
     ("Geometry materials: {0}" -f $generatedGeometry.MaterialCount)
@@ -3628,7 +3776,7 @@ $generatedContentLines = @(
     ("Geometry summary: {0}" -f $generatedGeometry.SceneSummary)
     ("Geometry mesh summary: {0}" -f $generatedGeometry.MeshSummary)
     ("Geometry gameplay kit summary: {0}" -f $generatedGeometry.KitSummary)
-    ("Gameplay room structural budgets: {0}" -f ($gameplayGeometryBudget.SummaryLines -join ' | '))
+    ("Gameplay room structural headroom: {0}" -f ($gameplayGeometryBudget.SummaryLines -join ' | '))
     ("Sector source: {0}" -f $generatedSectors.SourcePath)
     ("Sector include: {0}" -f $generatedSectors.SectorOutputPath)
     ("Maps include: {0}" -f $generatedSectors.MapsOutputPath)

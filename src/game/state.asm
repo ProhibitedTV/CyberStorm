@@ -159,6 +159,7 @@ scene3d_cam_z       dw 0
 scene3d_yaw_angle   db 0
 scene3d_pitch_angle db 0
 scene3d_tick        db 0
+scene3d_timeline_tick db 0
 scene3d_temp_x      dw 0
 scene3d_temp_y      dw 0
 scene3d_temp_z      dw 0
@@ -167,6 +168,7 @@ scene3d_temp_v      dw 0
 scene3d_temp_w      dw 0
 scene3d_temp_l      dw 0
 scene3d_temp_r      dw 0
+scene3d_temp_s      dw 0
 scene3d_tri_x0      dw 0
 scene3d_tri_y0      dw 0
 scene3d_tri_x1      dw 0
@@ -185,6 +187,7 @@ scene3d_face_order  db SCENE3D_MAX_FACES dup (0)
 scene3d_face_raw    db SCENE3D_MAX_FACES * SCENE3D_FACE_BYTES dup (0)
 game3d_room_vertex_raw db SCENE3D_MAX_VERTICES * SCENE3D_VERTEX_BYTES dup (0)
 game3d_room_face_raw   db SCENE3D_MAX_FACES * SCENE3D_FACE_BYTES dup (0)
+game3d_floor_marks db MAP_SIZE dup (0)
 
 ; Enemy slot layout: [alive, x, y, kind].
 enemies db MAX_ENEMIES * ENEMY_SIZE dup (0)

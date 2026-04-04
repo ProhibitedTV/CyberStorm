@@ -44,7 +44,11 @@ game3d_return_yaw_north:
 
 game3d_update_camera_target:
     call game3d_get_facing_yaw
+    cmp al, [game3d_camera_yaw_target]
+    je game3d_update_camera_target_done
     mov [game3d_camera_yaw_target], al
+    mov byte ptr [game3d_room_dirty], 1
+game3d_update_camera_target_done:
     ret
 
 game3d_ease_camera_yaw:
@@ -79,6 +83,8 @@ game3d_ease_camera_done:
     ret
 
 render_gameplay_3d:
+    call game3d_draw_view_backdrop
+    call game3d_update_camera_target
     call game3d_build_room_if_dirty
     call game3d_setup_camera
     call game3d_render_room
@@ -104,7 +110,6 @@ game3d_setup_camera:
     push cx
     push dx
 
-    call game3d_update_camera_target
     call game3d_ease_camera_yaw
 
     mov word ptr [scene3d_clip_left], GAME3D_VIEW_X
@@ -184,55 +189,166 @@ game3d_compile_room_mesh:
     mov byte ptr [game3d_room_face_count], 0
     mov byte ptr [game3d_room_overflow], 0
     call game3d_compile_floor_strips
-    call game3d_compile_north_walls
+    mov al, [game3d_camera_yaw_target]
+    cmp al, GAME3D_YAW_SOUTH
+    je game3d_compile_room_south_view
+    cmp al, GAME3D_YAW_EAST
+    je game3d_compile_room_east_view
+    cmp al, GAME3D_YAW_WEST
+    je game3d_compile_room_west_view
+
+game3d_compile_room_north_view:
     call game3d_compile_south_walls
     call game3d_compile_west_walls
     call game3d_compile_east_walls
-    call game3d_compile_gate_lane_strips
+    ret
+
+game3d_compile_room_south_view:
+    call game3d_compile_north_walls
+    call game3d_compile_west_walls
+    call game3d_compile_east_walls
+    ret
+
+game3d_compile_room_east_view:
+    call game3d_compile_north_walls
+    call game3d_compile_south_walls
+    call game3d_compile_west_walls
+    ret
+
+game3d_compile_room_west_view:
+    call game3d_compile_north_walls
+    call game3d_compile_south_walls
+    call game3d_compile_east_walls
+    ret
+
+game3d_draw_view_backdrop:
+    push ax
+    push bx
+    push cx
+    push dx
+    push bp
+
+    mov bx, GAME3D_VIEW_X
+    mov dx, GAME3D_VIEW_Y
+    mov cx, GAME3D_VIEW_W
+    mov bp, GAME3D_VIEW_H
+    cmp byte ptr [sector_num], 2
+    je game3d_view_backdrop_sector2
+    cmp byte ptr [sector_num], 3
+    je game3d_view_backdrop_sector3
+
+game3d_view_backdrop_sector1:
+    mov al, PAL_BG0
+    call fill_rect
+    mov bx, GAME3D_VIEW_X
+    mov dx, GAME3D_VIEW_Y + 16
+    mov cx, GAME3D_VIEW_W
+    mov bp, 12
+    mov al, PAL_PANEL2
+    call fill_rect
+    mov bx, GAME3D_VIEW_X
+    mov dx, GAME3D_VIEW_Y + 74
+    mov cx, GAME3D_VIEW_W
+    mov bp, GAME3D_VIEW_H - 74
+    mov al, PAL_PANEL
+    call fill_rect
+    mov bx, GAME3D_VIEW_X + 12
+    mov dx, GAME3D_VIEW_Y + 28
+    mov cx, GAME3D_VIEW_W - 24
+    mov bp, 1
+    mov al, PAL_CYAN
+    call fill_rect
+    mov bx, GAME3D_VIEW_X + 28
+    mov dx, GAME3D_VIEW_Y + 48
+    mov cx, GAME3D_VIEW_W - 56
+    mov al, PAL_CYAN2
+    call fill_rect
+    jmp game3d_view_backdrop_done
+
+game3d_view_backdrop_sector2:
+    mov al, PAL_BG1
+    call fill_rect
+    mov bx, GAME3D_VIEW_X
+    mov dx, GAME3D_VIEW_Y + 18
+    mov cx, GAME3D_VIEW_W
+    mov bp, 10
+    mov al, PAL_PANEL2
+    call fill_rect
+    mov bx, GAME3D_VIEW_X
+    mov dx, GAME3D_VIEW_Y + 82
+    mov cx, GAME3D_VIEW_W
+    mov bp, GAME3D_VIEW_H - 82
+    mov al, PAL_PANEL
+    call fill_rect
+    mov bx, GAME3D_VIEW_X + 10
+    mov dx, GAME3D_VIEW_Y + 30
+    mov cx, GAME3D_VIEW_W - 20
+    mov bp, 2
+    mov al, PAL_AMBER
+    call fill_rect
+    mov bx, GAME3D_VIEW_X + 22
+    mov dx, GAME3D_VIEW_Y + 62
+    mov cx, GAME3D_VIEW_W - 44
+    mov bp, 2
+    mov al, PAL_RED
+    call fill_rect
+    jmp game3d_view_backdrop_done
+
+game3d_view_backdrop_sector3:
+    mov al, PAL_BLACK
+    call fill_rect
+    mov bx, GAME3D_VIEW_X
+    mov dx, GAME3D_VIEW_Y + 12
+    mov cx, GAME3D_VIEW_W
+    mov bp, 14
+    mov al, PAL_BG0
+    call fill_rect
+    mov bx, GAME3D_VIEW_X
+    mov dx, GAME3D_VIEW_Y + 76
+    mov cx, GAME3D_VIEW_W
+    mov bp, GAME3D_VIEW_H - 76
+    mov al, PAL_PANEL
+    call fill_rect
+    mov bx, GAME3D_VIEW_X + 16
+    mov dx, GAME3D_VIEW_Y + 24
+    mov cx, GAME3D_VIEW_W - 32
+    mov bp, 1
+    mov al, PAL_RED
+    call fill_rect
+    mov bx, GAME3D_VIEW_X + 106
+    mov dx, GAME3D_VIEW_Y + 36
+    mov cx, 16
+    mov bp, GAME3D_VIEW_H - 48
+    mov al, PAL_RED2
+    call fill_rect
+    mov bx, GAME3D_VIEW_X + 102
+    mov dx, GAME3D_VIEW_Y + 56
+    mov cx, 24
+    mov bp, 2
+    mov al, PAL_WHITE
+    call fill_rect
+
+game3d_view_backdrop_done:
+    pop bp
+    pop dx
+    pop cx
+    pop bx
+    pop ax
     ret
 
 game3d_compile_floor_strips:
-    xor dh, dh
-
-game3d_floor_row_loop:
-    cmp dh, MAP_H
-    jae game3d_compile_floor_done
-    xor dl, dl
-
-game3d_floor_scan_loop:
-    cmp dl, MAP_W
-    jae game3d_floor_next_row
-    mov bl, dl
-    mov bh, dh
-    call get_tile
-    cmp al, TILE_WALL
-    je game3d_floor_skip_wall
-    mov ch, dl
-
-game3d_floor_run_loop:
-    inc dl
-    cmp dl, MAP_W
-    jae game3d_floor_emit
-    mov bl, dl
-    mov bh, dh
-    call get_tile
-    cmp al, TILE_WALL
-    jne game3d_floor_run_loop
-
-game3d_floor_emit:
-    mov al, ch
+    mov al, 0
     call game3d_world_x_edge_from_al
     mov [scene3d_temp_x], ax
-    mov al, dl
+    mov al, MAP_W
     call game3d_world_x_edge_from_al
     mov [scene3d_temp_y], ax
     mov word ptr [scene3d_temp_z], GAME3D_FLOOR_Y
     mov word ptr [scene3d_temp_u], GAME3D_FLOOR_Y
-    mov al, dh
+    mov al, 0
     call game3d_world_z_edge_from_al
     mov [scene3d_temp_v], ax
-    mov al, dh
-    inc al
+    mov al, MAP_H
     call game3d_world_z_edge_from_al
     mov [scene3d_temp_w], ax
     call game3d_get_floor_base_material
@@ -240,18 +356,26 @@ game3d_floor_emit:
     mov [scene3d_temp_dither], ah
     mov byte ptr [scene3d_temp_face], GAME3D_FACE_FLAG_NONE
     call game3d_emit_quad_from_temps
-    call game3d_emit_floor_trim_run
-    jmp game3d_floor_scan_loop
 
-game3d_floor_skip_wall:
-    inc dl
-    jmp game3d_floor_scan_loop
-
-game3d_floor_next_row:
-    inc dh
-    jmp game3d_floor_row_loop
-
-game3d_compile_floor_done:
+    mov al, PLAY_MIN_X
+    call game3d_world_x_edge_from_al
+    mov [scene3d_temp_x], ax
+    mov al, PLAY_MAX_X + 1
+    call game3d_world_x_edge_from_al
+    mov [scene3d_temp_y], ax
+    mov word ptr [scene3d_temp_z], GAME3D_FLOOR_TRIM_Y
+    mov word ptr [scene3d_temp_u], GAME3D_FLOOR_TRIM_Y
+    mov al, PLAY_MIN_Y
+    call game3d_world_z_edge_from_al
+    mov [scene3d_temp_v], ax
+    mov al, PLAY_MAX_Y + 1
+    call game3d_world_z_edge_from_al
+    mov [scene3d_temp_w], ax
+    call game3d_get_floor_trim_material
+    mov [scene3d_temp_color], al
+    mov [scene3d_temp_dither], ah
+    mov byte ptr [scene3d_temp_face], GAME3D_FACE_FLAG_NONE
+    call game3d_emit_quad_from_temps
     ret
 
 game3d_compile_north_walls:
@@ -505,43 +629,62 @@ game3d_lane_row_loop:
     mov bh, dh
     call get_tile
     cmp al, TILE_WALL
-    je game3d_lane_next_row
+    je game3d_lane_skip_row
 
-    mov al, bl
+    mov dl, dh
+    xor cl, cl
+
+game3d_lane_run_loop:
+    cmp dh, MAP_H
+    jae game3d_lane_emit_run
+    cmp ch, 5
+    jae game3d_lane_emit_run
+    mov bl, EXIT_COL
+    mov bh, dh
+    call get_tile
+    cmp al, TILE_WALL
+    je game3d_lane_emit_run
+    inc dh
+    inc ch
+    inc cl
+    jmp game3d_lane_run_loop
+
+game3d_lane_emit_run:
+    or cl, cl
+    jz game3d_lane_row_loop
+    mov al, EXIT_COL
     call game3d_world_x_edge_from_al
     add ax, GAME3D_LANE_INSET
     mov [scene3d_temp_x], ax
-    mov al, bl
-    inc al
+    mov al, EXIT_COL + 1
     call game3d_world_x_edge_from_al
     sub ax, GAME3D_LANE_INSET
     mov [scene3d_temp_y], ax
     mov word ptr [scene3d_temp_z], GAME3D_FLOOR_TRIM_Y
     mov word ptr [scene3d_temp_u], GAME3D_FLOOR_TRIM_Y
-    mov al, dh
+    mov al, dl
     call game3d_world_z_edge_from_al
     add ax, GAME3D_FLOOR_TRIM_INSET
     mov [scene3d_temp_v], ax
-    mov al, dh
-    inc al
+    mov al, dl
+    add al, cl
     call game3d_world_z_edge_from_al
     sub ax, GAME3D_FLOOR_TRIM_INSET
     mov [scene3d_temp_w], ax
     mov ax, [scene3d_temp_y]
     cmp ax, [scene3d_temp_x]
-    jbe game3d_lane_skip_emit
+    jbe game3d_lane_row_loop
     mov ax, [scene3d_temp_w]
     cmp ax, [scene3d_temp_v]
-    jbe game3d_lane_skip_emit
+    jbe game3d_lane_row_loop
     call game3d_get_lane_material
     mov [scene3d_temp_color], al
     mov [scene3d_temp_dither], ah
     mov byte ptr [scene3d_temp_face], GAME3D_FACE_FLAG_NONE
     call game3d_emit_quad_from_temps
-    inc ch
+    jmp game3d_lane_row_loop
 
-game3d_lane_skip_emit:
-game3d_lane_next_row:
+game3d_lane_skip_row:
     inc dh
     jmp game3d_lane_row_loop
 

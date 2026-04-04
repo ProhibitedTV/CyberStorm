@@ -27,7 +27,9 @@
 - **A compact but structured runtime.** Stage two stays inside a documented single-segment contract while still using modular render, gameplay, audio, and data layers.
 - **Generated content tooling.** Sprites, banked presentation assets, low-poly scene geometry, sectors, rules, demos, and music come from readable source files that generate MASM-friendly data at build time.
 - **A real software 3D render path.** Splash, title, sector-entry cards, end screens, and now live gameplay all run through a flat-shaded low-poly renderer, while `-DebugRender2D` still keeps the legacy 2D oracle available for parity work.
+- **A PS1-style grouped scene system.** Splash, title, sector-entry, and end scenes now share the same dark-techno scene-group timeline path, so the BitRiver ident flows into the rest of the front end instead of feeling like a one-off effect.
 - **Integrated low-poly world kits.** The gameplay view now uses sector-specific room materials plus real gate, terminal, surge, shard, runner, and warden meshes instead of treating 3D as a front-end-only trick.
+- **A camera-relative room compiler.** The 3D gameplay path now compiles only the structural wall bands the active chase view actually needs, which rescues sector-3 room budgets without changing game rules.
 - **Disciplined validation.** The build enforces boot/image layout, generated content shape, deterministic debug options, and a lightweight balance harness.
 
 ## Visual Gallery
@@ -49,7 +51,7 @@ CyberStorm is small enough to inspect, but it is no longer a single opaque assem
 
 ![CyberStorm boot flow](docs/readme/boot-flow.svg)
 
-The boot sector at `LBA 0` loads stage two from `LBA 1..86` into `1000:0000`, then stage two loads the map bank from `LBA 87..94` into `7000:0000`, the presentation bank from `LBA 95..133` into `7800:0000`, and the geometry bank from `LBA 134..135` into `8000:0000` before entering VGA gameplay.
+The boot sector at `LBA 0` loads stage two from `LBA 1..94` into `1000:0000`, then stage two loads the map bank from `LBA 95..102` into `7000:0000`, the presentation bank from `LBA 103..141` into `7800:0000`, and the geometry bank from `LBA 142..148` into `8000:0000` before entering VGA gameplay.
 
 ### Runtime Layout
 
@@ -111,14 +113,14 @@ These values come from the current [build/cyberstorm-build-report.txt](build/cyb
 | Fact | Current build |
 | --- | --- |
 | Boot code | `132 / 510` bytes |
-| Stage two | `41616` bytes across `82` sectors |
-| Banked payloads | maps `3780` bytes across `8` sectors, presentation `19968` bytes across `39` sectors, geometry `2934` bytes across `6` sectors |
-| Bank LBA ranges | map `83..90`, presentation `91..129`, geometry `130..135` |
-| Content set | `3` sectors, `9` maps, `9` breach scenarios, `3` demos, `5` music themes, `13` presentation assets, `7` geometry scenes, `14` meshes, `3` gameplay kits |
+| Stage two | `48049` bytes across `94` sectors |
+| Banked payloads | maps `3780` bytes across `8` sectors, presentation `19968` bytes across `39` sectors, geometry `3234` bytes across `7` sectors |
+| Bank LBA ranges | map `95..102`, presentation `103..141`, geometry `142..148` |
+| Content set | `3` sectors, `9` maps, `9` breach scenarios, `3` demos, `5` music themes, `13` presentation assets, `7` geometry scenes, `21` scene groups, `14` meshes, `3` gameplay kits |
 | Balance sweep | `36` deterministic scenarios |
 | Release audio policy | `SFX_ONLY` by default |
 | Video target | `320x200x256` in VGA mode `13h` |
-| Runtime model | Single-segment `16-bit` real mode with low-poly scenes and a first gameplay-room 3D renderer |
+| Runtime model | Single-segment `16-bit` real mode with grouped low-poly scenes and a camera-relative gameplay-room 3D renderer |
 
 ## Why This Is A Strong AI-Assisted Development Example
 
@@ -287,7 +289,7 @@ The smoke path is deliberately attract-mode driven instead of key-injection driv
 - redeploys the workspace VM against the current release image
 - boots headless
 - waits long enough for splash -> title -> attract timing
-- captures a title-window screenshot, a later smoke-window screenshot, and the active VBox log
+- captures a startup-frame screenshot, a title-window screenshot, a later smoke-window screenshot, and the active VBox log
 - fails if the log never reaches floppy boot or shows obvious guest failure markers
 
 Artifacts:
@@ -336,7 +338,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\build.ps1 -CaptureShowcase
 
 This turns deterministic demos into reproducible public-facing captures:
 
-- a release title shot from the VM smoke lane
+- a release branding shot from the VM smoke startup frame
 - curated gameplay, hazard, and elite-pressure demo shots from authored demos
 - technical proof shots from the replay verification pass/fail scenes
 - stable output under `build/showcase/` so the README gallery can come from deterministic captures instead of incidental screenshots

@@ -428,140 +428,93 @@ draw_splash_brand_stack:
     push dx
     push si
     push bp
-
     xor ax, ax
     mov al, [splash_ticks]
     cmp al, SPLASH_REVEAL_WORDMARK
-    jae splash_logo_lift_ready
+    jae splash_brand_lockup_ready
     mov bl, SPLASH_REVEAL_WORDMARK
     sub bl, al
     shr bl, 1
     xor bh, bh
     mov ax, bx
 
-splash_logo_lift_ready:
-    mov dx, 44
+splash_brand_lockup_ready:
+    mov bx, 82
+    mov dx, 58
     add dx, ax
-    mov bx, 102
-    mov cx, 116
-    mov bp, 42
+    mov cx, 156
+    mov bp, 30
     mov al, PAL_PANEL
     call fill_rect
 
-    mov dx, 42
+    mov bx, 80
+    mov dx, 56
     add dx, ax
-    mov bx, 100
-    mov cx, 120
-    mov bp, 46
+    mov cx, 160
+    mov bp, 34
     test byte ptr [anim_phase], 1
-    jz splash_logo_frame_dim
+    jz splash_brand_frame_dim
     mov al, PAL_CYAN2
-    jmp splash_logo_frame_ready
+    jmp splash_brand_frame_ready
 
-splash_logo_frame_dim:
+splash_brand_frame_dim:
     mov al, PAL_CYAN
 
-splash_logo_frame_ready:
+splash_brand_frame_ready:
     call draw_rect_outline
 
-    mov bx, 128
-    mov dx, 48
-    add dx, ax
-    mov si, PRESENT_BANNER_SPLASH_LOGO_OFFSET
-    call draw_presentation_asset_1x
-
-    mov bx, 126
-    mov dx, 78
-    add dx, ax
-    mov cx, 68
-    mov bp, 1
-    mov al, PAL_AMBER
-    call fill_rect
-
-    cmp byte ptr [splash_ticks], SPLASH_REVEAL_WORDMARK
-    jb splash_brand_stack_done
-
-    xor ax, ax
-    mov al, [splash_ticks]
-    cmp al, SPLASH_REVEAL_UI
-    jae splash_word_lift_ready
-    mov bl, SPLASH_REVEAL_UI
-    sub bl, al
-    shr bl, 1
-    xor bh, bh
-    mov ax, bx
-
-splash_word_lift_ready:
-    mov bx, 128
-    mov dx, 78
-    add dx, ax
-    mov si, PRESENT_BANNER_SPLASH_WORDMARK_OFFSET
-    call draw_presentation_asset_1x
-
-    mov bx, 113
-    mov dx, 83
+    mov bx, 95
+    mov dx, 64
     add dx, ax
     mov si, offset splash_brand
     mov ah, PAL_PANEL2
     call draw_text_big
 
-    mov bx, 112
-    mov dx, 82
+    mov bx, 94
+    mov dx, 63
     add dx, ax
     mov si, offset splash_brand
     mov ah, PAL_WHITE
     call draw_text_big
 
-    mov bx, 110
-    mov dx, 98
+    cmp byte ptr [splash_ticks], SPLASH_REVEAL_WORDMARK
+    jb splash_brand_stack_done
+
+    mov bx, 116
+    mov dx, 86
     add dx, ax
-    mov cx, 100
+    mov cx, 88
     mov bp, 8
     mov al, PAL_PANEL2
     call fill_rect
 
-    mov bx, 108
-    mov dx, 96
+    mov bx, 114
+    mov dx, 84
     add dx, ax
-    mov cx, 104
+    mov cx, 92
     mov bp, 12
-    test byte ptr [anim_phase], 1
-    jz splash_brand_plate_dim
-    mov al, PAL_CYAN2
-    jmp splash_brand_plate_ready
-
-splash_brand_plate_dim:
-    mov al, PAL_CYAN
-
-splash_brand_plate_ready:
+    mov al, PAL_AMBER
     call draw_rect_outline
 
-    mov bx, 138
-    mov dx, 100
+    mov bx, 128
+    mov dx, 88
     add dx, ax
     mov si, offset splash_subtitle
-    mov ah, PAL_PANEL2
+    mov ah, PAL_WHITE
     call draw_text_small
 
-    mov bx, 137
-    mov dx, 99
+    mov bx, 94
+    mov dx, 54
     add dx, ax
-    mov si, offset splash_subtitle
-    mov ah, PAL_AMBER
-    call draw_text_small
-
-    mov bx, 126
-    mov dx, 92
-    add dx, ax
-    mov cx, 76
+    mov cx, 132
     mov bp, 1
     mov al, PAL_WHITE
     call fill_rect
 
-    mov bx, 132
-    mov dx, 109
+    mov bx, 110
+    mov dx, 97
     add dx, ax
-    mov cx, 64
+    mov cx, 100
     mov bp, 1
     mov al, PAL_AMBER
     call fill_rect

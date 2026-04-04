@@ -27,7 +27,7 @@ Practical consequences:
 | `1000:0000` upward | Stage two code + data | `DS` is set to `CS` on entry and the whole game assumes one shared segment. |
 | `7000:0000` | Map bank | Read-only authored map payload loaded by stage two after boot. |
 | `7800:0000` | Presentation bank | Read-only scene-kit payload for splash, title, attract/demo, sector-entry, and end screens. |
-| `8000:0000` | Geometry bank | Read-only low-poly scene payload for the phase-1 3D renderer. |
+| `8000:0000` | Geometry bank | Read-only low-poly scene, prop, actor, and gameplay-kit payload for the 3D renderer. |
 | `9000:0000` | Backbuffer | 64,000-byte linear framebuffer used before presenting to VGA. |
 | `A000:0000` | VGA mode `13h` framebuffer | Final 320x200x8 output. |
 
@@ -45,9 +45,9 @@ Register assumptions that matter:
 - The first byte must remain executable because boot jumps to offset `0`.
 - `generated_bank_layout.inc` is build output, not source. It gives stage two the on-disk LBA/size contract for post-boot banks.
 - `generated_presentation_content.inc` is build output, not source. It gives scenes the offsets of the banked presentation scene kit.
-- `generated_geometry.inc` is build output, not source. It gives the phase-1 3D renderer scene/camera tables plus geometry-bank offsets and counts.
+- `generated_geometry.inc` is build output, not source. It gives the 3D renderer scene/camera tables, scene-group timelines, material FX tables, gameplay-kit tables, and geometry-bank offsets/counts.
 - `audio_config.inc` is build output, not source. It makes the release audio contract explicit before [src/game/audio.asm](../src/game/audio.asm) is assembled.
-- [src/game/render/3d_math.asm](../src/game/render/3d_math.asm), [src/game/render/3d_raster.asm](../src/game/render/3d_raster.asm), [src/game/render/3d_scene.asm](../src/game/render/3d_scene.asm), and [src/game/render/3d_gameplay.asm](../src/game/render/3d_gameplay.asm) are the current software-3D render path. Scenes come from the geometry bank, while gameplay now compiles the live tile map into a transient room mesh and renders actors/props as projected billboards.
+- [src/game/render/3d_math.asm](../src/game/render/3d_math.asm), [src/game/render/3d_raster.asm](../src/game/render/3d_raster.asm), [src/game/render/3d_scene.asm](../src/game/render/3d_scene.asm), and [src/game/render/3d_gameplay.asm](../src/game/render/3d_gameplay.asm) are the current software-3D render path. Scenes now support authored camera timelines, scene-group visibility windows, group transforms, and face-level pulse/glint tracks from the geometry bank, while gameplay compiles the live tile map into a transient room mesh, chooses camera-relative wall bands for the active chase view, and renders props/actors in world space.
 - [src/game/state.asm](../src/game/state.asm) owns the global state layout.
 - [src/game/art.asm](../src/game/art.asm) is the visual-data wrapper and includes the build-generated sprite/tile bitmap include before the hand-authored palette/font data.
 - [src/game/state.asm](../src/game/state.asm) now includes generated sector metadata/rule tables from the content pipeline.
@@ -107,7 +107,7 @@ Input flow:
 Render flow:
 
 - [src/game/render/scenes.asm](../src/game/render/scenes.asm) selects the scene for the current `game_state`.
-- In the default release build, splash/title/sector-entry/end scenes go through the flat-shaded 3D path, and gameplay now uses the first room-mesh 3D renderer with a chase-style camera. `DEBUG_SCENE_RENDER_MODE = 0` plus `DEBUG_GAMEPLAY_RENDER_MODE = 0` keep the older 2D scene/gameplay implementation available as a compile-time oracle.
+- In the default release build, splash/title/sector-entry/end scenes go through the grouped flat-shaded 3D path, and gameplay now uses the room-mesh 3D renderer with a chase-style camera plus sector-specific viewport mood fills. `DEBUG_SCENE_RENDER_MODE = 0` plus `DEBUG_GAMEPLAY_RENDER_MODE = 0` keep the older 2D scene/gameplay implementation available as a compile-time oracle.
 - The frame always renders into `BACKBUFFER_SEG`.
 - [src/game/render/framebuffer.asm](../src/game/render/framebuffer.asm) waits for vertical blank, then copies the backbuffer to `A000:0000`.
 - Primitive draw helpers compute offsets into whatever segment is currently loaded into `ES`.
@@ -129,7 +129,7 @@ Map/tile rules:
 Render conventions:
 
 - The legacy 2D oracle still renders each logical tile as an `8 x 8` bitmap anchored by `MAP_PIXEL_X` / `MAP_PIXEL_Y`.
-- The default gameplay path now compiles floor strips, lane trims, and wall-edge runs into a transient low-poly room mesh, then layers sector-specific gate/terminal/surge/shard meshes plus promoted runner/warden meshes into the gameplay viewport.
+- The default gameplay path now compiles floor slabs plus camera-relative wall-edge runs into a transient low-poly room mesh, then layers sector-specific gate/terminal/surge/shard meshes plus promoted runner/warden meshes into the gameplay viewport. Gate-lane emphasis is now carried mainly by kit materials, props, and world-space glow rather than extra structural room faces.
 - Dynamic tile changes mark the room mesh dirty through `set_tile`, so shard pickups, terminal use, surges, and gate-open transitions rebuild the room view without changing game rules.
 
 Entity rules:
@@ -159,8 +159,9 @@ CyberStorm now has three narrow post-boot bank paths:
 - [src/game/banks.asm](../src/game/banks.asm) loads the map bank into `MAP_BANK_SEG`, the presentation bank into `PRESENT_BANK_SEG`, and the geometry bank into `GEOMETRY_BANK_SEG` during `start`, before VGA mode is enabled.
 - Gameplay reads map templates through `template_offset_table` offsets into the map bank instead of embedding every map into stage two.
 - Splash/title/win/lose scenes, the attract HUD, and sector-entry presentation all read fixed-size 64x24 transparent assets from the presentation bank through generated offset constants.
-- The banked 3D scene renderer copies scene vertices/faces out of the geometry bank into bounded scratch buffers in [src/game/state.asm](../src/game/state.asm), then projects and painter-sorts them inside stage two.
+- The banked 3D scene renderer copies the active scene groups out of the geometry bank into bounded scratch buffers in [src/game/state.asm](../src/game/state.asm), applies group motion/yaw based on the current timeline tick, then projects and painter-sorts them inside stage two.
 - The gameplay 3D renderer does not use the geometry bank for room slabs. It compiles the active map into transient floor/wall geometry in stage two, reuses the same projection/raster core, and then pulls kit-selected prop/actor meshes from the geometry bank while keeping the 2D gameplay renderer available behind the debug render switch.
+- Room-budget rescue currently comes from compiling only the structural wall bands that matter to the active chase-camera orientation. That keeps the transient room buffer bounded without changing map logic, authored scenarios, or prop placement.
 
 Current scope and limits:
 
@@ -257,8 +258,8 @@ Its contract is intentionally narrow:
 
 - it only targets the workspace VirtualBox VM and current release floppy image
 - it uses attract-mode timing instead of flaky key injection
-- it proves the VM can boot far enough to reach the splash/title window and the later attract wait window
-- it captures one screenshot plus the active VBox log for post-failure inspection
+- it proves the VM can boot far enough to reach the startup ident, title window, and later attract wait window
+- it captures startup, title, and later smoke-window screenshots plus the active VBox log for post-failure inspection
 
 The build can invoke this path with `-VmSmoke`, but it stays opt-in so normal builds do not require VirtualBox. The smoke artifacts are:
 
@@ -298,7 +299,7 @@ That signature is computed after every consumed demo action and compared against
 
 Its contract is:
 
-- use the release VM smoke lane for the title/identity shot
+- use the release VM smoke lane's startup-frame capture for the BitRiver branding shot
 - use authored demo metadata from `assets\demos.psd1` for gameplay/hazard/elite-pressure capture roles
 - use runtime verification pass/fail scenes for ending/technical proof shots
 - write stable captures under `build\showcase\`

@@ -943,7 +943,7 @@ sfx_phase_step db 0
 sfx_divisor dw 0
 sb16_dma_active db 0
 sb16_audio_buffer db AUDIO_BLOCK_SAMPLES dup (AUDIO_SAMPLE_CENTER)
-; A short rounded waveform keeps the experimental music path less piercing than
+; A short rounded waveform keeps the looping-theme path less piercing than
 ; the earlier hard-edged square-wave approach while still staying period-lean.
 sb16_waveform db 0, 6, 12, 18, 23, 28, 31, 34
               db 36, 34, 31, 28, 23, 18, 12, 6

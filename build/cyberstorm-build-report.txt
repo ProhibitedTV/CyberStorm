@@ -1,5 +1,5 @@
 CyberStorm Build Report
-Generated: 2026-04-03 20:15:39 -06:00
+Generated: 2026-04-08 16:36:08 -06:00
 
 Toolchain
   Assembler: MASM
@@ -14,10 +14,10 @@ Build Profile
   Run start sector: 1 (default)
 
 Audio Policy
-  Mode: SFX_ONLY
-  Looping music: disabled in release
+  Mode: MUSIC
+  Looping music: enabled in release
   Backend order: SB16 when available, PC speaker fallback otherwise.
-  Policy: one-shot SFX are the supported release baseline; looping music is opt-in while audio v2 is still experimental.
+  Policy: looping themes are the supported release baseline; one-shot SFX still preempt the channel and music resumes underneath.
 
 Render Path
   Scene renderer: SCENES_3D
@@ -114,31 +114,18 @@ Balance Harness
 Regression Harness
   Report: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-regression-report.txt
   Boot sector: 512 bytes, signature 0x55AA, LBA 0 matches both image files
-  Stage two: 48049 bytes, 94 sectors, GAME_SECTORS matches, entry near jmp to 0x1112
-  Map bank: 3780 bytes (4096 padded), 8 sectors, LBA 95..102
-  Presentation bank: 19968 bytes (19968 padded), 39 sectors, LBA 103..141
-  Geometry bank: 3234 bytes (3584 padded), 7 sectors, LBA 142..148
-  Images: .img and .vfd match exactly, unused tail zero-filled from byte 76288
+  Stage two: 48158 bytes, 95 sectors, GAME_SECTORS matches, entry near jmp to 0x1115
+  Map bank: 3780 bytes (4096 padded), 8 sectors, LBA 96..103
+  Presentation bank: 19968 bytes (19968 padded), 39 sectors, LBA 104..142
+  Geometry bank: 3234 bytes (3584 padded), 7 sectors, LBA 143..149
+  Images: .img and .vfd match exactly, unused tail zero-filled from byte 76800
   Diagnostics: boot.lst and game.lst are present for post-failure inspection
 
 Frontend Verify
   Status: skipped (use -FrontendVerify to boot debug-only splash/title/attract verification scenarios in VirtualBox).
 
 VM Smoke
-  Report: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-vm-smoke-report.txt
-  Status: PASS
-  VM: CyberStorm
-  Frontend: headless
-  Wait: 14s (targets splash -> title -> attract demo)
-  Audio mode: SFX_ONLY
-  Audio controller: SB16 via HostAudioWas (host default HostAudioWas)
-  Startup expectation: screenshotpng succeeded after 2s inside the boot -> splash window.
-  Title expectation: screenshotpng succeeded after 6s in the splash -> title window.
-  Attract expectation: screenshotpng succeeded after the full 14s smoke window.
-  Startup screenshot: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\vm-smoke\cyberstorm-vm-smoke-startup.png
-  Title screenshot: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\vm-smoke\cyberstorm-vm-smoke-title.png
-  Screenshot: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\vm-smoke\cyberstorm-vm-smoke.png
-  VBox log: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\vm-smoke\cyberstorm-vm-smoke.log
+  Status: skipped (use -VmSmoke to boot the headless VirtualBox smoke path).
 
 Runtime Verify
   Status: skipped (use -RuntimeVerify to boot debug-only replay verification demos in VirtualBox).
@@ -149,36 +136,36 @@ Showcase Capture
 
 Asset Banks
   Layout include: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\generated_bank_layout.inc
-  Map bank: 3780 bytes (4096 padded), 8 sectors, LBA 95..102, load 0x7000:0000, payload C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-map-bank.bin
-  Presentation bank: 19968 bytes (19968 padded), 39 sectors, LBA 103..141, load 0x7800:0000, payload C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-presentation-bank.bin
-  Geometry bank: 3234 bytes (3584 padded), 7 sectors, LBA 142..148, load 0x8000:0000, payload C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-geometry-bank.bin
+  Map bank: 3780 bytes (4096 padded), 8 sectors, LBA 96..103, load 0x7000:0000, payload C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-map-bank.bin
+  Presentation bank: 19968 bytes (19968 padded), 39 sectors, LBA 104..142, load 0x7800:0000, payload C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-presentation-bank.bin
+  Geometry bank: 3234 bytes (3584 padded), 7 sectors, LBA 143..149, load 0x8000:0000, payload C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-geometry-bank.bin
 
 Screenshots
   Housekeeping: kept 6 source screenshots, removed 0, rotated 3 README slots
   readme-shot-1.png [title] <- cyberstorm-sector-layouts-boot.png
-  readme-shot-2.png [gameplay] <- cyberstorm-asset-pipeline-boot.png
-  readme-shot-3.png [payoff] <- cyberstorm-music-boot.png
+  readme-shot-2.png [gameplay] <- cyberstorm-music-boot.png
+  readme-shot-3.png [payoff] <- cyberstorm-asset-pipeline-boot.png
 
 Layout
   Boot code bytes: 132 / 510
   Boot code free bytes: 378
-  Stage2 bytes: 48049
-  Stage2 free bytes before 64 KiB limit: 17487
-  Stage2 padded bytes: 48128
-  Stage2 sectors: 94
-  Image bytes used: 75543 / 1474560
-  Image free bytes: 1399017
-  Disk footprint bytes: 76288 / 1474560
-  Disk footprint free bytes: 1398272
+  Stage2 bytes: 48158
+  Stage2 free bytes before 64 KiB limit: 17378
+  Stage2 padded bytes: 48640
+  Stage2 sectors: 95
+  Image bytes used: 75652 / 1474560
+  Image free bytes: 1398908
+  Disk footprint bytes: 76800 / 1474560
+  Disk footprint free bytes: 1397760
   Boot load address: 0000:7C00 (phys 0x00007C00)
   Stage2 load address: 0x1000:0x0000 (phys 0x00010000)
   Boot signature: 0x55AA @ byte 510
-  Stage2 LBA range: 1..94
+  Stage2 LBA range: 1..95
   Boot section: .text$mn (relocations applied: 3)
-  Stage2 section: .text$mn (relocations applied: 1833)
+  Stage2 section: .text$mn (relocations applied: 1842)
   Assembler warnings: boot=1, stage2=1
   Boot 'start' symbol offset: 0x0000
-  Stage2 'start' symbol offset: 0x1112
+  Stage2 'start' symbol offset: 0x1115
 
 Artifacts
   C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\generated_art.inc

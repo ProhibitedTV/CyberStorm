@@ -16,7 +16,7 @@
   </defs>
 
   <text x="40" y="42" class="title">CyberStorm Boot Flow</text>
-  <text x="40" y="68" class="subtitle">Current build facts: boot sector at LBA 0, stage two at LBA 1..86, map bank at LBA 87..94, presentation bank at LBA 95..133, geometry bank at LBA 134..135.</text>
+  <text x="40" y="68" class="subtitle">Current build facts: boot sector at LBA 0, stage two at LBA 1..95, map bank at LBA 96..103, presentation bank at LBA 104..142, geometry bank at LBA 143..149.</text>
 
   <rect x="40" y="110" width="170" height="120" rx="18" fill="#0f172a" stroke="#38bdf8" stroke-width="2"/>
   <text x="60" y="142" class="label">1. BIOS Entry</text>
@@ -30,23 +30,23 @@
   <text x="250" y="170" class="body">132 bytes of code</text>
   <text x="250" y="190" class="body">plus 0x55AA signature</text>
   <text x="250" y="214" class="body">Uses INT 13h to read</text>
-  <text x="250" y="234" class="body">the next 86 sectors</text>
+  <text x="250" y="234" class="body">the next 95 sectors</text>
 
   <rect x="420" y="110" width="170" height="120" rx="18" fill="#0f172a" stroke="#38bdf8" stroke-width="2"/>
   <text x="440" y="142" class="label">3. Stage Two</text>
-  <text x="440" y="170" class="body">LBA 1..86</text>
-  <text x="440" y="190" class="body">30451 bytes loaded to</text>
+  <text x="440" y="170" class="body">LBA 1..95</text>
+  <text x="440" y="190" class="body">48158 bytes loaded to</text>
   <text x="440" y="210" class="body">1000:0000</text>
   <text x="440" y="234" class="body">Entry byte 0 jumps into</text>
   <text x="440" y="254" class="body">the runtime in game.asm</text>
 
   <rect x="610" y="110" width="170" height="120" rx="18" fill="#0f172a" stroke="#f59e0b" stroke-width="2"/>
   <text x="630" y="142" class="label">4. Asset Banks</text>
-  <text x="630" y="170" class="body">Map bank at LBA 87..94</text>
+  <text x="630" y="170" class="body">Map bank at LBA 96..103</text>
   <text x="630" y="190" class="body">3780 bytes payload</text>
   <text x="630" y="210" class="body">Presentation bank at</text>
-  <text x="630" y="230" class="body">LBA 95..133, 19968 bytes</text>
-  <text x="630" y="250" class="body">Geometry bank at LBA 134..135</text>
+  <text x="630" y="230" class="body">LBA 104..142, 19968 bytes</text>
+  <text x="630" y="250" class="body">Geometry bank at LBA 143..149</text>
   <text x="630" y="270" class="body">Loaded to 7000/7800/8000</text>
 
   <rect x="800" y="110" width="160" height="120" rx="18" fill="#0f172a" stroke="#22c55e" stroke-width="2"/>

@@ -194,6 +194,9 @@ ENDIF
 
 frontend_update_demo_outro:
 IF DEBUG_RUNTIME_VERIFY
+    mov al, [game_state]
+    cmp al, [last_game_state]
+    jne frontend_state_done
     call finalize_runtime_verify_demo
     jmp frontend_state_done
 ENDIF
@@ -634,6 +637,9 @@ frontend_verify_timeout_check:
     jb frontend_verify_finish_done
 
 frontend_verify_finalize:
+    mov al, [game_state]
+    cmp al, [last_game_state]
+    jne frontend_verify_finish_done
     mov al, [frontend_event_count]
     mov [verify_action_index], al
     call get_frontend_verify_expected_signature
@@ -654,17 +660,21 @@ frontend_verify_finish_done:
 
 get_frontend_verify_expected_signature:
     mov ax, STATE_TITLE
+    or ax, 0400h
     mov bl, [verify_frontend_scenario]
     cmp bl, FRONTEND_VERIFY_SPLASH_TO_TITLE
     je frontend_verify_expected_ready
     mov ax, STATE_PLAYING
+    or ax, 0800h
     cmp bl, FRONTEND_VERIFY_TITLE_TO_ATTRACT
     jne frontend_verify_expected_start
     or ax, 0100h
+    or ax, 2000h
     jmp frontend_verify_expected_ready
 
 frontend_verify_expected_start:
     or ax, 0200h
+    or ax, 2000h
 
 frontend_verify_expected_ready:
     mov bl, DEBUG_FRONTEND_CORRUPT_SCENARIO
@@ -684,8 +694,27 @@ compute_frontend_verify_signature:
 
 frontend_verify_sig_guard:
     cmp byte ptr [run_start_enter_guard], 0
-    je frontend_verify_sig_done
+    je frontend_verify_sig_music
     or ax, 0200h
+
+frontend_verify_sig_music:
+    mov bl, [music_theme]
+    and bl, 07h
+    xor bh, bh
+    shl bx, 1
+    shl bx, 1
+    shl bx, 1
+    shl bx, 1
+    shl bx, 1
+    shl bx, 1
+    shl bx, 1
+    shl bx, 1
+    shl bx, 1
+    shl bx, 1
+    or ax, bx
+    cmp byte ptr [sound_timer], 0
+    je frontend_verify_sig_done
+    or ax, 2000h
 
 frontend_verify_sig_done:
     ret
@@ -802,6 +831,16 @@ compute_runtime_verify_signature:
     mov bl, [sector_pulses_used]
     call verify_sig_mix_byte
     mov bl, [spoof_timer]
+    call verify_sig_mix_byte
+    mov bl, [sound_id]
+    call verify_sig_mix_byte
+    mov bl, [sound_timer]
+    call verify_sig_mix_byte
+    mov bl, [music_theme]
+    call verify_sig_mix_byte
+    mov bl, [music_ticks]
+    call verify_sig_mix_byte
+    mov bl, [music_note]
     call verify_sig_mix_byte
     mov dx, [rng_state]
     call verify_sig_mix_word

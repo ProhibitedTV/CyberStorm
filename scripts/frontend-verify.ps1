@@ -4,6 +4,7 @@ param(
     [string]$AssemblerPath,
     [string]$MasmPath,
     [switch]$ExperimentalMusic,
+    [switch]$SfxOnly,
     [string]$VmName = 'CyberStorm',
     [string]$ConstantsSourcePath = (Join-Path (Join-Path $PSScriptRoot '..') 'src\game\constants.inc'),
     [string]$BuildScriptPath = (Join-Path $PSScriptRoot 'build.ps1'),
@@ -13,6 +14,10 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+
+if ($ExperimentalMusic.IsPresent -and $SfxOnly.IsPresent) {
+    throw 'Use either -ExperimentalMusic (legacy alias) or -SfxOnly, not both.'
+}
 
 Add-Type -AssemblyName System.Drawing
 
@@ -241,8 +246,8 @@ function Invoke-ChildBuild {
         $args.Add($MasmPath)
     }
 
-    if ($ExperimentalMusic.IsPresent) {
-        $args.Add('-ExperimentalMusic')
+    if ($SfxOnly.IsPresent) {
+        $args.Add('-SfxOnly')
     }
 
     foreach ($argument in @($ExtraArguments)) {

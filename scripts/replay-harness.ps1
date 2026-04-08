@@ -1,12 +1,21 @@
 param(
     [string]$SectorSourcePath = (Join-Path (Join-Path $PSScriptRoot '..') 'assets\sectors.psd1'),
     [string]$DemoSourcePath = (Join-Path (Join-Path $PSScriptRoot '..') 'assets\demos.psd1'),
+    [string]$MusicSourcePath = (Join-Path (Join-Path $PSScriptRoot '..') 'assets\music.psd1'),
     [string]$ConstantsSourcePath = (Join-Path (Join-Path $PSScriptRoot '..') 'src\game\constants.inc'),
+    [switch]$ExperimentalMusic,
+    [switch]$SfxOnly,
     [string]$ReportPath = (Join-Path (Join-Path $PSScriptRoot '..') 'build\cyberstorm-replay-report.txt')
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+
+if ($ExperimentalMusic.IsPresent -and $SfxOnly.IsPresent) {
+    throw 'Use either -ExperimentalMusic (legacy alias) or -SfxOnly, not both.'
+}
+
+$musicEnabled = -not $SfxOnly.IsPresent
 
 function Assert-PathExists {
     param(
@@ -65,6 +74,412 @@ function Get-AsmEquValue {
 function Format-Hex16 {
     param([int]$Value)
     return ("0x{0:X4}" -f ($Value -band 0xFFFF))
+}
+
+function Get-MusicThemeId {
+    param([string]$ThemeKey)
+
+    switch ($ThemeKey.ToLowerInvariant()) {
+        'splash' { return 0 }
+        'title' { return 1 }
+        'run' { return 2 }
+        'win' { return 3 }
+        'lose' { return 4 }
+        default { return 0xFF }
+    }
+}
+
+function Get-MusicThemeKey {
+    param([int]$ThemeId)
+
+    switch ($ThemeId) {
+        0 { return 'splash' }
+        1 { return 'title' }
+        2 { return 'run' }
+        3 { return 'win' }
+        4 { return 'lose' }
+        default { return $null }
+    }
+}
+
+function Get-MusicThemeKeyForGameState {
+    param([string]$GameState)
+
+    switch ($GameState) {
+        'SPLASH' { return 'splash' }
+        'TITLE' { return 'title' }
+        'PLAYING' { return 'run' }
+        'WIN' { return 'win' }
+        'LOSE' { return 'lose' }
+        default { return $null }
+    }
+}
+
+function Get-MusicNoteId {
+    param([string]$NoteKey)
+
+    switch ($NoteKey.ToUpperInvariant()) {
+        'REST' { return 0 }
+        'G2' { return 1 }
+        'A2' { return 2 }
+        'C3' { return 3 }
+        'D3' { return 4 }
+        'E3' { return 5 }
+        'F3' { return 6 }
+        'G3' { return 7 }
+        'A3' { return 8 }
+        'C4' { return 9 }
+        'D4' { return 10 }
+        'E4' { return 11 }
+        'F4' { return 12 }
+        'G4' { return 13 }
+        'LOOP' { return 0xFF }
+        default { return $null }
+    }
+}
+
+function Get-MessageFeedbackTicks {
+    param([string]$MessageKey)
+
+    switch ($MessageKey) {
+        'BLOCK' { return 5 }
+        'NOPULSE' { return 5 }
+        'SECTOR' { return 11 }
+        'GATE' { return 11 }
+        'HIT' { return 11 }
+        'KILL' { return 11 }
+        'SURGE' { return 11 }
+        'TRAP' { return 11 }
+        'RECHARGE' { return 11 }
+        'SPOOF' { return 11 }
+        default { return 7 }
+    }
+}
+
+function Get-SfxIdForMessage {
+    param([string]$MessageKey)
+
+    switch ($MessageKey) {
+        'SECTOR' { return 1 }
+        'BLOCK' { return 2 }
+        'SHARD' { return 3 }
+        'GATE' { return 4 }
+        'HIT' { return 5 }
+        'KILL' { return 6 }
+        'PULSE' { return 7 }
+        'NOPULSE' { return 8 }
+        'SURGE' { return 9 }
+        'TRAP' { return 10 }
+        'RECHARGE' { return 11 }
+        'SPOOF' { return 11 }
+        default { return 0 }
+    }
+}
+
+function Get-SfxDuration {
+    param([int]$SoundId)
+
+    switch ($SoundId) {
+        4 { return 8 }
+        5 { return 7 }
+        7 { return 6 }
+        9 { return 6 }
+        11 { return 6 }
+        1 { return 6 }
+        12 { return 12 }
+        13 { return 12 }
+        default { return 4 }
+    }
+}
+
+function Get-MusicThemeDefinitions {
+    param([string]$SourcePath)
+
+    $musicData = Import-StructuredDataFile -SourcePath $SourcePath -Label 'music source'
+    if (-not $musicData.ContainsKey('Themes')) {
+        throw ("Music source must define a 'Themes' array: {0}" -f $SourcePath)
+    }
+
+    $expectedThemeKeys = @('splash', 'title', 'run', 'win', 'lose')
+    $themes = @($musicData.Themes)
+    if ($themes.Count -ne $expectedThemeKeys.Count) {
+        throw ("Music source defined {0} themes, but the runtime expects {1}." -f $themes.Count, $expectedThemeKeys.Count)
+    }
+
+    $definitions = @{}
+    for ($themeIndex = 0; $themeIndex -lt $themes.Count; $themeIndex++) {
+        $theme = $themes[$themeIndex]
+        if (-not ($theme -is [System.Collections.IDictionary])) {
+            throw ("Each theme in {0} must be a hashtable." -f $SourcePath)
+        }
+
+        $themeKey = ([string]$theme.Key).ToLowerInvariant()
+        if ($themeKey -ne $expectedThemeKeys[$themeIndex]) {
+            throw ("Theme {0} in {1} must use key '{2}' to match the runtime theme order." -f ($themeIndex + 1), $SourcePath, $expectedThemeKeys[$themeIndex])
+        }
+
+        $events = @($theme.Events)
+        if ($events.Count -eq 0) {
+            throw ("Theme '{0}' in {1} did not define any events." -f $themeKey, $SourcePath)
+        }
+
+        $parsedEvents = New-Object 'System.Collections.Generic.List[object]'
+        for ($eventIndex = 0; $eventIndex -lt $events.Count; $eventIndex++) {
+            $entry = ([string]$events[$eventIndex]).Trim()
+            if ([string]::IsNullOrWhiteSpace($entry)) {
+                throw ("Theme '{0}' in {1} contains a blank event entry." -f $themeKey, $SourcePath)
+            }
+
+            $parts = $entry -split '\s+'
+            $noteKey = $parts[0].ToUpperInvariant()
+            $noteId = Get-MusicNoteId -NoteKey $noteKey
+            if ($null -eq $noteId) {
+                throw ("Theme '{0}' in {1} used unsupported note '{2}'." -f $themeKey, $SourcePath, $noteKey)
+            }
+
+            if ($noteKey -eq 'LOOP') {
+                if ($parts.Count -ne 1 -or $eventIndex -ne ($events.Count - 1)) {
+                    throw ("Theme '{0}' in {1} must place LOOP as its final event." -f $themeKey, $SourcePath)
+                }
+
+                $parsedEvents.Add([pscustomobject]@{
+                    NoteId = $noteId
+                    Ticks = 0
+                })
+                continue
+            }
+
+            if ($parts.Count -ne 2) {
+                throw ("Theme '{0}' event '{1}' in {2} must be 'NOTE TICKS' or 'LOOP'." -f $themeKey, $entry, $SourcePath)
+            }
+
+            $ticks = [int]$parts[1]
+            if ($ticks -lt 0 -or $ticks -gt 255) {
+                throw ("Theme '{0}' note '{1}' in {2} must use a 0..255 tick duration." -f $themeKey, $noteKey, $SourcePath)
+            }
+
+            $parsedEvents.Add([pscustomobject]@{
+                NoteId = $noteId
+                Ticks = $ticks
+            })
+        }
+
+        $definitions[$themeKey] = $parsedEvents.ToArray()
+    }
+
+    return $definitions
+}
+
+function Stop-ReplaySfx {
+    param($State)
+
+    $State.SoundId = 0
+    $State.SoundTimer = 0
+    $State.SoundPhase = 0
+}
+
+function Start-ReplaySfx {
+    param(
+        $State,
+        [int]$SoundId
+    )
+
+    if ($SoundId -eq 0) {
+        Stop-ReplaySfx -State $State
+        return
+    }
+
+    $State.SoundId = $SoundId
+    $State.SoundTimer = Get-SfxDuration -SoundId $SoundId
+    $State.SoundPhase = 0
+}
+
+function Set-ReplayMessageEvent {
+    param(
+        $State,
+        [string]$MessageKey
+    )
+
+    $State.MessageId = $MessageKey
+    $State.FeedbackTimer = Get-MessageFeedbackTicks -MessageKey $MessageKey
+    Start-ReplaySfx -State $State -SoundId (Get-SfxIdForMessage -MessageKey $MessageKey)
+}
+
+function Stop-ReplayMusic {
+    param($State)
+
+    $State.MusicTheme = 0xFF
+    $State.MusicEventIndex = 0
+    $State.MusicTicks = 0
+    $State.MusicNote = 0
+}
+
+function Start-ReplayMusicTheme {
+    param(
+        $State,
+        [int]$ThemeId
+    )
+
+    if ($ThemeId -eq 0xFF) {
+        Stop-ReplayMusic -State $State
+        return
+    }
+
+    $State.MusicTheme = $ThemeId
+    $State.MusicEventIndex = 0
+    $State.MusicTicks = 0
+    $State.MusicNote = 0
+}
+
+function Sync-ReplayMusicTheme {
+    param(
+        $State,
+        [bool]$MusicEnabled
+    )
+
+    if (-not $MusicEnabled) {
+        Stop-ReplayMusic -State $State
+        return
+    }
+
+    $themeKey = Get-MusicThemeKeyForGameState -GameState $State.GameState
+    $themeId = if ($null -eq $themeKey) { 0xFF } else { Get-MusicThemeId -ThemeKey $themeKey }
+    if ($themeId -ne $State.MusicTheme) {
+        Start-ReplayMusicTheme -State $State -ThemeId $themeId
+    }
+}
+
+function Load-ReplayMusicEvent {
+    param(
+        $State,
+        $MusicThemes
+    )
+
+    $themeKey = Get-MusicThemeKey -ThemeId $State.MusicTheme
+    if ($null -eq $themeKey -or -not $MusicThemes.ContainsKey($themeKey)) {
+        Stop-ReplayMusic -State $State
+        return
+    }
+
+    $events = @($MusicThemes[$themeKey])
+    if ($events.Count -eq 0) {
+        Stop-ReplayMusic -State $State
+        return
+    }
+
+    while ($true) {
+        if ($State.MusicEventIndex -ge $events.Count) {
+            $State.MusicEventIndex = 0
+        }
+
+        $event = $events[$State.MusicEventIndex]
+        $State.MusicEventIndex += 1
+        if ($event.NoteId -eq 0xFF) {
+            $State.MusicEventIndex = 0
+            continue
+        }
+
+        $State.MusicNote = [int]$event.NoteId
+        $State.MusicTicks = [int]$event.Ticks
+        return
+    }
+}
+
+function Update-ReplayMusicTransport {
+    param(
+        $State,
+        $MusicThemes
+    )
+
+    if ($State.MusicTheme -eq 0xFF) {
+        return
+    }
+
+    if ($State.SoundTimer -ne 0) {
+        return
+    }
+
+    if ($State.MusicTicks -eq 0) {
+        Load-ReplayMusicEvent -State $State -MusicThemes $MusicThemes
+    }
+
+    if ($State.MusicTicks -eq 0) {
+        return
+    }
+
+    $State.MusicTicks -= 1
+}
+
+function Update-ReplaySfxTransport {
+    param($State)
+
+    if ($State.SoundTimer -eq 0) {
+        Stop-ReplaySfx -State $State
+        return
+    }
+
+    $State.SoundPhase = (($State.SoundPhase + 1) -band 0xFF)
+    $State.SoundTimer -= 1
+    if ($State.SoundTimer -le 0) {
+        Stop-ReplaySfx -State $State
+    }
+}
+
+function Update-ReplayAudio {
+    param(
+        $State,
+        [bool]$MusicEnabled,
+        $MusicThemes
+    )
+
+    Sync-ReplayMusicTheme -State $State -MusicEnabled $MusicEnabled
+    Update-ReplayMusicTransport -State $State -MusicThemes $MusicThemes
+    Update-ReplaySfxTransport -State $State
+}
+
+function Handle-ReplayStateChangeFeedback {
+    param($State)
+
+    switch ($State.GameState) {
+        'WIN' {
+            $State.FeedbackTimer = 11
+            Start-ReplaySfx -State $State -SoundId 12
+        }
+        'LOSE' {
+            $State.FeedbackTimer = 11
+            Start-ReplaySfx -State $State -SoundId 13
+        }
+        'SPLASH' {
+            Stop-ReplaySfx -State $State
+        }
+        'TITLE' {
+            Stop-ReplaySfx -State $State
+        }
+    }
+}
+
+function Update-ReplayFeedback {
+    param(
+        $State,
+        [bool]$MusicEnabled,
+        $MusicThemes
+    )
+
+    if ($State.GameState -ne $State.LastGameState) {
+        $State.LastGameState = $State.GameState
+        $State.StateTicks = 0
+        Handle-ReplayStateChangeFeedback -State $State
+    }
+
+    if ($State.StateTicks -lt 255) {
+        $State.StateTicks += 1
+    }
+
+    if ($State.FeedbackTimer -gt 0) {
+        $State.FeedbackTimer -= 1
+    }
+
+    Update-ReplayAudio -State $State -MusicEnabled $MusicEnabled -MusicThemes $MusicThemes
 }
 
 function Get-RequiredConstants {
@@ -235,6 +650,17 @@ function New-ReplayState {
         SpoofTimer = 0
         SpoofX = $Constants.START_X
         SpoofY = $Constants.START_Y
+        LastGameState = '__INIT__'
+        StateTicks = 0
+        MessageId = 'SECTOR'
+        FeedbackTimer = 0
+        SoundId = 0
+        SoundTimer = 0
+        SoundPhase = 0
+        MusicTheme = 0xFF
+        MusicEventIndex = 0
+        MusicTicks = 0
+        MusicNote = 0
         Rng = (New-RngState -Seed $Seed)
         MapTiles = (New-Object object[] ($Constants.MAP_W * $Constants.MAP_H))
         Enemies = @()
@@ -286,7 +712,14 @@ function Initialize-ReplayRun {
     $State.SectorHits = 0
     $State.SectorPulsesUsed = 0
     $State.SectorScoreTable = @(0, 0, 0)
+    $State.LastGameState = '__INIT__'
+    $State.StateTicks = 0
+    $State.MessageId = 'SECTOR'
+    $State.FeedbackTimer = 0
+    Stop-ReplaySfx -State $State
+    Stop-ReplayMusic -State $State
     Load-ReplaySector -State $State -Constants $Constants -Sectors $Sectors
+    Set-ReplayMessageEvent -State $State -MessageKey 'SECTOR'
 }
 
 function Get-SectorById {
@@ -550,6 +983,11 @@ function Get-RuntimeVerificationSignature {
     $signature = Update-RuntimeSignatureByte -Signature $signature -Value $State.SectorHits
     $signature = Update-RuntimeSignatureByte -Signature $signature -Value $State.SectorPulsesUsed
     $signature = Update-RuntimeSignatureByte -Signature $signature -Value $State.SpoofTimer
+    $signature = Update-RuntimeSignatureByte -Signature $signature -Value $State.SoundId
+    $signature = Update-RuntimeSignatureByte -Signature $signature -Value $State.SoundTimer
+    $signature = Update-RuntimeSignatureByte -Signature $signature -Value $State.MusicTheme
+    $signature = Update-RuntimeSignatureByte -Signature $signature -Value $State.MusicTicks
+    $signature = Update-RuntimeSignatureByte -Signature $signature -Value $State.MusicNote
     $signature = Update-RuntimeSignatureWord -Signature $signature -Value $State.Rng.Value
 
     foreach ($enemy in $State.Enemies) {
@@ -1167,6 +1605,7 @@ function Try-EnemyStep {
         Record-SectorHit -State $State
         $State.ShieldCount -= 1
         $enemy.Alive = $false
+        Set-ReplayMessageEvent -State $State -MessageKey 'HIT'
         if ($State.ShieldCount -le 0) {
             $State.GameState = 'LOSE'
         }
@@ -1188,6 +1627,7 @@ function Try-EnemyStep {
         $enemy.Alive = $false
         Award-Kill -State $State -Constants $Constants
         Award-Score -State $State -Points $Constants.SCORE_TRAP_BONUS
+        Set-ReplayMessageEvent -State $State -MessageKey 'TRAP'
         return $true
     }
 
@@ -1317,11 +1757,13 @@ function Use-Pulse {
     )
 
     if ($State.PulseCount -le 0) {
+        Set-ReplayMessageEvent -State $State -MessageKey 'NOPULSE'
         return $false
     }
 
     $State.PulseCount -= 1
     Record-SectorPulse -State $State
+    Set-ReplayMessageEvent -State $State -MessageKey 'PULSE'
     $kills = 0
     foreach ($enemy in $State.Enemies) {
         if (-not $enemy.Alive) {
@@ -1347,6 +1789,7 @@ function Use-Pulse {
 
     if ($kills -ge $Constants.PULSE_RECHARGE_KILLS -and $State.PulseCount -lt $Constants.MAX_PULSES) {
         $State.PulseCount += 1
+        Set-ReplayMessageEvent -State $State -MessageKey 'RECHARGE'
     }
 
     return $true
@@ -1366,13 +1809,20 @@ function Attempt-MoveTo {
         $State.Enemies[$enemyIndex].Alive = $false
         Award-Kill -State $State -Constants $Constants
         Commit-PlayerMove -State $State -TargetX $TargetX -TargetY $TargetY
+        Set-ReplayMessageEvent -State $State -MessageKey 'KILL'
         return $true
     }
 
     $tile = Get-Tile -State $State -Constants $Constants -X $TargetX -Y $TargetY
     switch ($tile) {
-        'WALL' { return $false }
-        'EXIT_LOCKED' { return $false }
+        'WALL' {
+            Set-ReplayMessageEvent -State $State -MessageKey 'BLOCK'
+            return $false
+        }
+        'EXIT_LOCKED' {
+            Set-ReplayMessageEvent -State $State -MessageKey 'BLOCK'
+            return $false
+        }
         'SHARD' {
             Set-Tile -State $State -Constants $Constants -X $TargetX -Y $TargetY -Tile 'FLOOR'
             Commit-PlayerMove -State $State -TargetX $TargetX -TargetY $TargetY
@@ -1380,6 +1830,9 @@ function Attempt-MoveTo {
             Award-Score -State $State -Points $Constants.SCORE_SHARD_POINTS
             if ($State.DataCount -ge $Constants.SHARD_COUNT) {
                 Open-Exit -State $State -Constants $Constants
+                Set-ReplayMessageEvent -State $State -MessageKey 'GATE'
+            } else {
+                Set-ReplayMessageEvent -State $State -MessageKey 'SHARD'
             }
 
             return $true
@@ -1390,6 +1843,7 @@ function Attempt-MoveTo {
             $State.SpoofX = $TargetX
             $State.SpoofY = $TargetY
             $State.SpoofTimer = $Constants.SPOOF_TURNS
+            Set-ReplayMessageEvent -State $State -MessageKey 'SPOOF'
             return $true
         }
         'EXIT_OPEN' {
@@ -1403,6 +1857,7 @@ function Attempt-MoveTo {
 
             $State.SectorNum += 1
             Load-ReplaySector -State $State -Constants $Constants -Sectors $Sectors
+            Set-ReplayMessageEvent -State $State -MessageKey 'SECTOR'
             return $false
         }
         'SURGE' {
@@ -1410,6 +1865,7 @@ function Attempt-MoveTo {
             Commit-PlayerMove -State $State -TargetX $TargetX -TargetY $TargetY
             Record-SectorHit -State $State
             $State.ShieldCount -= $Constants.SURGE_PLAYER_DAMAGE
+            Set-ReplayMessageEvent -State $State -MessageKey 'SURGE'
             if ($State.ShieldCount -le 0) {
                 $State.GameState = 'LOSE'
             }
@@ -1446,21 +1902,29 @@ function Process-ReplayAction {
         'LEFT' {
             if ($State.PlayerX -gt $Constants.PLAY_MIN_X) {
                 $actionTaken = Attempt-MoveTo -State $State -Constants $Constants -Sectors $Sectors -TargetX ($State.PlayerX - 1) -TargetY $State.PlayerY
+            } else {
+                Set-ReplayMessageEvent -State $State -MessageKey 'BLOCK'
             }
         }
         'RIGHT' {
             if ($State.PlayerX -lt $Constants.PLAY_MAX_X) {
                 $actionTaken = Attempt-MoveTo -State $State -Constants $Constants -Sectors $Sectors -TargetX ($State.PlayerX + 1) -TargetY $State.PlayerY
+            } else {
+                Set-ReplayMessageEvent -State $State -MessageKey 'BLOCK'
             }
         }
         'UP' {
             if ($State.PlayerY -gt $Constants.PLAY_MIN_Y) {
                 $actionTaken = Attempt-MoveTo -State $State -Constants $Constants -Sectors $Sectors -TargetX $State.PlayerX -TargetY ($State.PlayerY - 1)
+            } else {
+                Set-ReplayMessageEvent -State $State -MessageKey 'BLOCK'
             }
         }
         'DOWN' {
             if ($State.PlayerY -lt $Constants.PLAY_MAX_Y) {
                 $actionTaken = Attempt-MoveTo -State $State -Constants $Constants -Sectors $Sectors -TargetX $State.PlayerX -TargetY ($State.PlayerY + 1)
+            } else {
+                Set-ReplayMessageEvent -State $State -MessageKey 'BLOCK'
             }
         }
         default {
@@ -1497,6 +1961,11 @@ function Get-ObservedReplayResult {
         Hits = $State.SectorHits
         PulsesUsed = $State.SectorPulsesUsed
         Spoof = $State.SpoofTimer
+        Sound = $State.SoundId
+        SoundTimer = $State.SoundTimer
+        MusicTheme = $State.MusicTheme
+        MusicTicks = $State.MusicTicks
+        MusicNote = $State.MusicNote
         Rng = (Format-Hex16 $State.Rng.Value)
     }
 }
@@ -1605,7 +2074,9 @@ function Invoke-ReplayScenario {
     param(
         $Demo,
         $Constants,
-        $Sectors
+        $Sectors,
+        [bool]$MusicEnabled,
+        $MusicThemes
     )
 
     $name = [string]$Demo.Name
@@ -1649,6 +2120,7 @@ function Invoke-ReplayScenario {
         $parsedStep = Get-StepActionKey -Step $step -DemoName $name
         for ($tick = 0; $tick -lt $parsedStep.Count; $tick++) {
             $state.TraceTicks += 1
+            Update-ReplayFeedback -State $state -MusicEnabled $MusicEnabled -MusicThemes $MusicThemes
             Process-ReplayAction -State $state -Constants $Constants -Sectors $Sectors -Action $parsedStep.Action
             if ($parsedStep.Action -ne 'WAIT') {
                 $checkpointSignatures.Add((Get-RuntimeVerificationSignature -State $state))
@@ -1661,6 +2133,10 @@ function Invoke-ReplayScenario {
         if ($state.GameState -ne 'PLAYING') {
             break
         }
+    }
+
+    if ($state.GameState -in @('WIN', 'LOSE')) {
+        Update-ReplayFeedback -State $state -MusicEnabled $MusicEnabled -MusicThemes $MusicThemes
     }
 
     $observed = Get-ObservedReplayResult -State $state
@@ -1685,6 +2161,7 @@ function Invoke-ReplayScenario {
 $constants = Get-RequiredConstants -SourcePath $ConstantsSourcePath
 $sectorSource = Import-StructuredDataFile -SourcePath $SectorSourcePath -Label 'sector source'
 $demoSource = Import-StructuredDataFile -SourcePath $DemoSourcePath -Label 'demo source'
+$musicThemes = Get-MusicThemeDefinitions -SourcePath $MusicSourcePath
 
 if (-not $sectorSource.ContainsKey('Sectors')) {
     throw ("Sector source must define a 'Sectors' array: {0}" -f $SectorSourcePath)
@@ -1710,6 +2187,8 @@ $reportLines.Add('CyberStorm Replay Harness')
 $reportLines.Add(("Generated: {0}" -f (Get-Date -Format 'yyyy-MM-dd HH:mm:ss K')))
 $reportLines.Add(("Demo source: {0}" -f $DemoSourcePath))
 $reportLines.Add(("Sector source: {0}" -f $SectorSourcePath))
+$reportLines.Add(("Music source: {0}" -f $MusicSourcePath))
+$reportLines.Add(("Audio mode: {0}" -f $(if ($musicEnabled) { 'MUSIC' } else { 'SFX_ONLY' })))
 $reportLines.Add(("Scenarios: {0}" -f $demos.Count))
 $reportLines.Add('')
 
@@ -1717,7 +2196,7 @@ foreach ($demo in $demos) {
     $name = if ($demo -is [System.Collections.IDictionary]) { [string]$demo.Name } else { '<invalid demo>' }
     $reportLines.Add(("Demo: {0}" -f $name))
     try {
-        $result = Invoke-ReplayScenario -Demo $demo -Constants $constants -Sectors $sectors
+        $result = Invoke-ReplayScenario -Demo $demo -Constants $constants -Sectors $sectors -MusicEnabled $musicEnabled -MusicThemes $musicThemes
         $results.Add($result)
         $summaryLines.Add(("{0}: {1}" -f $result.Name, $result.Signature))
         $reportLines.Add(("  Id: {0}" -f $result.Id))
@@ -1743,6 +2222,12 @@ foreach ($demo in $demos) {
                 $result.Observed.PulsesUsed,
                 $result.Observed.Spoof,
                 $result.Observed.Rng))
+        $reportLines.Add(("  Audio: sound={0} timer={1} theme={2} ticks={3} note={4}" -f `
+                $result.Observed.Sound,
+                $result.Observed.SoundTimer,
+                $result.Observed.MusicTheme,
+                $result.Observed.MusicTicks,
+                $result.Observed.MusicNote))
 
         if (@($result.Mismatches).Count -eq 0) {
             $reportLines.Add('  Status: PASS')

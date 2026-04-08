@@ -167,7 +167,7 @@ $status = 'PASS'
 $summaryLines = @()
 $artifactPaths = @($ReportPath, $startupScreenshotPath, $titleScreenshotPath, $screenshotPath, $logCopyPath)
 $audioModeValue = Get-AsmEquValue -SourcePath $AudioConfigPath -Name 'AUDIO_MODE'
-$audioModeName = if ($audioModeValue -eq 1) { 'EXPERIMENTAL_MUSIC' } else { 'SFX_ONLY' }
+$audioModeName = if ($audioModeValue -eq 1) { 'MUSIC' } else { 'SFX_ONLY' }
 $startupCaptureSeconds = 2
 $titleCaptureSeconds = [Math]::Min(($WaitSeconds - 2), 6)
 if ($titleCaptureSeconds -le $startupCaptureSeconds) {

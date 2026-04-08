@@ -4,6 +4,7 @@ param(
     [string]$AssemblerPath,
     [string]$MasmPath,
     [switch]$ExperimentalMusic,
+    [switch]$SfxOnly,
     [string]$VmName = 'CyberStorm',
     [string]$DemoSourcePath = (Join-Path (Join-Path $PSScriptRoot '..') 'assets\demos.psd1'),
     [string]$BuildScriptPath = (Join-Path $PSScriptRoot 'build.ps1'),
@@ -15,6 +16,10 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+
+if ($ExperimentalMusic.IsPresent -and $SfxOnly.IsPresent) {
+    throw 'Use either -ExperimentalMusic (legacy alias) or -SfxOnly, not both.'
+}
 
 $root = Split-Path -Parent $PSScriptRoot
 $buildDir = Join-Path $root 'build'
@@ -184,8 +189,8 @@ function Invoke-ChildBuild {
         $args.Add($MasmPath)
     }
 
-    if ($ExperimentalMusic.IsPresent) {
-        $args.Add('-ExperimentalMusic')
+    if ($SfxOnly.IsPresent) {
+        $args.Add('-SfxOnly')
     }
 
     foreach ($argument in @($ExtraArguments)) {
@@ -356,7 +361,7 @@ try {
         -Assembler $Assembler `
         -AssemblerPath $AssemblerPath `
         -MasmPath $MasmPath `
-        -ExperimentalMusic:$ExperimentalMusic.IsPresent `
+        -SfxOnly:$SfxOnly.IsPresent `
         -VmName $VmName
     $artifactPaths.Add($runtimeVerifyResult.ReportPath)
     foreach ($artifact in @($runtimeVerifyResult.ArtifactPaths)) {

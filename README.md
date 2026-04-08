@@ -51,7 +51,7 @@ CyberStorm is small enough to inspect, but it is no longer a single opaque assem
 
 ![CyberStorm boot flow](docs/readme/boot-flow.svg)
 
-The boot sector at `LBA 0` loads stage two from `LBA 1..94` into `1000:0000`, then stage two loads the map bank from `LBA 95..102` into `7000:0000`, the presentation bank from `LBA 103..141` into `7800:0000`, and the geometry bank from `LBA 142..148` into `8000:0000` before entering VGA gameplay.
+The boot sector at `LBA 0` loads stage two from `LBA 1..95` into `1000:0000`, then stage two loads the map bank from `LBA 96..103` into `7000:0000`, the presentation bank from `LBA 104..142` into `7800:0000`, and the geometry bank from `LBA 143..149` into `8000:0000` before entering VGA gameplay.
 
 ### Runtime Layout
 
@@ -113,12 +113,12 @@ These values come from the current [build/cyberstorm-build-report.txt](build/cyb
 | Fact | Current build |
 | --- | --- |
 | Boot code | `132 / 510` bytes |
-| Stage two | `48049` bytes across `94` sectors |
+| Stage two | `48158` bytes across `95` sectors |
 | Banked payloads | maps `3780` bytes across `8` sectors, presentation `19968` bytes across `39` sectors, geometry `3234` bytes across `7` sectors |
-| Bank LBA ranges | map `95..102`, presentation `103..141`, geometry `142..148` |
+| Bank LBA ranges | map `96..103`, presentation `104..142`, geometry `143..149` |
 | Content set | `3` sectors, `9` maps, `9` breach scenarios, `3` demos, `5` music themes, `13` presentation assets, `7` geometry scenes, `21` scene groups, `14` meshes, `3` gameplay kits |
 | Balance sweep | `36` deterministic scenarios |
-| Release audio policy | `SFX_ONLY` by default |
+| Release audio policy | `MUSIC` by default |
 | Video target | `320x200x256` in VGA mode `13h` |
 | Runtime model | Single-segment `16-bit` real mode with grouped low-poly scenes and a camera-relative gameplay-room 3D renderer |
 
@@ -184,19 +184,19 @@ Useful switches:
 
 ### Audio Modes
 
-Release builds are intentionally `SFX_ONLY` right now:
+Release builds now ship with looping themes enabled by default:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\build.ps1
 ```
 
-If you want to compile the experimental looping music path anyway:
+If you want a quiet `SFX_ONLY` build instead:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\build.ps1 -ExperimentalMusic
+powershell -ExecutionPolicy Bypass -File .\scripts\build.ps1 -SfxOnly
 ```
 
-That switch is opt-in on purpose. One-shot SFX are the supported default until the calmer Audio V2 transport is proven pleasant enough to graduate from experimental status.
+Looping themes are now the supported release baseline. One-shot SFX still preempt the channel and the music transport resumes underneath them.
 
 ### Balance Harness
 
@@ -406,7 +406,7 @@ CyberStorm now has a layered confidence model:
 - [build/cyberstorm-vm-smoke-report.txt](build/cyberstorm-vm-smoke-report.txt): headless VirtualBox smoke summary and capture paths
 - [build/cyberstorm-runtime-verify-report.txt](build/cyberstorm-runtime-verify-report.txt): screenshot-decoded runtime replay verification summary
 - [build/cyberstorm-showcase-report.txt](build/cyberstorm-showcase-report.txt): deterministic gallery/capture assignment summary
-- [build/audio_config.inc](build/audio_config.inc): generated release-vs-experimental audio mode contract
+- [build/audio_config.inc](build/audio_config.inc): generated release audio-mode contract
 - [build/cyberstorm-build-report.txt](build/cyberstorm-build-report.txt): layout, addresses, warnings, and artifact paths
 - [build/cyberstorm-stage2.bin](build/cyberstorm-stage2.bin): flattened stage-two payload exactly as written after the boot sector
 

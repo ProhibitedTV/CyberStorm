@@ -5,16 +5,16 @@
 VERIFY_DEMO_COUNT EQU 3
 
 verify_demo_checkpoint_count_table db 13, 17, 11
-verify_demo_final_signature_table dw 2946h, 6D25h, 68D2h
+verify_demo_final_signature_table dw 0D173h, 0CAC1h, 8B87h
 verify_demo_checkpoint_table dw offset verify_demo_0_checkpoints, offset verify_demo_1_checkpoints, offset verify_demo_2_checkpoints
 
-verify_demo_0_checkpoints dw 0E41Ch, 0DA6Ah, 0B3FEh, 6A1Ch, 6A1Ch, 6A1Ch
-                          dw 0E3A3h, 0AD50h, 8D44h, 0ED7Ch, 0ED7Ch, 4CF1h
-                          dw 2946h
+verify_demo_0_checkpoints dw 0EFFBh, 9260h, 0F0D0h, 3051h, 54D6h, 54D6h
+                          dw 0BE7Bh, 0992h, 0E108h, 0B0F0h, 9196h, 0441h
+                          dw 0A980h
 
-verify_demo_1_checkpoints dw 94BAh, 2656h, 0C518h, 6DC7h, 203Bh, 67E8h
-                          dw 0DEEFh, 990Ah, 0A5FCh, 0A9DDh, 0A9DDh, 0A9DDh
-                          dw 0A9DDh, 0A9DDh, 6022h, 0EFF4h, 6D25h
+verify_demo_1_checkpoints dw 6C5Bh, 2696h, 45B0h, 491Bh, 70F4h, 99B2h
+                          dw 0F975h, 5766h, 0CFAFh, 0CB9h, 0DB08h, 0DB08h
+                          dw 0DB08h, 0DB08h, 0EDF5h, 750Bh, 6116h
 
-verify_demo_2_checkpoints dw 8690h, 78C8h, 8DE2h, 8DE2h, 5B72h, 5C68h
-                          dw 0E600h, 0E600h, 68D2h, 68D2h, 68D2h
+verify_demo_2_checkpoints dw 0B628h, 0C8DFh, 0C12h, 0EC0Fh, 0B3DAh, 71A7h
+                          dw 5A77h, 1A78h, 2B51h, 8B36h, 8B36h

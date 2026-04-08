@@ -55,7 +55,7 @@ Register assumptions that matter:
 - [src/game/banks.asm](../src/game/banks.asm) owns the minimal BIOS disk-read helper for post-boot asset banks.
 - [src/game/maps.asm](../src/game/maps.asm) is now documentation only; the authored map pool lives in a bank payload instead of stage two.
 - [src/game/audio.asm](../src/game/audio.asm) keeps the playback logic in-source, but includes generated theme data from the content pipeline.
-- `build\audio_config.inc` currently compiles the runtime in `SFX_ONLY` mode by default. `-ExperimentalMusic` is an opt-in build profile rather than the supported release baseline.
+- `build\audio_config.inc` now compiles the runtime in `MUSIC` mode by default. `-SfxOnly` is the explicit quiet build profile when you want one-shot effects without looping themes.
 
 ## 4. Core State Layout
 

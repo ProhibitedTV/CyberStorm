@@ -165,7 +165,7 @@ function Get-CaptureWaitSeconds {
 
     $captureTicks = [int]$Demo.CaptureTicks
     $seconds = 6 + [int][Math]::Ceiling(($captureTicks + 6) / 18.2)
-    return [Math]::Max(7, $seconds)
+    return [Math]::Max(10, $seconds)
 }
 
 function Invoke-ChildBuild {
@@ -255,7 +255,7 @@ function Invoke-DirectGameplayCapture {
     $shotPath = Join-Path $ArtifactDir 'showcase-gameplay.png'
     $rawShotPath = Join-Path $ArtifactDir 'showcase-gameplay-direct.png'
     $logPath = Join-Path $ArtifactDir 'showcase-gameplay-direct.log'
-    $waitSeconds = 6
+    $waitSeconds = 8
 
     Invoke-ChildBuild -ExtraArguments @(
         '-DebugBuild',
@@ -286,7 +286,7 @@ function Invoke-DirectGameplayCapture {
         RawScreenshotPath = $rawShotPath
         LogPath = $logPath
         WaitSeconds = $waitSeconds
-        Source = 'direct-to-game tactical sector 1 debug boot'
+        Source = 'direct-to-game sector 1 chase-camera debug boot'
     }
 }
 
@@ -330,6 +330,10 @@ try {
 
     foreach ($demoIndex in 0..($demos.Count - 1)) {
         $demo = $demos[$demoIndex]
+        $showcaseEnabled = if (($demo -is [System.Collections.IDictionary]) -and $demo.ContainsKey('Showcase')) { [bool]$demo['Showcase'] } else { $true }
+        if (-not $showcaseEnabled) {
+            continue
+        }
         $capture = Invoke-DemoCapture -Demo $demo -DemoIndex $demoIndex -ArtifactDir $artifactDir
         $artifactPaths.Add($capture.ScreenshotPath)
         $artifactPaths.Add($capture.RawScreenshotPath)

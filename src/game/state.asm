@@ -98,8 +98,12 @@ game3d_room_overflow db 0
 game3d_room_face_count db 0
 game3d_room_vertex_count dw 0
 game3d_emit_flags db 0
+game3d_optional_faces_remaining db GAME3D_OPTIONAL_FACE_BUDGET
+game3d_wall_emit_mode db 0
+game3d_camera_heading db GAME3D_HEADING_EAST
 game3d_camera_yaw_current db GAME3D_YAW_DEFAULT
 game3d_camera_yaw_target  db GAME3D_YAW_DEFAULT
+game3d_room_variant db GAME3D_ROOM_VARIANT_NORTHWEST
 game3d_mesh_index db 0
 game3d_mesh_yaw db 0
 game3d_mesh_face_flags db 0
@@ -290,6 +294,7 @@ debug_pulse_tag  db 'P', 0
 debug_data_tag   db 'D', 0
 debug_enemy_tag  db 'E', 0
 debug_overflow_tag db 'GO', 0
+debug_camera_tag db 'CQ', 0
 ENDIF
 
 win_line_1    db 'VAULT', 0
@@ -309,6 +314,21 @@ verify_step_label db 'ACT', 0
 verify_event_label db 'EVT', 0
 verify_expect_label db 'EXP', 0
 verify_observe_label db 'OBS', 0
+verify_state_px_label db 'PX', 0
+verify_state_py_label db 'PY', 0
+verify_state_action_label db 'AC', 0
+verify_state_heading_label db 'HD', 0
+verify_state_variant_label db 'RV', 0
+verify_state_shield_label db 'SH', 0
+verify_state_pulse_label db 'PU', 0
+verify_state_data_label db 'DT', 0
+verify_state_kill_label db 'KG', 0
+verify_state_game_label db 'GS', 0
+verify_state_map_label db 'MP', 0
+verify_state_score_label db 'SC', 0
+verify_state_hits_label db 'HI', 0
+verify_state_pulses_used_label db 'PS', 0
+verify_state_spoof_label db 'SP', 0
 verify_prompt db 'ENTER OR SPACE RETURNS TO TITLE.', 0
 frontend_verify_pass_headline db 'FRONTEND PASS', 0
 frontend_verify_fail_headline db 'FRONTEND FAIL', 0

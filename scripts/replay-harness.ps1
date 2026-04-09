@@ -965,6 +965,27 @@ function Update-RuntimeSignatureWord {
     return $signature
 }
 
+function Get-RuntimeCameraHeading {
+    param($State)
+
+    if ($State.LastPlayerDx -gt 0) { return 1 }
+    if ($State.LastPlayerDx -lt 0) { return 3 }
+    if ($State.LastPlayerDy -gt 0) { return 2 }
+    if ($State.LastPlayerDy -lt 0) { return 0 }
+    return 1
+}
+
+function Get-RuntimeRoomVariant {
+    param($State)
+
+    switch (Get-RuntimeCameraHeading -State $State) {
+        0 { return 1 }
+        1 { return 0 }
+        2 { return 2 }
+        default { return 3 }
+    }
+}
+
 function Get-RuntimeVerificationSignature {
     param($State)
 
@@ -974,6 +995,8 @@ function Get-RuntimeVerificationSignature {
     $signature = Update-RuntimeSignatureByte -Signature $signature -Value $State.CurrentTemplateIndex
     $signature = Update-RuntimeSignatureByte -Signature $signature -Value $State.PlayerX
     $signature = Update-RuntimeSignatureByte -Signature $signature -Value $State.PlayerY
+    $signature = Update-RuntimeSignatureByte -Signature $signature -Value (Get-RuntimeCameraHeading -State $State)
+    $signature = Update-RuntimeSignatureByte -Signature $signature -Value (Get-RuntimeRoomVariant -State $State)
     $signature = Update-RuntimeSignatureByte -Signature $signature -Value $State.ShieldCount
     $signature = Update-RuntimeSignatureByte -Signature $signature -Value $State.PulseCount
     $signature = Update-RuntimeSignatureByte -Signature $signature -Value $State.DataCount
@@ -983,26 +1006,6 @@ function Get-RuntimeVerificationSignature {
     $signature = Update-RuntimeSignatureByte -Signature $signature -Value $State.SectorHits
     $signature = Update-RuntimeSignatureByte -Signature $signature -Value $State.SectorPulsesUsed
     $signature = Update-RuntimeSignatureByte -Signature $signature -Value $State.SpoofTimer
-    $signature = Update-RuntimeSignatureByte -Signature $signature -Value $State.SoundId
-    $signature = Update-RuntimeSignatureByte -Signature $signature -Value $State.SoundTimer
-    $signature = Update-RuntimeSignatureByte -Signature $signature -Value $State.MusicTheme
-    $signature = Update-RuntimeSignatureByte -Signature $signature -Value $State.MusicTicks
-    $signature = Update-RuntimeSignatureByte -Signature $signature -Value $State.MusicNote
-    $signature = Update-RuntimeSignatureWord -Signature $signature -Value $State.Rng.Value
-
-    foreach ($enemy in $State.Enemies) {
-        $signature = Update-RuntimeSignatureByte -Signature $signature -Value ($(if ($enemy.Alive) { 1 } else { 0 }))
-        $signature = Update-RuntimeSignatureByte -Signature $signature -Value $enemy.X
-        $signature = Update-RuntimeSignatureByte -Signature $signature -Value $enemy.Y
-        $kindValue = switch ([string]$enemy.Kind) {
-            'RUSHER' { 0 }
-            'FLANKER' { 1 }
-            'WARDEN' { 2 }
-            default { 0xFF }
-        }
-        $signature = Update-RuntimeSignatureByte -Signature $signature -Value $kindValue
-    }
-
     return ($signature -band 0xFFFF)
 }
 
@@ -2115,6 +2118,7 @@ function Invoke-ReplayScenario {
     }
 
     $state = New-ReplayState -Constants $Constants -Sectors $Sectors -StartSector $startSector -Seed $seed
+    $captureRuntimeCheckpoints = if (($Demo -is [System.Collections.IDictionary]) -and $Demo.ContainsKey('RuntimeCheckpoints')) { [bool]$Demo['RuntimeCheckpoints'] } else { $true }
     $checkpointSignatures = New-Object 'System.Collections.Generic.List[int]'
     foreach ($step in $steps) {
         $parsedStep = Get-StepActionKey -Step $step -DemoName $name
@@ -2122,7 +2126,7 @@ function Invoke-ReplayScenario {
             $state.TraceTicks += 1
             Update-ReplayFeedback -State $state -MusicEnabled $MusicEnabled -MusicThemes $MusicThemes
             Process-ReplayAction -State $state -Constants $Constants -Sectors $Sectors -Action $parsedStep.Action
-            if ($parsedStep.Action -ne 'WAIT') {
+            if ($captureRuntimeCheckpoints -and $parsedStep.Action -ne 'WAIT') {
                 $checkpointSignatures.Add((Get-RuntimeVerificationSignature -State $state))
             }
             if ($state.GameState -ne 'PLAYING') {

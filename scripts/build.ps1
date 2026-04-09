@@ -1473,6 +1473,7 @@ function Write-GeneratedDemoInclude {
     $seeds = New-Object 'System.Collections.Generic.List[string]'
     $scriptRefs = New-Object 'System.Collections.Generic.List[string]'
     $nameRefs = New-Object 'System.Collections.Generic.List[string]'
+    $attractFlags = New-Object 'System.Collections.Generic.List[string]'
     $captureTicks = New-Object 'System.Collections.Generic.List[string]'
     $demoDataLines = New-Object 'System.Collections.Generic.List[string]'
     $demoNameLines = New-Object 'System.Collections.Generic.List[string]'
@@ -1505,6 +1506,8 @@ function Write-GeneratedDemoInclude {
             throw ("Demo '{0}' in {1} must use CaptureTicks in the 0..255 range." -f $name, $SourcePath)
         }
 
+        $attract = if (($demo -is [System.Collections.IDictionary]) -and $demo.ContainsKey('Attract')) { [bool]$demo['Attract'] } else { $true }
+
         $startSector = [int]$demo['StartSector']
         if ($startSector -lt 1 -or $startSector -gt $ExpectedSectorCount) {
             throw ("Demo '{0}' in {1} must use StartSector 1..{2}." -f $name, $SourcePath, $ExpectedSectorCount)
@@ -1522,10 +1525,12 @@ function Write-GeneratedDemoInclude {
 
         $demoLabel = ("demo_script_{0}" -f $demoIndex)
         $demoNameLabel = ("demo_name_{0}" -f $demoIndex)
+        $attractFlagValue = if ($attract) { '1' } else { '0' }
         $startSectors.Add($startSector.ToString())
         $seeds.Add((Format-Hex16Literal $seed))
         $scriptRefs.Add(("offset {0}" -f $demoLabel))
         $nameRefs.Add(("offset {0}" -f $demoNameLabel))
+        $attractFlags.Add($attractFlagValue)
         $captureTicks.Add($captureTick.ToString())
         $demoSummary.Add(("{0} [{1}] (S{2}, capture {3}t, {4} steps)" -f $name, $captureRole, $startSector, $captureTick, $steps.Count))
         $demoDataLines.Add(("; Demo {0}: {1}" -f ($demoIndex + 1), $name))
@@ -1577,6 +1582,7 @@ function Write-GeneratedDemoInclude {
     Add-AsmDataLines -Lines $lines -Label 'demo_seed_table' -Directive 'dw' -Values $seeds.ToArray() -ValuesPerLine 6
     Add-AsmDataLines -Lines $lines -Label 'demo_script_table' -Directive 'dw' -Values $scriptRefs.ToArray() -ValuesPerLine 4
     Add-AsmDataLines -Lines $lines -Label 'demo_name_table' -Directive 'dw' -Values $nameRefs.ToArray() -ValuesPerLine 4
+    Add-AsmDataLines -Lines $lines -Label 'demo_attract_flag_table' -Directive 'db' -Values $attractFlags.ToArray() -ValuesPerLine 8
     Add-AsmDataLines -Lines $lines -Label 'demo_capture_tick_table' -Directive 'db' -Values $captureTicks.ToArray() -ValuesPerLine 8
     $lines.Add('')
     foreach ($demoLine in $demoDataLines) {
@@ -1632,26 +1638,27 @@ function Write-GeneratedRuntimeVerifyInclude {
 
     for ($demoIndex = 0; $demoIndex -lt @($ReplayResults).Count; $demoIndex++) {
         $result = $ReplayResults[$demoIndex]
-        $checkpointLabel = ("verify_demo_{0}_checkpoints" -f $demoIndex)
         $checkpointValues = @($result.CheckpointSignatures | ForEach-Object { [int]$_ })
-        if ($checkpointValues.Count -eq 0) {
-            throw ("Runtime verification demo '{0}' produced zero checkpoints." -f $result.Name)
-        }
+        $checkpointLabel = if ($checkpointValues.Count -gt 0) { "verify_demo_{0}_checkpoints" -f $demoIndex } else { $null }
 
         $finalSignature = [int]$result.RuntimeFinalSignature
         if ($demoIndex -eq $corruptIndex) {
-            $checkpointValues[0] = (($checkpointValues[0] -bxor 0x00FF) -band 0xFFFF)
+            if ($checkpointValues.Count -gt 0) {
+                $checkpointValues[0] = (($checkpointValues[0] -bxor 0x00FF) -band 0xFFFF)
+            }
             $finalSignature = (($finalSignature + 1) -band 0xFFFF)
         }
 
         $checkpointCounts.Add($checkpointValues.Count.ToString())
         $finalSignatures.Add((Format-Hex16Literal $finalSignature))
-        $checkpointRefs.Add(("offset {0}" -f $checkpointLabel))
+        $checkpointRefs.Add($(if ($null -ne $checkpointLabel) { "offset {0}" -f $checkpointLabel } else { '0' }))
         $summary.Add(("{0} x{1} checkpoints final={2}" -f $result.Name, $checkpointValues.Count, (Format-Hex16 $finalSignature)))
         $totalCheckpoints += $checkpointValues.Count
 
-        Add-AsmDataLines -Lines $checkpointLines -Label $checkpointLabel -Directive 'dw' -Values @($checkpointValues | ForEach-Object { Format-Hex16Literal ([int]$_) }) -ValuesPerLine 6
-        $checkpointLines.Add('')
+        if ($null -ne $checkpointLabel) {
+            Add-AsmDataLines -Lines $checkpointLines -Label $checkpointLabel -Directive 'dw' -Values @($checkpointValues | ForEach-Object { Format-Hex16Literal ([int]$_) }) -ValuesPerLine 6
+            $checkpointLines.Add('')
+        }
     }
 
     Add-AsmDataLines -Lines $lines -Label 'verify_demo_checkpoint_count_table' -Directive 'db' -Values $checkpointCounts.ToArray() -ValuesPerLine 8
@@ -1995,6 +2002,20 @@ function ConvertTo-GeometryAngleByte {
     return ([int][Math]::Round(($turn / 360.0) * 256.0)) -band 0xFF
 }
 
+function ConvertTo-GeometryPaletteSymbol {
+    param(
+        [object]$Value,
+        [string]$Context
+    )
+
+    $symbol = ([string]$Value).Trim().ToUpperInvariant()
+    if ([string]::IsNullOrWhiteSpace($symbol) -or $symbol -notmatch '^PAL_[A-Z0-9_]+$') {
+        throw ("{0} must reference a PAL_* constant. Found '{1}'." -f $Context, $Value)
+    }
+
+    return $symbol
+}
+
 function Add-Int16Payload {
     param(
         [System.Collections.Generic.List[byte]]$Payload,
@@ -2147,6 +2168,20 @@ function Write-GeneratedGeometryInclude {
     $kitTerminalMesh = New-Object 'System.Collections.Generic.List[string]'
     $kitSurgeMesh = New-Object 'System.Collections.Generic.List[string]'
     $kitShardMesh = New-Object 'System.Collections.Generic.List[string]'
+    $kitCameraHeight = New-Object 'System.Collections.Generic.List[string]'
+    $kitCameraDistance = New-Object 'System.Collections.Generic.List[string]'
+    $kitCameraLookAhead = New-Object 'System.Collections.Generic.List[string]'
+    $kitCameraNorthYaw = New-Object 'System.Collections.Generic.List[string]'
+    $kitCameraEastYaw = New-Object 'System.Collections.Generic.List[string]'
+    $kitCameraSouthYaw = New-Object 'System.Collections.Generic.List[string]'
+    $kitCameraWestYaw = New-Object 'System.Collections.Generic.List[string]'
+    $kitBackdropFarColor = New-Object 'System.Collections.Generic.List[string]'
+    $kitBackdropMidColor = New-Object 'System.Collections.Generic.List[string]'
+    $kitBackdropNearColor = New-Object 'System.Collections.Generic.List[string]'
+    $kitHorizonAColor = New-Object 'System.Collections.Generic.List[string]'
+    $kitHorizonBColor = New-Object 'System.Collections.Generic.List[string]'
+    $kitHorizonY = New-Object 'System.Collections.Generic.List[string]'
+    $kitWobbleStrength = New-Object 'System.Collections.Generic.List[string]'
 
     $sceneCount = 0
     $sceneGroupCount = 0
@@ -2526,6 +2561,52 @@ function Write-GeneratedGeometryInclude {
             $meshRefs[$field] = $meshMap[$meshKey]
         }
 
+        $camera = $kit['Camera']
+        if (-not ($camera -is [System.Collections.IDictionary])) {
+            throw ("Gameplay kit '{0}' in {1} must define a Camera block." -f $kitKey, $SourcePath)
+        }
+
+        foreach ($cameraField in @('Height', 'Distance', 'LookAhead', 'HeadingNorthYawDegrees', 'HeadingEastYawDegrees', 'HeadingSouthYawDegrees', 'HeadingWestYawDegrees')) {
+            if (-not $camera.ContainsKey($cameraField)) {
+                throw ("Gameplay kit '{0}' in {1} camera is missing '{2}'." -f $kitKey, $SourcePath, $cameraField)
+            }
+        }
+
+        $atmosphere = $kit['Atmosphere']
+        if (-not ($atmosphere -is [System.Collections.IDictionary])) {
+            throw ("Gameplay kit '{0}' in {1} must define an Atmosphere block." -f $kitKey, $SourcePath)
+        }
+
+        foreach ($atmosphereField in @('BackdropFar', 'BackdropMid', 'BackdropNear', 'HorizonA', 'HorizonB', 'HorizonY', 'WobbleStrength')) {
+            if (-not $atmosphere.ContainsKey($atmosphereField)) {
+                throw ("Gameplay kit '{0}' in {1} atmosphere is missing '{2}'." -f $kitKey, $SourcePath, $atmosphereField)
+            }
+        }
+
+        $cameraHeight = ConvertTo-GeometryFixed88 -Value $camera['Height'] -Context ("Gameplay kit '{0}' camera Height" -f $kitKey)
+        $cameraDistance = ConvertTo-GeometryFixed88 -Value $camera['Distance'] -Context ("Gameplay kit '{0}' camera Distance" -f $kitKey)
+        $cameraLookAhead = ConvertTo-GeometryFixed88 -Value $camera['LookAhead'] -Context ("Gameplay kit '{0}' camera LookAhead" -f $kitKey)
+        $cameraNorthYaw = ConvertTo-GeometryAngleByte -Value $camera['HeadingNorthYawDegrees'] -Context ("Gameplay kit '{0}' north yaw" -f $kitKey)
+        $cameraEastYaw = ConvertTo-GeometryAngleByte -Value $camera['HeadingEastYawDegrees'] -Context ("Gameplay kit '{0}' east yaw" -f $kitKey)
+        $cameraSouthYaw = ConvertTo-GeometryAngleByte -Value $camera['HeadingSouthYawDegrees'] -Context ("Gameplay kit '{0}' south yaw" -f $kitKey)
+        $cameraWestYaw = ConvertTo-GeometryAngleByte -Value $camera['HeadingWestYawDegrees'] -Context ("Gameplay kit '{0}' west yaw" -f $kitKey)
+
+        $horizonY = [int]$atmosphere['HorizonY']
+        if ($horizonY -lt 12 -or $horizonY -gt 84) {
+            throw ("Gameplay kit '{0}' in {1} must keep Atmosphere.HorizonY in the 12..84 range. Found {2}." -f $kitKey, $SourcePath, $horizonY)
+        }
+
+        $wobbleStrength = [int]$atmosphere['WobbleStrength']
+        if ($wobbleStrength -lt 0 -or $wobbleStrength -gt 3) {
+            throw ("Gameplay kit '{0}' in {1} must keep Atmosphere.WobbleStrength in the 0..3 range. Found {2}." -f $kitKey, $SourcePath, $wobbleStrength)
+        }
+
+        $backdropFar = ConvertTo-GeometryPaletteSymbol -Value $atmosphere['BackdropFar'] -Context ("Gameplay kit '{0}' BackdropFar" -f $kitKey)
+        $backdropMid = ConvertTo-GeometryPaletteSymbol -Value $atmosphere['BackdropMid'] -Context ("Gameplay kit '{0}' BackdropMid" -f $kitKey)
+        $backdropNear = ConvertTo-GeometryPaletteSymbol -Value $atmosphere['BackdropNear'] -Context ("Gameplay kit '{0}' BackdropNear" -f $kitKey)
+        $horizonA = ConvertTo-GeometryPaletteSymbol -Value $atmosphere['HorizonA'] -Context ("Gameplay kit '{0}' HorizonA" -f $kitKey)
+        $horizonB = ConvertTo-GeometryPaletteSymbol -Value $atmosphere['HorizonB'] -Context ("Gameplay kit '{0}' HorizonB" -f $kitKey)
+
         $kitSymbol = "GAME3D_KIT_{0}" -f $kitKey.ToUpperInvariant()
         $lines.Add(("{0}_INDEX EQU {1}" -f $kitSymbol, $kitIndex))
         $lines.Add('')
@@ -2546,8 +2627,22 @@ function Write-GeneratedGeometryInclude {
         $kitTerminalMesh.Add($meshRefs['TerminalMesh'].Index.ToString())
         $kitSurgeMesh.Add($meshRefs['SurgeMesh'].Index.ToString())
         $kitShardMesh.Add($meshRefs['ShardMesh'].Index.ToString())
+        $kitCameraHeight.Add((Format-Hex16Literal $cameraHeight))
+        $kitCameraDistance.Add((Format-Hex16Literal $cameraDistance))
+        $kitCameraLookAhead.Add((Format-Hex16Literal $cameraLookAhead))
+        $kitCameraNorthYaw.Add($cameraNorthYaw.ToString())
+        $kitCameraEastYaw.Add($cameraEastYaw.ToString())
+        $kitCameraSouthYaw.Add($cameraSouthYaw.ToString())
+        $kitCameraWestYaw.Add($cameraWestYaw.ToString())
+        $kitBackdropFarColor.Add($backdropFar)
+        $kitBackdropMidColor.Add($backdropMid)
+        $kitBackdropNearColor.Add($backdropNear)
+        $kitHorizonAColor.Add($horizonA)
+        $kitHorizonBColor.Add($horizonB)
+        $kitHorizonY.Add($horizonY.ToString())
+        $kitWobbleStrength.Add($wobbleStrength.ToString())
 
-        $kitSummary.Add(("{0}: floor {1}/{2}, wall {3}/{4}, props {5}|{6}|{7}|{8}" -f $kitKey, $kit['FloorBase'], $kit['FloorTrim'], $kit['WallBase'], $kit['WallTrim'], $kit['GateMesh'], $kit['TerminalMesh'], $kit['SurgeMesh'], $kit['ShardMesh']))
+        $kitSummary.Add(("{0}: cam h={1} d={2} look={3}, horizon={4}, wobble={5}, props {6}|{7}|{8}|{9}" -f $kitKey, $camera['Height'], $camera['Distance'], $camera['LookAhead'], $horizonY, $wobbleStrength, $kit['GateMesh'], $kit['TerminalMesh'], $kit['SurgeMesh'], $kit['ShardMesh']))
     }
 
     $lines.Add(("SCENE3D_COUNT EQU {0}" -f $sceneCount))
@@ -2644,6 +2739,20 @@ function Write-GeneratedGeometryInclude {
     Add-AsmDataLines -Lines $lines -Label 'game3d_kit_terminal_mesh_table' -Directive 'db' -Values $kitTerminalMesh.ToArray() -ValuesPerLine 8
     Add-AsmDataLines -Lines $lines -Label 'game3d_kit_surge_mesh_table' -Directive 'db' -Values $kitSurgeMesh.ToArray() -ValuesPerLine 8
     Add-AsmDataLines -Lines $lines -Label 'game3d_kit_shard_mesh_table' -Directive 'db' -Values $kitShardMesh.ToArray() -ValuesPerLine 8
+    Add-AsmDataLines -Lines $lines -Label 'game3d_kit_camera_height_table' -Directive 'dw' -Values $kitCameraHeight.ToArray() -ValuesPerLine 4
+    Add-AsmDataLines -Lines $lines -Label 'game3d_kit_camera_distance_table' -Directive 'dw' -Values $kitCameraDistance.ToArray() -ValuesPerLine 4
+    Add-AsmDataLines -Lines $lines -Label 'game3d_kit_camera_look_ahead_table' -Directive 'dw' -Values $kitCameraLookAhead.ToArray() -ValuesPerLine 4
+    Add-AsmDataLines -Lines $lines -Label 'game3d_kit_heading_north_yaw_table' -Directive 'db' -Values $kitCameraNorthYaw.ToArray() -ValuesPerLine 8
+    Add-AsmDataLines -Lines $lines -Label 'game3d_kit_heading_east_yaw_table' -Directive 'db' -Values $kitCameraEastYaw.ToArray() -ValuesPerLine 8
+    Add-AsmDataLines -Lines $lines -Label 'game3d_kit_heading_south_yaw_table' -Directive 'db' -Values $kitCameraSouthYaw.ToArray() -ValuesPerLine 8
+    Add-AsmDataLines -Lines $lines -Label 'game3d_kit_heading_west_yaw_table' -Directive 'db' -Values $kitCameraWestYaw.ToArray() -ValuesPerLine 8
+    Add-AsmDataLines -Lines $lines -Label 'game3d_kit_backdrop_far_color_table' -Directive 'db' -Values $kitBackdropFarColor.ToArray() -ValuesPerLine 8
+    Add-AsmDataLines -Lines $lines -Label 'game3d_kit_backdrop_mid_color_table' -Directive 'db' -Values $kitBackdropMidColor.ToArray() -ValuesPerLine 8
+    Add-AsmDataLines -Lines $lines -Label 'game3d_kit_backdrop_near_color_table' -Directive 'db' -Values $kitBackdropNearColor.ToArray() -ValuesPerLine 8
+    Add-AsmDataLines -Lines $lines -Label 'game3d_kit_horizon_a_color_table' -Directive 'db' -Values $kitHorizonAColor.ToArray() -ValuesPerLine 8
+    Add-AsmDataLines -Lines $lines -Label 'game3d_kit_horizon_b_color_table' -Directive 'db' -Values $kitHorizonBColor.ToArray() -ValuesPerLine 8
+    Add-AsmDataLines -Lines $lines -Label 'game3d_kit_horizon_y_table' -Directive 'db' -Values $kitHorizonY.ToArray() -ValuesPerLine 8
+    Add-AsmDataLines -Lines $lines -Label 'game3d_kit_wobble_strength_table' -Directive 'db' -Values $kitWobbleStrength.ToArray() -ValuesPerLine 8
 
     Set-Content -LiteralPath $OutputPath -Encoding ascii -Value $lines
     Assert-PathExists -Path $OutputPath -Label 'generated geometry include'
@@ -2676,7 +2785,8 @@ function Get-GameplayGeometryBudgetSummary {
         [int]$ExpectedMapHeight,
         [int]$ExitColumn,
         [int]$ShardCount,
-        [int]$FaceBudget
+        [int]$FaceBudget,
+        [int]$OptionalFaceBudget
     )
 
     $sectorData = Import-StructuredDataFile -SourcePath $SectorSourcePath -Label 'sector source'
@@ -2699,6 +2809,7 @@ function Get-GameplayGeometryBudgetSummary {
         $maps = @($sector['Maps'])
         $playMinY = 1
         $playMaxY = $ExpectedMapHeight - 2
+        $playRowCount = $playMaxY - $playMinY + 1
         $gateTris = [int]$MeshTriangleMap[([string]$kit['GateMesh']).ToLowerInvariant()]
         $terminalTris = [int]$MeshTriangleMap[([string]$kit['TerminalMesh']).ToLowerInvariant()]
         $surgeTris = [int]$MeshTriangleMap[([string]$kit['SurgeMesh']).ToLowerInvariant()]
@@ -2709,12 +2820,10 @@ function Get-GameplayGeometryBudgetSummary {
 
         foreach ($map in $maps) {
             $rows = @($map['Rows'] | ForEach-Object { [string]$_ })
-            $floorRuns = 1
-            $floorTrimRuns = 1
-            $decorativeTrimRuns = 0
-            for ($y = ($playMinY + 1); $y -lt $playMaxY; $y++) {
+            $floorTrimRuns = 0
+            for ($y = $playMinY; $y -lt $playMaxY; $y++) {
                 if ((($y + $sectorId) % 2) -eq 0) {
-                    $decorativeTrimRuns += 1
+                    $floorTrimRuns += 1
                 }
             }
 
@@ -2776,17 +2885,46 @@ function Get-GameplayGeometryBudgetSummary {
                 }
             }
 
-            $baseFaces = ($floorRuns * 2) + ($floorTrimRuns * 2) + ($decorativeTrimRuns * 2)
-            $structuralFaces = $baseFaces + (($northRuns + $westRuns) * 2)
+            $gateLaneRuns = 0
+            $laneBudget = 0
+            $laneRow = 0
+            while ($laneRow -lt $ExpectedMapHeight -and $laneBudget -lt 5) {
+                if ($rows[$laneRow][$ExitColumn] -eq '#') {
+                    $laneRow += 1
+                    continue
+                }
+
+                $runLength = 0
+                while ($laneRow -lt $ExpectedMapHeight -and $laneBudget -lt 5 -and $rows[$laneRow][$ExitColumn] -ne '#') {
+                    $laneRow += 1
+                    $laneBudget += 1
+                    $runLength += 1
+                }
+
+                if ($runLength -gt 0) {
+                    $gateLaneRuns += 1
+                }
+            }
+
+            $baseEssentialFaces = 2 + ($playRowCount * 2) + ($gateLaneRuns * 2) + 4 + (([int]$rules['TerminalCount'] + [int]$rules['SurgeCount']) * 4)
+            $variantFaceMap = [ordered]@{
+                nw = ($baseEssentialFaces + (($northRuns + $westRuns) * 2) + [Math]::Min($OptionalFaceBudget, ($floorTrimRuns * 2) + (($northRuns + $westRuns) * 2)))
+                sw = ($baseEssentialFaces + (($southRuns + $westRuns) * 2) + [Math]::Min($OptionalFaceBudget, ($floorTrimRuns * 2) + (($southRuns + $westRuns) * 2)))
+                ne = ($baseEssentialFaces + (($northRuns + $eastRuns) * 2) + [Math]::Min($OptionalFaceBudget, ($floorTrimRuns * 2) + (($northRuns + $eastRuns) * 2)))
+                se = ($baseEssentialFaces + (($southRuns + $eastRuns) * 2) + [Math]::Min($OptionalFaceBudget, ($floorTrimRuns * 2) + (($southRuns + $eastRuns) * 2)))
+            }
+            $structuralFaces = ($variantFaceMap.Values | Measure-Object -Maximum).Maximum
+            $peakViews = @($variantFaceMap.GetEnumerator() | Where-Object { $_.Value -eq $structuralFaces } | ForEach-Object { $_.Key }) -join '+'
+            $variantSummary = @($variantFaceMap.GetEnumerator() | ForEach-Object { "{0}={1}" -f $_.Key, $_.Value }) -join ', '
             $headroom = $FaceBudget - $structuralFaces
 
             $structuralCounts.Add($structuralFaces)
-            $templateParts.Add(("{0}={1} (headroom {2}, view tactical-nw)" -f ([string]$map['Name']), $structuralFaces, $headroom))
+            $templateParts.Add(("{0}={1} (headroom {2}, peak {3}, optional cap {4}, {5})" -f ([string]$map['Name']), $structuralFaces, $headroom, $peakViews, $OptionalFaceBudget, $variantSummary))
         }
 
         $minFaces = ($structuralCounts | Measure-Object -Minimum).Minimum
         $maxFaces = ($structuralCounts | Measure-Object -Maximum).Maximum
-        $summaryLines.Add(("S{0}: structural {1}-{2}/{3} (headroom {4}-{5}, view tactical-nw), props {6} tris ({7})" -f $sectorId, $minFaces, $maxFaces, $FaceBudget, ($FaceBudget - $maxFaces), ($FaceBudget - $minFaces), $dynamicPropFaces, ($templateParts -join ', ')))
+        $summaryLines.Add(("S{0}: structural {1}-{2}/{3} (headroom {4}-{5}, quadrant-aware wall families, optional trim cap {6}), props {7} tris ({8})" -f $sectorId, $minFaces, $maxFaces, $FaceBudget, ($FaceBudget - $maxFaces), ($FaceBudget - $minFaces), $OptionalFaceBudget, $dynamicPropFaces, ($templateParts -join ', ')))
 
         if ($maxFaces -gt $FaceBudget) {
             $warningLines.Add(("Sector {0} room kit estimate reaches {1} structural faces, which exceeds the configured runtime face budget of {2}." -f $sectorId, $maxFaces, $FaceBudget))
@@ -3698,6 +3836,7 @@ $maxEnemies = Get-AsmEquValue -SourcePath $constantsSourcePath -Name 'MAX_ENEMIE
 $expectedBannerWidth = Get-AsmEquValue -SourcePath $constantsSourcePath -Name 'PRESENT_BANNER_W'
 $expectedBannerHeight = Get-AsmEquValue -SourcePath $constantsSourcePath -Name 'PRESENT_BANNER_H'
 $game3dFaceBudget = Get-AsmEquValue -SourcePath $constantsSourcePath -Name 'SCENE3D_MAX_FACES'
+$game3dOptionalFaceBudget = Get-AsmEquValue -SourcePath $constantsSourcePath -Name 'GAME3D_OPTIONAL_FACE_BUDGET'
 $shardCount = Get-AsmEquValue -SourcePath $constantsSourcePath -Name 'SHARD_COUNT'
 
 $generatedArt = Write-GeneratedArtInclude -SourcePath $artSourcePath -OutputPath $generatedArtPath
@@ -3734,7 +3873,8 @@ $gameplayGeometryBudget = Get-GameplayGeometryBudgetSummary `
     -ExpectedMapHeight $expectedMapHeight `
     -ExitColumn $exitCol `
     -ShardCount $shardCount `
-    -FaceBudget $game3dFaceBudget
+    -FaceBudget $game3dFaceBudget `
+    -OptionalFaceBudget $game3dOptionalFaceBudget
 $generatedDemos = Write-GeneratedDemoInclude `
     -SourcePath $demoSourcePath `
     -OutputPath $generatedDemosPath `
@@ -3788,7 +3928,7 @@ $generatedContentLines = @(
     ("Geometry summary: {0}" -f $generatedGeometry.SceneSummary)
     ("Geometry mesh summary: {0}" -f $generatedGeometry.MeshSummary)
     ("Geometry gameplay kit summary: {0}" -f $generatedGeometry.KitSummary)
-    ("Gameplay camera: fixed tactical 3/4 diorama")
+    ("Gameplay camera: quadrant-aware chase presets with authored horizon bands and atmosphere")
     ("Gameplay viewport: {0}x{1} at {2},{3}" -f $game3dViewW, $game3dViewH, $game3dViewX, $game3dViewY)
     ("Gameplay room structural headroom: {0}" -f ($gameplayGeometryBudget.SummaryLines -join ' | '))
     ("Sector source: {0}" -f $generatedSectors.SourcePath)
@@ -4100,7 +4240,7 @@ foreach ($runtimeVerifyLine in $runtimeVerifyLines) {
 }
 
 $showcaseArtifacts = @()
-$showcaseSourceSelection = 'Selection: branding uses the startup ident, gameplay uses a direct-to-game tactical 3D boot, and payoff uses ending/hazard verification shots.'
+$showcaseSourceSelection = 'Selection: branding uses the startup ident, gameplay uses per-sector chase-camera captures plus a direct-to-game room boot, and payoff uses runtime verification pass/fail shots.'
 if ($CaptureShowcase.IsPresent) {
     $showcaseResult = & $showcaseCaptureScript `
         -Assembler $Assembler `

@@ -938,3 +938,17 @@ game3d_kit_gate_mesh_table db 0, 1, 2
 game3d_kit_terminal_mesh_table db 3, 4, 5
 game3d_kit_surge_mesh_table db 6, 7, 8
 game3d_kit_shard_mesh_table db 9, 10, 11
+game3d_kit_camera_height_table dw 0580h, 05E6h, 0626h
+game3d_kit_camera_distance_table dw 0740h, 0700h, 06B3h
+game3d_kit_camera_look_ahead_table dw 00C0h, 00DAh, 00B3h
+game3d_kit_heading_north_yaw_table db 96, 96, 96
+game3d_kit_heading_east_yaw_table db 32, 32, 32
+game3d_kit_heading_south_yaw_table db 224, 224, 224
+game3d_kit_heading_west_yaw_table db 160, 160, 160
+game3d_kit_backdrop_far_color_table db PAL_BG0, PAL_BG1, PAL_BLACK
+game3d_kit_backdrop_mid_color_table db PAL_PANEL2, PAL_PANEL2, PAL_BG0
+game3d_kit_backdrop_near_color_table db PAL_PANEL, PAL_PANEL, PAL_PANEL
+game3d_kit_horizon_a_color_table db PAL_CYAN, PAL_AMBER, PAL_RED
+game3d_kit_horizon_b_color_table db PAL_CYAN2, PAL_RED, PAL_WHITE
+game3d_kit_horizon_y_table db 34, 36, 32
+game3d_kit_wobble_strength_table db 1, 2, 2

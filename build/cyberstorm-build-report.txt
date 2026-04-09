@@ -1,5 +1,5 @@
 CyberStorm Build Report
-Generated: 2026-04-08 16:36:08 -06:00
+Generated: 2026-04-09 07:02:03 -06:00
 
 Toolchain
   Assembler: MASM
@@ -42,7 +42,7 @@ Generated Geometry
   Triangle count: 236
   Scene summary: splash: 3 groups, 60 ticks, 36 verts, 18 tris, view 320x200+0,0, title: 3 groups, 48 ticks/loop 48, 24 verts, 12 tris, view 320x200+0,0, sector1: 3 groups, 8 ticks, 16 verts, 8 tris, view 152x64+56,42, sector2: 3 groups, 8 ticks, 16 verts, 8 tris, view 152x64+56,42, sector3: 3 groups, 8 ticks, 16 verts, 8 tris, view 152x64+56,42, win: 3 groups, 24 ticks, 16 verts, 8 tris, view 320x200+0,0, lose: 3 groups, 24 ticks, 16 verts, 8 tris, view 320x200+0,0
   Mesh summary: gate_vault:8 tris, gate_furnace:8 tris, gate_lock:8 tris, terminal_vault:12 tris, terminal_furnace:12 tris, terminal_lock:12 tris, surge_vault:12 tris, surge_furnace:12 tris, surge_lock:12 tris, shard_vault:14 tris, shard_furnace:14 tris, shard_lock:14 tris, player_runner:14 tris, warden:14 tris
-  Gameplay kit summary: sector1: floor floor_dark/panel_cyan, wall vault_wall/vault_trim, props gate_vault|terminal_vault|surge_vault|shard_vault | sector2: floor floor_dark/panel_amber, wall furnace_wall/furnace_trim, props gate_furnace|terminal_furnace|surge_furnace|shard_furnace | sector3: floor panel_dark/lock_trim, wall lock_wall/panel_red, props gate_lock|terminal_lock|surge_lock|shard_lock
+  Gameplay kit summary: sector1: cam h=5.5 d=7.25 look=0.75, horizon=34, wobble=1, props gate_vault|terminal_vault|surge_vault|shard_vault | sector2: cam h=5.9 d=7 look=0.85, horizon=36, wobble=2, props gate_furnace|terminal_furnace|surge_furnace|shard_furnace | sector3: cam h=6.15 d=6.7 look=0.7, horizon=32, wobble=2, props gate_lock|terminal_lock|surge_lock|shard_lock
   Face summary: splash=18t/3g, title=12t/3g, sector1=8t/3g, sector2=8t/3g, sector3=8t/3g, win=8t/3g, lose=8t/3g
 
 Generated Content
@@ -61,10 +61,10 @@ Generated Content
   Geometry triangles: 236
   Geometry summary: splash: 3 groups, 60 ticks, 36 verts, 18 tris, view 320x200+0,0, title: 3 groups, 48 ticks/loop 48, 24 verts, 12 tris, view 320x200+0,0, sector1: 3 groups, 8 ticks, 16 verts, 8 tris, view 152x64+56,42, sector2: 3 groups, 8 ticks, 16 verts, 8 tris, view 152x64+56,42, sector3: 3 groups, 8 ticks, 16 verts, 8 tris, view 152x64+56,42, win: 3 groups, 24 ticks, 16 verts, 8 tris, view 320x200+0,0, lose: 3 groups, 24 ticks, 16 verts, 8 tris, view 320x200+0,0
   Geometry mesh summary: gate_vault:8 tris, gate_furnace:8 tris, gate_lock:8 tris, terminal_vault:12 tris, terminal_furnace:12 tris, terminal_lock:12 tris, surge_vault:12 tris, surge_furnace:12 tris, surge_lock:12 tris, shard_vault:14 tris, shard_furnace:14 tris, shard_lock:14 tris, player_runner:14 tris, warden:14 tris
-  Geometry gameplay kit summary: sector1: floor floor_dark/panel_cyan, wall vault_wall/vault_trim, props gate_vault|terminal_vault|surge_vault|shard_vault | sector2: floor floor_dark/panel_amber, wall furnace_wall/furnace_trim, props gate_furnace|terminal_furnace|surge_furnace|shard_furnace | sector3: floor panel_dark/lock_trim, wall lock_wall/panel_red, props gate_lock|terminal_lock|surge_lock|shard_lock
-  Gameplay camera: fixed tactical 3/4 diorama
+  Geometry gameplay kit summary: sector1: cam h=5.5 d=7.25 look=0.75, horizon=34, wobble=1, props gate_vault|terminal_vault|surge_vault|shard_vault | sector2: cam h=5.9 d=7 look=0.85, horizon=36, wobble=2, props gate_furnace|terminal_furnace|surge_furnace|shard_furnace | sector3: cam h=6.15 d=6.7 look=0.7, horizon=32, wobble=2, props gate_lock|terminal_lock|surge_lock|shard_lock
+  Gameplay camera: quadrant-aware chase presets with authored horizon bands and atmosphere
   Gameplay viewport: 292x136 at 14,32
-  Gameplay room structural headroom: S1: structural 118-124/252 (headroom 128-134, view tactical-nw), props 76 tris (sector1_map_a=118 (headroom 134, view tactical-nw), sector1_map_b=124 (headroom 128, view tactical-nw), sector1_map_c=122 (headroom 130, view tactical-nw)) | S2: structural 106-122/252 (headroom 130-146, view tactical-nw), props 124 tris (sector2_map_a=106 (headroom 146, view tactical-nw), sector2_map_b=122 (headroom 130, view tactical-nw), sector2_map_c=118 (headroom 134, view tactical-nw)) | S3: structural 114-146/252 (headroom 106-138, view tactical-nw), props 136 tris (sector3_map_a=120 (headroom 132, view tactical-nw), sector3_map_b=146 (headroom 106, view tactical-nw), sector3_map_c=114 (headroom 138, view tactical-nw))
+  Gameplay room structural headroom: S1: structural 190-208/252 (headroom 44-62, quadrant-aware wall families, optional trim cap 46), props 76 tris (sector1_map_a=190 (headroom 62, peak ne, optional cap 46, nw=188, sw=182, ne=190, se=184), sector1_map_b=194 (headroom 58, peak nw+sw, optional cap 46, nw=194, sw=194, ne=190, se=190), sector1_map_c=208 (headroom 44, peak se, optional cap 46, nw=196, sw=202, ne=202, se=208)) | S2: structural 200-224/252 (headroom 28-52, quadrant-aware wall families, optional trim cap 46), props 124 tris (sector2_map_a=200 (headroom 52, peak sw, optional cap 46, nw=192, sw=200, ne=188, se=196), sector2_map_b=224 (headroom 28, peak sw+se, optional cap 46, nw=212, sw=224, ne=212, se=224), sector2_map_c=218 (headroom 34, peak se, optional cap 46, nw=210, sw=216, ne=212, se=218)) | S3: structural 220-252/252 (headroom 0-32, quadrant-aware wall families, optional trim cap 46), props 136 tris (sector3_map_a=234 (headroom 18, peak se, optional cap 46, nw=218, sw=228, ne=224, se=234), sector3_map_b=252 (headroom 0, peak sw, optional cap 46, nw=240, sw=252, ne=236, se=248), sector3_map_c=220 (headroom 32, peak sw, optional cap 46, nw=208, sw=220, ne=204, se=216))
   Sector source: C:\Users\RhythmicCarnage\Desktop\CyberStorm\assets\sectors.psd1
   Sector include: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\generated_sector_content.inc
   Maps include: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\generated_maps.inc
@@ -77,9 +77,9 @@ Generated Content
   Shard pools: S1: sector1_map_a(6:19x11), sector1_map_b(6:20x11), sector1_map_c(6:21x11) | S2: sector2_map_a(6:20x13), sector2_map_b(6:21x11), sector2_map_c(6:19x11) | S3: sector3_map_a(6:19x11), sector3_map_b(6:20x13), sector3_map_c(6:20x13)
   Demo source: C:\Users\RhythmicCarnage\Desktop\CyberStorm\assets\demos.psd1
   Demo include: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\generated_demos.inc
-  Demos: 3
-  Demo steps: 24
-  Demo summary: SCOUT ATTRACT [gameplay] (S1, capture 15t, 8 steps), SURGE ATTRACT [hazard] (S2, capture 18t, 7 steps), WARDEN ATTRACT [elite-pressure] (S3, capture 12t, 9 steps)
+  Demos: 11
+  Demo steps: 66
+  Demo summary: SCOUT ATTRACT [gameplay] (S1, capture 15t, 8 steps), SURGE ATTRACT [hazard] (S2, capture 18t, 7 steps), WARDEN ATTRACT [elite-pressure] (S3, capture 12t, 9 steps), WARDEN PRESSURE VERIFY [technical] (S3, capture 10t, 3 steps), CAMERA EAST VERIFY [technical] (S1, capture 6t, 2 steps), CAMERA WEST VERIFY [technical] (S1, capture 8t, 3 steps), CAMERA NORTH VERIFY [technical] (S1, capture 12t, 3 steps), CAMERA SOUTH VERIFY [technical] (S1, capture 14t, 4 steps), SECTOR ENTRY VERIFY [technical] (S2, capture 4t, 1 steps), TERMINAL SPOOF VERIFY [technical] (S2, capture 16t, 6 steps), GATE UNLOCK VERIFY [technical] (S1, capture 58t, 20 steps)
   Runtime verify include: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\generated_runtime_verify.inc
   Music source: C:\Users\RhythmicCarnage\Desktop\CyberStorm\assets\music.psd1
   Music include: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\generated_music.inc
@@ -89,10 +89,18 @@ Generated Content
 
 Replay Harness
   Report: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-replay-report.txt
-  Scenarios: 3
+  Scenarios: 11
   SCOUT ATTRACT: PLAYING|S1|sector1_map_c|P7,13|H5|C2|D1|K0|E5|SCORE100|A10|HITS0|PU1|SP0|RNG0x764A
   SURGE ATTRACT: PLAYING|S2|sector2_map_b|P8,11|H5|C3|D1|K1|E6|SCORE170|A13|HITS0|PU1|SP0|RNG0xA7CC
   WARDEN ATTRACT: PLAYING|S3|sector3_map_c|P6,13|H5|C4|D1|K0|E10|SCORE100|A7|HITS0|PU1|SP0|RNG0x88BA
+  WARDEN PRESSURE VERIFY: PLAYING|S3|sector3_map_c|P5,13|H5|C5|D1|K0|E10|SCORE100|A3|HITS0|PU0|SP0|RNG0x88BA
+  CAMERA EAST VERIFY: PLAYING|S1|sector1_map_c|P3,13|H5|C3|D0|K0|E5|SCORE0|A1|HITS0|PU0|SP0|RNG0x764A
+  CAMERA WEST VERIFY: PLAYING|S1|sector1_map_c|P2,13|H5|C3|D0|K0|E5|SCORE0|A2|HITS0|PU0|SP0|RNG0x764A
+  CAMERA NORTH VERIFY: PLAYING|S1|sector1_map_c|P7,12|H5|C3|D1|K0|E5|SCORE100|A6|HITS0|PU0|SP0|RNG0x764A
+  CAMERA SOUTH VERIFY: PLAYING|S1|sector1_map_c|P7,13|H5|C3|D1|K0|E5|SCORE100|A7|HITS0|PU0|SP0|RNG0x764A
+  SECTOR ENTRY VERIFY: PLAYING|S2|sector2_map_b|P2,13|H5|C4|D0|K0|E7|SCORE0|A0|HITS0|PU0|SP0|RNG0xA7CC
+  TERMINAL SPOOF VERIFY: PLAYING|S2|sector2_map_b|P7,7|H5|C4|D0|K1|E6|SCORE70|A15|HITS0|PU0|SP2|RNG0xA7CC
+  GATE UNLOCK VERIFY: PLAYING|S1|sector1_map_c|P24,3|H4|C3|D4|K1|E3|SCORE430|A68|HITS1|PU0|SP0|RNG0x764A
 
 Balance Harness
   Report: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-balance-report.txt
@@ -114,11 +122,11 @@ Balance Harness
 Regression Harness
   Report: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-regression-report.txt
   Boot sector: 512 bytes, signature 0x55AA, LBA 0 matches both image files
-  Stage two: 48158 bytes, 95 sectors, GAME_SECTORS matches, entry near jmp to 0x1115
-  Map bank: 3780 bytes (4096 padded), 8 sectors, LBA 96..103
-  Presentation bank: 19968 bytes (19968 padded), 39 sectors, LBA 104..142
-  Geometry bank: 3234 bytes (3584 padded), 7 sectors, LBA 143..149
-  Images: .img and .vfd match exactly, unused tail zero-filled from byte 76800
+  Stage two: 50614 bytes, 99 sectors, GAME_SECTORS matches, entry near jmp to 0x1115
+  Map bank: 3780 bytes (4096 padded), 8 sectors, LBA 100..107
+  Presentation bank: 19968 bytes (19968 padded), 39 sectors, LBA 108..146
+  Geometry bank: 3234 bytes (3584 padded), 7 sectors, LBA 147..153
+  Images: .img and .vfd match exactly, unused tail zero-filled from byte 78848
   Diagnostics: boot.lst and game.lst are present for post-failure inspection
 
 Frontend Verify
@@ -132,37 +140,37 @@ Runtime Verify
 
 Showcase Capture
   Status: skipped (use -CaptureShowcase to generate deterministic startup/direct-game/demo/verification screenshots).
-  Selection: branding uses the startup ident, gameplay uses a direct-to-game tactical 3D boot, and payoff uses ending/hazard verification shots.
+  Selection: branding uses the startup ident, gameplay uses per-sector chase-camera captures plus a direct-to-game room boot, and payoff uses runtime verification pass/fail shots.
 
 Asset Banks
   Layout include: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\generated_bank_layout.inc
-  Map bank: 3780 bytes (4096 padded), 8 sectors, LBA 96..103, load 0x7000:0000, payload C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-map-bank.bin
-  Presentation bank: 19968 bytes (19968 padded), 39 sectors, LBA 104..142, load 0x7800:0000, payload C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-presentation-bank.bin
-  Geometry bank: 3234 bytes (3584 padded), 7 sectors, LBA 143..149, load 0x8000:0000, payload C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-geometry-bank.bin
+  Map bank: 3780 bytes (4096 padded), 8 sectors, LBA 100..107, load 0x7000:0000, payload C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-map-bank.bin
+  Presentation bank: 19968 bytes (19968 padded), 39 sectors, LBA 108..146, load 0x7800:0000, payload C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-presentation-bank.bin
+  Geometry bank: 3234 bytes (3584 padded), 7 sectors, LBA 147..153, load 0x8000:0000, payload C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-geometry-bank.bin
 
 Screenshots
-  Housekeeping: kept 6 source screenshots, removed 0, rotated 3 README slots
-  readme-shot-1.png [title] <- cyberstorm-sector-layouts-boot.png
-  readme-shot-2.png [gameplay] <- cyberstorm-music-boot.png
-  readme-shot-3.png [payoff] <- cyberstorm-asset-pipeline-boot.png
+  Housekeeping: kept 6 source screenshots, removed 1, rotated 3 README slots
+  readme-shot-1.png [title] <- cyberstorm-asset-pipeline-boot.png
+  readme-shot-2.png [gameplay] <- cyberstorm-sector-layouts-boot.png
+  readme-shot-3.png [payoff] <- cyberstorm-music-boot.png
 
 Layout
   Boot code bytes: 132 / 510
   Boot code free bytes: 378
-  Stage2 bytes: 48158
-  Stage2 free bytes before 64 KiB limit: 17378
-  Stage2 padded bytes: 48640
-  Stage2 sectors: 95
-  Image bytes used: 75652 / 1474560
-  Image free bytes: 1398908
-  Disk footprint bytes: 76800 / 1474560
-  Disk footprint free bytes: 1397760
+  Stage2 bytes: 50614
+  Stage2 free bytes before 64 KiB limit: 14922
+  Stage2 padded bytes: 50688
+  Stage2 sectors: 99
+  Image bytes used: 78108 / 1474560
+  Image free bytes: 1396452
+  Disk footprint bytes: 78848 / 1474560
+  Disk footprint free bytes: 1395712
   Boot load address: 0000:7C00 (phys 0x00007C00)
   Stage2 load address: 0x1000:0x0000 (phys 0x00010000)
   Boot signature: 0x55AA @ byte 510
-  Stage2 LBA range: 1..95
+  Stage2 LBA range: 1..99
   Boot section: .text$mn (relocations applied: 3)
-  Stage2 section: .text$mn (relocations applied: 1842)
+  Stage2 section: .text$mn (relocations applied: 2050)
   Assembler warnings: boot=1, stage2=1
   Boot 'start' symbol offset: 0x0000
   Stage2 'start' symbol offset: 0x1115

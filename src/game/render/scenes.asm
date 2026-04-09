@@ -1313,6 +1313,185 @@ verify_body_fail:
 
 verify_body_ready:
     call draw_text_small
+
+    cmp byte ptr [verify_mode], VERIFY_MODE_FRONTEND
+    je verify_state_line_done
+
+    mov bx, 68
+    mov dx, 94
+    mov si, offset verify_state_px_label
+    mov ah, PAL_WHITE
+    call draw_text_small
+    mov al, [player_x]
+    mov ah, PAL_WHITE
+    mov bx, 84
+    mov dx, 94
+    call draw_two_digit_small
+
+    mov bx, 102
+    mov dx, 94
+    mov si, offset verify_state_py_label
+    mov ah, PAL_WHITE
+    call draw_text_small
+    mov al, [player_y]
+    mov ah, PAL_WHITE
+    mov bx, 118
+    mov dx, 94
+    call draw_two_digit_small
+
+    mov bx, 136
+    mov dx, 94
+    mov si, offset verify_state_action_label
+    mov ah, PAL_WHITE
+    call draw_text_small
+    mov al, [sector_actions]
+    mov ah, PAL_WHITE
+    mov bx, 152
+    mov dx, 94
+    call draw_two_digit_small
+
+    mov bx, 170
+    mov dx, 94
+    mov si, offset verify_state_heading_label
+    mov ah, PAL_WHITE
+    call draw_text_small
+    call game3d_get_facing_heading
+    mov ah, PAL_WHITE
+    mov bx, 186
+    mov dx, 94
+    call draw_two_digit_small
+
+    mov bx, 204
+    mov dx, 94
+    mov si, offset verify_state_variant_label
+    mov ah, PAL_WHITE
+    call draw_text_small
+    call game3d_get_facing_heading
+    call game3d_get_room_variant_from_heading
+    mov ah, PAL_WHITE
+    mov bx, 220
+    mov dx, 94
+    call draw_two_digit_small
+
+verify_state_line_done:
+    cmp byte ptr [verify_mode], VERIFY_MODE_FRONTEND
+    je verify_state_detail_done
+
+    mov bx, 68
+    mov dx, 102
+    mov si, offset verify_state_shield_label
+    mov ah, PAL_WHITE
+    call draw_text_small
+    mov al, [shield_count]
+    mov ah, PAL_WHITE
+    mov bx, 84
+    mov dx, 102
+    call draw_two_digit_small
+
+    mov bx, 102
+    mov dx, 102
+    mov si, offset verify_state_pulse_label
+    mov ah, PAL_WHITE
+    call draw_text_small
+    mov al, [pulse_count]
+    mov ah, PAL_WHITE
+    mov bx, 118
+    mov dx, 102
+    call draw_two_digit_small
+
+    mov bx, 136
+    mov dx, 102
+    mov si, offset verify_state_data_label
+    mov ah, PAL_WHITE
+    call draw_text_small
+    mov al, [data_count]
+    mov ah, PAL_WHITE
+    mov bx, 152
+    mov dx, 102
+    call draw_two_digit_small
+
+    mov bx, 170
+    mov dx, 102
+    mov si, offset verify_state_kill_label
+    mov ah, PAL_WHITE
+    call draw_text_small
+    mov al, [kill_count]
+    mov ah, PAL_WHITE
+    mov bx, 186
+    mov dx, 102
+    call draw_two_digit_small
+
+verify_state_detail_done:
+    cmp byte ptr [verify_mode], VERIFY_MODE_FRONTEND
+    je verify_state_hidden_done
+
+    mov bx, 68
+    mov dx, 110
+    mov si, offset verify_state_game_label
+    mov ah, PAL_WHITE
+    call draw_text_small
+    mov al, [last_game_state]
+    mov ah, PAL_WHITE
+    mov bx, 84
+    mov dx, 110
+    call draw_two_digit_small
+
+    mov bx, 102
+    mov dx, 110
+    mov si, offset verify_state_map_label
+    mov ah, PAL_WHITE
+    call draw_text_small
+    mov al, [current_template_index]
+    mov ah, PAL_WHITE
+    mov bx, 118
+    mov dx, 110
+    call draw_two_digit_small
+
+    mov bx, 136
+    mov dx, 110
+    mov si, offset verify_state_score_label
+    mov ah, PAL_WHITE
+    call draw_text_small
+    mov ax, [score_total]
+    mov bx, 152
+    mov dx, 110
+    mov cl, PAL_WHITE
+    call draw_word_hex_small
+
+    mov bx, 204
+    mov dx, 110
+    mov si, offset verify_state_hits_label
+    mov ah, PAL_WHITE
+    call draw_text_small
+    mov al, [sector_hits]
+    mov ah, PAL_WHITE
+    mov bx, 220
+    mov dx, 110
+    call draw_two_digit_small
+
+    mov bx, 238
+    mov dx, 110
+    mov si, offset verify_state_pulses_used_label
+    mov ah, PAL_WHITE
+    call draw_text_small
+    mov al, [sector_pulses_used]
+    mov ah, PAL_WHITE
+    mov bx, 254
+    mov dx, 110
+    call draw_two_digit_small
+
+    mov bx, 272
+    mov dx, 110
+    mov si, offset verify_state_spoof_label
+    mov ah, PAL_WHITE
+    call draw_text_small
+    mov al, [spoof_timer]
+    mov ah, PAL_WHITE
+    mov bx, 288
+    mov dx, 110
+    call draw_two_digit_small
+
+verify_state_hidden_done:
     jmp verify_step_label_gate
 
 verify_body_frontend:
@@ -1329,7 +1508,7 @@ verify_body_frontend_fail:
 
 verify_step_label_gate:
     mov bx, 68
-    mov dx, 102
+    mov dx, 120
     cmp byte ptr [verify_mode], VERIFY_MODE_FRONTEND
     je verify_step_frontend
     mov si, offset verify_step_label
@@ -1345,31 +1524,31 @@ verify_step_label_ready:
     mov al, [verify_action_index]
     mov ah, PAL_WHITE
     mov bx, 92
-    mov dx, 102
+    mov dx, 120
     call draw_two_digit_small
 
     mov bx, 126
-    mov dx, 102
+    mov dx, 120
     mov si, offset verify_expect_label
     mov ah, PAL_WHITE
     call draw_text_small
 
     mov ax, [verify_expected_signature]
     mov bx, 150
-    mov dx, 102
+    mov dx, 120
     call get_verify_scene_accent_color
     mov cl, al
     call draw_word_hex_small
 
     mov bx, 204
-    mov dx, 102
+    mov dx, 120
     mov si, offset verify_observe_label
     mov ah, PAL_WHITE
     call draw_text_small
 
     mov ax, [verify_observed_signature]
     mov bx, 228
-    mov dx, 102
+    mov dx, 120
     call get_verify_scene_accent_color
     mov cl, al
     call draw_word_hex_small

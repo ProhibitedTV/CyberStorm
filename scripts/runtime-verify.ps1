@@ -202,7 +202,7 @@ function Get-WaitSecondsForDemo {
     $ticks = Get-DemoTotalTicks -Demo $Demo
     $extraTicks = if ($RuntimeVerify.IsPresent) { 30 } else { 8 }
     $seconds = 6 + [int][Math]::Ceiling(($ticks + $extraTicks) / 18.2)
-    return [Math]::Max(8, $seconds)
+    return [Math]::Max(30, $seconds)
 }
 
 function Convert-VgaChannel {
@@ -432,6 +432,24 @@ if ($demos.Count -eq 0) {
     throw ("Demo source must define at least one demo: {0}" -f $DemoSourcePath)
 }
 
+$runtimeDemos = New-Object 'System.Collections.Generic.List[object]'
+for ($demoIndex = 0; $demoIndex -lt $demos.Count; $demoIndex++) {
+    $demo = $demos[$demoIndex]
+    $runtimeVerifyEnabled = if (($demo -is [System.Collections.IDictionary]) -and $demo.ContainsKey('RuntimeVerify')) { [bool]$demo['RuntimeVerify'] } else { $false }
+    if ($runtimeVerifyEnabled) {
+        $runtimeDemos.Add([pscustomobject]@{
+            DemoIndex = $demoIndex
+            Demo = $demo
+        })
+    }
+}
+
+if ($runtimeDemos.Count -eq 0) {
+    throw ("Demo source must mark at least one demo with RuntimeVerify = `$true: {0}" -f $DemoSourcePath)
+}
+
+$runtimeDemos = @($runtimeDemos | Sort-Object @{ Expression = { [int]$_.Demo.StartSector } }, @{ Expression = { [int]$_.DemoIndex } })
+
 $summaryLines = New-Object 'System.Collections.Generic.List[string]'
 $artifactPaths = New-Object 'System.Collections.Generic.List[string]'
 $lines = New-Object 'System.Collections.Generic.List[string]'
@@ -445,8 +463,8 @@ $restoreRelease = $true
 
 try {
     Ensure-VmRegistered -Name $VmName
-    foreach ($demoIndex in 0..($demos.Count - 1)) {
-        $result = Invoke-RuntimeVerifyRun -Demo $demos[$demoIndex] -DemoIndex $demoIndex -ArtifactDir $artifactDir -Geometry $geometry
+    foreach ($runtimeDemo in $runtimeDemos) {
+        $result = Invoke-RuntimeVerifyRun -Demo $runtimeDemo.Demo -DemoIndex ([int]$runtimeDemo.DemoIndex) -ArtifactDir $artifactDir -Geometry $geometry
         $runtimeResults.Add($result)
         $artifactPaths.Add($result.ScreenshotPath)
         $artifactPaths.Add($result.LogPath)
@@ -462,7 +480,7 @@ try {
         $lines.Add('')
     }
 
-    $forcedFail = Invoke-RuntimeVerifyRun -Demo $demos[0] -DemoIndex 0 -CorruptExpectation -ArtifactDir $artifactDir -Geometry $geometry
+    $forcedFail = Invoke-RuntimeVerifyRun -Demo $runtimeDemos[0].Demo -DemoIndex ([int]$runtimeDemos[0].DemoIndex) -CorruptExpectation -ArtifactDir $artifactDir -Geometry $geometry
     $artifactPaths.Add($forcedFail.ScreenshotPath)
     $artifactPaths.Add($forcedFail.LogPath)
     $summaryLines.Add(("Forced mismatch: {0} {1} (exp {2} / obs {3})" -f $forcedFail.Name, $forcedFail.Status, $forcedFail.ExpectedSignature, $forcedFail.ObservedSignature))

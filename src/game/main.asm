@@ -334,6 +334,14 @@ start_demo_run:
     xor bl, bl
 
 demo_index_ready:
+    cmp byte ptr [demo_attract_flag_table + bx], 0
+    jne demo_index_attract_ready
+    inc bl
+    cmp bl, DEMO_COUNT
+    jb demo_index_ready
+    xor bl, bl
+
+demo_index_attract_ready:
     call start_demo_by_index
     mov al, [demo_index]
     inc al
@@ -723,6 +731,8 @@ verify_runtime_checkpoint:
     mov byte ptr [verify_action_pending], 0
     xor bx, bx
     mov bl, [demo_index]
+    cmp byte ptr [verify_demo_checkpoint_count_table + bx], 0
+    je verify_checkpoint_done
     mov al, [verify_action_index]
     cmp al, [verify_demo_checkpoint_count_table + bx]
     jb verify_checkpoint_in_range
@@ -814,6 +824,19 @@ compute_runtime_verify_signature:
     call verify_sig_mix_byte
     mov bl, [player_y]
     call verify_sig_mix_byte
+    mov si, ax
+    call game3d_get_facing_heading
+    mov dl, al
+    mov ax, si
+    mov bl, dl
+    call verify_sig_mix_byte
+    mov si, ax
+    mov al, dl
+    call game3d_get_room_variant_from_heading
+    mov dl, al
+    mov ax, si
+    mov bl, dl
+    call verify_sig_mix_byte
     mov bl, [shield_count]
     call verify_sig_mix_byte
     mov bl, [pulse_count]
@@ -832,32 +855,6 @@ compute_runtime_verify_signature:
     call verify_sig_mix_byte
     mov bl, [spoof_timer]
     call verify_sig_mix_byte
-    mov bl, [sound_id]
-    call verify_sig_mix_byte
-    mov bl, [sound_timer]
-    call verify_sig_mix_byte
-    mov bl, [music_theme]
-    call verify_sig_mix_byte
-    mov bl, [music_ticks]
-    call verify_sig_mix_byte
-    mov bl, [music_note]
-    call verify_sig_mix_byte
-    mov dx, [rng_state]
-    call verify_sig_mix_word
-    mov si, offset enemies
-    mov cx, MAX_ENEMIES
-
-verify_sig_enemy_loop:
-    mov bl, [si + ENEMY_ALIVE]
-    call verify_sig_mix_byte
-    mov bl, [si + ENEMY_X]
-    call verify_sig_mix_byte
-    mov bl, [si + ENEMY_Y]
-    call verify_sig_mix_byte
-    mov bl, [si + ENEMY_KIND]
-    call verify_sig_mix_byte
-    add si, ENEMY_SIZE
-    loop verify_sig_enemy_loop
     pop si
     pop dx
     pop cx

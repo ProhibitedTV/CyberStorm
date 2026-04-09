@@ -11,8 +11,12 @@ game3d_reset_room_state:
     ret
 
 game3d_sync_camera_facing:
-    mov byte ptr [game3d_camera_yaw_current], GAME3D_YAW_TACTICAL
-    mov byte ptr [game3d_camera_yaw_target], GAME3D_YAW_TACTICAL
+    mov byte ptr [game3d_camera_heading], GAME3D_HEADING_EAST
+    mov byte ptr [game3d_room_variant], GAME3D_ROOM_VARIANT_NORTHWEST
+    mov al, GAME3D_HEADING_EAST
+    call game3d_get_heading_target_yaw
+    mov [game3d_camera_yaw_current], al
+    mov [game3d_camera_yaw_target], al
     ret
 
 game3d_get_facing_yaw:
@@ -41,20 +45,143 @@ game3d_return_yaw_north:
     mov al, GAME3D_YAW_NORTH
     ret
 
+game3d_get_facing_heading:
+    cmp byte ptr [last_player_dx], 0
+    jg game3d_return_heading_east
+    jl game3d_return_heading_west
+    cmp byte ptr [last_player_dy], 0
+    jg game3d_return_heading_south
+    jl game3d_return_heading_north
+    mov al, GAME3D_HEADING_EAST
+    ret
+
+game3d_return_heading_east:
+    mov al, GAME3D_HEADING_EAST
+    ret
+
+game3d_return_heading_west:
+    mov al, GAME3D_HEADING_WEST
+    ret
+
+game3d_return_heading_south:
+    mov al, GAME3D_HEADING_SOUTH
+    ret
+
+game3d_return_heading_north:
+    mov al, GAME3D_HEADING_NORTH
+    ret
+
+game3d_get_room_variant_from_heading:
+    cmp al, GAME3D_HEADING_NORTH
+    je game3d_room_variant_heading_southwest
+    cmp al, GAME3D_HEADING_EAST
+    je game3d_room_variant_heading_northwest
+    cmp al, GAME3D_HEADING_SOUTH
+    je game3d_room_variant_heading_northeast
+    mov al, GAME3D_ROOM_VARIANT_SOUTHEAST
+    ret
+
+game3d_room_variant_heading_southwest:
+    mov al, GAME3D_ROOM_VARIANT_SOUTHWEST
+    ret
+
+game3d_room_variant_heading_northwest:
+    mov al, GAME3D_ROOM_VARIANT_NORTHWEST
+    ret
+
+game3d_room_variant_heading_northeast:
+    mov al, GAME3D_ROOM_VARIANT_NORTHEAST
+    ret
+
+game3d_get_heading_target_yaw:
+    push bx
+    mov dl, al
+    call game3d_get_kit_index
+    xor ah, ah
+    mov bx, ax
+    mov al, dl
+    cmp al, GAME3D_HEADING_NORTH
+    je game3d_heading_target_yaw_north
+    cmp al, GAME3D_HEADING_SOUTH
+    je game3d_heading_target_yaw_south
+    cmp al, GAME3D_HEADING_WEST
+    je game3d_heading_target_yaw_west
+    mov al, cs:[game3d_kit_heading_east_yaw_table + bx]
+    jmp game3d_heading_target_yaw_done
+
+game3d_heading_target_yaw_north:
+    mov al, cs:[game3d_kit_heading_north_yaw_table + bx]
+    jmp game3d_heading_target_yaw_done
+
+game3d_heading_target_yaw_south:
+    mov al, cs:[game3d_kit_heading_south_yaw_table + bx]
+    jmp game3d_heading_target_yaw_done
+
+game3d_heading_target_yaw_west:
+    mov al, cs:[game3d_kit_heading_west_yaw_table + bx]
+
+game3d_heading_target_yaw_done:
+    pop bx
+    ret
+
 game3d_update_camera_target:
-    mov al, GAME3D_YAW_TACTICAL
-    mov [game3d_camera_yaw_current], al
+    push bx
+    call game3d_get_facing_heading
+    mov bl, al
+    cmp bl, [game3d_camera_heading]
+    je game3d_update_camera_target_done
+    mov [game3d_camera_heading], bl
+    mov al, bl
+    call game3d_get_heading_target_yaw
     mov [game3d_camera_yaw_target], al
+    mov al, bl
+    call game3d_get_room_variant_from_heading
+    cmp al, [game3d_room_variant]
+    je game3d_update_camera_target_done
+    mov [game3d_room_variant], al
+    call game3d_mark_room_dirty
+
+game3d_update_camera_target_done:
+    pop bx
     ret
 
 game3d_ease_camera_yaw:
-    mov al, [game3d_camera_yaw_target]
+    push bx
+    push dx
+    mov dl, [game3d_camera_yaw_target]
+    mov al, [game3d_camera_yaw_current]
+    mov bl, dl
+    sub bl, al
+    je game3d_ease_camera_yaw_done
+    mov al, bl
+    cbw
+    call game3d_abs_ax
+    cmp ax, GAME3D_CAMERA_STEP
+    jbe game3d_ease_camera_yaw_snap
+    test bl, 80h
+    jnz game3d_ease_camera_yaw_negative
+    mov al, [game3d_camera_yaw_current]
+    add al, GAME3D_CAMERA_STEP
     mov [game3d_camera_yaw_current], al
+    jmp game3d_ease_camera_yaw_done
+
+game3d_ease_camera_yaw_negative:
+    mov al, [game3d_camera_yaw_current]
+    sub al, GAME3D_CAMERA_STEP
+    mov [game3d_camera_yaw_current], al
+    jmp game3d_ease_camera_yaw_done
+
+game3d_ease_camera_yaw_snap:
+    mov [game3d_camera_yaw_current], dl
+
+game3d_ease_camera_yaw_done:
+    pop dx
+    pop bx
     ret
 
 render_gameplay_3d:
-    call game3d_draw_view_backdrop
     call game3d_update_camera_target
+    call game3d_draw_view_backdrop
     call game3d_build_room_if_dirty
     call game3d_setup_camera
     call game3d_render_room
@@ -87,33 +214,57 @@ game3d_setup_camera:
     mov word ptr [scene3d_clip_right], GAME3D_VIEW_X + GAME3D_VIEW_W - 1
     mov word ptr [scene3d_clip_bottom], GAME3D_VIEW_Y + GAME3D_VIEW_H - 1
     mov word ptr [scene3d_center_x], GAME3D_VIEW_X + (GAME3D_VIEW_W / 2)
-    mov word ptr [scene3d_center_y], GAME3D_VIEW_Y + (GAME3D_VIEW_H / 2) + 12
+    call game3d_get_horizon_y
+    xor ah, ah
+    add ax, GAME3D_VIEW_Y + GAME3D_CAMERA_HORIZON_CENTER_OFFSET
+    mov [scene3d_center_y], ax
     mov word ptr [scene3d_project_scale], GAME3D_PROJECT_SCALE
     mov byte ptr [scene3d_pitch_angle], GAME3D_CAMERA_PITCH
-    mov al, GAME3D_YAW_TACTICAL
+    mov al, [game3d_camera_yaw_current]
     mov [scene3d_yaw_angle], al
 
     mov bl, [player_x]
     mov bh, [player_y]
     call game3d_get_tile_center_world
-    mov bx, ax
-    sar bx, GAME3D_CAMERA_PLAYER_BIAS_SHIFT
-    mov [scene3d_temp_v], bx
-    mov bx, dx
-    sar bx, GAME3D_CAMERA_PLAYER_BIAS_SHIFT
-    mov [scene3d_temp_l], bx
+    mov [scene3d_temp_v], ax
+    mov [scene3d_temp_l], dx
+
+    call game3d_get_camera_look_ahead
+    mov [scene3d_temp_r], ax
+    cmp byte ptr [last_player_dx], 0
+    je game3d_camera_look_ahead_x_done
+    mov ax, [scene3d_temp_r]
+    cmp byte ptr [last_player_dx], 0
+    jg game3d_camera_look_ahead_x_apply
+    neg ax
+
+game3d_camera_look_ahead_x_apply:
+    add [scene3d_temp_v], ax
+
+game3d_camera_look_ahead_x_done:
+    cmp byte ptr [last_player_dy], 0
+    je game3d_camera_look_ahead_done
+    mov ax, [scene3d_temp_r]
+    cmp byte ptr [last_player_dy], 0
+    jg game3d_camera_look_ahead_z_apply
+    neg ax
+
+game3d_camera_look_ahead_z_apply:
+    add [scene3d_temp_l], ax
+
+game3d_camera_look_ahead_done:
 
     mov al, [scene3d_yaw_angle]
     call scene3d_get_sin_cos
 
-    mov ax, GAME3D_CAMERA_DISTANCE
+    call game3d_get_camera_distance
     call scene3d_mul_ax_bx_fixed
     mov cx, ax
     mov ax, [scene3d_temp_v]
     sub ax, cx
     mov [scene3d_cam_x], ax
 
-    mov ax, GAME3D_CAMERA_DISTANCE
+    call game3d_get_camera_distance
     mov bx, dx
     call scene3d_mul_ax_bx_fixed
     mov cx, ax
@@ -121,7 +272,8 @@ game3d_setup_camera:
     sub ax, cx
     mov [scene3d_cam_z], ax
 
-    mov word ptr [scene3d_cam_y], GAME3D_CAMERA_HEIGHT
+    call game3d_get_camera_height
+    mov [scene3d_cam_y], ax
 
     pop dx
     pop cx
@@ -140,6 +292,7 @@ game3d_render_room:
     cmp byte ptr [scene3d_face_count], 0
     je game3d_render_room_done
     call scene3d_project_vertices
+    call game3d_apply_room_instability
     call scene3d_build_face_order
     call scene3d_draw_face_order
 
@@ -151,9 +304,16 @@ game3d_compile_room_mesh:
     mov word ptr [game3d_room_vertex_count], 0
     mov byte ptr [game3d_room_face_count], 0
     mov byte ptr [game3d_room_overflow], 0
+    mov byte ptr [game3d_optional_faces_remaining], GAME3D_OPTIONAL_FACE_BUDGET
     call game3d_compile_floor_strips
-    call game3d_compile_north_walls
-    call game3d_compile_west_walls
+    mov byte ptr [game3d_wall_emit_mode], 0
+    call game3d_compile_active_wall_families
+    call game3d_compile_gate_frame
+    call game3d_compile_gate_lane_strips
+    call game3d_compile_interactable_frames
+    call game3d_compile_floor_trim_strips
+    mov byte ptr [game3d_wall_emit_mode], 1
+    call game3d_compile_active_wall_families
     ret
 
 game3d_draw_view_backdrop:
@@ -163,105 +323,53 @@ game3d_draw_view_backdrop:
     push dx
     push bp
 
+    call game3d_get_horizon_y
+    xor ah, ah
+    mov [scene3d_temp_s], ax
     mov bx, GAME3D_VIEW_X
     mov dx, GAME3D_VIEW_Y
     mov cx, GAME3D_VIEW_W
     mov bp, GAME3D_VIEW_H
-    cmp byte ptr [sector_num], 2
-    je game3d_view_backdrop_sector2
-    cmp byte ptr [sector_num], 3
-    je game3d_view_backdrop_sector3
+    call game3d_get_backdrop_far_color
+    call fill_rect
 
-game3d_view_backdrop_sector1:
-    mov al, PAL_BG0
-    call fill_rect
     mov bx, GAME3D_VIEW_X
-    mov dx, GAME3D_VIEW_Y + 18
+    mov ax, [scene3d_temp_s]
+    add ax, GAME3D_VIEW_Y + 8
+    sub ax, 16
+    mov dx, ax
     mov cx, GAME3D_VIEW_W
-    mov bp, 14
-    mov al, PAL_PANEL2
+    mov bp, 18
+    call game3d_get_backdrop_mid_color
     call fill_rect
+
     mov bx, GAME3D_VIEW_X
-    mov dx, GAME3D_VIEW_Y + 56
+    mov ax, [scene3d_temp_s]
+    add ax, GAME3D_VIEW_Y + 18
+    mov dx, ax
     mov cx, GAME3D_VIEW_W
-    mov bp, GAME3D_VIEW_H - 56
-    mov al, PAL_PANEL
+    mov ax, GAME3D_VIEW_H - 18
+    sub ax, [scene3d_temp_s]
+    mov bp, ax
+    call game3d_get_backdrop_near_color
     call fill_rect
+
     mov bx, GAME3D_VIEW_X + 12
-    mov dx, GAME3D_VIEW_Y + 34
+    mov ax, [scene3d_temp_s]
+    add ax, GAME3D_VIEW_Y
+    mov dx, ax
     mov cx, GAME3D_VIEW_W - 24
     mov bp, 1
-    mov al, PAL_CYAN
+    call game3d_get_horizon_a_color
     call fill_rect
+
     mov bx, GAME3D_VIEW_X + 28
-    mov dx, GAME3D_VIEW_Y + 78
+    mov ax, [scene3d_temp_s]
+    add ax, GAME3D_VIEW_Y + 34
+    mov dx, ax
     mov cx, GAME3D_VIEW_W - 56
     mov bp, 1
-    mov al, PAL_CYAN2
-    call fill_rect
-    jmp game3d_view_backdrop_done
-
-game3d_view_backdrop_sector2:
-    mov al, PAL_BG1
-    call fill_rect
-    mov bx, GAME3D_VIEW_X
-    mov dx, GAME3D_VIEW_Y + 16
-    mov cx, GAME3D_VIEW_W
-    mov bp, 12
-    mov al, PAL_PANEL2
-    call fill_rect
-    mov bx, GAME3D_VIEW_X
-    mov dx, GAME3D_VIEW_Y + 58
-    mov cx, GAME3D_VIEW_W
-    mov bp, GAME3D_VIEW_H - 58
-    mov al, PAL_PANEL
-    call fill_rect
-    mov bx, GAME3D_VIEW_X + 10
-    mov dx, GAME3D_VIEW_Y + 36
-    mov cx, GAME3D_VIEW_W - 20
-    mov bp, 2
-    mov al, PAL_AMBER
-    call fill_rect
-    mov bx, GAME3D_VIEW_X + 22
-    mov dx, GAME3D_VIEW_Y + 90
-    mov cx, GAME3D_VIEW_W - 44
-    mov bp, 1
-    mov al, PAL_RED
-    call fill_rect
-    jmp game3d_view_backdrop_done
-
-game3d_view_backdrop_sector3:
-    mov al, PAL_BLACK
-    call fill_rect
-    mov bx, GAME3D_VIEW_X
-    mov dx, GAME3D_VIEW_Y + 14
-    mov cx, GAME3D_VIEW_W
-    mov bp, 12
-    mov al, PAL_BG0
-    call fill_rect
-    mov bx, GAME3D_VIEW_X
-    mov dx, GAME3D_VIEW_Y + 54
-    mov cx, GAME3D_VIEW_W
-    mov bp, GAME3D_VIEW_H - 54
-    mov al, PAL_PANEL
-    call fill_rect
-    mov bx, GAME3D_VIEW_X + 16
-    mov dx, GAME3D_VIEW_Y + 30
-    mov cx, GAME3D_VIEW_W - 32
-    mov bp, 1
-    mov al, PAL_RED
-    call fill_rect
-    mov bx, GAME3D_VIEW_X + 132
-    mov dx, GAME3D_VIEW_Y + 40
-    mov cx, 28
-    mov bp, GAME3D_VIEW_H - 54
-    mov al, PAL_RED2
-    call fill_rect
-    mov bx, GAME3D_VIEW_X + 128
-    mov dx, GAME3D_VIEW_Y + 66
-    mov cx, 36
-    mov bp, 2
-    mov al, PAL_WHITE
+    call game3d_get_horizon_b_color
     call fill_rect
 
 game3d_view_backdrop_done:
@@ -287,43 +395,67 @@ game3d_compile_floor_strips:
     mov al, MAP_H
     call game3d_world_z_edge_from_al
     mov [scene3d_temp_w], ax
-    call game3d_get_floor_base_material
+    call game3d_get_floor_far_material
     mov [scene3d_temp_color], al
     mov [scene3d_temp_dither], ah
     mov byte ptr [scene3d_temp_face], GAME3D_FACE_FLAG_NONE
     call game3d_emit_quad_from_temps
+    mov dh, PLAY_MIN_Y
 
-    mov al, PLAY_MIN_X
-    call game3d_world_x_edge_from_al
-    mov [scene3d_temp_x], ax
-    mov al, PLAY_MAX_X + 1
-    call game3d_world_x_edge_from_al
-    mov [scene3d_temp_y], ax
-    mov word ptr [scene3d_temp_z], GAME3D_FLOOR_TRIM_Y
-    mov word ptr [scene3d_temp_u], GAME3D_FLOOR_TRIM_Y
-    mov al, PLAY_MIN_Y
-    call game3d_world_z_edge_from_al
-    mov [scene3d_temp_v], ax
-    mov al, PLAY_MAX_Y + 1
-    call game3d_world_z_edge_from_al
-    mov [scene3d_temp_w], ax
-    call game3d_get_floor_trim_material
-    mov [scene3d_temp_color], al
-    mov [scene3d_temp_dither], ah
-    mov byte ptr [scene3d_temp_face], GAME3D_FACE_FLAG_NONE
-    call game3d_emit_quad_from_temps
-    mov dh, PLAY_MIN_Y + 1
+game3d_floor_row_loop:
+    cmp dh, PLAY_MAX_Y
+    ja game3d_compile_floor_done
+    mov ch, PLAY_MIN_X
+    mov dl, PLAY_MAX_X + 1
+    call game3d_emit_floor_base_run
+
+game3d_compile_floor_next_row:
+    inc dh
+    jmp game3d_floor_row_loop
+
+game3d_compile_floor_done:
+    ret
+
+game3d_compile_floor_trim_strips:
+    mov dh, PLAY_MIN_Y
 
 game3d_floor_trim_row_loop:
     cmp dh, PLAY_MAX_Y
-    jae game3d_compile_floor_done
+    jae game3d_compile_floor_trim_done
     mov ch, PLAY_MIN_X
     mov dl, PLAY_MAX_X + 1
     call game3d_emit_floor_trim_run
     inc dh
     jmp game3d_floor_trim_row_loop
 
-game3d_compile_floor_done:
+game3d_compile_floor_trim_done:
+    ret
+
+game3d_compile_active_wall_families:
+    mov al, [game3d_room_variant]
+    cmp al, GAME3D_ROOM_VARIANT_SOUTHWEST
+    je game3d_compile_walls_southwest
+    cmp al, GAME3D_ROOM_VARIANT_NORTHEAST
+    je game3d_compile_walls_northeast
+    cmp al, GAME3D_ROOM_VARIANT_SOUTHEAST
+    je game3d_compile_walls_southeast
+    call game3d_compile_north_walls
+    call game3d_compile_west_walls
+    ret
+
+game3d_compile_walls_southwest:
+    call game3d_compile_south_walls
+    call game3d_compile_west_walls
+    ret
+
+game3d_compile_walls_northeast:
+    call game3d_compile_north_walls
+    call game3d_compile_east_walls
+    ret
+
+game3d_compile_walls_southeast:
+    call game3d_compile_south_walls
+    call game3d_compile_east_walls
     ret
 
 game3d_compile_north_walls:
@@ -367,11 +499,17 @@ game3d_north_emit:
     call game3d_world_z_edge_from_al
     mov [scene3d_temp_v], ax
     mov [scene3d_temp_w], ax
+    cmp byte ptr [game3d_wall_emit_mode], 0
+    jne game3d_north_emit_decor
     call game3d_get_wall_base_material
     mov [scene3d_temp_color], al
     mov [scene3d_temp_dither], ah
     mov byte ptr [scene3d_temp_face], GAME3D_FACE_FLAG_WALL
     call game3d_emit_quad_from_temps
+    jmp game3d_north_scan_loop
+
+game3d_north_emit_decor:
+    call game3d_emit_north_wall_decor
     jmp game3d_north_scan_loop
 
 game3d_north_skip:
@@ -427,11 +565,17 @@ game3d_south_emit:
     call game3d_world_z_edge_from_al
     mov [scene3d_temp_v], ax
     mov [scene3d_temp_w], ax
+    cmp byte ptr [game3d_wall_emit_mode], 0
+    jne game3d_south_emit_decor
     call game3d_get_wall_base_material
     mov [scene3d_temp_color], al
     mov [scene3d_temp_dither], ah
     mov byte ptr [scene3d_temp_face], GAME3D_FACE_FLAG_WALL
     call game3d_emit_quad_from_temps
+    jmp game3d_south_scan_loop
+
+game3d_south_emit_decor:
+    call game3d_emit_south_wall_decor
     jmp game3d_south_scan_loop
 
 game3d_south_skip:
@@ -486,11 +630,17 @@ game3d_west_emit:
     mov al, dl
     call game3d_world_z_edge_from_al
     mov [scene3d_temp_w], ax
+    cmp byte ptr [game3d_wall_emit_mode], 0
+    jne game3d_west_emit_decor
     call game3d_get_wall_base_material
     mov [scene3d_temp_color], al
     mov [scene3d_temp_dither], ah
     mov byte ptr [scene3d_temp_face], GAME3D_FACE_FLAG_WALL
     call game3d_emit_quad_from_temps
+    jmp game3d_west_scan_loop
+
+game3d_west_emit_decor:
+    call game3d_emit_west_wall_decor
     jmp game3d_west_scan_loop
 
 game3d_west_skip:
@@ -546,11 +696,17 @@ game3d_east_emit:
     mov al, dl
     call game3d_world_z_edge_from_al
     mov [scene3d_temp_w], ax
+    cmp byte ptr [game3d_wall_emit_mode], 0
+    jne game3d_east_emit_decor
     call game3d_get_wall_base_material
     mov [scene3d_temp_color], al
     mov [scene3d_temp_dither], ah
     mov byte ptr [scene3d_temp_face], GAME3D_FACE_FLAG_WALL
     call game3d_emit_quad_from_temps
+    jmp game3d_east_scan_loop
+
+game3d_east_emit_decor:
+    call game3d_emit_east_wall_decor
     jmp game3d_east_scan_loop
 
 game3d_east_skip:
@@ -628,7 +784,7 @@ game3d_lane_emit_run:
     call game3d_get_lane_material
     mov [scene3d_temp_color], al
     mov [scene3d_temp_dither], ah
-    mov byte ptr [scene3d_temp_face], GAME3D_FACE_FLAG_NONE
+    mov byte ptr [scene3d_temp_face], GAME3D_FACE_FLAG_FRAME
     call game3d_emit_quad_from_temps
     jmp game3d_lane_row_loop
 
@@ -637,6 +793,81 @@ game3d_lane_skip_row:
     jmp game3d_lane_row_loop
 
 game3d_lane_done:
+    ret
+
+game3d_compile_gate_frame:
+    mov bl, [exit_x]
+    mov bh, [exit_y]
+    call game3d_emit_tile_gate_frame
+    ret
+
+game3d_compile_interactable_frames:
+    mov si, offset map_tiles
+    xor dh, dh
+    mov cx, MAP_H
+
+game3d_frame_row_loop:
+    push cx
+    xor dl, dl
+    mov cx, MAP_W
+
+game3d_frame_col_loop:
+    mov al, [si]
+    cmp al, TILE_TERMINAL
+    je game3d_frame_terminal
+    cmp al, TILE_SURGE
+    je game3d_frame_surge
+    jmp game3d_frame_next
+
+game3d_frame_terminal:
+    mov bl, dl
+    mov bh, dh
+    call game3d_emit_tile_terminal_frame
+    jmp game3d_frame_next
+
+game3d_frame_surge:
+    mov bl, dl
+    mov bh, dh
+    call game3d_emit_tile_surge_frame
+
+game3d_frame_next:
+    inc si
+    inc dl
+    dec cx
+    jnz game3d_frame_col_loop
+    inc dh
+    pop cx
+    dec cx
+    jnz game3d_frame_row_loop
+    ret
+
+game3d_emit_floor_base_run:
+    push ax
+    push bx
+    push dx
+    mov al, ch
+    call game3d_world_x_edge_from_al
+    mov [scene3d_temp_x], ax
+    mov al, dl
+    call game3d_world_x_edge_from_al
+    mov [scene3d_temp_y], ax
+    mov word ptr [scene3d_temp_z], GAME3D_FLOOR_Y
+    mov word ptr [scene3d_temp_u], GAME3D_FLOOR_Y
+    mov al, dh
+    call game3d_world_z_edge_from_al
+    mov [scene3d_temp_v], ax
+    mov al, dh
+    inc al
+    call game3d_world_z_edge_from_al
+    mov [scene3d_temp_w], ax
+    call game3d_get_floor_base_material
+    mov [scene3d_temp_color], al
+    mov [scene3d_temp_dither], ah
+    mov byte ptr [scene3d_temp_face], GAME3D_FACE_FLAG_NONE
+    call game3d_emit_quad_from_temps
+    pop dx
+    pop bx
+    pop ax
     ret
 
 game3d_emit_floor_trim_run:
@@ -681,13 +912,265 @@ game3d_emit_floor_trim_run:
     call game3d_get_floor_trim_material
     mov [scene3d_temp_color], al
     mov [scene3d_temp_dither], ah
-    mov byte ptr [scene3d_temp_face], GAME3D_FACE_FLAG_NONE
-    call game3d_emit_quad_from_temps
+    mov byte ptr [scene3d_temp_face], GAME3D_FACE_FLAG_TRIM
+    call game3d_emit_optional_quad_from_temps
 
 game3d_floor_trim_done:
     pop cx
     pop dx
     pop bx
+    pop ax
+    ret
+
+game3d_emit_north_wall_decor:
+    push ax
+    mov ax, [scene3d_temp_y]
+    sub ax, [scene3d_temp_x]
+    cmp ax, GAME3D_TILE_UNIT * 3
+    jb game3d_emit_north_wall_cap
+    mov word ptr [scene3d_temp_z], GAME3D_WALL_BAND_BOTTOM_Y
+    mov word ptr [scene3d_temp_u], GAME3D_WALL_BAND_TOP_Y
+    call game3d_get_wall_trim_material
+    mov [scene3d_temp_color], al
+    mov [scene3d_temp_dither], ah
+    mov byte ptr [scene3d_temp_face], GAME3D_FACE_FLAG_WALL or GAME3D_FACE_FLAG_TRIM
+    call game3d_emit_optional_quad_from_temps
+    jmp game3d_emit_north_wall_decor_done
+
+game3d_emit_north_wall_cap:
+    mov ax, [scene3d_temp_v]
+    mov [scene3d_temp_s], ax
+    sub ax, GAME3D_WALL_CAP_OUTSET
+    mov [scene3d_temp_v], ax
+    mov ax, [scene3d_temp_s]
+    mov [scene3d_temp_w], ax
+    mov word ptr [scene3d_temp_z], GAME3D_WALL_TOP_Y
+    mov word ptr [scene3d_temp_u], GAME3D_WALL_TOP_Y
+    call game3d_get_wall_cap_material
+    mov [scene3d_temp_color], al
+    mov [scene3d_temp_dither], ah
+    mov byte ptr [scene3d_temp_face], GAME3D_FACE_FLAG_TRIM
+    call game3d_emit_optional_quad_from_temps
+
+game3d_emit_north_wall_decor_done:
+    pop ax
+    ret
+
+game3d_emit_south_wall_decor:
+    push ax
+    mov ax, [scene3d_temp_y]
+    sub ax, [scene3d_temp_x]
+    cmp ax, GAME3D_TILE_UNIT * 3
+    jb game3d_emit_south_wall_cap
+    mov word ptr [scene3d_temp_z], GAME3D_WALL_BAND_BOTTOM_Y
+    mov word ptr [scene3d_temp_u], GAME3D_WALL_BAND_TOP_Y
+    call game3d_get_wall_trim_material
+    mov [scene3d_temp_color], al
+    mov [scene3d_temp_dither], ah
+    mov byte ptr [scene3d_temp_face], GAME3D_FACE_FLAG_WALL or GAME3D_FACE_FLAG_TRIM
+    call game3d_emit_optional_quad_from_temps
+    jmp game3d_emit_south_wall_decor_done
+
+game3d_emit_south_wall_cap:
+    mov ax, [scene3d_temp_v]
+    mov [scene3d_temp_s], ax
+    mov [scene3d_temp_v], ax
+    add ax, GAME3D_WALL_CAP_OUTSET
+    mov [scene3d_temp_w], ax
+    mov word ptr [scene3d_temp_z], GAME3D_WALL_TOP_Y
+    mov word ptr [scene3d_temp_u], GAME3D_WALL_TOP_Y
+    call game3d_get_wall_cap_material
+    mov [scene3d_temp_color], al
+    mov [scene3d_temp_dither], ah
+    mov byte ptr [scene3d_temp_face], GAME3D_FACE_FLAG_TRIM
+    call game3d_emit_optional_quad_from_temps
+
+game3d_emit_south_wall_decor_done:
+    pop ax
+    ret
+
+game3d_emit_west_wall_decor:
+    push ax
+    mov ax, [scene3d_temp_w]
+    sub ax, [scene3d_temp_v]
+    cmp ax, GAME3D_TILE_UNIT * 3
+    jb game3d_emit_west_wall_cap
+    mov word ptr [scene3d_temp_z], GAME3D_WALL_BAND_BOTTOM_Y
+    mov word ptr [scene3d_temp_u], GAME3D_WALL_BAND_TOP_Y
+    call game3d_get_wall_trim_material
+    mov [scene3d_temp_color], al
+    mov [scene3d_temp_dither], ah
+    mov byte ptr [scene3d_temp_face], GAME3D_FACE_FLAG_WALL or GAME3D_FACE_FLAG_TRIM
+    call game3d_emit_optional_quad_from_temps
+    jmp game3d_emit_west_wall_decor_done
+
+game3d_emit_west_wall_cap:
+    mov ax, [scene3d_temp_x]
+    mov [scene3d_temp_s], ax
+    sub ax, GAME3D_WALL_CAP_OUTSET
+    mov [scene3d_temp_x], ax
+    mov ax, [scene3d_temp_s]
+    mov [scene3d_temp_y], ax
+    mov word ptr [scene3d_temp_z], GAME3D_WALL_TOP_Y
+    mov word ptr [scene3d_temp_u], GAME3D_WALL_TOP_Y
+    call game3d_get_wall_cap_material
+    mov [scene3d_temp_color], al
+    mov [scene3d_temp_dither], ah
+    mov byte ptr [scene3d_temp_face], GAME3D_FACE_FLAG_TRIM
+    call game3d_emit_optional_quad_from_temps
+
+game3d_emit_west_wall_decor_done:
+    pop ax
+    ret
+
+game3d_emit_east_wall_decor:
+    push ax
+    mov ax, [scene3d_temp_w]
+    sub ax, [scene3d_temp_v]
+    cmp ax, GAME3D_TILE_UNIT * 3
+    jb game3d_emit_east_wall_cap
+    mov word ptr [scene3d_temp_z], GAME3D_WALL_BAND_BOTTOM_Y
+    mov word ptr [scene3d_temp_u], GAME3D_WALL_BAND_TOP_Y
+    call game3d_get_wall_trim_material
+    mov [scene3d_temp_color], al
+    mov [scene3d_temp_dither], ah
+    mov byte ptr [scene3d_temp_face], GAME3D_FACE_FLAG_WALL or GAME3D_FACE_FLAG_TRIM
+    call game3d_emit_optional_quad_from_temps
+    jmp game3d_emit_east_wall_decor_done
+
+game3d_emit_east_wall_cap:
+    mov ax, [scene3d_temp_x]
+    mov [scene3d_temp_s], ax
+    mov [scene3d_temp_x], ax
+    add ax, GAME3D_WALL_CAP_OUTSET
+    mov [scene3d_temp_y], ax
+    mov word ptr [scene3d_temp_z], GAME3D_WALL_TOP_Y
+    mov word ptr [scene3d_temp_u], GAME3D_WALL_TOP_Y
+    call game3d_get_wall_cap_material
+    mov [scene3d_temp_color], al
+    mov [scene3d_temp_dither], ah
+    mov byte ptr [scene3d_temp_face], GAME3D_FACE_FLAG_TRIM
+    call game3d_emit_optional_quad_from_temps
+
+game3d_emit_east_wall_decor_done:
+    pop ax
+    ret
+
+game3d_emit_tile_gate_frame:
+    push bx
+    call game3d_emit_tile_pad_lane
+    call game3d_emit_tile_back_panel_cap
+    pop bx
+    ret
+
+game3d_emit_tile_terminal_frame:
+    push bx
+    call game3d_emit_tile_pad_trim
+    call game3d_emit_tile_back_panel_trim
+    pop bx
+    ret
+
+game3d_emit_tile_surge_frame:
+    push bx
+    call game3d_emit_tile_pad_lane
+    call game3d_emit_tile_back_panel_trim
+    pop bx
+    ret
+
+game3d_emit_tile_pad_trim:
+    call game3d_set_tile_pad_temps
+    call game3d_get_wall_trim_material
+    mov [scene3d_temp_color], al
+    mov [scene3d_temp_dither], ah
+    mov byte ptr [scene3d_temp_face], GAME3D_FACE_FLAG_FRAME
+    call game3d_emit_quad_from_temps
+    ret
+
+game3d_emit_tile_pad_lane:
+    call game3d_set_tile_pad_temps
+    call game3d_get_lane_material
+    mov [scene3d_temp_color], al
+    mov [scene3d_temp_dither], ah
+    mov byte ptr [scene3d_temp_face], GAME3D_FACE_FLAG_FRAME
+    call game3d_emit_quad_from_temps
+    ret
+
+game3d_emit_tile_back_panel_trim:
+    mov word ptr [scene3d_temp_z], GAME3D_FLOOR_Y
+    mov word ptr [scene3d_temp_u], GAME3D_WALL_BAND_TOP_Y
+    call game3d_set_tile_back_panel_temps
+    call game3d_get_wall_trim_material
+    mov [scene3d_temp_color], al
+    mov [scene3d_temp_dither], ah
+    mov byte ptr [scene3d_temp_face], GAME3D_FACE_FLAG_FRAME
+    call game3d_emit_quad_from_temps
+    ret
+
+game3d_emit_tile_back_panel_cap:
+    mov word ptr [scene3d_temp_z], GAME3D_FLOOR_Y
+    mov word ptr [scene3d_temp_u], GAME3D_WALL_TOP_Y
+    call game3d_set_tile_back_panel_temps
+    call game3d_get_wall_cap_material
+    mov [scene3d_temp_color], al
+    mov [scene3d_temp_dither], ah
+    mov byte ptr [scene3d_temp_face], GAME3D_FACE_FLAG_FRAME
+    call game3d_emit_quad_from_temps
+    ret
+
+game3d_set_tile_pad_temps:
+    push ax
+    mov al, bl
+    call game3d_world_x_edge_from_al
+    add ax, GAME3D_FLOOR_TRIM_INSET + 8
+    mov [scene3d_temp_x], ax
+    mov al, bl
+    inc al
+    call game3d_world_x_edge_from_al
+    sub ax, GAME3D_FLOOR_TRIM_INSET + 8
+    mov [scene3d_temp_y], ax
+    mov word ptr [scene3d_temp_z], GAME3D_FLOOR_TRIM_Y
+    mov word ptr [scene3d_temp_u], GAME3D_FLOOR_TRIM_Y
+    mov al, bh
+    call game3d_world_z_edge_from_al
+    add ax, GAME3D_FLOOR_TRIM_INSET + 8
+    mov [scene3d_temp_v], ax
+    mov al, bh
+    inc al
+    call game3d_world_z_edge_from_al
+    sub ax, GAME3D_FLOOR_TRIM_INSET + 8
+    mov [scene3d_temp_w], ax
+    pop ax
+    ret
+
+game3d_set_tile_back_panel_temps:
+    push ax
+    mov al, bl
+    call game3d_world_x_edge_from_al
+    add ax, GAME3D_FLOOR_TRIM_INSET
+    mov [scene3d_temp_x], ax
+    mov al, bl
+    inc al
+    call game3d_world_x_edge_from_al
+    sub ax, GAME3D_FLOOR_TRIM_INSET
+    mov [scene3d_temp_y], ax
+    mov al, [game3d_room_variant]
+    cmp al, GAME3D_ROOM_VARIANT_NORTHWEST
+    je game3d_set_tile_back_panel_north
+    cmp al, GAME3D_ROOM_VARIANT_NORTHEAST
+    je game3d_set_tile_back_panel_north
+    mov al, bh
+    inc al
+    call game3d_world_z_edge_from_al
+    mov [scene3d_temp_v], ax
+    mov [scene3d_temp_w], ax
+    pop ax
+    ret
+
+game3d_set_tile_back_panel_north:
+    mov al, bh
+    call game3d_world_z_edge_from_al
+    mov [scene3d_temp_v], ax
+    mov [scene3d_temp_w], ax
     pop ax
     ret
 
@@ -808,69 +1291,225 @@ game3d_emit_quad_done:
     pop ax
     ret
 
+game3d_emit_optional_quad_from_temps:
+    push ax
+    mov al, [game3d_optional_faces_remaining]
+    cmp al, 2
+    jb game3d_emit_optional_quad_done
+    mov al, [game3d_room_face_count]
+    cmp al, SCENE3D_MAX_FACES - 2
+    ja game3d_emit_optional_quad_done
+    call game3d_emit_quad_from_temps
+    cmp byte ptr [game3d_room_overflow], 0
+    jne game3d_emit_optional_quad_done
+    sub byte ptr [game3d_optional_faces_remaining], 2
+
+game3d_emit_optional_quad_done:
+    pop ax
+    ret
+
 game3d_get_kit_index:
     mov al, [sector_num]
     dec al
     ret
 
 game3d_get_floor_base_material:
+    push bx
     call game3d_get_kit_index
     xor ah, ah
     mov bx, ax
     mov al, cs:[game3d_kit_floor_base_color_table + bx]
     mov ah, cs:[game3d_kit_floor_base_dither_table + bx]
+    pop bx
     ret
 
 game3d_get_floor_trim_material:
+    push bx
     call game3d_get_kit_index
     xor ah, ah
     mov bx, ax
     mov al, cs:[game3d_kit_floor_trim_color_table + bx]
     mov ah, cs:[game3d_kit_floor_trim_dither_table + bx]
+    pop bx
+    ret
+
+game3d_get_floor_far_material:
+    push bx
+    call game3d_get_kit_index
+    xor ah, ah
+    mov bx, ax
+    mov al, cs:[game3d_kit_backdrop_near_color_table + bx]
+    mov ah, cs:[game3d_kit_backdrop_mid_color_table + bx]
+    pop bx
     ret
 
 game3d_get_wall_base_material:
+    push bx
     call game3d_get_kit_index
     xor ah, ah
     mov bx, ax
     mov al, cs:[game3d_kit_wall_base_color_table + bx]
     mov ah, cs:[game3d_kit_wall_base_dither_table + bx]
+    pop bx
+    ret
+
+game3d_get_wall_trim_material:
+    push bx
+    call game3d_get_kit_index
+    xor ah, ah
+    mov bx, ax
+    mov al, cs:[game3d_kit_wall_trim_color_table + bx]
+    mov ah, cs:[game3d_kit_wall_trim_dither_table + bx]
+    pop bx
+    ret
+
+game3d_get_wall_cap_material:
+    push bx
+    call game3d_get_kit_index
+    xor ah, ah
+    mov bx, ax
+    mov al, cs:[game3d_kit_wall_cap_color_table + bx]
+    mov ah, cs:[game3d_kit_wall_cap_dither_table + bx]
+    pop bx
     ret
 
 game3d_get_lane_material:
+    push bx
     call game3d_get_kit_index
     xor ah, ah
     mov bx, ax
     mov al, cs:[game3d_kit_lane_color_table + bx]
     mov ah, cs:[game3d_kit_lane_dither_table + bx]
+    pop bx
+    ret
+
+game3d_get_camera_height:
+    push bx
+    call game3d_get_kit_index
+    xor ah, ah
+    mov bx, ax
+    shl bx, 1
+    mov ax, cs:[game3d_kit_camera_height_table + bx]
+    pop bx
+    ret
+
+game3d_get_camera_distance:
+    push bx
+    call game3d_get_kit_index
+    xor ah, ah
+    mov bx, ax
+    shl bx, 1
+    mov ax, cs:[game3d_kit_camera_distance_table + bx]
+    pop bx
+    ret
+
+game3d_get_camera_look_ahead:
+    push bx
+    call game3d_get_kit_index
+    xor ah, ah
+    mov bx, ax
+    shl bx, 1
+    mov ax, cs:[game3d_kit_camera_look_ahead_table + bx]
+    pop bx
+    ret
+
+game3d_get_backdrop_far_color:
+    push bx
+    call game3d_get_kit_index
+    xor ah, ah
+    mov bx, ax
+    mov al, cs:[game3d_kit_backdrop_far_color_table + bx]
+    pop bx
+    ret
+
+game3d_get_backdrop_mid_color:
+    push bx
+    call game3d_get_kit_index
+    xor ah, ah
+    mov bx, ax
+    mov al, cs:[game3d_kit_backdrop_mid_color_table + bx]
+    pop bx
+    ret
+
+game3d_get_backdrop_near_color:
+    push bx
+    call game3d_get_kit_index
+    xor ah, ah
+    mov bx, ax
+    mov al, cs:[game3d_kit_backdrop_near_color_table + bx]
+    pop bx
+    ret
+
+game3d_get_horizon_a_color:
+    push bx
+    call game3d_get_kit_index
+    xor ah, ah
+    mov bx, ax
+    mov al, cs:[game3d_kit_horizon_a_color_table + bx]
+    pop bx
+    ret
+
+game3d_get_horizon_b_color:
+    push bx
+    call game3d_get_kit_index
+    xor ah, ah
+    mov bx, ax
+    mov al, cs:[game3d_kit_horizon_b_color_table + bx]
+    pop bx
+    ret
+
+game3d_get_horizon_y:
+    push bx
+    call game3d_get_kit_index
+    xor ah, ah
+    mov bx, ax
+    mov al, cs:[game3d_kit_horizon_y_table + bx]
+    pop bx
+    ret
+
+game3d_get_wobble_strength:
+    push bx
+    call game3d_get_kit_index
+    xor ah, ah
+    mov bx, ax
+    mov al, cs:[game3d_kit_wobble_strength_table + bx]
+    pop bx
     ret
 
 game3d_get_gate_mesh_index:
+    push bx
     call game3d_get_kit_index
     xor ah, ah
     mov bx, ax
     mov al, cs:[game3d_kit_gate_mesh_table + bx]
+    pop bx
     ret
 
 game3d_get_terminal_mesh_index:
+    push bx
     call game3d_get_kit_index
     xor ah, ah
     mov bx, ax
     mov al, cs:[game3d_kit_terminal_mesh_table + bx]
+    pop bx
     ret
 
 game3d_get_surge_mesh_index:
+    push bx
     call game3d_get_kit_index
     xor ah, ah
     mov bx, ax
     mov al, cs:[game3d_kit_surge_mesh_table + bx]
+    pop bx
     ret
 
 game3d_get_shard_mesh_index:
+    push bx
     call game3d_get_kit_index
     xor ah, ah
     mov bx, ax
     mov al, cs:[game3d_kit_shard_mesh_table + bx]
+    pop bx
     ret
 
 game3d_should_emit_north_face:
@@ -2060,6 +2699,106 @@ render_gameplay_overlay_effects_3d:
 render_gameplay_overlay_done:
     ret
 
+game3d_apply_room_instability:
+    push ax
+    push bx
+    push cx
+    push dx
+    push di
+
+    call game3d_get_wobble_strength
+    or al, al
+    jz game3d_apply_room_instability_done
+    xor ah, ah
+    mov bx, ax
+    xor dx, dx
+
+game3d_room_instability_loop:
+    cmp dx, [scene3d_vertex_count]
+    jae game3d_apply_room_instability_done
+    mov di, dx
+    shl di, 1
+    mov ax, [scene3d_vertex_z + di]
+    cmp ax, GAME3D_FACE_DEPTH_FAR
+    jle game3d_room_instability_next
+    mov al, [anim_phase]
+    add al, dl
+    add al, [sector_num]
+    test al, 1
+    jz game3d_room_instability_negative
+    add [scene3d_vertex_x + di], bx
+    inc word ptr [scene3d_vertex_y + di]
+    jmp game3d_room_instability_next
+
+game3d_room_instability_negative:
+    sub [scene3d_vertex_x + di], bx
+    dec word ptr [scene3d_vertex_y + di]
+
+game3d_room_instability_next:
+    inc dx
+    jmp game3d_room_instability_loop
+
+game3d_apply_room_instability_done:
+    pop di
+    pop dx
+    pop cx
+    pop bx
+    pop ax
+    ret
+
+game3d_apply_room_face_palette:
+    push ax
+    push bx
+    push dx
+
+    xor bh, bh
+    shl bx, 1
+    mov ax, [scene3d_face_depth + bx]
+    cmp ax, GAME3D_FACE_DEPTH_FAR
+    jg game3d_room_face_far
+    cmp ax, GAME3D_FACE_DEPTH_MID
+    jg game3d_room_face_mid
+    jmp game3d_room_face_palette_done
+
+game3d_room_face_mid:
+    mov dl, [si + 5]
+    test dl, GAME3D_FACE_FLAG_WALL
+    jz game3d_room_face_mid_floor
+    call game3d_get_wall_trim_material
+    jmp game3d_room_face_apply
+
+game3d_room_face_mid_floor:
+    test dl, GAME3D_FACE_FLAG_TRIM
+    jnz game3d_room_face_palette_done
+    test dl, GAME3D_FACE_FLAG_FRAME
+    jnz game3d_room_face_palette_done
+    call game3d_get_floor_trim_material
+    jmp game3d_room_face_apply
+
+game3d_room_face_far:
+    mov dl, [si + 5]
+    test dl, GAME3D_FACE_FLAG_WALL
+    jnz game3d_room_face_far_solid
+    test dl, GAME3D_FACE_FLAG_TRIM
+    jnz game3d_room_face_far_solid
+    test dl, GAME3D_FACE_FLAG_FRAME
+    jnz game3d_room_face_far_solid
+    call game3d_get_floor_far_material
+    jmp game3d_room_face_apply
+
+game3d_room_face_far_solid:
+    call game3d_get_wall_cap_material
+
+game3d_room_face_apply:
+    mov [scene3d_temp_color], al
+    mov [scene3d_temp_dither], ah
+
+game3d_room_face_palette_done:
+    pop dx
+    pop bx
+    pop ax
+    ret
+
 game3d_should_draw_face:
     ; Input: SI = face record in the active source buffer. Output: AL = 1/0.
     push bx
@@ -2070,8 +2809,8 @@ game3d_should_draw_face:
     push bp
 
     mov al, [si + 5]
-    cmp al, GAME3D_FACE_FLAG_WALL
-    jne game3d_should_draw_yes
+    test al, GAME3D_FACE_FLAG_WALL
+    jz game3d_should_draw_yes
 
     mov di, [scene3d_vertex_source]
     xor dx, dx

@@ -3,13 +3,22 @@
 ; demo scripts are compact [action, repeat-count] byte pairs
 ; edit the demo source file instead of this generated include
 
-DEMO_COUNT EQU 3
+DEMO_COUNT EQU 11
 
-demo_start_sector_table db 1, 2, 3
-demo_seed_table dw 1234h, 2468h, 3579h
-demo_script_table dw offset demo_script_0, offset demo_script_1, offset demo_script_2
-demo_name_table dw offset demo_name_0, offset demo_name_1, offset demo_name_2
-demo_capture_tick_table db 15, 18, 12
+demo_start_sector_table db 1, 2, 3, 3, 1, 1, 1, 1
+                        db 2, 2, 1
+demo_seed_table dw 1234h, 2468h, 3579h, 3579h, 1234h, 1234h
+                dw 1234h, 1234h, 2468h, 2468h, 1234h
+demo_script_table dw offset demo_script_0, offset demo_script_1, offset demo_script_2, offset demo_script_3
+                  dw offset demo_script_4, offset demo_script_5, offset demo_script_6, offset demo_script_7
+                  dw offset demo_script_8, offset demo_script_9, offset demo_script_10
+demo_name_table dw offset demo_name_0, offset demo_name_1, offset demo_name_2, offset demo_name_3
+                dw offset demo_name_4, offset demo_name_5, offset demo_name_6, offset demo_name_7
+                dw offset demo_name_8, offset demo_name_9, offset demo_name_10
+demo_attract_flag_table db 1, 1, 1, 0, 0, 0, 0, 0
+                        db 0, 0, 0
+demo_capture_tick_table db 15, 18, 12, 10, 6, 8, 12, 14
+                        db 4, 16, 58
 
 ; Demo 1: SCOUT ATTRACT
 demo_script_0 db DEMO_ACTION_WAIT, 8
@@ -44,7 +53,81 @@ demo_script_2 db DEMO_ACTION_WAIT, 6
               db DEMO_ACTION_WAIT, 4
               db DEMO_ACTION_END, 0
 
+; Demo 4: WARDEN PRESSURE VERIFY
+demo_script_3 db DEMO_ACTION_RIGHT, 3
+              db DEMO_ACTION_UP, 1
+              db DEMO_ACTION_WAIT, 1
+              db DEMO_ACTION_END, 0
+
+; Demo 5: CAMERA EAST VERIFY
+demo_script_4 db DEMO_ACTION_RIGHT, 1
+              db DEMO_ACTION_WAIT, 1
+              db DEMO_ACTION_END, 0
+
+; Demo 6: CAMERA WEST VERIFY
+demo_script_5 db DEMO_ACTION_RIGHT, 1
+              db DEMO_ACTION_LEFT, 1
+              db DEMO_ACTION_WAIT, 1
+              db DEMO_ACTION_END, 0
+
+; Demo 7: CAMERA NORTH VERIFY
+demo_script_6 db DEMO_ACTION_RIGHT, 5
+              db DEMO_ACTION_UP, 1
+              db DEMO_ACTION_WAIT, 1
+              db DEMO_ACTION_END, 0
+
+; Demo 8: CAMERA SOUTH VERIFY
+demo_script_7 db DEMO_ACTION_RIGHT, 5
+              db DEMO_ACTION_UP, 1
+              db DEMO_ACTION_DOWN, 1
+              db DEMO_ACTION_WAIT, 1
+              db DEMO_ACTION_END, 0
+
+; Demo 9: SECTOR ENTRY VERIFY
+demo_script_8 db DEMO_ACTION_WAIT, 2
+              db DEMO_ACTION_END, 0
+
+; Demo 10: TERMINAL SPOOF VERIFY
+demo_script_9 db DEMO_ACTION_RIGHT, 1
+              db DEMO_ACTION_UP, 2
+              db DEMO_ACTION_LEFT, 2
+              db DEMO_ACTION_UP, 4
+              db DEMO_ACTION_RIGHT, 6
+              db DEMO_ACTION_WAIT, 1
+              db DEMO_ACTION_END, 0
+
+; Demo 11: GATE UNLOCK VERIFY
+demo_script_10 db DEMO_ACTION_RIGHT, 2
+               db DEMO_ACTION_RIGHT, 5
+               db DEMO_ACTION_UP, 2
+               db DEMO_ACTION_DOWN, 2
+               db DEMO_ACTION_RIGHT, 6
+               db DEMO_ACTION_UP, 2
+               db DEMO_ACTION_LEFT, 4
+               db DEMO_ACTION_UP, 2
+               db DEMO_ACTION_RIGHT, 4
+               db DEMO_ACTION_LEFT, 4
+               db DEMO_ACTION_DOWN, 2
+               db DEMO_ACTION_RIGHT, 4
+               db DEMO_ACTION_DOWN, 2
+               db DEMO_ACTION_RIGHT, 4
+               db DEMO_ACTION_UP, 2
+               db DEMO_ACTION_DOWN, 2
+               db DEMO_ACTION_RIGHT, 7
+               db DEMO_ACTION_UP, 10
+               db DEMO_ACTION_LEFT, 2
+               db DEMO_ACTION_WAIT, 2
+               db DEMO_ACTION_END, 0
+
 
 demo_name_0 db 'SCOUT ATTRACT', 0
 demo_name_1 db 'SURGE ATTRACT', 0
 demo_name_2 db 'WARDEN ATTRACT', 0
+demo_name_3 db 'WARDEN PRESSURE VERIFY', 0
+demo_name_4 db 'CAMERA EAST VERIFY', 0
+demo_name_5 db 'CAMERA WEST VERIFY', 0
+demo_name_6 db 'CAMERA NORTH VERIFY', 0
+demo_name_7 db 'CAMERA SOUTH VERIFY', 0
+demo_name_8 db 'SECTOR ENTRY VERIFY', 0
+demo_name_9 db 'TERMINAL SPOOF VERIFY', 0
+demo_name_10 db 'GATE UNLOCK VERIFY', 0

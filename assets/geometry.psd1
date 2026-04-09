@@ -513,6 +513,24 @@ function Face {
             TerminalMesh = 'terminal_vault'
             SurgeMesh = 'surge_vault'
             ShardMesh = 'shard_vault'
+            Camera = @{
+                Height = 5.50
+                Distance = 7.25
+                LookAhead = 0.75
+                HeadingNorthYawDegrees = 135.0
+                HeadingEastYawDegrees = 45.0
+                HeadingSouthYawDegrees = 315.0
+                HeadingWestYawDegrees = 225.0
+            }
+            Atmosphere = @{
+                BackdropFar = 'PAL_BG0'
+                BackdropMid = 'PAL_PANEL2'
+                BackdropNear = 'PAL_PANEL'
+                HorizonA = 'PAL_CYAN'
+                HorizonB = 'PAL_CYAN2'
+                HorizonY = 34
+                WobbleStrength = 1
+            }
         }
         @{
             Key = 'sector2'
@@ -526,6 +544,24 @@ function Face {
             TerminalMesh = 'terminal_furnace'
             SurgeMesh = 'surge_furnace'
             ShardMesh = 'shard_furnace'
+            Camera = @{
+                Height = 5.90
+                Distance = 7.00
+                LookAhead = 0.85
+                HeadingNorthYawDegrees = 135.0
+                HeadingEastYawDegrees = 45.0
+                HeadingSouthYawDegrees = 315.0
+                HeadingWestYawDegrees = 225.0
+            }
+            Atmosphere = @{
+                BackdropFar = 'PAL_BG1'
+                BackdropMid = 'PAL_PANEL2'
+                BackdropNear = 'PAL_PANEL'
+                HorizonA = 'PAL_AMBER'
+                HorizonB = 'PAL_RED'
+                HorizonY = 36
+                WobbleStrength = 2
+            }
         }
         @{
             Key = 'sector3'
@@ -539,6 +575,24 @@ function Face {
             TerminalMesh = 'terminal_lock'
             SurgeMesh = 'surge_lock'
             ShardMesh = 'shard_lock'
+            Camera = @{
+                Height = 6.15
+                Distance = 6.70
+                LookAhead = 0.70
+                HeadingNorthYawDegrees = 135.0
+                HeadingEastYawDegrees = 45.0
+                HeadingSouthYawDegrees = 315.0
+                HeadingWestYawDegrees = 225.0
+            }
+            Atmosphere = @{
+                BackdropFar = 'PAL_BLACK'
+                BackdropMid = 'PAL_BG0'
+                BackdropNear = 'PAL_PANEL'
+                HorizonA = 'PAL_RED'
+                HorizonB = 'PAL_WHITE'
+                HorizonY = 32
+                WobbleStrength = 2
+            }
         }
     )
     Meshes = @(
@@ -752,9 +806,9 @@ function Face {
         @{
             Key = 'player_runner'
             Vertices = @(
-                (M -38 0 -28), (M 38 0 -28), (M 38 0 28), (M -38 0 28),
-                (M -44 118 -20), (M 44 118 -20), (M 30 152 28), (M -30 152 28),
-                (M -18 252 -4), (M 18 252 -4), (M 0 318 -22)
+                (M -42 0 -30), (M 42 0 -30), (M 42 0 30), (M -42 0 30),
+                (M -54 122 -22), (M 54 122 -22), (M 42 158 34), (M -42 158 34),
+                (M -22 256 -4), (M 22 256 -4), (M 0 324 -24)
             )
             Faces = @(
                 (Face @(0, 1, 5, 4) 'player_core'),
@@ -770,9 +824,9 @@ function Face {
         @{
             Key = 'warden'
             Vertices = @(
-                (M -46 0 -34), (M 46 0 -34), (M 46 0 34), (M -46 0 34),
-                (M -56 136 -24), (M 56 136 -24), (M 40 188 34), (M -40 188 34),
-                (M -28 284 -6), (M 28 284 -6), (M 0 356 -30)
+                (M -52 0 -38), (M 52 0 -38), (M 52 0 38), (M -52 0 38),
+                (M -68 142 -28), (M 68 142 -28), (M 52 194 42), (M -52 194 42),
+                (M -34 292 -8), (M 34 292 -8), (M 0 366 -34)
             )
             Faces = @(
                 (Face @(0, 1, 5, 4) 'warden_core'),

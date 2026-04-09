@@ -827,7 +827,11 @@ scene3d_draw_face_index_ready:
     mov al, [si + 4]
     mov [scene3d_temp_dither], al
     cmp byte ptr [game3d_rendering_active], 0
-    jne scene3d_draw_face_fx_done
+    je scene3d_draw_face_scene_fx
+    call game3d_apply_room_face_palette
+    jmp scene3d_draw_face_fx_done
+
+scene3d_draw_face_scene_fx:
     mov al, [si + 5]
     call scene3d_apply_face_fx
 

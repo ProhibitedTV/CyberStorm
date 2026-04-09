@@ -898,6 +898,18 @@ render_debug_overlay:
     mov bx, 234
     mov dx, 50
     call draw_digit_small
+
+    mov bx, 246
+    mov dx, 50
+    mov si, offset debug_camera_tag
+    mov ah, PAL_CYAN
+    call draw_text_small
+
+    mov al, [game3d_room_variant]
+    mov ah, PAL_WHITE
+    mov bx, 258
+    mov dx, 50
+    call draw_digit_small
     ret
 
 count_live_enemies:

@@ -2,19 +2,20 @@
 ; source: replay-harness results
 ; edit assets/demos.psd1 or gameplay constants instead of this include
 
-VERIFY_DEMO_COUNT EQU 3
+VERIFY_DEMO_COUNT EQU 11
 
-verify_demo_checkpoint_count_table db 13, 17, 11
-verify_demo_final_signature_table dw 0D173h, 0CAC1h, 8B87h
-verify_demo_checkpoint_table dw offset verify_demo_0_checkpoints, offset verify_demo_1_checkpoints, offset verify_demo_2_checkpoints
+verify_demo_checkpoint_count_table db 13, 17, 0, 0, 0, 0, 0, 0
+                                   db 0, 0, 0
+verify_demo_final_signature_table dw 46A1h, 0CFC4h, 0C8F7h, 83DAh, 0BCE9h, 58DFh
+                                  dw 55FFh, 21F9h, 1EF0h, 67B1h, 62D9h
+verify_demo_checkpoint_table dw offset verify_demo_0_checkpoints, offset verify_demo_1_checkpoints, 0, 0
+                             dw 0, 0, 0, 0
+                             dw 0, 0, 0
 
-verify_demo_0_checkpoints dw 0EFFBh, 9260h, 0F0D0h, 3051h, 54D6h, 54D6h
-                          dw 0BE7Bh, 0992h, 0E108h, 0B0F0h, 9196h, 0441h
-                          dw 0A980h
+verify_demo_0_checkpoints dw 0BCE9h, 21E1h, 81D7h, 0E212h, 0E212h, 0E212h
+                          dw 0E308h, 42FFh, 0A2F8h, 02B0h, 02B0h, 0A6A8h
+                          dw 46A1h
 
-verify_demo_1_checkpoints dw 6C5Bh, 2696h, 45B0h, 491Bh, 70F4h, 99B2h
-                          dw 0F975h, 5766h, 0CFAFh, 0CB9h, 0DB08h, 0DB08h
-                          dw 0DB08h, 0DB08h, 0EDF5h, 750Bh, 6116h
-
-verify_demo_2_checkpoints dw 0B628h, 0C8DFh, 0C12h, 0EC0Fh, 0B3DAh, 71A7h
-                          dw 5A77h, 1A78h, 2B51h, 8B36h, 8B36h
+verify_demo_1_checkpoints dw 87E8h, 67E0h, 0C7D6h, 0A80Eh, 0806h, 0E7FEh
+                          dw 47F3h, 27ADh, 1BA5h, 669Bh, 669Bh, 669Bh
+                          dw 669Bh, 669Bh, 8F95h, 6FCDh, 0CFC4h

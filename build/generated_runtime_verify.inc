@@ -2,20 +2,33 @@
 ; source: replay-harness results
 ; edit assets/demos.psd1 or gameplay constants instead of this include
 
-VERIFY_DEMO_COUNT EQU 11
+VERIFY_DEMO_COUNT EQU 20
 
-verify_demo_checkpoint_count_table db 13, 17, 0, 0, 0, 0, 0, 0
-                                   db 0, 0, 0
-verify_demo_final_signature_table dw 46A1h, 0CFC4h, 0C8F7h, 83DAh, 0BCE9h, 58DFh
-                                  dw 55FFh, 21F9h, 1EF0h, 67B1h, 62D9h
+verify_demo_checkpoint_count_table db 13, 17, 0, 0, 13, 0, 17, 0
+                                   db 0, 0, 0, 0, 0, 0, 0, 0
+                                   db 0, 0, 0, 0
+verify_demo_final_signature_table dw 4C0Fh, 0C951h, 9DCFh, 4CB0h, 4C0Fh, 112Bh
+                                  dw 0C951h, 0EEC3h, 9DCFh, 0EEC3h, 11ADh, 0C951h
+                                  dw 11ADh, 88A1h, 58CBh, 4CB0h, 0A4ABh, 11ADh
+                                  dw 112Bh, 6F79h
 verify_demo_checkpoint_table dw offset verify_demo_0_checkpoints, offset verify_demo_1_checkpoints, 0, 0
+                             dw offset verify_demo_4_checkpoints, 0, offset verify_demo_6_checkpoints, 0
                              dw 0, 0, 0, 0
-                             dw 0, 0, 0
+                             dw 0, 0, 0, 0
+                             dw 0, 0, 0, 0
 
-verify_demo_0_checkpoints dw 0BCE9h, 21E1h, 81D7h, 0E212h, 0E212h, 0E212h
-                          dw 0E308h, 42FFh, 0A2F8h, 02B0h, 02B0h, 0A6A8h
-                          dw 46A1h
+verify_demo_0_checkpoints dw 88A1h, 0A4C3h, 0A49Dh, 0A4C7h, 0A4C7h, 0A4C7h
+                          dw 8BCDh, 8BAFh, 8BA9h, 8BFBh, 8BFBh, 4BF9h
+                          dw 4C0Fh
 
-verify_demo_1_checkpoints dw 87E8h, 67E0h, 0C7D6h, 0A80Eh, 0806h, 0E7FEh
-                          dw 47F3h, 27ADh, 1BA5h, 669Bh, 669Bh, 669Bh
-                          dw 669Bh, 669Bh, 8F95h, 6FCDh, 0CFC4h
+verify_demo_1_checkpoints dw 0F993h, 09A1h, 0F95Fh, 0F985h, 0F95Bh, 0F919h
+                          dw 0F967h, 0F93Dh, 0E136h, 0EC1Bh, 0EC1Bh, 0EC1Bh
+                          dw 0EC1Bh, 0EC1Bh, 0C115h, 0C91Fh, 0C951h
+
+verify_demo_4_checkpoints dw 88A1h, 0A4C3h, 0A49Dh, 0A4C7h, 0A4C7h, 0A4C7h
+                          dw 8BCDh, 8BAFh, 8BA9h, 8BFBh, 8BFBh, 4BF9h
+                          dw 4C0Fh
+
+verify_demo_6_checkpoints dw 0F993h, 09A1h, 0F95Fh, 0F985h, 0F95Bh, 0F919h
+                          dw 0F967h, 0F93Dh, 0E136h, 0EC1Bh, 0EC1Bh, 0EC1Bh
+                          dw 0EC1Bh, 0EC1Bh, 0C115h, 0C91Fh, 0C951h

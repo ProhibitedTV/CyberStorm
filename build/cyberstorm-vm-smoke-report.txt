@@ -1,4 +1,15 @@
 CyberStorm VM Smoke Report
-Generated: 2026-04-09 07:02:02 -06:00
-Status: skipped
-Run scripts/build.ps1 -VmSmoke or scripts/vm-smoke.ps1 to exercise the attract-mode VM smoke lane.
+Generated: 2026-04-09 13:09:09 -06:00
+Status: PASS
+VM: CyberStorm
+Frontend: headless
+Wait: 14s (targets splash -> title -> attract demo)
+Audio mode: MUSIC
+Audio controller: SB16 via HostAudioWas (host default HostAudioWas)
+Startup expectation: screenshotpng succeeded after 2s inside the boot -> splash window.
+Title expectation: screenshotpng succeeded after 6s in the splash -> title window.
+Attract expectation: screenshotpng succeeded after the full 14s smoke window.
+Startup screenshot: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\vm-smoke\cyberstorm-vm-smoke-startup.png
+Title screenshot: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\vm-smoke\cyberstorm-vm-smoke-title.png
+Screenshot: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\vm-smoke\cyberstorm-vm-smoke.png
+VBox log: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\vm-smoke\cyberstorm-vm-smoke.log

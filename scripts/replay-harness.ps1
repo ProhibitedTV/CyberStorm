@@ -1,6 +1,7 @@
 param(
     [string]$SectorSourcePath = (Join-Path (Join-Path $PSScriptRoot '..') 'assets\sectors.psd1'),
     [string]$DemoSourcePath = (Join-Path (Join-Path $PSScriptRoot '..') 'assets\demos.psd1'),
+    [string]$GeometrySourcePath = (Join-Path (Join-Path $PSScriptRoot '..') 'assets\geometry.psd1'),
     [string]$MusicSourcePath = (Join-Path (Join-Path $PSScriptRoot '..') 'assets\music.psd1'),
     [string]$ConstantsSourcePath = (Join-Path (Join-Path $PSScriptRoot '..') 'src\game\constants.inc'),
     [switch]$ExperimentalMusic,
@@ -57,15 +58,22 @@ function Get-AsmEquValue {
     )
 
     Assert-PathExists -Path $SourcePath -Label 'assembly constants source'
-    $pattern = "^\s*{0}\s+equ\s+([0-9A-Fa-f]+h|\d+)\s*(?:;.*)?$" -f [regex]::Escape($Name)
+    $pattern = "^\s*{0}\s+equ\s+(-?[0-9A-Fa-f]+h|-?\d+)\s*(?:;.*)?$" -f [regex]::Escape($Name)
     $match = Select-String -LiteralPath $SourcePath -Pattern $pattern | Select-Object -First 1
     if (-not $match) {
         throw ("Could not find numeric '{0} equ <value>' in {1}" -f $Name, $SourcePath)
     }
 
     $token = $match.Matches[0].Groups[1].Value
-    if ($token -match '^[0-9A-Fa-f]+h$') {
-        return [Convert]::ToInt32($token.Substring(0, $token.Length - 1), 16)
+    if ($token -match '^-?[0-9A-Fa-f]+h$') {
+        $negative = $token.StartsWith('-')
+        $digits = if ($negative) { $token.Substring(1, $token.Length - 2) } else { $token.Substring(0, $token.Length - 1) }
+        $value = [Convert]::ToInt32($digits, 16)
+        if ($negative) {
+            return -$value
+        }
+
+        return $value
     }
 
     return [int]$token
@@ -508,6 +516,8 @@ function Get-RequiredConstants {
         'PULSE_RECHARGE_KILLS',
         'SAFE_X_MAX',
         'SAFE_Y_MIN',
+        'NEAR_THREAT_DISTANCE',
+        'ELITE_THREAT_DISTANCE',
         'MAX_ENEMIES',
         'SCORE_SHARD_POINTS',
         'SCORE_KILL_POINTS',
@@ -519,7 +529,21 @@ function Get-RequiredConstants {
         'SCORE_FAST_CLEAR_BASE',
         'SCORE_FAST_CLEAR_STEP',
         'SCORE_WIN_SHIELD_BONUS',
-        'SCORE_WIN_PULSE_BONUS'
+        'SCORE_WIN_PULSE_BONUS',
+        'SCENE3D_NEAR_Z',
+        'GAME3D_VIEW_X',
+        'GAME3D_VIEW_Y',
+        'GAME3D_VIEW_W',
+        'GAME3D_VIEW_H',
+        'GAME3D_FLOOR_Y',
+        'GAME3D_CAMERA_HORIZON_CENTER_OFFSET',
+        'GAME3D_FACE_DEPTH_FAR',
+        'GAME3D_PLAYER_LOCATOR_FAR_DEPTH',
+        'GAME3D_CUE_EDGE_MARGIN',
+        'GAME3D_CUE_FLAG_PLAYER_FALLBACK',
+        'GAME3D_CUE_FLAG_EXIT_FALLBACK',
+        'GAME3D_CUE_FLAG_SPOOF_FALLBACK',
+        'GAME3D_CUE_FLAG_THREAT_FALLBACK'
     )
 
     $constants = @{}
@@ -531,6 +555,75 @@ function Get-RequiredConstants {
     $constants['PLAY_MAX_Y'] = $constants.MAP_H - 2
 
     return $constants
+}
+
+function ConvertTo-GeometryFixed88 {
+    param([object]$Value)
+    return [int][Math]::Round(([double]$Value) * 256.0)
+}
+
+function ConvertTo-GeometryAngleByte {
+    param([object]$Value)
+
+    $turn = ([double]$Value) % 360.0
+    if ($turn -lt 0) {
+        $turn += 360.0
+    }
+
+    return (([int][Math]::Round(($turn / 360.0) * 256.0)) -band 0xFF)
+}
+
+function Get-GameplayKitDefinitions {
+    param([string]$SourcePath)
+
+    $geometryData = Import-StructuredDataFile -SourcePath $SourcePath -Label 'geometry source'
+    if (-not $geometryData.ContainsKey('GameplayKits')) {
+        throw ("Geometry source must define a 'GameplayKits' array: {0}" -f $SourcePath)
+    }
+
+    $expectedKitKeys = @('sector1', 'sector2', 'sector3')
+    $kits = @($geometryData.GameplayKits)
+    if ($kits.Count -ne $expectedKitKeys.Count) {
+        throw ("Geometry source defined {0} gameplay kits, but replay expects {1}." -f $kits.Count, $expectedKitKeys.Count)
+    }
+
+    $definitions = New-Object 'System.Collections.Generic.List[object]'
+    for ($kitIndex = 0; $kitIndex -lt $kits.Count; $kitIndex++) {
+        $kit = $kits[$kitIndex]
+        if (-not ($kit -is [System.Collections.IDictionary])) {
+            throw ("Each gameplay kit in {0} must be a hashtable." -f $SourcePath)
+        }
+
+        $kitKey = ([string]$kit.Key).ToLowerInvariant()
+        if ($kitKey -ne $expectedKitKeys[$kitIndex]) {
+            throw ("Gameplay kit {0} in {1} must use key '{2}'." -f ($kitIndex + 1), $SourcePath, $expectedKitKeys[$kitIndex])
+        }
+
+        $camera = $kit.Camera
+        $projection = $kit.Projection
+        if (-not ($camera -is [System.Collections.IDictionary])) {
+            throw ("Gameplay kit '{0}' in {1} must define a Camera block." -f $kitKey, $SourcePath)
+        }
+        if (-not ($projection -is [System.Collections.IDictionary])) {
+            throw ("Gameplay kit '{0}' in {1} must define a Projection block." -f $kitKey, $SourcePath)
+        }
+
+        $definitions.Add([pscustomobject]@{
+            Key = $kitKey
+            CameraHeight = (ConvertTo-GeometryFixed88 $camera.Height)
+            CameraDistance = (ConvertTo-GeometryFixed88 $camera.Distance)
+            CameraLookAhead = (ConvertTo-GeometryFixed88 $camera.LookAhead)
+            HeadingNorthYaw = (ConvertTo-GeometryAngleByte $camera.HeadingNorthYawDegrees)
+            HeadingEastYaw = (ConvertTo-GeometryAngleByte $camera.HeadingEastYawDegrees)
+            HeadingSouthYaw = (ConvertTo-GeometryAngleByte $camera.HeadingSouthYawDegrees)
+            HeadingWestYaw = (ConvertTo-GeometryAngleByte $camera.HeadingWestYawDegrees)
+            ProjectionPitch = (ConvertTo-GeometryAngleByte $projection.PitchDegrees)
+            ProjectionScale = [int]$projection.ProjectScale
+            HorizonY = [int]$kit.Atmosphere.HorizonY
+        })
+    }
+
+    return $definitions.ToArray()
 }
 
 function Get-StepActionKey {
@@ -650,6 +743,9 @@ function New-ReplayState {
         SpoofTimer = 0
         SpoofX = $Constants.START_X
         SpoofY = $Constants.START_Y
+        ThreatLevel = 0
+        ThreatX = $Constants.START_X
+        ThreatY = $Constants.START_Y
         LastGameState = '__INIT__'
         StateTicks = 0
         MessageId = 'SECTOR'
@@ -716,6 +812,9 @@ function Initialize-ReplayRun {
     $State.StateTicks = 0
     $State.MessageId = 'SECTOR'
     $State.FeedbackTimer = 0
+    $State.ThreatLevel = 0
+    $State.ThreatX = $Constants.START_X
+    $State.ThreatY = $Constants.START_Y
     Stop-ReplaySfx -State $State
     Stop-ReplayMusic -State $State
     Load-ReplaySector -State $State -Constants $Constants -Sectors $Sectors
@@ -986,10 +1085,224 @@ function Get-RuntimeRoomVariant {
     }
 }
 
+function Mul-Fixed88 {
+    param(
+        [int]$A,
+        [int]$B
+    )
+
+    return [int](($A * $B) -shr 8)
+}
+
+function Get-FixedSinCos {
+    param([int]$AngleByte)
+
+    $angle = ($AngleByte -band 0xFF)
+    $radians = (($angle / 256.0) * [Math]::PI * 2.0)
+    $sinValue = [int][Math]::Round([Math]::Sin($radians) * 256.0)
+    $cosValue = [int][Math]::Round([Math]::Cos($radians) * 256.0)
+    return [pscustomobject]@{
+        Sin = $sinValue
+        Cos = $cosValue
+    }
+}
+
+function Get-GameplayKitForState {
+    param(
+        $State,
+        [object[]]$GameplayKits
+    )
+
+    return $GameplayKits[[Math]::Max(0, [Math]::Min($GameplayKits.Count - 1, $State.SectorNum - 1))]
+}
+
+function Get-RuntimeHeadingYaw {
+    param(
+        $State,
+        [object[]]$GameplayKits
+    )
+
+    $kit = Get-GameplayKitForState -State $State -GameplayKits $GameplayKits
+    switch (Get-RuntimeCameraHeading -State $State) {
+        0 { return $kit.HeadingNorthYaw }
+        2 { return $kit.HeadingSouthYaw }
+        3 { return $kit.HeadingWestYaw }
+        default { return $kit.HeadingEastYaw }
+    }
+}
+
+function Get-RuntimeCameraSetup {
+    param(
+        $State,
+        $Constants,
+        [object[]]$GameplayKits
+    )
+
+    $kit = Get-GameplayKitForState -State $State -GameplayKits $GameplayKits
+    $headingYaw = Get-RuntimeHeadingYaw -State $State -GameplayKits $GameplayKits
+    $playerWorldX = ($State.PlayerX * 256) + 128 - ($Constants.MAP_W * 128)
+    $playerWorldZ = ($State.PlayerY * 256) + 128 - ($Constants.MAP_H * 128)
+    $focusX = $playerWorldX
+    $focusZ = $playerWorldZ
+
+    if ($State.LastPlayerDx -gt 0) {
+        $focusX += $kit.CameraLookAhead
+    } elseif ($State.LastPlayerDx -lt 0) {
+        $focusX -= $kit.CameraLookAhead
+    }
+
+    if ($State.LastPlayerDy -gt 0) {
+        $focusZ += $kit.CameraLookAhead
+    } elseif ($State.LastPlayerDy -lt 0) {
+        $focusZ -= $kit.CameraLookAhead
+    }
+
+    $yaw = Get-FixedSinCos -AngleByte $headingYaw
+    $camX = $focusX - (Mul-Fixed88 -A $kit.CameraDistance -B $yaw.Sin)
+    $camZ = $focusZ - (Mul-Fixed88 -A $kit.CameraDistance -B $yaw.Cos)
+    $centerY = $Constants.GAME3D_VIEW_Y + $Constants.GAME3D_CAMERA_HORIZON_CENTER_OFFSET + $kit.HorizonY
+
+    return [pscustomobject]@{
+        CamX = $camX
+        CamY = $kit.CameraHeight
+        CamZ = $camZ
+        Yaw = $headingYaw
+        CenterX = ($Constants.GAME3D_VIEW_X + [int]($Constants.GAME3D_VIEW_W / 2))
+        CenterY = $centerY
+        ProjectScale = $kit.ProjectionScale
+        Pitch = $kit.ProjectionPitch
+        ViewLeft = $Constants.GAME3D_VIEW_X
+        ViewTop = $Constants.GAME3D_VIEW_Y
+        ViewRight = $Constants.GAME3D_VIEW_X + $Constants.GAME3D_VIEW_W - 1
+        ViewBottom = $Constants.GAME3D_VIEW_Y + $Constants.GAME3D_VIEW_H - 1
+    }
+}
+
+function Project-WorldPoint {
+    param(
+        [int]$WorldX,
+        [int]$WorldY,
+        [int]$WorldZ,
+        $Camera,
+        $Constants
+    )
+
+    $relX = $WorldX - $Camera.CamX
+    $relY = $WorldY - $Camera.CamY
+    $relZ = $WorldZ - $Camera.CamZ
+
+    $yaw = Get-FixedSinCos -AngleByte $Camera.Pitch
+    $cameraYaw = Get-FixedSinCos -AngleByte $Camera.Yaw
+
+    $tempX = (Mul-Fixed88 -A $relX -B $cameraYaw.Cos) - (Mul-Fixed88 -A $relZ -B $cameraYaw.Sin)
+    $tempZ = (Mul-Fixed88 -A $relX -B $cameraYaw.Sin) + (Mul-Fixed88 -A $relZ -B $cameraYaw.Cos)
+    $tempY = (Mul-Fixed88 -A $relY -B $yaw.Cos) - (Mul-Fixed88 -A $tempZ -B $yaw.Sin)
+    $depth = (Mul-Fixed88 -A $relY -B $yaw.Sin) + (Mul-Fixed88 -A $tempZ -B $yaw.Cos)
+
+    if ($depth -le $Constants.SCENE3D_NEAR_Z) {
+        return [pscustomobject]@{
+            Visible = $false
+            X = 0
+            Y = 0
+            Depth = $depth
+        }
+    }
+
+    $screenX = [int](($tempX * $Camera.ProjectScale) / $depth) + $Camera.CenterX
+    $screenY = -[int](($tempY * $Camera.ProjectScale) / $depth) + $Camera.CenterY
+    return [pscustomobject]@{
+        Visible = $true
+        X = $screenX
+        Y = $screenY
+        Depth = $depth
+    }
+}
+
+function Project-TileCenter {
+    param(
+        $State,
+        $Constants,
+        [object[]]$GameplayKits,
+        [int]$TileX,
+        [int]$TileY
+    )
+
+    $camera = Get-RuntimeCameraSetup -State $State -Constants $Constants -GameplayKits $GameplayKits
+    $worldX = ($TileX * 256) + 128 - ($Constants.MAP_W * 128)
+    $worldZ = ($TileY * 256) + 128 - ($Constants.MAP_H * 128)
+    return Project-WorldPoint -WorldX $worldX -WorldY $Constants.GAME3D_FLOOR_Y -WorldZ $worldZ -Camera $camera -Constants $Constants
+}
+
+function Test-CueReady {
+    param(
+        $Projection,
+        $Constants
+    )
+
+    if (-not $Projection.Visible) {
+        return $false
+    }
+
+    if ($Projection.X -lt ($Constants.GAME3D_VIEW_X + $Constants.GAME3D_CUE_EDGE_MARGIN)) {
+        return $false
+    }
+    if ($Projection.X -gt ($Constants.GAME3D_VIEW_X + $Constants.GAME3D_VIEW_W - 1 - $Constants.GAME3D_CUE_EDGE_MARGIN)) {
+        return $false
+    }
+    if ($Projection.Y -lt ($Constants.GAME3D_VIEW_Y + $Constants.GAME3D_CUE_EDGE_MARGIN)) {
+        return $false
+    }
+    if ($Projection.Y -gt ($Constants.GAME3D_VIEW_Y + $Constants.GAME3D_VIEW_H - 1 - $Constants.GAME3D_CUE_EDGE_MARGIN)) {
+        return $false
+    }
+
+    return $true
+}
+
+function Get-RuntimeCueFlags {
+    param(
+        $State,
+        $Constants,
+        [object[]]$GameplayKits
+    )
+
+    $flags = 0
+    $playerProjection = Project-TileCenter -State $State -Constants $Constants -GameplayKits $GameplayKits -TileX $State.PlayerX -TileY $State.PlayerY
+    if ((-not $playerProjection.Visible) -or $playerProjection.Depth -gt $Constants.GAME3D_PLAYER_LOCATOR_FAR_DEPTH -or -not (Test-CueReady -Projection $playerProjection -Constants $Constants)) {
+        $flags = $flags -bor $Constants.GAME3D_CUE_FLAG_PLAYER_FALLBACK
+    }
+
+    $exitProjection = Project-TileCenter -State $State -Constants $Constants -GameplayKits $GameplayKits -TileX $State.ExitX -TileY $State.ExitY
+    if (-not (Test-CueReady -Projection $exitProjection -Constants $Constants)) {
+        $flags = $flags -bor $Constants.GAME3D_CUE_FLAG_EXIT_FALLBACK
+    }
+
+    if ($State.SpoofTimer -gt 0) {
+        $spoofProjection = Project-TileCenter -State $State -Constants $Constants -GameplayKits $GameplayKits -TileX $State.SpoofX -TileY $State.SpoofY
+        if (-not (Test-CueReady -Projection $spoofProjection -Constants $Constants)) {
+            $flags = $flags -bor $Constants.GAME3D_CUE_FLAG_SPOOF_FALLBACK
+        }
+    }
+
+    if ($State.ThreatLevel -gt 0) {
+        $threatProjection = Project-TileCenter -State $State -Constants $Constants -GameplayKits $GameplayKits -TileX $State.ThreatX -TileY $State.ThreatY
+        if (-not (Test-CueReady -Projection $threatProjection -Constants $Constants)) {
+            $flags = $flags -bor $Constants.GAME3D_CUE_FLAG_THREAT_FALLBACK
+        }
+    }
+
+    return $flags
+}
+
 function Get-RuntimeVerificationSignature {
-    param($State)
+    param(
+        $State,
+        $Constants,
+        [object[]]$GameplayKits
+    )
 
     $signature = 0xA55A
+    $kit = Get-GameplayKitForState -State $State -GameplayKits $GameplayKits
     $signature = Update-RuntimeSignatureByte -Signature $signature -Value (Get-GameStateId -StateName $State.GameState)
     $signature = Update-RuntimeSignatureByte -Signature $signature -Value $State.SectorNum
     $signature = Update-RuntimeSignatureByte -Signature $signature -Value $State.CurrentTemplateIndex
@@ -997,6 +1310,9 @@ function Get-RuntimeVerificationSignature {
     $signature = Update-RuntimeSignatureByte -Signature $signature -Value $State.PlayerY
     $signature = Update-RuntimeSignatureByte -Signature $signature -Value (Get-RuntimeCameraHeading -State $State)
     $signature = Update-RuntimeSignatureByte -Signature $signature -Value (Get-RuntimeRoomVariant -State $State)
+    $signature = Update-RuntimeSignatureByte -Signature $signature -Value $kit.ProjectionPitch
+    $signature = Update-RuntimeSignatureWord -Signature $signature -Value $kit.ProjectionScale
+    $signature = Update-RuntimeSignatureByte -Signature $signature -Value (Get-RuntimeCueFlags -State $State -Constants $Constants -GameplayKits $GameplayKits)
     $signature = Update-RuntimeSignatureByte -Signature $signature -Value $State.ShieldCount
     $signature = Update-RuntimeSignatureByte -Signature $signature -Value $State.PulseCount
     $signature = Update-RuntimeSignatureByte -Signature $signature -Value $State.DataCount
@@ -1734,6 +2050,70 @@ function Move-Enemy {
     Move-EnemyTowardTarget -State $State -Constants $Constants -EnemyIndex $EnemyIndex -TargetX $targetX -TargetY $targetY -PreferVertical:$preferVertical
 }
 
+function Clear-EnemyPressure {
+    param($State)
+    $State.ThreatLevel = 0
+}
+
+function Get-EnemyPlayerDelta {
+    param($State, $Enemy)
+
+    return [pscustomobject]@{
+        Dx = [Math]::Abs($State.PlayerX - $Enemy.X)
+        Dy = [Math]::Abs($State.PlayerY - $Enemy.Y)
+    }
+}
+
+function Evaluate-EnemyThreat {
+    param(
+        $State,
+        $Constants,
+        $Enemy
+    )
+
+    $delta = Get-EnemyPlayerDelta -State $State -Enemy $Enemy
+    $distance = $delta.Dx + $delta.Dy
+    if ($distance -le $Constants.NEAR_THREAT_DISTANCE) {
+        if ($Enemy.Kind -eq 'WARDEN' -and $State.SectorNum -eq 3) {
+            return 2
+        }
+
+        return 1
+    }
+
+    if ($Enemy.Kind -eq 'WARDEN' -and $State.SectorNum -eq 3 -and $distance -le $Constants.ELITE_THREAT_DISTANCE) {
+        return 2
+    }
+
+    return 0
+}
+
+function Update-EnemyPressure {
+    param(
+        $State,
+        $Constants
+    )
+
+    Clear-EnemyPressure -State $State
+    foreach ($enemy in $State.Enemies) {
+        if (-not $enemy.Alive) {
+            continue
+        }
+
+        $threat = Evaluate-EnemyThreat -State $State -Constants $Constants -Enemy $enemy
+        if ($threat -le $State.ThreatLevel) {
+            continue
+        }
+
+        $State.ThreatLevel = $threat
+        $State.ThreatX = $enemy.X
+        $State.ThreatY = $enemy.Y
+        if ($threat -eq 2) {
+            break
+        }
+    }
+}
+
 function Run-EnemyTurn {
     param(
         $State,
@@ -1741,6 +2121,7 @@ function Run-EnemyTurn {
         $Sectors
     )
 
+    Clear-EnemyPressure -State $State
     for ($i = 0; $i -lt $State.Enemies.Count; $i++) {
         Move-Enemy -State $State -Constants $Constants -Sectors $Sectors -EnemyIndex $i
         if ($State.GameState -ne 'PLAYING') {
@@ -1748,8 +2129,11 @@ function Run-EnemyTurn {
         }
     }
 
-    if ($State.GameState -eq 'PLAYING' -and $State.SpoofTimer -gt 0) {
-        $State.SpoofTimer -= 1
+    if ($State.GameState -eq 'PLAYING') {
+        Update-EnemyPressure -State $State -Constants $Constants
+        if ($State.SpoofTimer -gt 0) {
+            $State.SpoofTimer -= 1
+        }
     }
 }
 
@@ -2078,6 +2462,7 @@ function Invoke-ReplayScenario {
         $Demo,
         $Constants,
         $Sectors,
+        [object[]]$GameplayKits,
         [bool]$MusicEnabled,
         $MusicThemes
     )
@@ -2127,7 +2512,7 @@ function Invoke-ReplayScenario {
             Update-ReplayFeedback -State $state -MusicEnabled $MusicEnabled -MusicThemes $MusicThemes
             Process-ReplayAction -State $state -Constants $Constants -Sectors $Sectors -Action $parsedStep.Action
             if ($captureRuntimeCheckpoints -and $parsedStep.Action -ne 'WAIT') {
-                $checkpointSignatures.Add((Get-RuntimeVerificationSignature -State $state))
+                $checkpointSignatures.Add((Get-RuntimeVerificationSignature -State $state -Constants $Constants -GameplayKits $GameplayKits))
             }
             if ($state.GameState -ne 'PLAYING') {
                 break
@@ -2155,7 +2540,7 @@ function Invoke-ReplayScenario {
         Ticks = $state.TraceTicks
         Observed = $observed
         Signature = (Get-ReplaySignature -Observed $observed)
-        RuntimeFinalSignature = (Get-RuntimeVerificationSignature -State $state)
+        RuntimeFinalSignature = (Get-RuntimeVerificationSignature -State $state -Constants $Constants -GameplayKits $GameplayKits)
         CheckpointSignatures = $checkpointSignatures.ToArray()
         SuggestedExpectation = (ConvertTo-ExpectationBlock -Indent '            ' -Observed $observed)
         Mismatches = (Compare-ExpectedReplayResult -DemoName $name -Expected $expected -Observed $observed)
@@ -2163,6 +2548,7 @@ function Invoke-ReplayScenario {
 }
 
 $constants = Get-RequiredConstants -SourcePath $ConstantsSourcePath
+$gameplayKits = Get-GameplayKitDefinitions -SourcePath $GeometrySourcePath
 $sectorSource = Import-StructuredDataFile -SourcePath $SectorSourcePath -Label 'sector source'
 $demoSource = Import-StructuredDataFile -SourcePath $DemoSourcePath -Label 'demo source'
 $musicThemes = Get-MusicThemeDefinitions -SourcePath $MusicSourcePath
@@ -2200,7 +2586,7 @@ foreach ($demo in $demos) {
     $name = if ($demo -is [System.Collections.IDictionary]) { [string]$demo.Name } else { '<invalid demo>' }
     $reportLines.Add(("Demo: {0}" -f $name))
     try {
-        $result = Invoke-ReplayScenario -Demo $demo -Constants $constants -Sectors $sectors -MusicEnabled $musicEnabled -MusicThemes $musicThemes
+        $result = Invoke-ReplayScenario -Demo $demo -Constants $constants -Sectors $sectors -GameplayKits $gameplayKits -MusicEnabled $musicEnabled -MusicThemes $musicThemes
         $results.Add($result)
         $summaryLines.Add(("{0}: {1}" -f $result.Name, $result.Signature))
         $reportLines.Add(("  Id: {0}" -f $result.Id))

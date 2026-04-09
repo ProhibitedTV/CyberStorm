@@ -54,6 +54,14 @@ function Face {
         @{ Key = 'player_trim'; Base = 6; Dither = 7 }
         @{ Key = 'warden_core'; Base = 10; Dither = 7 }
         @{ Key = 'warden_trim'; Base = 7; Dither = 10 }
+        @{ Key = 'rusher_core'; Base = 10; Dither = 7 }
+        @{ Key = 'rusher_trim'; Base = 7; Dither = 9 }
+        @{ Key = 'flanker_core'; Base = 8; Dither = 7 }
+        @{ Key = 'flanker_trim'; Base = 7; Dither = 8 }
+        @{ Key = 'beacon_exit'; Base = 17; Dither = 7 }
+        @{ Key = 'beacon_focus'; Base = 7; Dither = 6 }
+        @{ Key = 'beacon_spoof'; Base = 6; Dither = 7 }
+        @{ Key = 'beacon_threat'; Base = 8; Dither = 10 }
         @{ Key = 'vault_wall'; Base = 11; Dither = 6 }
         @{ Key = 'vault_trim'; Base = 6; Dither = 7 }
         @{ Key = 'furnace_wall'; Base = 10; Dither = 8 }
@@ -514,13 +522,24 @@ function Face {
             SurgeMesh = 'surge_vault'
             ShardMesh = 'shard_vault'
             Camera = @{
-                Height = 5.50
-                Distance = 7.25
-                LookAhead = 0.75
+                Height = 5.15
+                Distance = 6.95
+                LookAhead = 0.85
                 HeadingNorthYawDegrees = 135.0
                 HeadingEastYawDegrees = 45.0
                 HeadingSouthYawDegrees = 315.0
                 HeadingWestYawDegrees = 225.0
+            }
+            Projection = @{
+                PitchDegrees = -18.0
+                ProjectScale = 92
+            }
+            Structure = @{
+                NearInset = 0.45
+                NearWidth = 0.34
+                NearHeight = 1.55
+                FarInset = 0.55
+                FarHeight = 0.72
             }
             Atmosphere = @{
                 BackdropFar = 'PAL_BG0'
@@ -545,13 +564,24 @@ function Face {
             SurgeMesh = 'surge_furnace'
             ShardMesh = 'shard_furnace'
             Camera = @{
-                Height = 5.90
-                Distance = 7.00
-                LookAhead = 0.85
+                Height = 5.55
+                Distance = 6.75
+                LookAhead = 0.95
                 HeadingNorthYawDegrees = 135.0
                 HeadingEastYawDegrees = 45.0
                 HeadingSouthYawDegrees = 315.0
                 HeadingWestYawDegrees = 225.0
+            }
+            Projection = @{
+                PitchDegrees = -16.0
+                ProjectScale = 96
+            }
+            Structure = @{
+                NearInset = 0.40
+                NearWidth = 0.38
+                NearHeight = 1.65
+                FarInset = 0.48
+                FarHeight = 0.82
             }
             Atmosphere = @{
                 BackdropFar = 'PAL_BG1'
@@ -576,13 +606,24 @@ function Face {
             SurgeMesh = 'surge_lock'
             ShardMesh = 'shard_lock'
             Camera = @{
-                Height = 6.15
-                Distance = 6.70
-                LookAhead = 0.70
+                Height = 5.85
+                Distance = 6.50
+                LookAhead = 0.80
                 HeadingNorthYawDegrees = 135.0
                 HeadingEastYawDegrees = 45.0
                 HeadingSouthYawDegrees = 315.0
                 HeadingWestYawDegrees = 225.0
+            }
+            Projection = @{
+                PitchDegrees = -14.0
+                ProjectScale = 100
+            }
+            Structure = @{
+                NearInset = 0.36
+                NearWidth = 0.42
+                NearHeight = 1.75
+                FarInset = 0.42
+                FarHeight = 0.92
             }
             Atmosphere = @{
                 BackdropFar = 'PAL_BLACK'
@@ -804,11 +845,155 @@ function Face {
             )
         }
         @{
+            Key = 'beacon_exit'
+            Vertices = @(
+                (M -34 0 -34), (M 34 0 -34), (M 34 0 34), (M -34 0 34),
+                (M -18 118 -18), (M 18 118 -18), (M 18 118 18), (M -18 118 18),
+                (M 0 276 0)
+            )
+            Faces = @(
+                (Face @(0, 1, 5, 4) 'beacon_exit'),
+                (Face @(1, 2, 6, 5) 'panel_white'),
+                (Face @(2, 3, 7, 6) 'beacon_exit'),
+                (Face @(3, 0, 4, 7) 'panel_white'),
+                (Face @(4, 5, 8) 'beacon_exit'),
+                (Face @(5, 6, 8) 'panel_white'),
+                (Face @(6, 7, 8) 'beacon_exit'),
+                (Face @(7, 4, 8) 'panel_white')
+            )
+        }
+        @{
+            Key = 'beacon_focus'
+            Vertices = @(
+                (M -30 0 -30), (M 30 0 -30), (M 30 0 30), (M -30 0 30),
+                (M -14 112 -14), (M 14 112 -14), (M 14 112 14), (M -14 112 14),
+                (M 0 256 0)
+            )
+            Faces = @(
+                (Face @(0, 1, 5, 4) 'beacon_focus'),
+                (Face @(1, 2, 6, 5) 'panel_dark'),
+                (Face @(2, 3, 7, 6) 'beacon_focus'),
+                (Face @(3, 0, 4, 7) 'panel_dark'),
+                (Face @(4, 5, 8) 'panel_white'),
+                (Face @(5, 6, 8) 'beacon_focus'),
+                (Face @(6, 7, 8) 'panel_white'),
+                (Face @(7, 4, 8) 'beacon_focus')
+            )
+        }
+        @{
+            Key = 'beacon_spoof'
+            Vertices = @(
+                (M -30 0 -30), (M 30 0 -30), (M 30 0 30), (M -30 0 30),
+                (M -14 114 -14), (M 14 114 -14), (M 14 114 14), (M -14 114 14),
+                (M 0 266 0)
+            )
+            Faces = @(
+                (Face @(0, 1, 5, 4) 'beacon_spoof'),
+                (Face @(1, 2, 6, 5) 'panel_white'),
+                (Face @(2, 3, 7, 6) 'beacon_spoof'),
+                (Face @(3, 0, 4, 7) 'panel_dark'),
+                (Face @(4, 5, 8) 'beacon_spoof'),
+                (Face @(5, 6, 8) 'panel_white'),
+                (Face @(6, 7, 8) 'beacon_spoof'),
+                (Face @(7, 4, 8) 'panel_white')
+            )
+        }
+        @{
+            Key = 'beacon_threat'
+            Vertices = @(
+                (M -32 0 -32), (M 32 0 -32), (M 32 0 32), (M -32 0 32),
+                (M -16 118 -16), (M 16 118 -16), (M 16 118 16), (M -16 118 16),
+                (M 0 284 0)
+            )
+            Faces = @(
+                (Face @(0, 1, 5, 4) 'beacon_threat'),
+                (Face @(1, 2, 6, 5) 'panel_white'),
+                (Face @(2, 3, 7, 6) 'panel_red'),
+                (Face @(3, 0, 4, 7) 'panel_dark'),
+                (Face @(4, 5, 8) 'beacon_threat'),
+                (Face @(5, 6, 8) 'panel_white'),
+                (Face @(6, 7, 8) 'panel_red'),
+                (Face @(7, 4, 8) 'panel_white')
+            )
+        }
+        @{
+            Key = 'enemy_rusher'
+            Vertices = @(
+                (M -34 0 -26), (M 34 0 -26), (M 34 0 26), (M -34 0 26),
+                (M -44 118 -18), (M 44 118 -18), (M 36 162 28), (M -36 162 28),
+                (M 0 286 -18)
+            )
+            Faces = @(
+                (Face @(0, 1, 5, 4) 'rusher_core'),
+                (Face @(1, 2, 6, 5) 'rusher_trim'),
+                (Face @(2, 3, 7, 6) 'rusher_core'),
+                (Face @(3, 0, 4, 7) 'rusher_trim'),
+                (Face @(4, 5, 8) 'panel_white'),
+                (Face @(5, 6, 8) 'rusher_core'),
+                (Face @(6, 7, 8) 'rusher_trim'),
+                (Face @(7, 4, 8) 'rusher_core')
+            )
+        }
+        @{
+            Key = 'enemy_rusher_alt'
+            Vertices = @(
+                (M -34 0 -24), (M 34 0 -30), (M 34 0 30), (M -34 0 24),
+                (M -46 120 -10), (M 40 114 -24), (M 34 164 32), (M -40 170 22),
+                (M -4 288 -26)
+            )
+            Faces = @(
+                (Face @(0, 1, 5, 4) 'rusher_core'),
+                (Face @(1, 2, 6, 5) 'rusher_trim'),
+                (Face @(2, 3, 7, 6) 'rusher_core'),
+                (Face @(3, 0, 4, 7) 'rusher_trim'),
+                (Face @(4, 5, 8) 'panel_white'),
+                (Face @(5, 6, 8) 'rusher_core'),
+                (Face @(6, 7, 8) 'rusher_trim'),
+                (Face @(7, 4, 8) 'rusher_core')
+            )
+        }
+        @{
+            Key = 'enemy_flanker'
+            Vertices = @(
+                (M -40 0 -34), (M 40 0 -20), (M 40 0 20), (M -40 0 34),
+                (M -56 110 -14), (M 48 122 -24), (M 34 170 36), (M -48 160 44),
+                (M -8 276 6)
+            )
+            Faces = @(
+                (Face @(0, 1, 5, 4) 'flanker_core'),
+                (Face @(1, 2, 6, 5) 'flanker_trim'),
+                (Face @(2, 3, 7, 6) 'flanker_core'),
+                (Face @(3, 0, 4, 7) 'flanker_trim'),
+                (Face @(4, 5, 8) 'panel_white'),
+                (Face @(5, 6, 8) 'flanker_core'),
+                (Face @(6, 7, 8) 'flanker_trim'),
+                (Face @(7, 4, 8) 'flanker_core')
+            )
+        }
+        @{
+            Key = 'enemy_flanker_alt'
+            Vertices = @(
+                (M -40 0 -20), (M 40 0 -34), (M 40 0 34), (M -40 0 20),
+                (M -48 122 -24), (M 56 110 -14), (M 48 160 44), (M -34 170 36),
+                (M 8 276 6)
+            )
+            Faces = @(
+                (Face @(0, 1, 5, 4) 'flanker_core'),
+                (Face @(1, 2, 6, 5) 'flanker_trim'),
+                (Face @(2, 3, 7, 6) 'flanker_core'),
+                (Face @(3, 0, 4, 7) 'flanker_trim'),
+                (Face @(4, 5, 8) 'panel_white'),
+                (Face @(5, 6, 8) 'flanker_core'),
+                (Face @(6, 7, 8) 'flanker_trim'),
+                (Face @(7, 4, 8) 'flanker_core')
+            )
+        }
+        @{
             Key = 'player_runner'
             Vertices = @(
-                (M -42 0 -30), (M 42 0 -30), (M 42 0 30), (M -42 0 30),
-                (M -54 122 -22), (M 54 122 -22), (M 42 158 34), (M -42 158 34),
-                (M -22 256 -4), (M 22 256 -4), (M 0 324 -24)
+                (M -50 0 -34), (M 50 0 -34), (M 50 0 34), (M -50 0 34),
+                (M -62 126 -24), (M 62 126 -24), (M 50 170 40), (M -50 170 40),
+                (M -28 268 -6), (M 28 268 -6), (M 0 336 -28)
             )
             Faces = @(
                 (Face @(0, 1, 5, 4) 'player_core'),
@@ -824,9 +1009,9 @@ function Face {
         @{
             Key = 'warden'
             Vertices = @(
-                (M -52 0 -38), (M 52 0 -38), (M 52 0 38), (M -52 0 38),
-                (M -68 142 -28), (M 68 142 -28), (M 52 194 42), (M -52 194 42),
-                (M -34 292 -8), (M 34 292 -8), (M 0 366 -34)
+                (M -60 0 -42), (M 60 0 -42), (M 60 0 42), (M -60 0 42),
+                (M -78 148 -30), (M 78 148 -30), (M 60 204 48), (M -60 204 48),
+                (M -40 300 -10), (M 40 300 -10), (M 0 378 -38)
             )
             Faces = @(
                 (Face @(0, 1, 5, 4) 'warden_core'),

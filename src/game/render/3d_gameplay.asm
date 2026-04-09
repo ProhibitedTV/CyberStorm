@@ -218,8 +218,10 @@ game3d_setup_camera:
     xor ah, ah
     add ax, GAME3D_VIEW_Y + GAME3D_CAMERA_HORIZON_CENTER_OFFSET
     mov [scene3d_center_y], ax
-    mov word ptr [scene3d_project_scale], GAME3D_PROJECT_SCALE
-    mov byte ptr [scene3d_pitch_angle], GAME3D_CAMERA_PITCH
+    call game3d_get_projection_scale
+    mov [scene3d_project_scale], ax
+    call game3d_get_projection_pitch
+    mov [scene3d_pitch_angle], al
     mov al, [game3d_camera_yaw_current]
     mov [scene3d_yaw_angle], al
 
@@ -308,9 +310,11 @@ game3d_compile_room_mesh:
     call game3d_compile_floor_strips
     mov byte ptr [game3d_wall_emit_mode], 0
     call game3d_compile_active_wall_families
+    call game3d_compile_near_occluders
     call game3d_compile_gate_frame
     call game3d_compile_gate_lane_strips
     call game3d_compile_interactable_frames
+    call game3d_compile_far_silhouette
     call game3d_compile_floor_trim_strips
     mov byte ptr [game3d_wall_emit_mode], 1
     call game3d_compile_active_wall_families
@@ -841,6 +845,378 @@ game3d_frame_next:
     jnz game3d_frame_row_loop
     ret
 
+game3d_get_near_occluder_top_y:
+    call game3d_get_near_occluder_height
+    add ax, GAME3D_FLOOR_Y
+    ret
+
+game3d_get_far_silhouette_bottom_y:
+    push dx
+    call game3d_get_far_silhouette_height
+    mov dx, GAME3D_WALL_TOP_Y
+    sub dx, ax
+    mov ax, dx
+    pop dx
+    ret
+
+game3d_compile_near_occluders:
+    mov al, [game3d_room_variant]
+    cmp al, GAME3D_ROOM_VARIANT_SOUTHWEST
+    je game3d_compile_near_northeast
+    cmp al, GAME3D_ROOM_VARIANT_NORTHEAST
+    je game3d_compile_near_southwest
+    cmp al, GAME3D_ROOM_VARIANT_SOUTHEAST
+    je game3d_compile_near_northwest
+    call game3d_compile_near_southeast
+    call game3d_compile_exit_jambs
+    ret
+
+game3d_compile_near_northeast:
+    call game3d_compile_near_northeast_corner
+    call game3d_compile_exit_jambs
+    ret
+
+game3d_compile_near_southwest:
+    call game3d_compile_near_southwest_corner
+    call game3d_compile_exit_jambs
+    ret
+
+game3d_compile_near_northwest:
+    call game3d_compile_near_northwest_corner
+    call game3d_compile_exit_jambs
+    ret
+
+game3d_compile_near_southeast:
+    call game3d_compile_near_southeast_corner
+    ret
+
+game3d_compile_near_southeast_corner:
+    push ax
+    push bx
+    push dx
+    mov al, MAP_W
+    call game3d_world_x_edge_from_al
+    mov [scene3d_temp_s], ax
+    mov al, MAP_H
+    call game3d_world_z_edge_from_al
+    mov [scene3d_temp_r], ax
+    call game3d_get_near_occluder_inset
+    mov [scene3d_temp_l], ax
+    call game3d_get_near_occluder_top_y
+    mov [scene3d_temp_u], ax
+    mov word ptr [scene3d_temp_z], GAME3D_FLOOR_Y
+
+    mov ax, [scene3d_temp_s]
+    sub ax, [scene3d_temp_l]
+    mov [scene3d_temp_x], ax
+    mov [scene3d_temp_y], ax
+    mov ax, [scene3d_temp_r]
+    sub ax, [scene3d_temp_l]
+    mov [scene3d_temp_w], ax
+    call game3d_get_near_occluder_width
+    shl ax, 1
+    mov dx, ax
+    mov ax, [scene3d_temp_w]
+    sub ax, dx
+    mov [scene3d_temp_v], ax
+    call game3d_get_wall_base_material
+    mov [scene3d_temp_color], al
+    mov [scene3d_temp_dither], ah
+    mov byte ptr [scene3d_temp_face], GAME3D_FACE_FLAG_WALL
+    call game3d_emit_quad_from_temps
+
+    mov ax, [scene3d_temp_s]
+    sub ax, [scene3d_temp_l]
+    mov [scene3d_temp_y], ax
+    call game3d_get_near_occluder_width
+    shl ax, 1
+    mov dx, ax
+    mov ax, [scene3d_temp_y]
+    sub ax, dx
+    mov [scene3d_temp_x], ax
+    mov ax, [scene3d_temp_r]
+    sub ax, [scene3d_temp_l]
+    mov [scene3d_temp_v], ax
+    mov [scene3d_temp_w], ax
+    call game3d_get_wall_trim_material
+    mov [scene3d_temp_color], al
+    mov [scene3d_temp_dither], ah
+    mov byte ptr [scene3d_temp_face], GAME3D_FACE_FLAG_WALL or GAME3D_FACE_FLAG_TRIM
+    call game3d_emit_quad_from_temps
+    pop dx
+    pop bx
+    pop ax
+    ret
+
+game3d_compile_near_southwest_corner:
+    push ax
+    push bx
+    push dx
+    mov al, 0
+    call game3d_world_x_edge_from_al
+    mov [scene3d_temp_s], ax
+    mov al, MAP_H
+    call game3d_world_z_edge_from_al
+    mov [scene3d_temp_r], ax
+    call game3d_get_near_occluder_inset
+    mov [scene3d_temp_l], ax
+    call game3d_get_near_occluder_top_y
+    mov [scene3d_temp_u], ax
+    mov word ptr [scene3d_temp_z], GAME3D_FLOOR_Y
+
+    mov ax, [scene3d_temp_s]
+    add ax, [scene3d_temp_l]
+    mov [scene3d_temp_x], ax
+    mov [scene3d_temp_y], ax
+    mov ax, [scene3d_temp_r]
+    sub ax, [scene3d_temp_l]
+    mov [scene3d_temp_w], ax
+    call game3d_get_near_occluder_width
+    shl ax, 1
+    mov dx, ax
+    mov ax, [scene3d_temp_w]
+    sub ax, dx
+    mov [scene3d_temp_v], ax
+    call game3d_get_wall_base_material
+    mov [scene3d_temp_color], al
+    mov [scene3d_temp_dither], ah
+    mov byte ptr [scene3d_temp_face], GAME3D_FACE_FLAG_WALL
+    call game3d_emit_quad_from_temps
+
+    mov ax, [scene3d_temp_s]
+    add ax, [scene3d_temp_l]
+    mov [scene3d_temp_x], ax
+    call game3d_get_near_occluder_width
+    shl ax, 1
+    mov dx, ax
+    mov ax, [scene3d_temp_x]
+    add ax, dx
+    mov [scene3d_temp_y], ax
+    mov ax, [scene3d_temp_r]
+    sub ax, [scene3d_temp_l]
+    mov [scene3d_temp_v], ax
+    mov [scene3d_temp_w], ax
+    call game3d_get_wall_trim_material
+    mov [scene3d_temp_color], al
+    mov [scene3d_temp_dither], ah
+    mov byte ptr [scene3d_temp_face], GAME3D_FACE_FLAG_WALL or GAME3D_FACE_FLAG_TRIM
+    call game3d_emit_quad_from_temps
+    pop dx
+    pop bx
+    pop ax
+    ret
+
+game3d_compile_near_northwest_corner:
+    push ax
+    push bx
+    push dx
+    mov al, 0
+    call game3d_world_x_edge_from_al
+    mov [scene3d_temp_s], ax
+    mov al, 0
+    call game3d_world_z_edge_from_al
+    mov [scene3d_temp_r], ax
+    call game3d_get_near_occluder_inset
+    mov [scene3d_temp_l], ax
+    call game3d_get_near_occluder_top_y
+    mov [scene3d_temp_u], ax
+    mov word ptr [scene3d_temp_z], GAME3D_FLOOR_Y
+
+    mov ax, [scene3d_temp_s]
+    add ax, [scene3d_temp_l]
+    mov [scene3d_temp_x], ax
+    mov [scene3d_temp_y], ax
+    mov ax, [scene3d_temp_r]
+    add ax, [scene3d_temp_l]
+    mov [scene3d_temp_v], ax
+    call game3d_get_near_occluder_width
+    shl ax, 1
+    mov dx, ax
+    mov ax, [scene3d_temp_v]
+    add ax, dx
+    mov [scene3d_temp_w], ax
+    call game3d_get_wall_base_material
+    mov [scene3d_temp_color], al
+    mov [scene3d_temp_dither], ah
+    mov byte ptr [scene3d_temp_face], GAME3D_FACE_FLAG_WALL
+    call game3d_emit_quad_from_temps
+
+    mov ax, [scene3d_temp_s]
+    add ax, [scene3d_temp_l]
+    mov [scene3d_temp_x], ax
+    call game3d_get_near_occluder_width
+    shl ax, 1
+    mov dx, ax
+    mov ax, [scene3d_temp_x]
+    add ax, dx
+    mov [scene3d_temp_y], ax
+    mov ax, [scene3d_temp_r]
+    add ax, [scene3d_temp_l]
+    mov [scene3d_temp_v], ax
+    mov [scene3d_temp_w], ax
+    call game3d_get_wall_trim_material
+    mov [scene3d_temp_color], al
+    mov [scene3d_temp_dither], ah
+    mov byte ptr [scene3d_temp_face], GAME3D_FACE_FLAG_WALL or GAME3D_FACE_FLAG_TRIM
+    call game3d_emit_quad_from_temps
+    pop dx
+    pop bx
+    pop ax
+    ret
+
+game3d_compile_near_northeast_corner:
+    push ax
+    push bx
+    push dx
+    mov al, MAP_W
+    call game3d_world_x_edge_from_al
+    mov [scene3d_temp_s], ax
+    mov al, 0
+    call game3d_world_z_edge_from_al
+    mov [scene3d_temp_r], ax
+    call game3d_get_near_occluder_inset
+    mov [scene3d_temp_l], ax
+    call game3d_get_near_occluder_top_y
+    mov [scene3d_temp_u], ax
+    mov word ptr [scene3d_temp_z], GAME3D_FLOOR_Y
+
+    mov ax, [scene3d_temp_s]
+    sub ax, [scene3d_temp_l]
+    mov [scene3d_temp_x], ax
+    mov [scene3d_temp_y], ax
+    mov ax, [scene3d_temp_r]
+    add ax, [scene3d_temp_l]
+    mov [scene3d_temp_v], ax
+    call game3d_get_near_occluder_width
+    shl ax, 1
+    mov dx, ax
+    mov ax, [scene3d_temp_v]
+    add ax, dx
+    mov [scene3d_temp_w], ax
+    call game3d_get_wall_base_material
+    mov [scene3d_temp_color], al
+    mov [scene3d_temp_dither], ah
+    mov byte ptr [scene3d_temp_face], GAME3D_FACE_FLAG_WALL
+    call game3d_emit_quad_from_temps
+
+    mov ax, [scene3d_temp_s]
+    sub ax, [scene3d_temp_l]
+    mov [scene3d_temp_y], ax
+    call game3d_get_near_occluder_width
+    shl ax, 1
+    mov dx, ax
+    mov ax, [scene3d_temp_y]
+    sub ax, dx
+    mov [scene3d_temp_x], ax
+    mov ax, [scene3d_temp_r]
+    add ax, [scene3d_temp_l]
+    mov [scene3d_temp_v], ax
+    mov [scene3d_temp_w], ax
+    call game3d_get_wall_trim_material
+    mov [scene3d_temp_color], al
+    mov [scene3d_temp_dither], ah
+    mov byte ptr [scene3d_temp_face], GAME3D_FACE_FLAG_WALL or GAME3D_FACE_FLAG_TRIM
+    call game3d_emit_quad_from_temps
+    pop dx
+    pop bx
+    pop ax
+    ret
+
+game3d_compile_exit_jambs:
+    push ax
+    push bx
+    push dx
+    mov bl, [exit_x]
+    mov bh, [exit_y]
+    call game3d_get_near_occluder_inset
+    mov [scene3d_temp_l], ax
+    call game3d_get_near_occluder_width
+    mov [scene3d_temp_r], ax
+    call game3d_get_near_occluder_top_y
+    mov [scene3d_temp_u], ax
+    mov word ptr [scene3d_temp_z], GAME3D_FLOOR_Y
+
+    mov al, bl
+    call game3d_world_x_edge_from_al
+    mov [scene3d_temp_x], ax
+    mov [scene3d_temp_y], ax
+    mov al, bh
+    call game3d_world_z_edge_from_al
+    add ax, [scene3d_temp_l]
+    mov [scene3d_temp_v], ax
+    mov dx, ax
+    add dx, [scene3d_temp_r]
+    mov [scene3d_temp_w], dx
+    call game3d_get_wall_trim_material
+    mov [scene3d_temp_color], al
+    mov [scene3d_temp_dither], ah
+    mov byte ptr [scene3d_temp_face], GAME3D_FACE_FLAG_FRAME
+    call game3d_emit_quad_from_temps
+
+    mov al, bl
+    inc al
+    call game3d_world_x_edge_from_al
+    mov [scene3d_temp_x], ax
+    mov [scene3d_temp_y], ax
+    mov ax, [scene3d_temp_v]
+    mov [scene3d_temp_v], ax
+    mov dx, ax
+    add dx, [scene3d_temp_r]
+    mov [scene3d_temp_w], dx
+    call game3d_get_wall_trim_material
+    mov [scene3d_temp_color], al
+    mov [scene3d_temp_dither], ah
+    mov byte ptr [scene3d_temp_face], GAME3D_FACE_FLAG_FRAME
+    call game3d_emit_quad_from_temps
+    pop dx
+    pop bx
+    pop ax
+    ret
+
+game3d_compile_far_silhouette:
+    push ax
+    push bx
+    push dx
+    mov al, 0
+    call game3d_world_x_edge_from_al
+    mov [scene3d_temp_x], ax
+    mov al, MAP_W
+    call game3d_world_x_edge_from_al
+    mov [scene3d_temp_y], ax
+    call game3d_get_far_silhouette_inset
+    add [scene3d_temp_x], ax
+    sub [scene3d_temp_y], ax
+    call game3d_get_far_silhouette_bottom_y
+    mov [scene3d_temp_z], ax
+    mov word ptr [scene3d_temp_u], GAME3D_WALL_TOP_Y
+    mov al, [game3d_room_variant]
+    cmp al, GAME3D_ROOM_VARIANT_SOUTHWEST
+    je game3d_far_south_band
+    cmp al, GAME3D_ROOM_VARIANT_SOUTHEAST
+    je game3d_far_south_band
+    mov al, 0
+    call game3d_world_z_edge_from_al
+    mov [scene3d_temp_v], ax
+    mov [scene3d_temp_w], ax
+    jmp game3d_far_band_ready
+
+game3d_far_south_band:
+    mov al, MAP_H
+    call game3d_world_z_edge_from_al
+    mov [scene3d_temp_v], ax
+    mov [scene3d_temp_w], ax
+
+game3d_far_band_ready:
+    call game3d_get_wall_cap_material
+    mov [scene3d_temp_color], al
+    mov [scene3d_temp_dither], ah
+    mov byte ptr [scene3d_temp_face], GAME3D_FACE_FLAG_WALL or GAME3D_FACE_FLAG_TRIM
+    call game3d_emit_quad_from_temps
+    pop dx
+    pop bx
+    pop ax
+    ret
+
 game3d_emit_floor_base_run:
     push ax
     push bx
@@ -1343,6 +1719,16 @@ game3d_get_floor_far_material:
     pop bx
     ret
 
+game3d_get_wall_far_material:
+    push bx
+    call game3d_get_kit_index
+    xor ah, ah
+    mov bx, ax
+    mov al, cs:[game3d_kit_backdrop_mid_color_table + bx]
+    mov ah, cs:[game3d_kit_backdrop_far_color_table + bx]
+    pop bx
+    ret
+
 game3d_get_wall_base_material:
     push bx
     call game3d_get_kit_index
@@ -1410,6 +1796,75 @@ game3d_get_camera_look_ahead:
     mov bx, ax
     shl bx, 1
     mov ax, cs:[game3d_kit_camera_look_ahead_table + bx]
+    pop bx
+    ret
+
+game3d_get_projection_pitch:
+    push bx
+    call game3d_get_kit_index
+    xor ah, ah
+    mov bx, ax
+    mov al, cs:[game3d_kit_projection_pitch_table + bx]
+    pop bx
+    ret
+
+game3d_get_projection_scale:
+    push bx
+    call game3d_get_kit_index
+    xor ah, ah
+    mov bx, ax
+    shl bx, 1
+    mov ax, cs:[game3d_kit_projection_scale_table + bx]
+    pop bx
+    ret
+
+game3d_get_near_occluder_inset:
+    push bx
+    call game3d_get_kit_index
+    xor ah, ah
+    mov bx, ax
+    shl bx, 1
+    mov ax, cs:[game3d_kit_near_occluder_inset_table + bx]
+    pop bx
+    ret
+
+game3d_get_near_occluder_width:
+    push bx
+    call game3d_get_kit_index
+    xor ah, ah
+    mov bx, ax
+    shl bx, 1
+    mov ax, cs:[game3d_kit_near_occluder_width_table + bx]
+    pop bx
+    ret
+
+game3d_get_near_occluder_height:
+    push bx
+    call game3d_get_kit_index
+    xor ah, ah
+    mov bx, ax
+    shl bx, 1
+    mov ax, cs:[game3d_kit_near_occluder_height_table + bx]
+    pop bx
+    ret
+
+game3d_get_far_silhouette_inset:
+    push bx
+    call game3d_get_kit_index
+    xor ah, ah
+    mov bx, ax
+    shl bx, 1
+    mov ax, cs:[game3d_kit_far_silhouette_inset_table + bx]
+    pop bx
+    ret
+
+game3d_get_far_silhouette_height:
+    push bx
+    call game3d_get_kit_index
+    xor ah, ah
+    mov bx, ax
+    shl bx, 1
+    mov ax, cs:[game3d_kit_far_silhouette_height_table + bx]
     pop bx
     ret
 
@@ -1707,6 +2162,151 @@ game3d_project_tile_center:
     call game3d_get_tile_center_world
     mov bx, GAME3D_FLOOR_Y
     call game3d_project_world_point
+    ret
+
+game3d_setup_signature_camera:
+    push ax
+    push bx
+    push cx
+    push dx
+
+    mov word ptr [scene3d_clip_left], GAME3D_VIEW_X
+    mov word ptr [scene3d_clip_top], GAME3D_VIEW_Y
+    mov word ptr [scene3d_clip_right], GAME3D_VIEW_X + GAME3D_VIEW_W - 1
+    mov word ptr [scene3d_clip_bottom], GAME3D_VIEW_Y + GAME3D_VIEW_H - 1
+    mov word ptr [scene3d_center_x], GAME3D_VIEW_X + (GAME3D_VIEW_W / 2)
+    call game3d_get_horizon_y
+    xor ah, ah
+    add ax, GAME3D_VIEW_Y + GAME3D_CAMERA_HORIZON_CENTER_OFFSET
+    mov [scene3d_center_y], ax
+    call game3d_get_projection_scale
+    mov [scene3d_project_scale], ax
+    call game3d_get_projection_pitch
+    mov [scene3d_pitch_angle], al
+    call game3d_get_facing_heading
+    call game3d_get_heading_target_yaw
+    mov [scene3d_yaw_angle], al
+
+    mov bl, [player_x]
+    mov bh, [player_y]
+    call game3d_get_tile_center_world
+    mov [scene3d_temp_v], ax
+    mov [scene3d_temp_l], dx
+
+    call game3d_get_camera_look_ahead
+    mov [scene3d_temp_r], ax
+    cmp byte ptr [last_player_dx], 0
+    je game3d_sig_camera_look_x_done
+    mov ax, [scene3d_temp_r]
+    cmp byte ptr [last_player_dx], 0
+    jg game3d_sig_camera_look_x_apply
+    neg ax
+
+game3d_sig_camera_look_x_apply:
+    add [scene3d_temp_v], ax
+
+game3d_sig_camera_look_x_done:
+    cmp byte ptr [last_player_dy], 0
+    je game3d_sig_camera_look_done
+    mov ax, [scene3d_temp_r]
+    cmp byte ptr [last_player_dy], 0
+    jg game3d_sig_camera_look_z_apply
+    neg ax
+
+game3d_sig_camera_look_z_apply:
+    add [scene3d_temp_l], ax
+
+game3d_sig_camera_look_done:
+    mov al, [scene3d_yaw_angle]
+    call scene3d_get_sin_cos
+
+    call game3d_get_camera_distance
+    call scene3d_mul_ax_bx_fixed
+    mov cx, ax
+    mov ax, [scene3d_temp_v]
+    sub ax, cx
+    mov [scene3d_cam_x], ax
+
+    call game3d_get_camera_distance
+    mov bx, dx
+    call scene3d_mul_ax_bx_fixed
+    mov cx, ax
+    mov ax, [scene3d_temp_l]
+    sub ax, cx
+    mov [scene3d_cam_z], ax
+
+    call game3d_get_camera_height
+    mov [scene3d_cam_y], ax
+
+    pop dx
+    pop cx
+    pop bx
+    pop ax
+    ret
+
+game3d_tile_requires_cue_fallback:
+    call game3d_project_tile_center
+    jnc game3d_tile_fallback_yes
+    call game3d_is_projected_point_cue_ready
+    jc game3d_tile_fallback_no
+
+game3d_tile_fallback_yes:
+    stc
+    ret
+
+game3d_tile_fallback_no:
+    clc
+    ret
+
+game3d_get_runtime_cue_flags:
+    push bx
+    push cx
+    push dx
+    xor dl, dl
+    call game3d_setup_signature_camera
+
+    mov bl, [player_x]
+    mov bh, [player_y]
+    call game3d_project_tile_center
+    jnc game3d_runtime_player_fallback
+    cmp cx, GAME3D_PLAYER_LOCATOR_FAR_DEPTH
+    jg game3d_runtime_player_fallback
+    call game3d_is_projected_point_cue_ready
+    jc game3d_runtime_exit_check
+
+game3d_runtime_player_fallback:
+    or dl, GAME3D_CUE_FLAG_PLAYER_FALLBACK
+
+game3d_runtime_exit_check:
+    mov bl, [exit_x]
+    mov bh, [exit_y]
+    call game3d_tile_requires_cue_fallback
+    jnc game3d_runtime_spoof_check
+    or dl, GAME3D_CUE_FLAG_EXIT_FALLBACK
+
+game3d_runtime_spoof_check:
+    cmp byte ptr [spoof_timer], 0
+    je game3d_runtime_threat_check
+    mov bl, [spoof_x]
+    mov bh, [spoof_y]
+    call game3d_tile_requires_cue_fallback
+    jnc game3d_runtime_threat_check
+    or dl, GAME3D_CUE_FLAG_SPOOF_FALLBACK
+
+game3d_runtime_threat_check:
+    cmp byte ptr [threat_level], THREAT_NONE
+    je game3d_runtime_flags_done
+    mov bl, [threat_x]
+    mov bh, [threat_y]
+    call game3d_tile_requires_cue_fallback
+    jnc game3d_runtime_flags_done
+    or dl, GAME3D_CUE_FLAG_THREAT_FALLBACK
+
+game3d_runtime_flags_done:
+    mov al, dl
+    pop dx
+    pop cx
+    pop bx
     ret
 
 game3d_get_scale_for_depth:
@@ -2010,6 +2610,159 @@ game3d_draw_sprite_billboard_done:
     pop ax
     ret
 
+game3d_is_projected_point_cue_ready:
+    push bx
+    push dx
+    mov bx, GAME3D_VIEW_X + GAME3D_CUE_EDGE_MARGIN
+    cmp ax, bx
+    jb game3d_cue_not_ready
+    mov bx, GAME3D_VIEW_X + GAME3D_VIEW_W - 1 - GAME3D_CUE_EDGE_MARGIN
+    cmp ax, bx
+    ja game3d_cue_not_ready
+    mov bx, GAME3D_VIEW_Y + GAME3D_CUE_EDGE_MARGIN
+    cmp dx, bx
+    jb game3d_cue_not_ready
+    mov bx, GAME3D_VIEW_Y + GAME3D_VIEW_H - 1 - GAME3D_CUE_EDGE_MARGIN
+    cmp dx, bx
+    ja game3d_cue_not_ready
+    stc
+    jmp game3d_cue_ready_done
+
+game3d_cue_not_ready:
+    clc
+
+game3d_cue_ready_done:
+    pop dx
+    pop bx
+    ret
+
+game3d_clamp_projected_point_to_view:
+    cmp ax, GAME3D_VIEW_X + GAME3D_CUE_EDGE_MARGIN
+    jge game3d_clamp_x_high
+    mov ax, GAME3D_VIEW_X + GAME3D_CUE_EDGE_MARGIN
+    jmp game3d_clamp_y_low
+
+game3d_clamp_x_high:
+    cmp ax, GAME3D_VIEW_X + GAME3D_VIEW_W - 1 - GAME3D_CUE_EDGE_MARGIN
+    jle game3d_clamp_y_low
+    mov ax, GAME3D_VIEW_X + GAME3D_VIEW_W - 1 - GAME3D_CUE_EDGE_MARGIN
+
+game3d_clamp_y_low:
+    cmp dx, GAME3D_VIEW_Y + GAME3D_CUE_EDGE_MARGIN
+    jge game3d_clamp_y_high
+    mov dx, GAME3D_VIEW_Y + GAME3D_CUE_EDGE_MARGIN
+    ret
+
+game3d_clamp_y_high:
+    cmp dx, GAME3D_VIEW_Y + GAME3D_VIEW_H - 1 - GAME3D_CUE_EDGE_MARGIN
+    jle game3d_clamp_done
+    mov dx, GAME3D_VIEW_Y + GAME3D_VIEW_H - 1 - GAME3D_CUE_EDGE_MARGIN
+
+game3d_clamp_done:
+    ret
+
+game3d_draw_beacon_mesh_at_tile:
+    push ax
+    push bx
+    push dx
+    mov al, [game3d_mesh_index]
+    mov dl, [anim_phase]
+    shl dl, 4
+    call game3d_prepare_mesh_at_tile
+    mov word ptr [game3d_mesh_world_y], GAME3D_BEACON_BASE_Y
+    test byte ptr [anim_phase], 1
+    jz game3d_draw_beacon_mesh_ready
+    add word ptr [game3d_mesh_world_y], GAME3D_BEACON_BOB_Y
+
+game3d_draw_beacon_mesh_ready:
+    call game3d_draw_mesh_instance
+    pop dx
+    pop bx
+    pop ax
+    ret
+
+game3d_draw_cue_with_beacon:
+    ; Input: BL/BH tile x/y, AL/AH glow colors, DL mesh index, CL fallback color.
+    push ax
+    push bx
+    push cx
+    push dx
+    mov [scene3d_temp_s], bx
+    mov [game3d_mesh_index], dl
+    mov [text_color], cl
+    call game3d_draw_tile_glow_3d
+    call game3d_project_tile_center
+    jnc game3d_draw_cue_done
+    call game3d_is_projected_point_cue_ready
+    jc game3d_draw_cue_beacon
+    call game3d_clamp_projected_point_to_view
+    mov bl, [text_color]
+    call game3d_draw_marker_at_projected_point
+    jmp game3d_draw_cue_done
+
+game3d_draw_cue_beacon:
+    mov bx, [scene3d_temp_s]
+    call game3d_draw_beacon_mesh_at_tile
+
+game3d_draw_cue_done:
+    pop dx
+    pop cx
+    pop bx
+    pop ax
+    ret
+
+game3d_get_enemy_mesh_index:
+    cmp byte ptr [si + ENEMY_KIND], ENEMY_WARDEN
+    je game3d_enemy_mesh_warden
+    cmp byte ptr [si + ENEMY_KIND], ENEMY_FLANKER
+    je game3d_enemy_mesh_flanker
+    mov al, GAME3D_MESH_ENEMY_RUSHER_INDEX
+    test byte ptr [anim_phase], 1
+    jz game3d_enemy_mesh_done
+    mov al, GAME3D_MESH_ENEMY_RUSHER_ALT_INDEX
+    jmp game3d_enemy_mesh_done
+
+game3d_enemy_mesh_flanker:
+    mov al, GAME3D_MESH_ENEMY_FLANKER_INDEX
+    test byte ptr [anim_phase], 1
+    jz game3d_enemy_mesh_done
+    mov al, GAME3D_MESH_ENEMY_FLANKER_ALT_INDEX
+    jmp game3d_enemy_mesh_done
+
+game3d_enemy_mesh_warden:
+    mov al, GAME3D_MESH_WARDEN_INDEX
+
+game3d_enemy_mesh_done:
+    ret
+
+game3d_apply_actor_motion:
+    ; Input: DL = yaw.
+    test byte ptr [anim_phase], 1
+    jz game3d_actor_motion_done
+    add word ptr [game3d_mesh_world_y], GAME3D_ACTOR_BOB_Y
+    cmp dl, GAME3D_YAW_EAST
+    je game3d_actor_lean_east
+    cmp dl, GAME3D_YAW_WEST
+    je game3d_actor_lean_west
+    cmp dl, GAME3D_YAW_NORTH
+    je game3d_actor_lean_north
+    add word ptr [game3d_mesh_world_z], GAME3D_ACTOR_LEAN_STEP
+    ret
+
+game3d_actor_lean_east:
+    add word ptr [game3d_mesh_world_x], GAME3D_ACTOR_LEAN_STEP
+    ret
+
+game3d_actor_lean_west:
+    sub word ptr [game3d_mesh_world_x], GAME3D_ACTOR_LEAN_STEP
+    ret
+
+game3d_actor_lean_north:
+    sub word ptr [game3d_mesh_world_z], GAME3D_ACTOR_LEAN_STEP
+
+game3d_actor_motion_done:
+    ret
+
 game3d_prepare_mesh_at_tile:
     ; Input: AL = mesh index, BL/BH = tile x/y, DL = yaw.
     mov [game3d_mesh_index], al
@@ -2164,23 +2917,21 @@ game3d_effect_color_kill:
     ret
 
 game3d_draw_player_locator_3d:
-    push ax
-    push bx
-    mov bl, [player_x]
-    mov bh, [player_y]
-    mov al, PAL_WHITE
-    mov ah, PAL_CYAN2
-    call game3d_draw_tile_glow_3d
     mov bl, [player_x]
     mov bh, [player_y]
     call game3d_project_tile_center
     jnc game3d_player_locator_done
+    cmp cx, GAME3D_PLAYER_LOCATOR_FAR_DEPTH
+    jg game3d_player_locator_marker
+    call game3d_is_projected_point_cue_ready
+    jc game3d_player_locator_done
+
+game3d_player_locator_marker:
+    call game3d_clamp_projected_point_to_view
     mov bl, PAL_WHITE
     call game3d_draw_marker_at_projected_point
 
 game3d_player_locator_done:
-    pop bx
-    pop ax
     ret
 
 game3d_get_enemy_floor_colors:
@@ -2289,12 +3040,6 @@ game3d_prop_shard:
     call game3d_draw_mesh_instance
     pop dx
     pop si
-    mov bl, dl
-    mov bh, dh
-    call game3d_project_tile_center
-    jnc game3d_prop_next
-    mov bl, PAL_CYAN2
-    call game3d_draw_marker_at_projected_point
     jmp game3d_prop_next
 
 game3d_prop_terminal:
@@ -2349,12 +3094,6 @@ game3d_prop_gate_locked:
     call game3d_draw_mesh_instance
     pop dx
     pop si
-    mov bl, dl
-    mov bh, dh
-    call game3d_project_tile_center
-    jnc game3d_prop_next
-    mov bl, PAL_RED2
-    call game3d_draw_marker_at_projected_point
     jmp game3d_prop_next
 
 game3d_prop_gate_open:
@@ -2373,12 +3112,6 @@ game3d_prop_gate_open:
     call game3d_draw_mesh_instance
     pop dx
     pop si
-    mov bl, dl
-    mov bh, dh
-    call game3d_project_tile_center
-    jnc game3d_prop_next
-    mov bl, PAL_GATE
-    call game3d_draw_marker_at_projected_point
 
 game3d_prop_next:
     inc si
@@ -2398,6 +3131,7 @@ render_enemies_3d:
 game3d_enemy_loop:
     cmp byte ptr [si + ENEMY_ALIVE], 0
     je game3d_enemy_next
+    push cx
     call game3d_get_enemy_floor_colors
     mov bl, [si + ENEMY_X]
     mov bh, [si + ENEMY_Y]
@@ -2405,53 +3139,28 @@ game3d_enemy_loop:
     mov bl, [si + ENEMY_X]
     mov bh, [si + ENEMY_Y]
     call game3d_project_tile_center
-    jnc game3d_enemy_next
+    jnc game3d_enemy_skip_visible
     push si
     push ax
-    push cx
     push dx
     call game3d_draw_shadow_at_projected_point
     pop dx
-    pop cx
-    pop ax
-    cmp byte ptr [si + ENEMY_KIND], ENEMY_WARDEN
-    jne game3d_enemy_billboard
-    push ax
-    push cx
-    push dx
-    mov bl, PAL_RED2
-    call game3d_draw_marker_at_projected_point
-    pop dx
-    pop cx
     pop ax
     push dx
     mov bl, [si + ENEMY_X]
     mov bh, [si + ENEMY_Y]
     call game3d_get_warden_yaw
     mov dl, al
-    mov al, GAME3D_MESH_WARDEN_INDEX
+    call game3d_get_enemy_mesh_index
     call game3d_prepare_mesh_at_tile
-    test byte ptr [anim_phase], 1
-    jz game3d_enemy_mesh_y_ready
-    add word ptr [game3d_mesh_world_y], 16
-
-game3d_enemy_mesh_y_ready:
+    call game3d_apply_actor_motion
     call game3d_draw_mesh_instance
     pop dx
-    jmp game3d_enemy_done
-
-game3d_enemy_billboard:
-    push ax
-    push cx
-    push dx
-    call get_enemy_sprite
-    pop dx
-    pop cx
-    pop ax
-    call game3d_draw_sprite_billboard
 
 game3d_enemy_done:
     pop si
+game3d_enemy_skip_visible:
+    pop cx
 
 game3d_enemy_next:
     add si, ENEMY_SIZE
@@ -2479,11 +3188,7 @@ render_player_3d:
     mov dl, al
     mov al, GAME3D_MESH_PLAYER_RUNNER_INDEX
     call game3d_prepare_mesh_at_tile
-    test byte ptr [anim_phase], 1
-    jz render_player_3d_mesh_ready
-    add word ptr [game3d_mesh_world_y], 10
-
-render_player_3d_mesh_ready:
+    call game3d_apply_actor_motion
     call game3d_draw_mesh_instance
     pop dx
 
@@ -2519,13 +3224,9 @@ game3d_draw_focus_marker_3d:
     mov bl, [effect_x]
     mov bh, [effect_y]
     call game3d_get_effect_colors
-    call game3d_draw_tile_glow_3d
-    mov bl, [effect_x]
-    mov bh, [effect_y]
-    call game3d_project_tile_center
-    jnc game3d_focus_marker_done
-    mov bl, PAL_WHITE
-    call game3d_draw_marker_at_projected_point
+    mov cl, al
+    mov dl, GAME3D_MESH_BEACON_FOCUS_INDEX
+    call game3d_draw_cue_with_beacon
 
 game3d_focus_marker_done:
     ret
@@ -2569,10 +3270,10 @@ game3d_exit_lane_done:
     pop ax
     mov bl, [exit_x]
     mov bh, [exit_y]
-    call game3d_project_tile_center
-    jnc game3d_exit_marker_done
-    mov bl, PAL_GATE
-    call game3d_draw_marker_at_projected_point
+    call game3d_get_lane_material
+    mov cl, al
+    mov dl, GAME3D_MESH_BEACON_EXIT_INDEX
+    call game3d_draw_cue_with_beacon
 
 game3d_exit_marker_done:
     ret
@@ -2584,26 +3285,18 @@ game3d_draw_spoof_marker_3d:
     mov bh, [spoof_y]
     mov al, PAL_CYAN2
     mov ah, PAL_WHITE
-    call game3d_draw_tile_glow_3d
-    mov bl, [spoof_x]
-    mov bh, [spoof_y]
-    call game3d_project_tile_center
-    jnc game3d_spoof_exit_marker
-    mov bl, PAL_CYAN2
-    call game3d_draw_marker_at_projected_point
+    mov cl, PAL_CYAN2
+    mov dl, GAME3D_MESH_BEACON_SPOOF_INDEX
+    call game3d_draw_cue_with_beacon
 
 game3d_spoof_exit_marker:
     mov bl, [exit_x]
     mov bh, [exit_y]
     mov al, PAL_WHITE
     mov ah, PAL_GATE
-    call game3d_draw_tile_glow_3d
-    mov bl, [exit_x]
-    mov bh, [exit_y]
-    call game3d_project_tile_center
-    jnc game3d_spoof_marker_done
-    mov bl, PAL_WHITE
-    call game3d_draw_marker_at_projected_point
+    mov cl, PAL_WHITE
+    mov dl, GAME3D_MESH_BEACON_EXIT_INDEX
+    call game3d_draw_cue_with_beacon
 
 game3d_spoof_marker_done:
     ret
@@ -2617,26 +3310,17 @@ game3d_draw_threat_marker_3d:
     jne game3d_threat_near
     mov al, PAL_RED2
     mov ah, PAL_WHITE
-    call game3d_draw_tile_glow_3d
-    mov bl, [threat_x]
-    mov bh, [threat_y]
-    call game3d_project_tile_center
-    jnc game3d_threat_marker_done
-    mov bl, PAL_RED2
-    jmp game3d_threat_color_ready
+    mov cl, PAL_RED2
+    mov dl, GAME3D_MESH_BEACON_THREAT_INDEX
+    call game3d_draw_cue_with_beacon
+    jmp game3d_threat_marker_done
 
 game3d_threat_near:
     mov al, PAL_AMBER
     mov ah, PAL_WHITE
-    call game3d_draw_tile_glow_3d
-    mov bl, [threat_x]
-    mov bh, [threat_y]
-    call game3d_project_tile_center
-    jnc game3d_threat_marker_done
-    mov bl, PAL_AMBER
-
-game3d_threat_color_ready:
-    call game3d_draw_marker_at_projected_point
+    mov cl, PAL_AMBER
+    mov dl, GAME3D_MESH_BEACON_THREAT_INDEX
+    call game3d_draw_cue_with_beacon
 
 game3d_threat_marker_done:
     ret
@@ -2787,7 +3471,7 @@ game3d_room_face_far:
     jmp game3d_room_face_apply
 
 game3d_room_face_far_solid:
-    call game3d_get_wall_cap_material
+    call game3d_get_wall_far_material
 
 game3d_room_face_apply:
     mov [scene3d_temp_color], al

@@ -1,10 +1,10 @@
 CyberStorm Replay Harness
-Generated: 2026-04-09 07:01:54 -06:00
+Generated: 2026-04-09 13:08:28 -06:00
 Demo source: C:\Users\RhythmicCarnage\Desktop\CyberStorm\assets\demos.psd1
 Sector source: C:\Users\RhythmicCarnage\Desktop\CyberStorm\assets\sectors.psd1
 Music source: C:\Users\RhythmicCarnage\Desktop\CyberStorm\scripts\..\assets\music.psd1
 Audio mode: MUSIC
-Scenarios: 11
+Scenarios: 20
 
 Demo: SCOUT ATTRACT
   Id: scout-attract
@@ -12,7 +12,7 @@ Demo: SCOUT ATTRACT
   Capture: role=gameplay ticks=15
   Ticks: 27
   Signature: PLAYING|S1|sector1_map_c|P7,13|H5|C2|D1|K0|E5|SCORE100|A10|HITS0|PU1|SP0|RNG0x764A
-  Runtime final signature: 0x46A1
+  Runtime final signature: 0x4C0F
   Runtime checkpoints: 13
   Observed: state=PLAYING sector=1 map=sector1_map_c player=7,13 shields=5 pulses=2 data=1 kills=0 alive=5 score=100 actions=10 hits=0 pulses-used=1 spoof=0 rng=0x764A
   Audio: sound=0 timer=0 theme=2 ticks=0 note=0
@@ -24,7 +24,7 @@ Demo: SURGE ATTRACT
   Capture: role=hazard ticks=18
   Ticks: 26
   Signature: PLAYING|S2|sector2_map_b|P8,11|H5|C3|D1|K1|E6|SCORE170|A13|HITS0|PU1|SP0|RNG0xA7CC
-  Runtime final signature: 0xCFC4
+  Runtime final signature: 0xC951
   Runtime checkpoints: 17
   Observed: state=PLAYING sector=2 map=sector2_map_b player=8,11 shields=5 pulses=3 data=1 kills=1 alive=6 score=170 actions=13 hits=0 pulses-used=1 spoof=0 rng=0xA7CC
   Audio: sound=0 timer=0 theme=2 ticks=0 note=1
@@ -36,7 +36,79 @@ Demo: WARDEN ATTRACT
   Capture: role=elite-pressure ticks=12
   Ticks: 21
   Signature: PLAYING|S3|sector3_map_c|P6,13|H5|C4|D1|K0|E10|SCORE100|A7|HITS0|PU1|SP0|RNG0x88BA
-  Runtime final signature: 0xC8F7
+  Runtime final signature: 0x9DCF
+  Runtime checkpoints: 0
+  Observed: state=PLAYING sector=3 map=sector3_map_c player=6,13 shields=5 pulses=4 data=1 kills=0 alive=10 score=100 actions=7 hits=0 pulses-used=1 spoof=0 rng=0x88BA
+  Audio: sound=0 timer=0 theme=2 ticks=4 note=1
+  Status: PASS
+
+Demo: SECTOR 1 DEPTH SHOWCASE
+  Id: sector1-depth-showcase
+  Seed: 0x1234
+  Capture: role=sector1-depth ticks=10
+  Ticks: 7
+  Signature: PLAYING|S1|sector1_map_c|P7,12|H5|C3|D1|K0|E5|SCORE100|A6|HITS0|PU0|SP0|RNG0x764A
+  Runtime final signature: 0x4CB0
+  Runtime checkpoints: 0
+  Observed: state=PLAYING sector=1 map=sector1_map_c player=7,12 shields=5 pulses=3 data=1 kills=0 alive=5 score=100 actions=6 hits=0 pulses-used=0 spoof=0 rng=0x764A
+  Audio: sound=0 timer=0 theme=2 ticks=5 note=1
+  Status: PASS
+
+Demo: SECTOR 1 THREAT SHOWCASE
+  Id: sector1-threat-showcase
+  Seed: 0x1234
+  Capture: role=sector1-threat ticks=15
+  Ticks: 27
+  Signature: PLAYING|S1|sector1_map_c|P7,13|H5|C2|D1|K0|E5|SCORE100|A10|HITS0|PU1|SP0|RNG0x764A
+  Runtime final signature: 0x4C0F
+  Runtime checkpoints: 13
+  Observed: state=PLAYING sector=1 map=sector1_map_c player=7,13 shields=5 pulses=2 data=1 kills=0 alive=5 score=100 actions=10 hits=0 pulses-used=1 spoof=0 rng=0x764A
+  Audio: sound=0 timer=0 theme=2 ticks=0 note=0
+  Status: PASS
+
+Demo: SECTOR 2 DEPTH SHOWCASE
+  Id: sector2-depth-showcase
+  Seed: 0x2468
+  Capture: role=sector2-depth ticks=12
+  Ticks: 16
+  Signature: PLAYING|S2|sector2_map_b|P7,7|H5|C4|D0|K1|E6|SCORE70|A15|HITS0|PU0|SP2|RNG0xA7CC
+  Runtime final signature: 0x112B
+  Runtime checkpoints: 0
+  Observed: state=PLAYING sector=2 map=sector2_map_b player=7,7 shields=5 pulses=4 data=0 kills=1 alive=6 score=70 actions=15 hits=0 pulses-used=0 spoof=2 rng=0xA7CC
+  Audio: sound=11 timer=5 theme=2 ticks=2 note=1
+  Status: PASS
+
+Demo: SECTOR 2 THREAT SHOWCASE
+  Id: sector2-threat-showcase
+  Seed: 0x2468
+  Capture: role=sector2-threat ticks=18
+  Ticks: 26
+  Signature: PLAYING|S2|sector2_map_b|P8,11|H5|C3|D1|K1|E6|SCORE170|A13|HITS0|PU1|SP0|RNG0xA7CC
+  Runtime final signature: 0xC951
+  Runtime checkpoints: 17
+  Observed: state=PLAYING sector=2 map=sector2_map_b player=8,11 shields=5 pulses=3 data=1 kills=1 alive=6 score=170 actions=13 hits=0 pulses-used=1 spoof=0 rng=0xA7CC
+  Audio: sound=0 timer=0 theme=2 ticks=0 note=1
+  Status: PASS
+
+Demo: SECTOR 3 DEPTH SHOWCASE
+  Id: sector3-depth-showcase
+  Seed: 0x3579
+  Capture: role=sector3-depth ticks=8
+  Ticks: 5
+  Signature: PLAYING|S3|sector3_map_c|P5,13|H5|C5|D1|K0|E10|SCORE100|A3|HITS0|PU0|SP0|RNG0x88BA
+  Runtime final signature: 0xEEC3
+  Runtime checkpoints: 0
+  Observed: state=PLAYING sector=3 map=sector3_map_c player=5,13 shields=5 pulses=5 data=1 kills=0 alive=10 score=100 actions=3 hits=0 pulses-used=0 spoof=0 rng=0x88BA
+  Audio: sound=2 timer=3 theme=2 ticks=0 note=0
+  Status: PASS
+
+Demo: SECTOR 3 THREAT SHOWCASE
+  Id: sector3-threat-showcase
+  Seed: 0x3579
+  Capture: role=sector3-threat ticks=12
+  Ticks: 21
+  Signature: PLAYING|S3|sector3_map_c|P6,13|H5|C4|D1|K0|E10|SCORE100|A7|HITS0|PU1|SP0|RNG0x88BA
+  Runtime final signature: 0x9DCF
   Runtime checkpoints: 0
   Observed: state=PLAYING sector=3 map=sector3_map_c player=6,13 shields=5 pulses=4 data=1 kills=0 alive=10 score=100 actions=7 hits=0 pulses-used=1 spoof=0 rng=0x88BA
   Audio: sound=0 timer=0 theme=2 ticks=4 note=1
@@ -48,10 +120,46 @@ Demo: WARDEN PRESSURE VERIFY
   Capture: role=technical ticks=10
   Ticks: 5
   Signature: PLAYING|S3|sector3_map_c|P5,13|H5|C5|D1|K0|E10|SCORE100|A3|HITS0|PU0|SP0|RNG0x88BA
-  Runtime final signature: 0x83DA
+  Runtime final signature: 0xEEC3
   Runtime checkpoints: 0
   Observed: state=PLAYING sector=3 map=sector3_map_c player=5,13 shields=5 pulses=5 data=1 kills=0 alive=10 score=100 actions=3 hits=0 pulses-used=0 spoof=0 rng=0x88BA
   Audio: sound=2 timer=3 theme=2 ticks=0 note=0
+  Status: PASS
+
+Demo: RUSHER MESH VERIFY
+  Id: rusher-mesh-verify
+  Seed: 0x2468
+  Capture: role=technical ticks=4
+  Ticks: 2
+  Signature: PLAYING|S2|sector2_map_b|P2,13|H5|C4|D0|K0|E7|SCORE0|A0|HITS0|PU0|SP0|RNG0xA7CC
+  Runtime final signature: 0x11AD
+  Runtime checkpoints: 0
+  Observed: state=PLAYING sector=2 map=sector2_map_b player=2,13 shields=5 pulses=4 data=0 kills=0 alive=7 score=0 actions=0 hits=0 pulses-used=0 spoof=0 rng=0xA7CC
+  Audio: sound=1 timer=4 theme=2 ticks=0 note=0
+  Status: PASS
+
+Demo: FLANKER MESH VERIFY
+  Id: flanker-mesh-verify
+  Seed: 0x2468
+  Capture: role=technical ticks=14
+  Ticks: 26
+  Signature: PLAYING|S2|sector2_map_b|P8,11|H5|C3|D1|K1|E6|SCORE170|A13|HITS0|PU1|SP0|RNG0xA7CC
+  Runtime final signature: 0xC951
+  Runtime checkpoints: 0
+  Observed: state=PLAYING sector=2 map=sector2_map_b player=8,11 shields=5 pulses=3 data=1 kills=1 alive=6 score=170 actions=13 hits=0 pulses-used=1 spoof=0 rng=0xA7CC
+  Audio: sound=0 timer=0 theme=2 ticks=0 note=1
+  Status: PASS
+
+Demo: FAR EXIT VERIFY
+  Id: far-exit-verify
+  Seed: 0x2468
+  Capture: role=technical ticks=4
+  Ticks: 2
+  Signature: PLAYING|S2|sector2_map_b|P2,13|H5|C4|D0|K0|E7|SCORE0|A0|HITS0|PU0|SP0|RNG0xA7CC
+  Runtime final signature: 0x11AD
+  Runtime checkpoints: 0
+  Observed: state=PLAYING sector=2 map=sector2_map_b player=2,13 shields=5 pulses=4 data=0 kills=0 alive=7 score=0 actions=0 hits=0 pulses-used=0 spoof=0 rng=0xA7CC
+  Audio: sound=1 timer=4 theme=2 ticks=0 note=0
   Status: PASS
 
 Demo: CAMERA EAST VERIFY
@@ -60,7 +168,7 @@ Demo: CAMERA EAST VERIFY
   Capture: role=technical ticks=6
   Ticks: 2
   Signature: PLAYING|S1|sector1_map_c|P3,13|H5|C3|D0|K0|E5|SCORE0|A1|HITS0|PU0|SP0|RNG0x764A
-  Runtime final signature: 0xBCE9
+  Runtime final signature: 0x88A1
   Runtime checkpoints: 0
   Observed: state=PLAYING sector=1 map=sector1_map_c player=3,13 shields=5 pulses=3 data=0 kills=0 alive=5 score=0 actions=1 hits=0 pulses-used=0 spoof=0 rng=0x764A
   Audio: sound=1 timer=4 theme=2 ticks=0 note=0
@@ -72,7 +180,7 @@ Demo: CAMERA WEST VERIFY
   Capture: role=technical ticks=8
   Ticks: 3
   Signature: PLAYING|S1|sector1_map_c|P2,13|H5|C3|D0|K0|E5|SCORE0|A2|HITS0|PU0|SP0|RNG0x764A
-  Runtime final signature: 0x58DF
+  Runtime final signature: 0x58CB
   Runtime checkpoints: 0
   Observed: state=PLAYING sector=1 map=sector1_map_c player=2,13 shields=5 pulses=3 data=0 kills=0 alive=5 score=0 actions=2 hits=0 pulses-used=0 spoof=0 rng=0x764A
   Audio: sound=1 timer=3 theme=2 ticks=0 note=0
@@ -84,7 +192,7 @@ Demo: CAMERA NORTH VERIFY
   Capture: role=technical ticks=12
   Ticks: 7
   Signature: PLAYING|S1|sector1_map_c|P7,12|H5|C3|D1|K0|E5|SCORE100|A6|HITS0|PU0|SP0|RNG0x764A
-  Runtime final signature: 0x55FF
+  Runtime final signature: 0x4CB0
   Runtime checkpoints: 0
   Observed: state=PLAYING sector=1 map=sector1_map_c player=7,12 shields=5 pulses=3 data=1 kills=0 alive=5 score=100 actions=6 hits=0 pulses-used=0 spoof=0 rng=0x764A
   Audio: sound=0 timer=0 theme=2 ticks=5 note=1
@@ -96,7 +204,7 @@ Demo: CAMERA SOUTH VERIFY
   Capture: role=technical ticks=14
   Ticks: 8
   Signature: PLAYING|S1|sector1_map_c|P7,13|H5|C3|D1|K0|E5|SCORE100|A7|HITS0|PU0|SP0|RNG0x764A
-  Runtime final signature: 0x21F9
+  Runtime final signature: 0xA4AB
   Runtime checkpoints: 0
   Observed: state=PLAYING sector=1 map=sector1_map_c player=7,13 shields=5 pulses=3 data=1 kills=0 alive=5 score=100 actions=7 hits=0 pulses-used=0 spoof=0 rng=0x764A
   Audio: sound=0 timer=0 theme=2 ticks=4 note=1
@@ -108,7 +216,7 @@ Demo: SECTOR ENTRY VERIFY
   Capture: role=technical ticks=4
   Ticks: 2
   Signature: PLAYING|S2|sector2_map_b|P2,13|H5|C4|D0|K0|E7|SCORE0|A0|HITS0|PU0|SP0|RNG0xA7CC
-  Runtime final signature: 0x1EF0
+  Runtime final signature: 0x11AD
   Runtime checkpoints: 0
   Observed: state=PLAYING sector=2 map=sector2_map_b player=2,13 shields=5 pulses=4 data=0 kills=0 alive=7 score=0 actions=0 hits=0 pulses-used=0 spoof=0 rng=0xA7CC
   Audio: sound=1 timer=4 theme=2 ticks=0 note=0
@@ -120,7 +228,7 @@ Demo: TERMINAL SPOOF VERIFY
   Capture: role=technical ticks=16
   Ticks: 16
   Signature: PLAYING|S2|sector2_map_b|P7,7|H5|C4|D0|K1|E6|SCORE70|A15|HITS0|PU0|SP2|RNG0xA7CC
-  Runtime final signature: 0x67B1
+  Runtime final signature: 0x112B
   Runtime checkpoints: 0
   Observed: state=PLAYING sector=2 map=sector2_map_b player=7,7 shields=5 pulses=4 data=0 kills=1 alive=6 score=70 actions=15 hits=0 pulses-used=0 spoof=2 rng=0xA7CC
   Audio: sound=11 timer=5 theme=2 ticks=2 note=1
@@ -132,7 +240,7 @@ Demo: GATE UNLOCK VERIFY
   Capture: role=technical ticks=58
   Ticks: 70
   Signature: PLAYING|S1|sector1_map_c|P24,3|H4|C3|D4|K1|E3|SCORE430|A68|HITS1|PU0|SP0|RNG0x764A
-  Runtime final signature: 0x62D9
+  Runtime final signature: 0x6F79
   Runtime checkpoints: 0
   Observed: state=PLAYING sector=1 map=sector1_map_c player=24,3 shields=4 pulses=3 data=4 kills=1 alive=3 score=430 actions=68 hits=1 pulses-used=0 spoof=0 rng=0x764A
   Audio: sound=4 timer=6 theme=2 ticks=6 note=0

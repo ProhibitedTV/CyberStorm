@@ -837,6 +837,15 @@ compute_runtime_verify_signature:
     mov ax, si
     mov bl, dl
     call verify_sig_mix_byte
+    call game3d_get_projection_pitch
+    mov bl, al
+    call verify_sig_mix_byte
+    call game3d_get_projection_scale
+    mov dx, ax
+    call verify_sig_mix_word
+    call game3d_get_runtime_cue_flags
+    mov bl, al
+    call verify_sig_mix_byte
     mov bl, [shield_count]
     call verify_sig_mix_byte
     mov bl, [pulse_count]

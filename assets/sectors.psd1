@@ -328,4 +328,66 @@
             )
         }
     )
+    AdventureRealm = @{
+        Title = 'SUNSPARK GLADE'
+        Intro = 'GATHER THE GEMS, LIGHT THE PEDESTALS, AND OPEN THE PORTAL.'
+        Start = '4,11'
+        Portal = '24,2'
+        Rows = @(
+            '############################'
+            '#..........................#'
+            '#..######........######....#'
+            '#..#....#........#....#....#'
+            '#..#....####..####....#....#'
+            '#..#..................#....#'
+            '#..####..########..####....#'
+            '#.....#..#......#..#.......#'
+            '#.....#..#......#..#..###..#'
+            '#..####..#......#..#..#....#'
+            '#..#.....####..##..##.#....#'
+            '#..#..................#....#'
+            '#..#######..#######...#....#'
+            '#..........................#'
+            '############################'
+        )
+        Gems = @(
+            '6,11'
+            '10,11'
+            '7,8'
+            '8,5'
+            '12,3'
+            '16,9'
+            '20,7'
+            '23,4'
+        )
+        Switches = @(
+            '18,11'
+            '21,7'
+            '23,3'
+        )
+        Hazards = @(
+            '14,5'
+            '15,5'
+            '20,9'
+        )
+        Enemies = @(
+            @{ X = 9; Y = 9; Kind = 'RUSHER' }
+            @{ X = 20; Y = 5; Kind = 'FLANKER' }
+            @{ X = 23; Y = 8; Kind = 'WARDEN' }
+        )
+        Props = @(
+            @{ X = 3; Y = 12; Mesh = 'tree_round'; YawDegrees = 12.0 }
+            @{ X = 6; Y = 12; Mesh = 'tree_round'; YawDegrees = 236.0 }
+            @{ X = 9; Y = 12; Mesh = 'stone_stack'; YawDegrees = 34.0 }
+            @{ X = 12; Y = 11; Mesh = 'bridge_span'; YawDegrees = 0.0 }
+            @{ X = 6; Y = 4; Mesh = 'tree_round'; YawDegrees = 18.0 }
+            @{ X = 11; Y = 4; Mesh = 'stone_stack'; YawDegrees = 300.0 }
+            @{ X = 18; Y = 4; Mesh = 'tree_round'; YawDegrees = 212.0 }
+            @{ X = 21; Y = 4; Mesh = 'stone_stack'; YawDegrees = 86.0 }
+            @{ X = 16; Y = 8; Mesh = 'bridge_span'; YawDegrees = 64.0 }
+            @{ X = 23; Y = 2; Mesh = 'portal_arch'; YawDegrees = 0.0 }
+            @{ X = 24; Y = 2; Mesh = 'tower_toy'; YawDegrees = 0.0 }
+            @{ X = 4; Y = 2; Mesh = 'tree_round'; YawDegrees = 160.0 }
+        )
+    }
 }

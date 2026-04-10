@@ -1394,6 +1394,128 @@ function Write-GeneratedSectorIncludes {
         $sectorLines.Add(("{0}_intro db {1}, 0" -f $sectorLabel, (ConvertTo-AsmStringLiteral -Value ([string]$sector['Intro']) -Context ("sector {0} intro" -f $sectorId))))
     }
 
+    if ($contentData.ContainsKey('AdventureRealm')) {
+        $adventureRealm = $contentData['AdventureRealm']
+        if (-not ($adventureRealm -is [System.Collections.IDictionary])) {
+            throw ("AdventureRealm in {0} must be a hashtable." -f $SourcePath)
+        }
+
+        foreach ($requiredAdventureKey in @('Title', 'Intro', 'Start', 'Portal', 'Rows')) {
+            if (-not $adventureRealm.ContainsKey($requiredAdventureKey)) {
+                throw ("AdventureRealm in {0} is missing '{1}'." -f $SourcePath, $requiredAdventureKey)
+            }
+        }
+
+        $adventureTitle = [string]$adventureRealm['Title']
+        $adventureIntro = [string]$adventureRealm['Intro']
+        $adventureRows = @($adventureRealm['Rows'] | ForEach-Object { [string]$_ })
+        if ($adventureRows.Count -ne $ExpectedMapHeight) {
+            throw ("AdventureRealm in {0} must define exactly {1} rows." -f $SourcePath, $ExpectedMapHeight)
+        }
+
+        $adventureStart = ConvertTo-AnchorPoint -Token ([string]$adventureRealm['Start']) -Context 'AdventureRealm.Start' -MapWidth $ExpectedMapWidth -MapHeight $ExpectedMapHeight
+        $adventurePortal = ConvertTo-AnchorPoint -Token ([string]$adventureRealm['Portal']) -Context 'AdventureRealm.Portal' -MapWidth $ExpectedMapWidth -MapHeight $ExpectedMapHeight
+        if ((Get-MapRowChar -Rows $adventureRows -X $adventureStart.X -Y $adventureStart.Y) -eq '#') {
+            throw ("AdventureRealm.Start ({0},{1}) in {2} must sit on a floor tile." -f $adventureStart.X, $adventureStart.Y, $SourcePath)
+        }
+
+        if ((Get-MapRowChar -Rows $adventureRows -X $adventurePortal.X -Y $adventurePortal.Y) -eq '#') {
+            throw ("AdventureRealm.Portal ({0},{1}) in {2} must sit on a floor tile." -f $adventurePortal.X, $adventurePortal.Y, $SourcePath)
+        }
+
+        $adventureGemBytes = New-Object 'System.Collections.Generic.List[string]'
+        foreach ($token in @($adventureRealm['Gems'])) {
+            $point = ConvertTo-AnchorPoint -Token ([string]$token) -Context 'AdventureRealm.Gems' -MapWidth $ExpectedMapWidth -MapHeight $ExpectedMapHeight
+            $adventureGemBytes.Add($point.X.ToString())
+            $adventureGemBytes.Add($point.Y.ToString())
+        }
+
+        $adventureSwitchBytes = New-Object 'System.Collections.Generic.List[string]'
+        foreach ($token in @($adventureRealm['Switches'])) {
+            $point = ConvertTo-AnchorPoint -Token ([string]$token) -Context 'AdventureRealm.Switches' -MapWidth $ExpectedMapWidth -MapHeight $ExpectedMapHeight
+            $adventureSwitchBytes.Add($point.X.ToString())
+            $adventureSwitchBytes.Add($point.Y.ToString())
+        }
+
+        $adventureHazardBytes = New-Object 'System.Collections.Generic.List[string]'
+        foreach ($token in @($adventureRealm['Hazards'])) {
+            $point = ConvertTo-AnchorPoint -Token ([string]$token) -Context 'AdventureRealm.Hazards' -MapWidth $ExpectedMapWidth -MapHeight $ExpectedMapHeight
+            $adventureHazardBytes.Add($point.X.ToString())
+            $adventureHazardBytes.Add($point.Y.ToString())
+        }
+
+        $adventureEnemyBytes = New-Object 'System.Collections.Generic.List[string]'
+        foreach ($enemyEntry in @($adventureRealm['Enemies'])) {
+            if (-not ($enemyEntry -is [System.Collections.IDictionary])) {
+                throw ("AdventureRealm enemies in {0} must be hashtables with X, Y, and Kind." -f $SourcePath)
+            }
+
+            $kindToken = ([string]$enemyEntry['Kind']).Trim().ToUpperInvariant()
+            if (-not $enemyKindLookup.ContainsKey($kindToken)) {
+                throw ("AdventureRealm enemy in {0} used unsupported Kind '{1}'." -f $SourcePath, $enemyEntry['Kind'])
+            }
+
+            $adventureEnemyBytes.Add(([int]$enemyEntry['X']).ToString())
+            $adventureEnemyBytes.Add(([int]$enemyEntry['Y']).ToString())
+            $adventureEnemyBytes.Add(([int]$enemyKindLookup[$kindToken]).ToString())
+        }
+
+        $adventurePropXs = New-Object 'System.Collections.Generic.List[string]'
+        $adventurePropYs = New-Object 'System.Collections.Generic.List[string]'
+        $adventurePropMeshes = New-Object 'System.Collections.Generic.List[string]'
+        $adventurePropYaws = New-Object 'System.Collections.Generic.List[string]'
+        foreach ($propEntry in @($adventureRealm['Props'])) {
+            if (-not ($propEntry -is [System.Collections.IDictionary])) {
+                throw ("AdventureRealm props in {0} must be hashtables with X, Y, Mesh, and optional YawDegrees." -f $SourcePath)
+            }
+
+            $meshToken = ([string]$propEntry['Mesh']).Trim()
+            if ([string]::IsNullOrWhiteSpace($meshToken)) {
+                throw ("AdventureRealm prop in {0} is missing Mesh." -f $SourcePath)
+            }
+
+            $meshAsmToken = ("GAME3D_MESH_{0}_INDEX" -f (($meshToken.ToUpperInvariant()) -replace '[^A-Z0-9]', '_'))
+            $yawDegrees = if ($propEntry.ContainsKey('YawDegrees')) { [double]$propEntry['YawDegrees'] } else { 0.0 }
+            $yawValue = [int][Math]::Round((($yawDegrees % 360.0 + 360.0) % 360.0) * 256.0 / 360.0) % 256
+
+            $adventurePropXs.Add(([int]$propEntry['X']).ToString())
+            $adventurePropYs.Add(([int]$propEntry['Y']).ToString())
+            $adventurePropMeshes.Add($meshAsmToken)
+            $adventurePropYaws.Add($yawValue.ToString())
+        }
+
+        $sectorLines.Add('')
+        $sectorLines.Add('; Adventure vertical-slice realm')
+        $sectorLines.Add(("adventure_realm_title db {0}, 0" -f (ConvertTo-AsmStringLiteral -Value $adventureTitle -Context 'AdventureRealm.Title')))
+        $sectorLines.Add(("adventure_realm_intro db {0}, 0" -f (ConvertTo-AsmStringLiteral -Value $adventureIntro -Context 'AdventureRealm.Intro')))
+        $sectorLines.Add(("adventure_realm_start_x db {0}" -f $adventureStart.X))
+        $sectorLines.Add(("adventure_realm_start_y db {0}" -f $adventureStart.Y))
+        $sectorLines.Add(("adventure_realm_portal_x db {0}" -f $adventurePortal.X))
+        $sectorLines.Add(("adventure_realm_portal_y db {0}" -f $adventurePortal.Y))
+        $sectorLines.Add(("adventure_realm_gem_count db {0}" -f ($adventureGemBytes.Count / 2)))
+        $sectorLines.Add(("adventure_realm_switch_count db {0}" -f ($adventureSwitchBytes.Count / 2)))
+        $sectorLines.Add(("adventure_realm_hazard_count db {0}" -f ($adventureHazardBytes.Count / 2)))
+        $sectorLines.Add(("adventure_realm_enemy_count db {0}" -f ($adventureEnemyBytes.Count / 3)))
+        $sectorLines.Add(("adventure_realm_prop_count db {0}" -f $adventurePropXs.Count))
+        Add-AsmDataLines -Lines $sectorLines -Label 'adventure_realm_gem_table' -Directive 'db' -Values $(if ($adventureGemBytes.Count -gt 0) { $adventureGemBytes.ToArray() } else { @('0') }) -ValuesPerLine 12
+        Add-AsmDataLines -Lines $sectorLines -Label 'adventure_realm_switch_table' -Directive 'db' -Values $(if ($adventureSwitchBytes.Count -gt 0) { $adventureSwitchBytes.ToArray() } else { @('0') }) -ValuesPerLine 12
+        Add-AsmDataLines -Lines $sectorLines -Label 'adventure_realm_hazard_table' -Directive 'db' -Values $(if ($adventureHazardBytes.Count -gt 0) { $adventureHazardBytes.ToArray() } else { @('0') }) -ValuesPerLine 12
+        Add-AsmDataLines -Lines $sectorLines -Label 'adventure_realm_enemy_table' -Directive 'db' -Values $(if ($adventureEnemyBytes.Count -gt 0) { $adventureEnemyBytes.ToArray() } else { @('0') }) -ValuesPerLine 12
+        Add-AsmDataLines -Lines $sectorLines -Label 'adventure_realm_prop_x_table' -Directive 'db' -Values $(if ($adventurePropXs.Count -gt 0) { $adventurePropXs.ToArray() } else { @('0') }) -ValuesPerLine 12
+        Add-AsmDataLines -Lines $sectorLines -Label 'adventure_realm_prop_y_table' -Directive 'db' -Values $(if ($adventurePropYs.Count -gt 0) { $adventurePropYs.ToArray() } else { @('0') }) -ValuesPerLine 12
+        Add-AsmDataLines -Lines $sectorLines -Label 'adventure_realm_prop_mesh_table' -Directive 'db' -Values $(if ($adventurePropMeshes.Count -gt 0) { $adventurePropMeshes.ToArray() } else { @('0') }) -ValuesPerLine 8
+        Add-AsmDataLines -Lines $sectorLines -Label 'adventure_realm_prop_yaw_table' -Directive 'db' -Values $(if ($adventurePropYaws.Count -gt 0) { $adventurePropYaws.ToArray() } else { @('0') }) -ValuesPerLine 12
+        for ($rowIndex = 0; $rowIndex -lt $adventureRows.Count; $rowIndex++) {
+            $row = $adventureRows[$rowIndex]
+            if ($row.Length -ne $ExpectedMapWidth) {
+                throw ("AdventureRealm row {0} in {1} has width {2}, expected {3}." -f ($rowIndex + 1), $SourcePath, $row.Length, $ExpectedMapWidth)
+            }
+
+            $rowPrefix = if ($rowIndex -eq 0) { 'adventure_realm_map db ' } else { (' ' * ('adventure_realm_map'.Length + 1)) + 'db ' }
+            $sectorLines.Add($rowPrefix + (ConvertTo-AsmStringLiteral -Value $row -Context ("AdventureRealm row {0}" -f ($rowIndex + 1))))
+        }
+    }
+
     if ($mapLines.Count -gt 0 -and $mapLines[$mapLines.Count - 1] -eq '') {
         $mapLines.RemoveAt($mapLines.Count - 1)
     }
@@ -1417,6 +1539,7 @@ function Write-GeneratedSectorIncludes {
         AnchorSummary = ($anchorSummary -join ' | ')
         ScenarioSummary = ($scenarioSummary -join ' | ')
         ShardPoolSummary = ($shardPoolSummary -join ' | ')
+        AdventureRealmPresent = $contentData.ContainsKey('AdventureRealm')
     }
 }
 
@@ -3417,12 +3540,12 @@ function Sync-ReadmeScreenshots {
                 Candidates = @('showcase-title.png')
             },
             [pscustomobject]@{
-                Label = 'gameplay'
-                Candidates = @('showcase-gameplay.png', 'showcase-hazard.png', 'showcase-elite-pressure.png')
+                Label = 'beauty'
+                Candidates = @('showcase-beauty.png')
             },
             [pscustomobject]@{
-                Label = 'payoff'
-                Candidates = @('showcase-ending.png', 'showcase-hazard.png', 'showcase-technical.png', 'showcase-elite-pressure.png')
+                Label = 'action'
+                Candidates = @('showcase-action.png')
             }
         )
 
@@ -3913,6 +4036,7 @@ $debugDemoIndexValue = if ($demoIndexProvided) { [int]$DebugDemoIndex } else { 0
 $debugFrontendScenarioValue = if ($frontendScenarioProvided) { [int]$DebugFrontendScenario } else { 0 }
 $debugVerifyCorruptDemoIndexValue = if ($verifyCorruptDemoProvided) { [int]$DebugVerifyCorruptDemoIndex } else { 255 }
 $debugFrontendCorruptScenarioValue = if ($verifyCorruptFrontendProvided) { [int]$DebugFrontendCorruptScenario } else { 255 }
+$legacyGameplayMode = $DebugDemoBoot.IsPresent -or $DebugRuntimeVerify.IsPresent -or $render2DOverride
 $sceneRenderModeValue = if ($render2DOverride) { 0 } else { 1 }
 $sceneRenderModeName = if ($render2DOverride) { 'SCENES_2D_DEBUG' } else { 'SCENES_3D' }
 $gameplayRenderModeValue = if ($render2DOverride) { 0 } else { 1 }
@@ -3932,6 +4056,7 @@ $debugConfigLines = @(
     ("DEBUG_RUNTIME_VERIFY EQU {0}" -f ([int]$DebugRuntimeVerify.IsPresent))
     ("DEBUG_VERIFY_CORRUPT_DEMO_INDEX EQU {0}" -f $debugVerifyCorruptDemoIndexValue)
     ("DEBUG_FRONTEND_CORRUPT_SCENARIO EQU {0}" -f $debugFrontendCorruptScenarioValue)
+    ("DEBUG_LEGACY_GAMEPLAY EQU {0}" -f ([int]$legacyGameplayMode))
     ("DEBUG_SCENE_RENDER_MODE EQU {0}" -f $sceneRenderModeValue)
     ("DEBUG_GAMEPLAY_RENDER_MODE EQU {0}" -f $gameplayRenderModeValue)
 )
@@ -4412,7 +4537,7 @@ foreach ($runtimeVerifyLine in $runtimeVerifyLines) {
 }
 
 $showcaseArtifacts = @()
-$showcaseSourceSelection = 'Selection: branding uses the startup ident, gameplay uses per-sector chase-camera captures plus a direct-to-game room boot, and payoff uses runtime verification pass/fail shots.'
+$showcaseSourceSelection = 'Selection: branding uses the title screen, beauty uses a clean direct-to-game realm panorama, and action uses a later direct-to-game gameplay frame with enemies and objectives in view.'
 if ($CaptureShowcase.IsPresent) {
     $showcaseResult = & $showcaseCaptureScript `
         -Assembler $Assembler `
@@ -4428,7 +4553,7 @@ if ($CaptureShowcase.IsPresent) {
     $showcaseArtifacts = @($showcaseResult.ArtifactPaths)
 } else {
     $showcaseCaptureLines = @(
-        'Status: skipped (use -CaptureShowcase to generate deterministic startup/direct-game/demo/verification screenshots).'
+        'Status: skipped (use -CaptureShowcase to generate deterministic title/beauty/action screenshots).'
         $showcaseSourceSelection
     )
     Set-Content -LiteralPath $showcaseReportPath -Encoding ascii -Value @(

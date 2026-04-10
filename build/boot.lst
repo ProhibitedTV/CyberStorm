@@ -1,4 +1,4 @@
-Microsoft (R) Macro Assembler Version 14.40.33812.0	    04/09/26 15:38:43
+Microsoft (R) Macro Assembler Version 14.40.33812.0	    04/09/26 21:00:03
 C:\Users\RhythmicCarnage\Desktop\CyberStorm\src\boot.asm     Page 1 - 1
 
 
@@ -7,7 +7,7 @@ C:\Users\RhythmicCarnage\Desktop\CyberStorm\src\boot.asm     Page 1 - 1
 				org 0
 				
 				include boot_config.inc
- = 006D			      C GAME_SECTORS EQU 109
+ = 0075			      C GAME_SECTORS EQU 117
 			      C 
 				
  = 1000				GAME_SEGMENT equ 1000h
@@ -40,7 +40,7 @@ C:\Users\RhythmicCarnage\Desktop\CyberStorm\src\boot.asm     Page 1 - 1
  001B  B5 00			    mov ch, 0
  001D  B6 00			    mov dh, 0
  001F  B1 02			    mov cl, STAGE2_START_SECTOR
- 0021  BE 006D			    mov si, GAME_SECTORS
+ 0021  BE 0075			    mov si, GAME_SECTORS
 				
  0024				load_loop:
  0024  B4 02			    mov ah, 02h
@@ -99,7 +99,7 @@ C:\Users\RhythmicCarnage\Desktop\CyberStorm\src\boot.asm     Page 1 - 1
 				
 				end start
 C:\Users\RhythmicCarnage\Desktop\CyberStorm\src\boot.asm(91) : warning A4023:with /coff switch, leading underscore required for start address : start
-Microsoft (R) Macro Assembler Version 14.40.33812.0	    04/09/26 15:38:43
+Microsoft (R) Macro Assembler Version 14.40.33812.0	    04/09/26 21:00:03
 C:\Users\RhythmicCarnage\Desktop\CyberStorm\src\boot.asm     Symbols 2 - 1
 
 
@@ -131,7 +131,7 @@ BOOT_STACK_TOP . . . . . . . . .	Number	 7C00h
 FLOPPY_HEADS . . . . . . . . . .	Number	 0002h	 
 FLOPPY_SECTORS_PER_TRACK . . . .	Number	 0012h	 
 FLOPPY_SECTOR_SIZE . . . . . . .	Number	 0200h	 
-GAME_SECTORS . . . . . . . . . .	Number	 006Dh	 
+GAME_SECTORS . . . . . . . . . .	Number	 0075h	 
 GAME_SEGMENT . . . . . . . . . .	Number	 1000h	 
 STAGE2_START_SECTOR  . . . . . .	Number	 0002h	 
 TEXT_MODE_80X25  . . . . . . . .	Number	 0003h	 

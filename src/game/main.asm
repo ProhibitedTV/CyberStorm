@@ -10,6 +10,9 @@ start:
     int 10h
     call init_palette
     call init_audio
+IF DEBUG_LEGACY_GAMEPLAY EQ 0
+    call install_keyboard_handler
+ENDIF
     call reset_keyboard_state
     mov byte ptr [last_game_state], 0FFh
     mov byte ptr [feedback_timer], 0
@@ -55,7 +58,11 @@ main_loop:
     ; One BIOS timer tick drives animation, rendering, and then one round of
     ; state/input handling.
     call wait_frame_tick
+IF DEBUG_LEGACY_GAMEPLAY EQ 0
+    call poll_runtime_keyboard
+ELSE
     call poll_bios_keyboard
+ENDIF
     call update_frontend_state
     call update_runtime_feedback
     call render_screen
@@ -154,12 +161,17 @@ demo_takeover_now:
     jmp main_loop
 
 handle_live_play_input:
+IF DEBUG_LEGACY_GAMEPLAY EQ 0
+    call process_play_input
+    jmp main_loop
+ELSE
     cmp byte ptr [game3d_end_state_pending], 0
     jne main_loop
     cmp byte ptr [game3d_shot_mode], GAME3D_SHOT_BASE_CHASE
     jne main_loop
     call process_play_input
     jmp main_loop
+ENDIF
 
 wait_frame_tick:
 wait_frame_tick_loop:
@@ -446,6 +458,10 @@ run_start_pulse_ready:
     ret
 
 initialize_run_state:
+IF DEBUG_LEGACY_GAMEPLAY EQ 0
+    call initialize_adventure_run_state
+    ret
+ENDIF
     mov byte ptr [game_state], STATE_PLAYING
     mov byte ptr [title_idle_ticks], 0
     mov byte ptr [run_start_enter_guard], RUN_START_ENTER_GUARD_TICKS

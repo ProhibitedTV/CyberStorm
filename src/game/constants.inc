@@ -67,6 +67,7 @@ TILE_SHIFT    equ 3
 KEY_ENTER      equ 0Dh
 SCAN_ENTER     equ 1Ch
 SCAN_SPACE     equ 39h
+SCAN_LSHIFT    equ 2Ah
 SCAN_W         equ 11h
 SCAN_A         equ 1Eh
 SCAN_S         equ 1Fh
@@ -207,6 +208,20 @@ SCORE_RANK_C_THRESHOLD      equ 1000
 
 SAFE_X_MAX    equ 6
 SAFE_Y_MIN    equ 10
+
+ADVENTURE_TURN_STEP        equ 12
+ADVENTURE_MOVE_SPEED       equ 72
+ADVENTURE_BACK_SPEED       equ 48
+ADVENTURE_CHARGE_SPEED     equ 112
+ADVENTURE_JUMP_VEL         equ 160
+ADVENTURE_GRAVITY          equ 22
+ADVENTURE_GLIDE_FALL_LIMIT equ -20
+ADVENTURE_CHARGE_TICKS     equ 6
+ADVENTURE_FLAME_TICKS      equ 5
+ADVENTURE_FLAME_RANGE      equ 1
+ADVENTURE_ENEMY_STEP_TICKS equ 4
+ADVENTURE_HAZARD_COOLDOWN  equ 10
+ADVENTURE_INTRO_TICKS      equ 18
 
 ; Phase-1 asset banks load into a separate conventional-memory segment so
 ; stage two can keep its original 64 KiB boot contract unchanged.

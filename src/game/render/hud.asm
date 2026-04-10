@@ -70,6 +70,9 @@ draw_game_panels:
     ret
 
 render_game_status:
+IF DEBUG_LEGACY_GAMEPLAY EQ 0
+    jmp render_adventure_status
+ENDIF
     mov bx, 18
     mov dx, 15
     mov si, offset score_text
@@ -157,6 +160,107 @@ game_status_controls_normal:
     mov si, offset controls_text
 
 game_status_controls_draw:
+    call get_sector_accent_color
+    mov ah, al
+    call draw_text_small
+    ret
+
+render_adventure_status:
+    mov bx, 18
+    mov dx, 15
+    mov si, offset realm_text
+    mov ah, PAL_WHITE
+    call draw_text_small
+
+    mov bx, 50
+    mov dx, 15
+    mov si, offset adventure_realm_title
+    call get_sector_title_color
+    mov ah, al
+    call draw_text_small
+
+    mov bx, 150
+    mov dx, 15
+    mov si, offset shield_text
+    mov ah, PAL_WHITE
+    call draw_text_small
+
+    mov al, [shield_count]
+    mov bx, 188
+    mov dx, 15
+    mov ah, PAL_AMBER
+    call draw_digit_small
+
+    mov bx, 204
+    mov dx, 15
+    mov si, offset gems_text
+    mov ah, PAL_WHITE
+    call draw_text_small
+
+    mov al, [data_count]
+    mov bx, 232
+    mov dx, 15
+    mov ah, PAL_CYAN2
+    call draw_digit_small
+
+    mov bx, 239
+    mov dx, 15
+    mov si, offset slash_text
+    mov ah, PAL_WHITE
+    call draw_text_small
+
+    mov al, [adventure_realm_gem_count]
+    mov bx, 246
+    mov dx, 15
+    mov ah, PAL_WHITE
+    call draw_digit_small
+
+    mov bx, 258
+    mov dx, 15
+    mov si, offset goals_text
+    mov ah, PAL_WHITE
+    call draw_text_small
+
+    mov al, [adventure_objectives_done]
+    mov bx, 292
+    mov dx, 15
+    mov ah, PAL_GATE
+    call draw_digit_small
+
+    mov bx, 18
+    mov dx, 175
+    mov si, offset portal_text
+    mov ah, PAL_WHITE
+    call draw_text_small
+
+    mov bx, 52
+    mov dx, 175
+    mov si, offset portal_locked_text
+    mov bl, [exit_x]
+    mov bh, [exit_y]
+    call get_tile
+    mov ah, PAL_RED
+    cmp al, TILE_EXIT_OPEN
+    jne adventure_status_portal_ready
+    mov si, offset portal_open_text
+    mov ah, PAL_GATE
+
+adventure_status_portal_ready:
+    mov bx, 52
+    mov dx, 175
+    call draw_text_small
+
+    call draw_message_banner
+    call get_message_text_ptr
+    mov bx, 18
+    mov dx, 184
+    call get_message_text_color
+    mov ah, al
+    call draw_text_small
+
+    mov bx, 118
+    mov dx, 184
+    mov si, offset adventure_controls_text
     call get_sector_accent_color
     mov ah, al
     call draw_text_small

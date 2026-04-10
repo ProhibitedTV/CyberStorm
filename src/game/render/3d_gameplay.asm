@@ -445,6 +445,9 @@ game3d_ease_camera_yaw_done:
     ret
 
 render_gameplay_3d:
+IF DEBUG_LEGACY_GAMEPLAY EQ 0
+    jmp render_gameplay_adventure_3d
+ENDIF
 IF DEBUG_RUNTIME_VERIFY
     cmp byte ptr [demo_active], 0
     je render_gameplay_3d_live
@@ -467,6 +470,217 @@ ENDIF
     call render_enemies_3d
     call render_player_3d
     call render_gameplay_overlay_effects_3d
+    ret
+
+render_gameplay_adventure_3d:
+    call game3d_update_adventure_camera_target
+    call game3d_draw_view_backdrop
+    call game3d_build_room_if_dirty
+    call game3d_setup_adventure_camera
+    call game3d_render_room
+    call render_gameplay_landmark_3d
+    call render_adventure_static_props_3d
+    call render_gameplay_props_3d
+    call render_adventure_world_effects_3d
+    call render_enemies_3d
+    call render_adventure_player_3d
+    call render_gameplay_overlay_effects_3d
+    ret
+
+game3d_update_adventure_camera_target:
+    push bx
+    mov al, [adventure_player_yaw]
+    mov [game3d_camera_yaw_current], al
+    mov [game3d_camera_yaw_target], al
+    call game3d_get_adventure_heading_from_yaw
+    mov bl, al
+    cmp bl, [game3d_camera_heading]
+    je game3d_update_adventure_variant
+    mov [game3d_camera_heading], bl
+
+game3d_update_adventure_variant:
+    mov al, bl
+    call game3d_get_room_variant_from_heading
+    cmp al, [game3d_room_variant]
+    je game3d_update_adventure_done
+    mov [game3d_room_variant], al
+    call game3d_mark_room_dirty
+
+game3d_update_adventure_done:
+    pop bx
+    ret
+
+game3d_get_adventure_heading_from_yaw:
+    cmp al, 32
+    jb game3d_adventure_heading_south
+    cmp al, 96
+    jb game3d_adventure_heading_east
+    cmp al, 160
+    jb game3d_adventure_heading_north
+    cmp al, 224
+    jb game3d_adventure_heading_west
+
+game3d_adventure_heading_south:
+    mov al, GAME3D_HEADING_SOUTH
+    ret
+
+game3d_adventure_heading_east:
+    mov al, GAME3D_HEADING_EAST
+    ret
+
+game3d_adventure_heading_north:
+    mov al, GAME3D_HEADING_NORTH
+    ret
+
+game3d_adventure_heading_west:
+    mov al, GAME3D_HEADING_WEST
+    ret
+
+game3d_setup_adventure_camera:
+    push ax
+    push bx
+    push cx
+    push dx
+
+    mov word ptr [scene3d_clip_left], GAME3D_VIEW_X
+    mov word ptr [scene3d_clip_top], GAME3D_VIEW_Y
+    mov word ptr [scene3d_clip_right], GAME3D_VIEW_X + GAME3D_VIEW_W - 1
+    mov word ptr [scene3d_clip_bottom], GAME3D_VIEW_Y + GAME3D_VIEW_H - 1
+    mov word ptr [scene3d_center_x], GAME3D_VIEW_X + (GAME3D_VIEW_W / 2)
+    call game3d_get_horizon_y
+    xor ah, ah
+    add ax, GAME3D_VIEW_Y + GAME3D_CAMERA_HORIZON_CENTER_OFFSET
+    mov [scene3d_center_y], ax
+    call game3d_get_projection_scale
+    mov [scene3d_project_scale], ax
+    call game3d_get_projection_pitch
+    mov [scene3d_pitch_angle], al
+    mov al, [adventure_player_yaw]
+    mov [scene3d_yaw_angle], al
+
+    mov ax, [adventure_player_world_x]
+    mov [scene3d_temp_v], ax
+    mov ax, [adventure_player_world_z]
+    mov [scene3d_temp_l], ax
+
+    call game3d_get_camera_look_ahead
+    mov [scene3d_temp_r], ax
+    mov al, [scene3d_yaw_angle]
+    call scene3d_get_sin_cos
+    mov ax, [scene3d_temp_r]
+    call scene3d_mul_ax_bx_fixed
+    add [scene3d_temp_v], ax
+    mov ax, [scene3d_temp_r]
+    mov bx, dx
+    call scene3d_mul_ax_bx_fixed
+    add [scene3d_temp_l], ax
+
+    mov al, [scene3d_yaw_angle]
+    call scene3d_get_sin_cos
+
+    call game3d_get_camera_distance
+    call scene3d_mul_ax_bx_fixed
+    mov cx, ax
+    mov ax, [scene3d_temp_v]
+    sub ax, cx
+    mov [scene3d_cam_x], ax
+
+    call game3d_get_camera_distance
+    mov bx, dx
+    call scene3d_mul_ax_bx_fixed
+    mov cx, ax
+    mov ax, [scene3d_temp_l]
+    sub ax, cx
+    mov [scene3d_cam_z], ax
+
+    call game3d_get_camera_height
+    mov [scene3d_cam_y], ax
+
+    call game3d_get_shot_blend
+    mov ax, cx
+    or ax, ax
+    jz game3d_setup_adventure_done
+
+    call game3d_get_active_shot_horizon
+    xor ah, ah
+    add ax, GAME3D_VIEW_Y + GAME3D_CAMERA_HORIZON_CENTER_OFFSET
+    mov [scene3d_temp_s], ax
+    call game3d_get_active_shot_project_scale
+    mov [scene3d_temp_r], ax
+    call game3d_get_active_shot_pitch
+    xor ah, ah
+    mov [scene3d_temp_w], ax
+
+    mov bl, [game3d_shot_subject_x]
+    mov bh, [game3d_shot_subject_y]
+    call game3d_get_tile_center_world
+    mov [scene3d_temp_v], ax
+    mov [scene3d_temp_l], dx
+    call game3d_get_active_shot_look_ahead
+    mov bx, ax
+    mov ax, [scene3d_temp_v]
+    mov dx, [scene3d_temp_l]
+    call game3d_apply_look_ahead_to_focus
+    mov [scene3d_temp_v], ax
+    mov [scene3d_temp_l], dx
+    call game3d_get_active_shot_focus_bias_x
+    add [scene3d_temp_v], ax
+    call game3d_get_active_shot_focus_bias_z
+    add [scene3d_temp_l], ax
+
+    mov al, [scene3d_yaw_angle]
+    call scene3d_get_sin_cos
+
+    call game3d_get_active_shot_distance
+    call scene3d_mul_ax_bx_fixed
+    mov dx, ax
+    mov ax, [scene3d_temp_v]
+    sub ax, dx
+    mov [scene3d_temp_x], ax
+
+    call game3d_get_active_shot_distance
+    mov bx, dx
+    call scene3d_mul_ax_bx_fixed
+    mov dx, ax
+    mov ax, [scene3d_temp_l]
+    sub ax, dx
+    mov [scene3d_temp_y], ax
+
+    call game3d_get_active_shot_height
+    mov [scene3d_temp_z], ax
+
+    mov ax, [scene3d_center_y]
+    mov dx, [scene3d_temp_s]
+    call game3d_blend_word
+    mov [scene3d_center_y], ax
+    mov ax, [scene3d_project_scale]
+    mov dx, [scene3d_temp_r]
+    call game3d_blend_word
+    mov [scene3d_project_scale], ax
+    xor ah, ah
+    mov al, [scene3d_pitch_angle]
+    mov dx, [scene3d_temp_w]
+    call game3d_blend_word
+    mov [scene3d_pitch_angle], al
+    mov ax, [scene3d_cam_x]
+    mov dx, [scene3d_temp_x]
+    call game3d_blend_word
+    mov [scene3d_cam_x], ax
+    mov ax, [scene3d_cam_z]
+    mov dx, [scene3d_temp_y]
+    call game3d_blend_word
+    mov [scene3d_cam_z], ax
+    mov ax, [scene3d_cam_y]
+    mov dx, [scene3d_temp_z]
+    call game3d_blend_word
+    mov [scene3d_cam_y], ax
+    call game3d_apply_camera_kick
+
+game3d_setup_adventure_done:
+    pop dx
+    pop cx
+    pop bx
+    pop ax
     ret
 
 game3d_build_room_if_dirty:
@@ -4252,6 +4466,89 @@ render_player_3d:
     pop dx
 
 render_player_3d_done:
+    ret
+
+render_adventure_static_props_3d:
+    xor cx, cx
+    mov cl, [adventure_realm_prop_count]
+    jcxz render_adventure_static_props_done
+    xor si, si
+
+render_adventure_static_prop_loop:
+    push cx
+    mov bl, [adventure_realm_prop_x_table + si]
+    mov bh, [adventure_realm_prop_y_table + si]
+    mov al, [adventure_realm_prop_mesh_table + si]
+    mov dl, [adventure_realm_prop_yaw_table + si]
+    call game3d_prepare_mesh_at_tile
+    call game3d_draw_mesh_instance
+    inc si
+    pop cx
+    loop render_adventure_static_prop_loop
+
+render_adventure_static_props_done:
+    ret
+
+render_adventure_player_3d:
+    mov ax, [adventure_player_world_x]
+    mov bx, GAME3D_FLOOR_Y
+    mov dx, [adventure_player_world_z]
+    call game3d_project_world_point
+    jnc render_adventure_player_done
+    push ax
+    push dx
+    call game3d_draw_shadow_at_projected_point
+    pop dx
+    pop ax
+
+    mov ax, [adventure_player_world_x]
+    mov [game3d_mesh_world_x], ax
+    mov ax, [adventure_player_world_y]
+    mov [game3d_mesh_world_y], ax
+    mov ax, [adventure_player_world_z]
+    mov [game3d_mesh_world_z], ax
+    mov byte ptr [game3d_mesh_face_flags], GAME3D_FACE_FLAG_NONE
+    mov al, [adventure_player_yaw]
+    mov [game3d_mesh_yaw], al
+    call game3d_get_adventure_player_mesh_index
+    mov [game3d_mesh_index], al
+    call game3d_draw_mesh_instance
+
+render_adventure_player_done:
+    ret
+
+game3d_get_adventure_player_mesh_index:
+    mov al, GAME3D_MESH_PLAYER_RUNNER_INDEX
+    cmp byte ptr [adventure_charge_timer], 0
+    jne game3d_get_adventure_player_mesh_lean
+    cmp byte ptr [action_taken], 0
+    je game3d_get_adventure_player_mesh_done
+
+game3d_get_adventure_player_mesh_lean:
+    mov al, GAME3D_MESH_PLAYER_RUNNER_LEAN_INDEX
+
+game3d_get_adventure_player_mesh_done:
+    ret
+
+render_adventure_world_effects_3d:
+    call game3d_draw_exit_marker_3d
+    cmp byte ptr [feedback_timer], 0
+    je render_adventure_world_effects_done
+    mov al, [message_id]
+    cmp al, MSG_SHARD
+    je game3d_draw_focus_marker_3d
+    cmp al, MSG_GATE
+    je game3d_draw_focus_marker_3d
+    cmp al, MSG_HIT
+    je game3d_draw_focus_marker_3d
+    cmp al, MSG_SURGE
+    je game3d_draw_focus_marker_3d
+    cmp al, MSG_KILL
+    je game3d_draw_focus_marker_3d
+    cmp al, MSG_SPOOF
+    je game3d_draw_focus_marker_3d
+
+render_adventure_world_effects_done:
     ret
 
 render_gameplay_world_effects_3d:

@@ -53,6 +53,8 @@ clear_pressed_latches:
     mov byte ptr [pressed_d], 0
     mov byte ptr [pressed_r], 0
     mov byte ptr [pressed_c], 0
+    mov byte ptr [pressed_space], 0
+    mov byte ptr [pressed_shift], 0
     mov byte ptr [pressed_up], 0
     mov byte ptr [pressed_left], 0
     mov byte ptr [pressed_right], 0
@@ -334,6 +336,12 @@ latch_bios_key:
     je bios_key_c
     cmp al, 'C'
     je bios_key_c
+    cmp ah, SCAN_SPACE
+    je bios_key_space
+    cmp al, ' '
+    je bios_key_space
+    cmp ah, SCAN_LSHIFT
+    je bios_key_shift
     cmp ah, BIOS_SCAN_UP
     je bios_key_up
     cmp ah, BIOS_SCAN_LEFT
@@ -370,6 +378,14 @@ bios_key_r:
 
 bios_key_c:
     mov byte ptr [pressed_c], 1
+    ret
+
+bios_key_space:
+    mov byte ptr [pressed_space], 1
+    ret
+
+bios_key_shift:
+    mov byte ptr [pressed_shift], 1
     ret
 
 bios_key_up:
@@ -409,6 +425,10 @@ poll_check_ready:
     jne poll_key_r
     cmp byte ptr [pressed_c], 0
     jne poll_key_c
+    cmp byte ptr [pressed_space], 0
+    jne poll_key_space
+    cmp byte ptr [pressed_shift], 0
+    jne poll_key_shift
     cmp byte ptr [pressed_up], 0
     jne poll_key_up
     cmp byte ptr [pressed_left], 0
@@ -462,6 +482,18 @@ poll_key_c:
     mov byte ptr [pressed_c], 0
     mov byte ptr [any_key_pending], 0
     mov al, SCAN_C
+    jmp poll_key_ready
+
+poll_key_space:
+    mov byte ptr [pressed_space], 0
+    mov byte ptr [any_key_pending], 0
+    mov al, SCAN_SPACE
+    jmp poll_key_ready
+
+poll_key_shift:
+    mov byte ptr [pressed_shift], 0
+    mov byte ptr [any_key_pending], 0
+    mov al, SCAN_LSHIFT
     jmp poll_key_ready
 
 poll_key_up:
@@ -540,6 +572,20 @@ key_check_c:
     ret
 
 key_check_enter:
+    cmp al, SCAN_SPACE
+    jne key_check_shift
+    mov al, ' '
+    mov ah, SCAN_SPACE
+    ret
+
+key_check_shift:
+    cmp al, SCAN_LSHIFT
+    jne key_check_enter_scan
+    xor al, al
+    mov ah, SCAN_LSHIFT
+    ret
+
+key_check_enter_scan:
     cmp al, SCAN_ENTER
     je key_enter_match
     cmp al, (SCAN_ENTER or SCAN_EXT_FLAG)
@@ -641,6 +687,10 @@ keyboard_irq_handler:
     je keyboard_press_r
     cmp al, SCAN_C
     je keyboard_press_c
+    cmp al, SCAN_SPACE
+    je keyboard_press_space
+    cmp al, SCAN_LSHIFT
+    je keyboard_press_shift
     cmp al, SCAN_UP_EXT
     je keyboard_press_up
     cmp al, SCAN_LEFT_EXT
@@ -677,6 +727,14 @@ keyboard_press_r:
 
 keyboard_press_c:
     mov byte ptr [pressed_c], 1
+    jmp keyboard_count_event
+
+keyboard_press_space:
+    mov byte ptr [pressed_space], 1
+    jmp keyboard_count_event
+
+keyboard_press_shift:
+    mov byte ptr [pressed_shift], 1
     jmp keyboard_count_event
 
 keyboard_press_up:
@@ -726,3 +784,175 @@ keyboard_done:
     pop bx
     pop ax
     iret
+
+record_runtime_frontend_action:
+    push bx
+    cmp al, FRONTEND_ACTION_NONE
+    je runtime_frontend_action_done
+    mov bl, [frontend_action]
+    cmp bl, FRONTEND_ACTION_NONE
+    je runtime_frontend_action_store
+    cmp al, FRONTEND_ACTION_ACTIVITY
+    je runtime_frontend_action_last
+    cmp bl, FRONTEND_ACTION_ACTIVITY
+    jne runtime_frontend_action_last
+
+runtime_frontend_action_store:
+    mov [frontend_action], al
+
+runtime_frontend_action_last:
+    mov [frontend_last_action], al
+    cmp byte ptr [frontend_event_count], 99
+    jae runtime_frontend_action_done
+    inc byte ptr [frontend_event_count]
+
+runtime_frontend_action_done:
+    pop bx
+    ret
+
+poll_runtime_keyboard:
+    mov byte ptr [frontend_action], FRONTEND_ACTION_NONE
+    cmp byte ptr [game_state], STATE_SPLASH
+    je runtime_keyboard_frontend
+    cmp byte ptr [game_state], STATE_TITLE
+    je runtime_keyboard_frontend
+    cmp byte ptr [game_state], STATE_WIN
+    je runtime_keyboard_continue
+    cmp byte ptr [game_state], STATE_LOSE
+    je runtime_keyboard_continue
+    cmp byte ptr [game_state], STATE_VERIFY_PASS
+    je runtime_keyboard_continue
+    cmp byte ptr [game_state], STATE_VERIFY_FAIL
+    je runtime_keyboard_continue
+    cmp byte ptr [demo_active], 0
+    jne runtime_keyboard_takeover
+    jmp runtime_keyboard_gameplay
+
+runtime_keyboard_frontend:
+    cmp byte ptr [pressed_enter], 0
+    jne runtime_keyboard_start
+    cmp byte ptr [pressed_space], 0
+    jne runtime_keyboard_start
+    cmp byte ptr [pressed_w], 0
+    jne runtime_keyboard_start
+    cmp byte ptr [pressed_a], 0
+    jne runtime_keyboard_start
+    cmp byte ptr [pressed_s], 0
+    jne runtime_keyboard_start
+    cmp byte ptr [pressed_d], 0
+    jne runtime_keyboard_start
+    cmp byte ptr [pressed_up], 0
+    jne runtime_keyboard_start
+    cmp byte ptr [pressed_left], 0
+    jne runtime_keyboard_start
+    cmp byte ptr [pressed_right], 0
+    jne runtime_keyboard_start
+    cmp byte ptr [pressed_down], 0
+    jne runtime_keyboard_start
+    cmp byte ptr [any_key_pending], 0
+    je runtime_keyboard_done
+    mov al, FRONTEND_ACTION_ACTIVITY
+    call record_runtime_frontend_action
+    jmp runtime_keyboard_done
+
+runtime_keyboard_start:
+    mov al, FRONTEND_ACTION_START
+    call record_runtime_frontend_action
+    jmp runtime_keyboard_done
+
+runtime_keyboard_continue:
+    cmp byte ptr [pressed_enter], 0
+    jne runtime_keyboard_continue_yes
+    cmp byte ptr [pressed_space], 0
+    jne runtime_keyboard_continue_yes
+    cmp byte ptr [any_key_pending], 0
+    je runtime_keyboard_done
+    mov al, FRONTEND_ACTION_ACTIVITY
+    call record_runtime_frontend_action
+    jmp runtime_keyboard_done
+
+runtime_keyboard_continue_yes:
+    mov al, FRONTEND_ACTION_CONTINUE
+    call record_runtime_frontend_action
+    jmp runtime_keyboard_done
+
+runtime_keyboard_takeover:
+    cmp byte ptr [pressed_enter], 0
+    jne runtime_keyboard_continue_yes
+    cmp byte ptr [pressed_space], 0
+    jne runtime_keyboard_move
+    cmp byte ptr [pressed_w], 0
+    jne runtime_keyboard_move
+    cmp byte ptr [pressed_a], 0
+    jne runtime_keyboard_move
+    cmp byte ptr [pressed_s], 0
+    jne runtime_keyboard_move
+    cmp byte ptr [pressed_d], 0
+    jne runtime_keyboard_move
+    cmp byte ptr [pressed_up], 0
+    jne runtime_keyboard_move
+    cmp byte ptr [pressed_left], 0
+    jne runtime_keyboard_move
+    cmp byte ptr [pressed_right], 0
+    jne runtime_keyboard_move
+    cmp byte ptr [pressed_down], 0
+    jne runtime_keyboard_move
+    cmp byte ptr [pressed_c], 0
+    jne runtime_keyboard_pulse
+    cmp byte ptr [pressed_shift], 0
+    jne runtime_keyboard_pulse
+    cmp byte ptr [pressed_r], 0
+    jne runtime_keyboard_reset
+    cmp byte ptr [any_key_pending], 0
+    je runtime_keyboard_done
+    mov al, FRONTEND_ACTION_ACTIVITY
+    call record_runtime_frontend_action
+    jmp runtime_keyboard_done
+
+runtime_keyboard_gameplay:
+    cmp byte ptr [pressed_w], 0
+    jne runtime_keyboard_move
+    cmp byte ptr [pressed_a], 0
+    jne runtime_keyboard_move
+    cmp byte ptr [pressed_s], 0
+    jne runtime_keyboard_move
+    cmp byte ptr [pressed_d], 0
+    jne runtime_keyboard_move
+    cmp byte ptr [pressed_up], 0
+    jne runtime_keyboard_move
+    cmp byte ptr [pressed_left], 0
+    jne runtime_keyboard_move
+    cmp byte ptr [pressed_right], 0
+    jne runtime_keyboard_move
+    cmp byte ptr [pressed_down], 0
+    jne runtime_keyboard_move
+    cmp byte ptr [pressed_space], 0
+    jne runtime_keyboard_move
+    cmp byte ptr [pressed_c], 0
+    jne runtime_keyboard_pulse
+    cmp byte ptr [pressed_shift], 0
+    jne runtime_keyboard_pulse
+    cmp byte ptr [pressed_r], 0
+    jne runtime_keyboard_reset
+    cmp byte ptr [any_key_pending], 0
+    je runtime_keyboard_done
+    mov al, FRONTEND_ACTION_ACTIVITY
+    call record_runtime_frontend_action
+    jmp runtime_keyboard_done
+
+runtime_keyboard_move:
+    mov al, FRONTEND_ACTION_MOVE
+    call record_runtime_frontend_action
+    jmp runtime_keyboard_done
+
+runtime_keyboard_pulse:
+    mov al, FRONTEND_ACTION_PULSE
+    call record_runtime_frontend_action
+    jmp runtime_keyboard_done
+
+runtime_keyboard_reset:
+    mov al, FRONTEND_ACTION_RESET
+    call record_runtime_frontend_action
+
+runtime_keyboard_done:
+    ret

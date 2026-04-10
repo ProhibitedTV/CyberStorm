@@ -249,13 +249,14 @@ function Invoke-DemoCapture {
 
 function Invoke-DirectGameplayCapture {
     param(
-        [string]$ArtifactDir
+        [string]$ArtifactDir,
+        [string]$Role,
+        [int]$WaitSeconds
     )
 
-    $shotPath = Join-Path $ArtifactDir 'showcase-gameplay.png'
-    $rawShotPath = Join-Path $ArtifactDir 'showcase-gameplay-direct.png'
-    $logPath = Join-Path $ArtifactDir 'showcase-gameplay-direct.log'
-    $waitSeconds = 8
+    $shotPath = Join-Path $ArtifactDir ("showcase-{0}.png" -f $Role)
+    $rawShotPath = Join-Path $ArtifactDir ("showcase-{0}-direct.png" -f $Role)
+    $logPath = Join-Path $ArtifactDir ("showcase-{0}-direct.log" -f $Role)
 
     Invoke-ChildBuild -ExtraArguments @(
         '-DebugBuild',
@@ -280,13 +281,13 @@ function Invoke-DirectGameplayCapture {
 
     Copy-Item -LiteralPath $vboxLogPath -Destination $logPath -Force
     return [pscustomobject]@{
-        Role = 'gameplay'
-        Name = 'TACTICAL GAMEPLAY'
+        Role = $Role
+        Name = $Role.ToUpperInvariant()
         ScreenshotPath = $shotPath
         RawScreenshotPath = $rawShotPath
         LogPath = $logPath
         WaitSeconds = $waitSeconds
-        Source = 'direct-to-game sector 1 chase-camera debug boot'
+        Source = 'direct-to-game release adventure boot'
     }
 }
 
@@ -297,12 +298,6 @@ Assert-PathExists -Path $RuntimeVerifyScriptPath -Label 'runtime verify script'
 Assert-PathExists -Path $DemoSourcePath -Label 'demo source'
 Assert-PathExists -Path $vbox -Label 'VBoxManage'
 New-Item -ItemType Directory -Force -Path $artifactDir | Out-Null
-
-$demoSource = Import-StructuredDataFile -SourcePath $DemoSourcePath -Label 'demo source'
-$demos = @($demoSource.Demos)
-if ($demos.Count -eq 0) {
-    throw ("Demo source must define at least one demo: {0}" -f $DemoSourcePath)
-}
 
 $artifactPaths = New-Object 'System.Collections.Generic.List[string]'
 $summaryLines = New-Object 'System.Collections.Generic.List[string]'
@@ -318,82 +313,46 @@ try {
     Ensure-VmRegistered -Name $VmName
     $vmSmokeReport = Join-Path $buildDir 'cyberstorm-vm-smoke-report.txt'
     $vmSmokeResult = & $VmSmokeScriptPath -ReportPath $vmSmokeReport
-    $titleSource = Join-Path $buildDir 'vm-smoke\cyberstorm-vm-smoke-startup.png'
+    $titleSource = Join-Path $buildDir 'vm-smoke\cyberstorm-vm-smoke-title.png'
     $titleTarget = Join-Path $artifactDir 'showcase-title.png'
     Copy-Item -LiteralPath $titleSource -Destination $titleTarget -Force
     $artifactPaths.Add($titleTarget)
     $summaryLines.Add(("title: {0}" -f $titleTarget))
     $reportLines.Add('Role: title')
-    $reportLines.Add(("  Source: release VM smoke startup frame"))
+    $reportLines.Add(("  Source: release VM smoke title frame"))
     $reportLines.Add(("  Screenshot: {0}" -f $titleTarget))
     $reportLines.Add('')
 
-    foreach ($demoIndex in 0..($demos.Count - 1)) {
-        $demo = $demos[$demoIndex]
-        $showcaseEnabled = if (($demo -is [System.Collections.IDictionary]) -and $demo.ContainsKey('Showcase')) { [bool]$demo['Showcase'] } else { $true }
-        if (-not $showcaseEnabled) {
-            continue
-        }
-        $capture = Invoke-DemoCapture -Demo $demo -DemoIndex $demoIndex -ArtifactDir $artifactDir
-        $artifactPaths.Add($capture.ScreenshotPath)
-        $artifactPaths.Add($capture.RawScreenshotPath)
-        $artifactPaths.Add($capture.LogPath)
-        $summaryLines.Add(("{0}: {1}" -f $capture.Role, $capture.ScreenshotPath))
-        $reportLines.Add(("Role: {0}" -f $capture.Role))
-        $reportLines.Add(("  Demo: {0}" -f $capture.Name))
-        $reportLines.Add(("  Wait: {0}s" -f $capture.WaitSeconds))
-        $reportLines.Add(("  Screenshot: {0}" -f $capture.ScreenshotPath))
-        $reportLines.Add(("  Raw screenshot: {0}" -f $capture.RawScreenshotPath))
-        $reportLines.Add(("  VBox log: {0}" -f $capture.LogPath))
-        $reportLines.Add('')
-    }
-
-    $gameplayCapture = Invoke-DirectGameplayCapture -ArtifactDir $artifactDir
-    $artifactPaths.Add($gameplayCapture.ScreenshotPath)
-    $artifactPaths.Add($gameplayCapture.RawScreenshotPath)
-    $artifactPaths.Add($gameplayCapture.LogPath)
-    $summaryLines.Add(("gameplay: {0}" -f $gameplayCapture.ScreenshotPath))
-    $reportLines.Add('Role: gameplay')
-    $reportLines.Add(("  Source: {0}" -f $gameplayCapture.Source))
-    $reportLines.Add(("  Wait: {0}s" -f $gameplayCapture.WaitSeconds))
-    $reportLines.Add(("  Screenshot: {0}" -f $gameplayCapture.ScreenshotPath))
-    $reportLines.Add(("  Raw screenshot: {0}" -f $gameplayCapture.RawScreenshotPath))
-    $reportLines.Add(("  VBox log: {0}" -f $gameplayCapture.LogPath))
+    $beautyCapture = Invoke-DirectGameplayCapture -ArtifactDir $artifactDir -Role 'beauty' -WaitSeconds 5
+    $artifactPaths.Add($beautyCapture.ScreenshotPath)
+    $artifactPaths.Add($beautyCapture.RawScreenshotPath)
+    $artifactPaths.Add($beautyCapture.LogPath)
+    $summaryLines.Add(("beauty: {0}" -f $beautyCapture.ScreenshotPath))
+    $reportLines.Add('Role: beauty')
+    $reportLines.Add(("  Source: {0}" -f $beautyCapture.Source))
+    $reportLines.Add(("  Wait: {0}s" -f $beautyCapture.WaitSeconds))
+    $reportLines.Add(("  Screenshot: {0}" -f $beautyCapture.ScreenshotPath))
+    $reportLines.Add(("  Raw screenshot: {0}" -f $beautyCapture.RawScreenshotPath))
+    $reportLines.Add(("  VBox log: {0}" -f $beautyCapture.LogPath))
     $reportLines.Add('')
 
-    $runtimeVerifyResult = & $RuntimeVerifyScriptPath `
-        -Assembler $Assembler `
-        -AssemblerPath $AssemblerPath `
-        -MasmPath $MasmPath `
-        -SfxOnly:$SfxOnly.IsPresent `
-        -VmName $VmName
-    $artifactPaths.Add($runtimeVerifyResult.ReportPath)
-    foreach ($artifact in @($runtimeVerifyResult.ArtifactPaths)) {
-        $artifactPaths.Add($artifact)
-    }
+    $actionCapture = Invoke-DirectGameplayCapture -ArtifactDir $artifactDir -Role 'action' -WaitSeconds 12
+    $artifactPaths.Add($actionCapture.ScreenshotPath)
+    $artifactPaths.Add($actionCapture.RawScreenshotPath)
+    $artifactPaths.Add($actionCapture.LogPath)
+    $summaryLines.Add(("action: {0}" -f $actionCapture.ScreenshotPath))
+    $reportLines.Add('Role: action')
+    $reportLines.Add(("  Source: {0}" -f $actionCapture.Source))
+    $reportLines.Add(("  Wait: {0}s" -f $actionCapture.WaitSeconds))
+    $reportLines.Add(("  Screenshot: {0}" -f $actionCapture.ScreenshotPath))
+    $reportLines.Add(("  Raw screenshot: {0}" -f $actionCapture.RawScreenshotPath))
+    $reportLines.Add(("  VBox log: {0}" -f $actionCapture.LogPath))
+    $reportLines.Add('')
 
-    $endingSource = @($runtimeVerifyResult.ArtifactPaths | Where-Object { $_ -match 'runtime-verify-.*-pass\.png$' }) | Select-Object -First 1
-    $technicalSource = @($runtimeVerifyResult.ArtifactPaths | Where-Object { $_ -match 'runtime-verify-.*-fail\.png$' }) | Select-Object -First 1
-    $endingTarget = Join-Path $artifactDir 'showcase-ending.png'
-    $technicalTarget = Join-Path $artifactDir 'showcase-technical.png'
-    Copy-Item -LiteralPath $endingSource -Destination $endingTarget -Force
-    Copy-Item -LiteralPath $technicalSource -Destination $technicalTarget -Force
-    $artifactPaths.Add($endingTarget)
-    $artifactPaths.Add($technicalTarget)
-    $summaryLines.Add(("ending: {0}" -f $endingTarget))
-    $summaryLines.Add(("technical: {0}" -f $technicalTarget))
-    $reportLines.Add('Role: ending')
-    $reportLines.Add(("  Source: runtime verification pass scene"))
-    $reportLines.Add(("  Screenshot: {0}" -f $endingTarget))
-    $reportLines.Add('')
-    $reportLines.Add('Role: technical')
-    $reportLines.Add(("  Source: forced verification mismatch scene"))
-    $reportLines.Add(("  Screenshot: {0}" -f $technicalTarget))
-    $reportLines.Add('')
     $reportLines.Add('README roles')
     $reportLines.Add(("  readme-shot-1.png <- {0}" -f $titleTarget))
-    $reportLines.Add(("  readme-shot-2.png <- {0}" -f (Join-Path $artifactDir 'showcase-gameplay.png')))
-    $reportLines.Add(("  readme-shot-3.png <- {0}" -f $endingTarget))
+    $reportLines.Add(("  readme-shot-2.png <- {0}" -f $beautyCapture.ScreenshotPath))
+    $reportLines.Add(("  readme-shot-3.png <- {0}" -f $actionCapture.ScreenshotPath))
 } finally {
     Stop-VmIfRunning -Name $VmName
     if ($restoreRelease) {

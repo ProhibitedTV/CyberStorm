@@ -25,6 +25,19 @@ player_x     db START_X
 player_y     db START_Y
 exit_x       db EXIT_COL
 exit_y       db EXIT_ROW
+adventure_player_world_x dw 0
+adventure_player_world_y dw GAME3D_FLOOR_Y
+adventure_player_world_z dw 0
+adventure_player_vel_y   dw 0
+adventure_player_yaw     db GAME3D_YAW_NORTH
+adventure_player_grounded db 1
+adventure_charge_timer   db 0
+adventure_flame_timer    db 0
+adventure_enemy_tick     db 0
+adventure_hazard_timer   db 0
+adventure_objectives_done db 0
+adventure_objectives_total db 0
+adventure_intro_timer    db 0
 ; Boot drive is captured from DL on stage-two entry so post-boot bank reads do
 ; not depend on the boot sector staying resident.
 boot_drive   db 0
@@ -140,6 +153,8 @@ pressed_s db 0
 pressed_d db 0
 pressed_r db 0
 pressed_c db 0
+pressed_space db 0
+pressed_shift db 0
 pressed_up db 0
 pressed_left db 0
 pressed_right db 0
@@ -225,6 +240,14 @@ shield_text   db 'SHIELD', 0
 pulse_text    db 'PULSE', 0
 gate_text     db 'GATE', 0
 controls_text db 'MOVE WASD OR ARROWS  C EMP  R RESET', 0
+adventure_controls_text db 'WS MOVE  AD TURN  SPACE GLIDE  SHIFT CHARGE  C FLAME', 0
+realm_text db 'REALM', 0
+gems_text db 'GEMS', 0
+goals_text db 'GOALS', 0
+portal_text db 'PORTAL', 0
+slash_text db '/', 0
+portal_open_text db 'OPEN', 0
+portal_locked_text db 'LOCK', 0
 sector1_short_text db 'S1', 0
 sector2_short_text db 'S2', 0
 sector3_short_text db 'S3', 0
@@ -248,18 +271,18 @@ include generated_runtime_verify.inc
 ; payload plus scene/camera metadata tables for the phase-1 3D renderer.
 include generated_geometry.inc
 
-text_msg_sector   db 'SECTOR LIVE. LIFT 4 SHARDS TO CRACK THE GATE.', 0
-text_msg_block    db 'BLACK ICE HOLDS. CUT A DIFFERENT LINE.', 0
-text_msg_shard    db 'SHARD SPIKED. THE BREACH IS OPENING.', 0
-text_msg_gate     db 'GATE SHATTERED. RUN THE EXIT.', 0
-text_msg_hit      db 'RUNNER HIT. SHIELD SHEARED AWAY.', 0
-text_msg_kill     db 'HUNTER PURGED. THE LANE BREATHES.', 0
+text_msg_sector   db 'THE REALM IS LIVE. GATHER GEMS AND LIGHT THE PEDESTALS.', 0
+text_msg_block    db 'A CLIFF OR STONE WALL BLOCKS THE WAY.', 0
+text_msg_shard    db 'GEM COLLECTED. THE PORTAL BRIGHTENS.', 0
+text_msg_gate     db 'PORTAL OPEN. STEP THROUGH WHEN YOU ARE READY.', 0
+text_msg_hit      db 'OUCH. THAT ONE COST A HEART.', 0
+text_msg_kill     db 'FOE TOPPLED. THE PATH BREATHES.', 0
 text_msg_pulse    db 'EMP WAVE CUT LOOSE.', 0
 text_msg_nopulse  db 'EMP DRY. NO CHARGES IN THE BANK.', 0
-text_msg_surge    db 'SURGE ARC BURNED A SHIELD.', 0
-text_msg_trap     db 'SURGE TRAP LANDED. HUNTER BURNT OUT.', 0
+text_msg_surge    db 'LAVA OR BAD AIR BIT BACK.', 0
+text_msg_trap     db 'THE HAZARD CAUGHT A FOE.', 0
 text_msg_recharge db 'CHAIN BREAK. EMP CHARGE RESTORED.', 0
-text_msg_spoof    db 'TERMINAL SPOOF LIVE. HUNTERS PULL TO THE GATE.', 0
+text_msg_spoof    db 'PEDESTAL LIT. ANOTHER PORTAL SEAL IS GONE.', 0
 
 splash_brand    db 'BITRIVER', 0
 splash_subtitle db 'SOFTWARE', 0

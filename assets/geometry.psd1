@@ -71,6 +71,14 @@ function Face {
         @{ Key = 'console_cyan'; Base = 5; Dither = 7 }
         @{ Key = 'console_amber'; Base = 8; Dither = 7 }
         @{ Key = 'console_red'; Base = 10; Dither = 7 }
+        @{ Key = 'sky_stone'; Base = 7; Dither = 6 }
+        @{ Key = 'sun_warm'; Base = 8; Dither = 7 }
+        @{ Key = 'meadow_ground'; Base = 13; Dither = 8 }
+        @{ Key = 'tree_canopy'; Base = 5; Dither = 7 }
+        @{ Key = 'tree_trunk'; Base = 8; Dither = 9 }
+        @{ Key = 'stone_soft'; Base = 7; Dither = 4 }
+        @{ Key = 'lava_hot'; Base = 9; Dither = 8 }
+        @{ Key = 'gem_blue'; Base = 6; Dither = 7 }
     )
     Scenes = @(
         @{
@@ -511,97 +519,97 @@ function Face {
     GameplayKits = @(
         @{
             Key = 'sector1'
-            FloorBase = 'floor_dark'
-            FloorTrim = 'panel_cyan'
-            WallBase = 'vault_wall'
-            WallTrim = 'vault_trim'
-            WallCap = 'panel_dark'
-            Lane = 'panel_cyan'
-            GateMesh = 'gate_vault'
-            TerminalMesh = 'terminal_vault'
-            SurgeMesh = 'surge_vault'
-            ShardMesh = 'shard_vault'
+            FloorBase = 'meadow_ground'
+            FloorTrim = 'sun_warm'
+            WallBase = 'sky_stone'
+            WallTrim = 'panel_white'
+            WallCap = 'panel_cyan'
+            Lane = 'panel_white'
+            GateMesh = 'portal_arch'
+            TerminalMesh = 'switch_pedestal'
+            SurgeMesh = 'lava_vent'
+            ShardMesh = 'gem_cluster'
             Camera = @{
-                Height = 5.15
-                Distance = 6.95
-                LookAhead = 0.85
+                Height = 5.05
+                Distance = 7.20
+                LookAhead = 1.05
                 HeadingNorthYawDegrees = 135.0
                 HeadingEastYawDegrees = 45.0
                 HeadingSouthYawDegrees = 315.0
                 HeadingWestYawDegrees = 225.0
             }
             Projection = @{
-                PitchDegrees = -18.0
-                ProjectScale = 92
+                PitchDegrees = -17.0
+                ProjectScale = 100
             }
             ShotRigs = @{
                 BaseChase = @{
-                    Height = 5.15
-                    Distance = 6.95
-                    LookAhead = 0.85
-                    PitchDegrees = -18.0
-                    ProjectScale = 92
-                    Horizon = 34
+                    Height = 5.05
+                    Distance = 7.20
+                    LookAhead = 1.05
+                    PitchDegrees = -17.0
+                    ProjectScale = 100
+                    Horizon = 38
                     FocusBiasX = 0.00
                     FocusBiasZ = 0.00
                 }
                 MoveSettle = @{
-                    Height = 4.95
-                    Distance = 6.35
-                    LookAhead = 1.10
-                    PitchDegrees = -20.0
-                    ProjectScale = 96
-                    Horizon = 32
+                    Height = 4.80
+                    Distance = 6.55
+                    LookAhead = 1.25
+                    PitchDegrees = -18.0
+                    ProjectScale = 104
+                    Horizon = 36
                     FocusBiasX = 0.00
                     FocusBiasZ = 0.20
                 }
                 SectorEntry = @{
-                    Height = 4.55
-                    Distance = 8.55
+                    Height = 4.35
+                    Distance = 8.95
                     LookAhead = 0.00
-                    PitchDegrees = -16.0
-                    ProjectScale = 88
-                    Horizon = 36
+                    PitchDegrees = -14.0
+                    ProjectScale = 94
+                    Horizon = 40
                     FocusBiasX = 0.70
                     FocusBiasZ = -0.85
                 }
                 EnemyReveal = @{
-                    Height = 4.75
-                    Distance = 5.60
+                    Height = 4.65
+                    Distance = 5.85
                     LookAhead = 0.20
-                    PitchDegrees = -20.0
-                    ProjectScale = 104
-                    Horizon = 30
+                    PitchDegrees = -18.0
+                    ProjectScale = 108
+                    Horizon = 34
                     FocusBiasX = 0.00
                     FocusBiasZ = 0.00
                 }
                 Interaction = @{
-                    Height = 4.90
-                    Distance = 5.80
+                    Height = 4.75
+                    Distance = 5.90
                     LookAhead = 0.10
-                    PitchDegrees = -22.0
-                    ProjectScale = 100
-                    Horizon = 31
+                    PitchDegrees = -20.0
+                    ProjectScale = 106
+                    Horizon = 35
                     FocusBiasX = 0.00
                     FocusBiasZ = 0.15
                 }
                 WardenPressure = @{
-                    Height = 4.70
-                    Distance = 5.35
+                    Height = 4.60
+                    Distance = 5.40
                     LookAhead = 0.15
-                    PitchDegrees = -21.0
-                    ProjectScale = 108
-                    Horizon = 29
+                    PitchDegrees = -19.0
+                    ProjectScale = 110
+                    Horizon = 33
                     FocusBiasX = 0.00
                     FocusBiasZ = -0.10
                 }
                 EndBeat = @{
-                    Height = 4.35
-                    Distance = 4.95
+                    Height = 4.25
+                    Distance = 5.10
                     LookAhead = 0.20
-                    PitchDegrees = -24.0
-                    ProjectScale = 110
-                    Horizon = 28
+                    PitchDegrees = -21.0
+                    ProjectScale = 112
+                    Horizon = 32
                     FocusBiasX = 0.10
                     FocusBiasZ = 0.05
                 }
@@ -627,16 +635,16 @@ function Face {
                 FarMassHeight = 1.28
             }
             Landmark = @{
-                Mesh = 'landmark_vault'
+                Mesh = 'tower_toy'
             }
             Atmosphere = @{
-                BackdropFar = 'PAL_BG0'
-                BackdropMid = 'PAL_PANEL2'
-                BackdropNear = 'PAL_PANEL'
-                HorizonA = 'PAL_CYAN'
-                HorizonB = 'PAL_CYAN2'
-                HorizonY = 34
-                WobbleStrength = 1
+                BackdropFar = 'PAL_CYAN'
+                BackdropMid = 'PAL_CYAN2'
+                BackdropNear = 'PAL_BG1'
+                HorizonA = 'PAL_WHITE'
+                HorizonB = 'PAL_AMBER'
+                HorizonY = 38
+                WobbleStrength = 0
             }
         }
         @{
@@ -1232,6 +1240,151 @@ function Face {
                 (Face @(5, 6, 9) 'panel_white'),
                 (Face @(6, 7, 8, 9) 'lock_trim'),
                 (Face @(8, 9, 10) 'panel_red')
+            )
+        }
+        @{
+            Key = 'portal_arch'
+            Vertices = @(
+                (M -150 0 -34), (M -92 0 -34), (M -92 288 -34), (M -150 288 -34),
+                (M 92 0 -34), (M 150 0 -34), (M 150 288 -34), (M 92 288 -34),
+                (M -116 288 -34), (M 116 288 -34), (M 116 356 -34), (M -116 356 -34),
+                (M -58 92 14), (M 58 92 14), (M 58 236 14), (M -58 236 14)
+            )
+            Faces = @(
+                (Face @(0, 1, 2, 3) 'sky_stone'),
+                (Face @(4, 5, 6, 7) 'sky_stone'),
+                (Face @(8, 9, 10, 11) 'sun_warm'),
+                (Face @(12, 13, 14, 15) 'gate_glow')
+            )
+        }
+        @{
+            Key = 'switch_pedestal'
+            Vertices = @(
+                (M -62 0 -52), (M 62 0 -52), (M 62 0 52), (M -62 0 52),
+                (M -46 136 -38), (M 46 136 -38), (M 46 136 38), (M -46 136 38),
+                (M -22 206 -20), (M 22 206 -20), (M 0 294 18)
+            )
+            Faces = @(
+                (Face @(0, 1, 5, 4) 'stone_soft'),
+                (Face @(1, 2, 6, 5) 'sky_stone'),
+                (Face @(2, 3, 7, 6) 'stone_soft'),
+                (Face @(3, 0, 4, 7) 'sky_stone'),
+                (Face @(4, 5, 9, 8) 'sun_warm'),
+                (Face @(5, 6, 9) 'panel_white'),
+                (Face @(6, 7, 8, 9) 'sun_warm'),
+                (Face @(8, 9, 10) 'console_cyan')
+            )
+        }
+        @{
+            Key = 'lava_vent'
+            Vertices = @(
+                (M -68 0 -48), (M 68 0 -48), (M 68 0 48), (M -68 0 48),
+                (M -42 78 -22), (M 42 78 -22), (M 42 78 22), (M -42 78 22),
+                (M 0 154 0)
+            )
+            Faces = @(
+                (Face @(0, 1, 5, 4) 'stone_soft'),
+                (Face @(1, 2, 6, 5) 'lava_hot'),
+                (Face @(2, 3, 7, 6) 'stone_soft'),
+                (Face @(3, 0, 4, 7) 'lava_hot'),
+                (Face @(4, 5, 8) 'sun_warm'),
+                (Face @(5, 6, 8) 'lava_hot'),
+                (Face @(6, 7, 8) 'sun_warm'),
+                (Face @(7, 4, 8) 'lava_hot')
+            )
+        }
+        @{
+            Key = 'gem_cluster'
+            Vertices = @(
+                (M -24 0 0), (M 0 0 -24), (M 24 0 0), (M 0 0 24),
+                (M -14 86 -14), (M 14 86 -14), (M 14 86 14), (M -14 86 14),
+                (M 0 164 0)
+            )
+            Faces = @(
+                (Face @(0, 1, 5, 4) 'gem_blue'),
+                (Face @(1, 2, 6, 5) 'panel_white'),
+                (Face @(2, 3, 7, 6) 'gem_blue'),
+                (Face @(3, 0, 4, 7) 'panel_white'),
+                (Face @(4, 5, 8) 'gem_blue'),
+                (Face @(5, 6, 8) 'panel_white'),
+                (Face @(6, 7, 8) 'gem_blue'),
+                (Face @(7, 4, 8) 'panel_white')
+            )
+        }
+        @{
+            Key = 'tree_round'
+            Vertices = @(
+                (M -22 0 -22), (M 22 0 -22), (M 22 0 22), (M -22 0 22),
+                (M -18 126 -18), (M 18 126 -18), (M 18 126 18), (M -18 126 18),
+                (M -84 172 -42), (M 84 172 -42), (M 84 172 42), (M -84 172 42),
+                (M 0 282 0)
+            )
+            Faces = @(
+                (Face @(0, 1, 5, 4) 'tree_trunk'),
+                (Face @(1, 2, 6, 5) 'tree_trunk'),
+                (Face @(2, 3, 7, 6) 'tree_trunk'),
+                (Face @(3, 0, 4, 7) 'tree_trunk'),
+                (Face @(8, 9, 12) 'tree_canopy'),
+                (Face @(9, 10, 12) 'tree_canopy'),
+                (Face @(10, 11, 12) 'tree_canopy'),
+                (Face @(11, 8, 12) 'tree_canopy')
+            )
+        }
+        @{
+            Key = 'stone_stack'
+            Vertices = @(
+                (M -70 0 -44), (M 58 0 -36), (M 62 0 42), (M -64 0 48),
+                (M -52 68 -30), (M 44 74 -28), (M 42 74 30), (M -48 68 34),
+                (M -28 128 -12), (M 30 132 -14), (M 24 132 18), (M -26 128 20)
+            )
+            Faces = @(
+                (Face @(0, 1, 5, 4) 'stone_soft'),
+                (Face @(1, 2, 6, 5) 'sky_stone'),
+                (Face @(2, 3, 7, 6) 'stone_soft'),
+                (Face @(3, 0, 4, 7) 'sky_stone'),
+                (Face @(4, 5, 9, 8) 'stone_soft'),
+                (Face @(5, 6, 10, 9) 'sky_stone'),
+                (Face @(6, 7, 11, 10) 'stone_soft'),
+                (Face @(7, 4, 8, 11) 'sky_stone')
+            )
+        }
+        @{
+            Key = 'bridge_span'
+            Vertices = @(
+                (M -120 0 -48), (M 120 0 -48), (M 120 0 48), (M -120 0 48),
+                (M -120 26 -48), (M 120 26 -48), (M 120 26 48), (M -120 26 48),
+                (M -92 92 -36), (M -62 92 -36), (M 62 92 36), (M 92 92 36)
+            )
+            Faces = @(
+                (Face @(0, 1, 5, 4) 'sun_warm'),
+                (Face @(1, 2, 6, 5) 'stone_soft'),
+                (Face @(2, 3, 7, 6) 'sun_warm'),
+                (Face @(3, 0, 4, 7) 'stone_soft'),
+                (Face @(8, 9, 1, 0) 'sky_stone'),
+                (Face @(10, 11, 2, 3) 'sky_stone')
+            )
+        }
+        @{
+            Key = 'tower_toy'
+            Vertices = @(
+                (M -86 0 -86), (M 86 0 -86), (M 86 0 86), (M -86 0 86),
+                (M -64 246 -64), (M 64 246 -64), (M 64 246 64), (M -64 246 64),
+                (M -46 326 -46), (M 46 326 -46), (M 46 326 46), (M -46 326 46),
+                (M 0 428 0)
+            )
+            Faces = @(
+                (Face @(0, 1, 5, 4) 'sky_stone'),
+                (Face @(1, 2, 6, 5) 'sun_warm'),
+                (Face @(2, 3, 7, 6) 'sky_stone'),
+                (Face @(3, 0, 4, 7) 'sun_warm'),
+                (Face @(4, 5, 9, 8) 'panel_white'),
+                (Face @(5, 6, 10, 9) 'sun_warm'),
+                (Face @(6, 7, 11, 10) 'panel_white'),
+                (Face @(7, 4, 8, 11) 'sun_warm'),
+                (Face @(8, 9, 12) 'gate_glow'),
+                (Face @(9, 10, 12) 'panel_white'),
+                (Face @(10, 11, 12) 'gate_glow'),
+                (Face @(11, 8, 12) 'panel_white')
             )
         }
         @{

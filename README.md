@@ -1,8 +1,8 @@
 # CyberStorm
 
-> No OS. No shell. Just the breach.
+> No OS. No shell. Just the realm.
 >
-> CyberStorm is a bootable 16-bit x86 infiltration game and a compact bare-metal engine project. It boots from a floppy image, enters a hand-written boot sector, loads a real-mode stage two, switches into raw VGA mode `13h`, and runs without DOS or any host runtime.
+> CyberStorm is a bootable 16-bit x86 3D adventure slice and a compact bare-metal engine project. It boots from a floppy image, enters a hand-written boot sector, loads a real-mode stage two, switches into raw VGA mode `13h`, and runs without DOS or any host runtime.
 
 ![CyberStorm hero](build/readme-shot-1.png)
 
@@ -14,12 +14,11 @@
 
 ### For Players
 
-- **Three distinct sectors.** `Scout Grid`, `Surge Furnace`, and `Warden Lock` each push a different mix of routing, hazard, and pursuit pressure.
-- **Authored breach scenarios.** Every map now carries a named scenario and a semi-authored shard route, so runs stay readable without becoming fully scripted.
-- **Readable turn-based tension.** You move once, hunters answer once, and every bad turn is meant to stay understandable.
-- **Tactical systems without control bloat.** EMP pulses, surge nodes, spoof terminals, gate states, and elite hunters all live inside the same compact loop.
-- **A real arcade-style mastery layer.** Runs now track score, sector performance, and final rank without replacing the survival objective.
-- **A real attract mode.** If the title sits idle, CyberStorm boots into deterministic demo runs authored from source data instead of hand-coded one-off logic.
+- **One polished release realm.** `Sunspark Glade` is the current baseline build: a colorful toy-like play space with a stable chase camera, open lanes, portal goal, and big landmark silhouettes.
+- **Continuous bare-metal movement.** The release path now supports real-time run, turn, jump, glide, charge, and flame controls instead of the older move-once tactical loop.
+- **Simple collectible progression.** Gather gems, light flame pedestals, and open the exit portal instead of pushing through three half-converted tactical sectors.
+- **Readable 3D creature pressure.** Small charge targets, flame-vulnerable foes, and a larger patrol threat all render as low-poly world actors instead of flat tokens.
+- **A real attract mode and legacy path.** The title still rolls into authored demos, and the older infiltration loop stays available in debug/verification builds while the adventure slice hardens.
 
 ### For Engine People
 
@@ -28,18 +27,18 @@
 - **Generated content tooling.** Sprites, banked presentation assets, low-poly scene geometry, sectors, rules, demos, and music come from readable source files that generate MASM-friendly data at build time.
 - **A real software 3D render path.** Splash, title, sector-entry cards, end screens, and now live gameplay all run through a flat-shaded low-poly renderer, while `-DebugRender2D` still keeps the legacy 2D oracle available for parity work.
 - **A PS1-style grouped scene system.** Splash, title, sector-entry, and end scenes now share the same dark-techno scene-group timeline path, so the BitRiver ident flows into the rest of the front end instead of feeling like a one-off effect.
-- **Integrated low-poly world kits.** The gameplay view now uses sector-specific room materials plus real gate, terminal, surge, shard, runner, and warden meshes instead of treating 3D as a front-end-only trick.
-- **A camera-relative room compiler.** The 3D gameplay path now compiles only the structural wall bands the active chase view actually needs, which rescues sector-3 room budgets without changing game rules.
+- **Integrated low-poly world kits.** The gameplay view now uses authored adventure props, portal/switch/hazard meshes, world-space gems, and low-poly actor meshes instead of treating 3D as a front-end-only trick.
+- **A release-first adventure path.** The default boot now goes straight into the real-time realm slice, while the older tactical path remains available behind debug/verification builds as a compatibility oracle.
 - **Disciplined validation.** The build enforces boot/image layout, generated content shape, deterministic debug options, and a lightweight balance harness.
 
 ## Visual Gallery
 
 The README gallery is intentionally small. The build maintains three stable slots so the page stays curated instead of turning into a screenshot dump.
 
-| Title / Identity | Live Gameplay | Payoff / Systems |
+| Title / Identity | Realm Beauty | Gameplay Action |
 | --- | --- | --- |
 | ![CyberStorm title shot](build/readme-shot-1.png) | ![CyberStorm gameplay shot](build/readme-shot-2.png) | ![CyberStorm payoff shot](build/readme-shot-3.png) |
-| The first shot should immediately communicate "bootable game" through the splash or main title. | The middle shot should show the runner, hunters, HUD, and objective pressure in one readable frame. | The last shot should show a memorable beat: gate unlock, hazard interaction, sector transition, or end-state reveal. |
+| The first shot should immediately communicate "bootable bare-metal game" through the title. | The middle shot should sell the realm silhouette, horizon, and toy-like prop language. | The last shot should show the runner, foes, and objective state in one readable action frame. |
 
 If you want the build to auto-pick better captures, name files with tags like `*-title-*`, `*-gameplay-*`, `*-hazard-*`, `*-elite-*`, `*-ending-*`, or `*-technical-*`.
 
@@ -102,8 +101,12 @@ If you leave the title screen alone for a few seconds, CyberStorm now auto-start
 
 - `Enter`, `Space`, `WASD`, or arrow keys: start from splash/title
 - `Enter` or `Space`: replay from win/lose or return from verify screens
-- `WASD` or arrow keys: move
-- `C`: EMP pulse
+- `W` / `S`: move forward and back
+- `A` / `D`: turn left and right
+- Arrow keys: movement/turn mirror
+- `Space`: jump, then glide while held during descent
+- `Left Shift`: charge
+- `C`: flame
 - `R`: restart the current run
 
 ## Technical Facts

@@ -1,4 +1,7 @@
 process_play_input:
+IF DEBUG_LEGACY_GAMEPLAY EQ 0
+    jmp process_adventure_play_input
+ENDIF
     ; Only consumed actions set action_taken; that flag is what grants hunters
     ; exactly one responding turn.
     mov byte ptr [action_taken], 0
@@ -91,6 +94,627 @@ IF DEBUG_RUNTIME_VERIFY
     mov byte ptr [verify_action_pending], 1
 ENDIF
     jmp move_down
+
+process_adventure_play_input:
+    mov byte ptr [action_taken], 0
+    mov byte ptr [frontend_action], FRONTEND_ACTION_NONE
+
+    cmp byte ptr [game_state], STATE_PLAYING
+    jne adventure_input_done
+
+    cmp byte ptr [pressed_r], 0
+    je adventure_skip_reset
+    mov byte ptr [pressed_r], 0
+    mov byte ptr [any_key_pending], 0
+    call start_new_run
+    ret
+
+adventure_skip_reset:
+    call adventure_tick_timers
+    cmp byte ptr [game3d_end_state_pending], 0
+    jne adventure_input_done
+    call adventure_handle_turn
+    call adventure_handle_jump
+    call adventure_handle_charge
+    call adventure_handle_flame
+    call adventure_handle_movement
+    call adventure_apply_vertical_motion
+    call adventure_sync_player_tile_from_world
+    call adventure_collect_gem_if_present
+    call adventure_apply_hazard_if_present
+    call adventure_check_charge_contact
+    call adventure_check_portal_ready
+    call adventure_try_enter_portal
+    call adventure_maybe_step_enemies
+
+adventure_input_done:
+    call clear_pressed_latches
+    ret
+
+initialize_adventure_run_state:
+    mov byte ptr [game_state], STATE_PLAYING
+    mov byte ptr [sector_num], 1
+    mov byte ptr [title_idle_ticks], 0
+    mov byte ptr [run_start_enter_guard], RUN_START_ENTER_GUARD_TICKS
+    mov byte ptr [shield_count], START_SHIELDS
+    mov byte ptr [pulse_count], 0
+    mov byte ptr [data_count], 0
+    mov byte ptr [kill_count], 0
+    mov byte ptr [action_taken], 0
+    mov byte ptr [last_player_dx], 0
+    mov byte ptr [last_player_dy], 0
+    mov byte ptr [spoof_timer], 0
+    mov byte ptr [threat_level], THREAT_NONE
+    mov byte ptr [adventure_charge_timer], 0
+    mov byte ptr [adventure_flame_timer], 0
+    mov byte ptr [adventure_enemy_tick], 0
+    mov byte ptr [adventure_hazard_timer], 0
+    mov byte ptr [adventure_objectives_done], 0
+    mov byte ptr [adventure_objectives_total], 0
+    mov byte ptr [adventure_intro_timer], 0
+    mov word ptr [adventure_player_vel_y], 0
+    mov word ptr [adventure_player_world_y], GAME3D_FLOOR_Y
+    call reset_run_mastery
+    call load_adventure_realm
+    mov al, MSG_SECTOR
+    call set_message_event
+    ret
+
+load_adventure_realm:
+    call game3d_reset_room_state
+    call clear_enemy_pressure
+    call clear_enemy_table
+    call copy_adventure_realm_layout
+
+    mov al, [adventure_realm_start_x]
+    mov [player_x], al
+    mov [spoof_x], al
+    mov al, [adventure_realm_start_y]
+    mov [player_y], al
+    mov [spoof_y], al
+
+    mov al, [adventure_realm_portal_x]
+    mov [exit_x], al
+    mov al, [adventure_realm_portal_y]
+    mov [exit_y], al
+    call set_exit_locked
+
+    mov al, [adventure_realm_switch_count]
+    mov [adventure_objectives_total], al
+
+    mov si, offset adventure_realm_gem_table
+    xor cx, cx
+    mov cl, [adventure_realm_gem_count]
+    mov dl, TILE_SHARD
+    call adventure_place_coord_table
+
+    mov si, offset adventure_realm_switch_table
+    xor cx, cx
+    mov cl, [adventure_realm_switch_count]
+    mov dl, TILE_TERMINAL
+    call adventure_place_coord_table
+
+    mov si, offset adventure_realm_hazard_table
+    xor cx, cx
+    mov cl, [adventure_realm_hazard_count]
+    mov dl, TILE_SURGE
+    call adventure_place_coord_table
+
+    mov si, offset adventure_realm_enemy_table
+    xor cx, cx
+    mov cl, [adventure_realm_enemy_count]
+    call adventure_place_enemy_table
+
+    mov bl, [player_x]
+    mov bh, [player_y]
+    call game3d_get_tile_center_world
+    mov [adventure_player_world_x], ax
+    mov [adventure_player_world_z], dx
+    mov word ptr [adventure_player_world_y], GAME3D_FLOOR_Y
+    mov word ptr [adventure_player_vel_y], 0
+    mov byte ptr [adventure_player_grounded], 1
+    mov byte ptr [adventure_player_yaw], GAME3D_YAW_EAST
+    mov byte ptr [adventure_intro_timer], ADVENTURE_INTRO_TICKS
+    call game3d_start_sector_entry_shot
+    ret
+
+copy_adventure_realm_layout:
+    mov si, offset adventure_realm_map
+    mov di, offset map_tiles
+    mov cx, MAP_SIZE
+
+copy_adventure_realm_loop:
+    mov al, [si]
+    inc si
+    cmp al, '#'
+    je copy_adventure_wall
+    mov al, TILE_FLOOR
+    jmp copy_adventure_store
+
+copy_adventure_wall:
+    mov al, TILE_WALL
+
+copy_adventure_store:
+    mov [di], al
+    inc di
+    loop copy_adventure_realm_loop
+    ret
+
+adventure_place_coord_table:
+    jcxz adventure_place_coord_done
+
+adventure_place_coord_loop:
+    mov bl, [si]
+    mov bh, [si + 1]
+    call set_tile
+    add si, 2
+    loop adventure_place_coord_loop
+
+adventure_place_coord_done:
+    ret
+
+adventure_place_enemy_table:
+    jcxz adventure_place_enemy_done
+
+adventure_place_enemy_loop:
+    push cx
+    mov di, si
+    call find_free_enemy_slot
+    mov byte ptr [si + ENEMY_ALIVE], 1
+    mov al, [di]
+    mov [si + ENEMY_X], al
+    mov al, [di + 1]
+    mov [si + ENEMY_Y], al
+    mov al, [di + 2]
+    mov [si + ENEMY_KIND], al
+    mov si, di
+    add si, 3
+    pop cx
+    loop adventure_place_enemy_loop
+
+adventure_place_enemy_done:
+    ret
+
+adventure_tick_timers:
+    cmp byte ptr [adventure_charge_timer], 0
+    je adventure_charge_tick_done
+    dec byte ptr [adventure_charge_timer]
+
+adventure_charge_tick_done:
+    cmp byte ptr [adventure_flame_timer], 0
+    je adventure_flame_tick_done
+    dec byte ptr [adventure_flame_timer]
+
+adventure_flame_tick_done:
+    cmp byte ptr [adventure_hazard_timer], 0
+    je adventure_hazard_tick_done
+    dec byte ptr [adventure_hazard_timer]
+
+adventure_hazard_tick_done:
+    cmp byte ptr [adventure_intro_timer], 0
+    je adventure_tick_done
+    dec byte ptr [adventure_intro_timer]
+
+adventure_tick_done:
+    ret
+
+adventure_handle_turn:
+    mov al, [key_down + SCAN_A]
+    or al, [key_down + SCAN_LEFT_EXT]
+    jz adventure_turn_check_right
+    mov al, [key_down + SCAN_D]
+    or al, [key_down + SCAN_RIGHT_EXT]
+    jnz adventure_turn_done
+    sub byte ptr [adventure_player_yaw], ADVENTURE_TURN_STEP
+    ret
+
+adventure_turn_check_right:
+    mov al, [key_down + SCAN_D]
+    or al, [key_down + SCAN_RIGHT_EXT]
+    jz adventure_turn_done
+    add byte ptr [adventure_player_yaw], ADVENTURE_TURN_STEP
+
+adventure_turn_done:
+    ret
+
+adventure_handle_jump:
+    cmp byte ptr [pressed_space], 0
+    je adventure_jump_done
+    cmp byte ptr [adventure_player_grounded], 0
+    je adventure_jump_done
+    mov word ptr [adventure_player_vel_y], ADVENTURE_JUMP_VEL
+    mov byte ptr [adventure_player_grounded], 0
+
+adventure_jump_done:
+    ret
+
+adventure_handle_charge:
+    cmp byte ptr [pressed_shift], 0
+    je adventure_charge_done
+    cmp byte ptr [adventure_player_grounded], 0
+    je adventure_charge_done
+    cmp byte ptr [adventure_charge_timer], 0
+    jne adventure_charge_done
+    mov byte ptr [adventure_charge_timer], ADVENTURE_CHARGE_TICKS
+
+adventure_charge_done:
+    ret
+
+adventure_handle_flame:
+    cmp byte ptr [pressed_c], 0
+    je adventure_flame_done
+    cmp byte ptr [adventure_flame_timer], 0
+    jne adventure_flame_done
+    mov byte ptr [adventure_flame_timer], ADVENTURE_FLAME_TICKS
+    call adventure_fire_flame
+
+adventure_flame_done:
+    ret
+
+adventure_handle_movement:
+    call adventure_get_move_speed
+    or ax, ax
+    jz adventure_movement_done
+    mov [scene3d_temp_v], ax
+    mov al, [adventure_player_yaw]
+    call scene3d_get_sin_cos
+    mov ax, [scene3d_temp_v]
+    call scene3d_mul_ax_bx_fixed
+    mov [scene3d_temp_w], ax
+    mov ax, [scene3d_temp_v]
+    mov bx, dx
+    call scene3d_mul_ax_bx_fixed
+    mov [scene3d_temp_l], ax
+
+    mov ax, [adventure_player_world_x]
+    add ax, [scene3d_temp_w]
+    mov dx, [adventure_player_world_z]
+    call adventure_try_move_to_world
+    jnc adventure_move_z
+    mov [adventure_player_world_x], ax
+    mov [adventure_player_world_z], dx
+    mov byte ptr [action_taken], 1
+
+adventure_move_z:
+    mov ax, [adventure_player_world_x]
+    mov dx, [adventure_player_world_z]
+    add dx, [scene3d_temp_l]
+    call adventure_try_move_to_world
+    jnc adventure_movement_done
+    mov [adventure_player_world_x], ax
+    mov [adventure_player_world_z], dx
+    mov byte ptr [action_taken], 1
+
+adventure_movement_done:
+    ret
+
+adventure_get_move_speed:
+    cmp byte ptr [adventure_charge_timer], 0
+    je adventure_speed_forward
+    mov ax, ADVENTURE_CHARGE_SPEED
+    ret
+
+adventure_speed_forward:
+    mov al, [key_down + SCAN_W]
+    or al, [key_down + SCAN_UP_EXT]
+    jz adventure_speed_back
+    mov ax, ADVENTURE_MOVE_SPEED
+    ret
+
+adventure_speed_back:
+    mov al, [key_down + SCAN_S]
+    or al, [key_down + SCAN_DOWN_EXT]
+    jz adventure_speed_stop
+    mov ax, -ADVENTURE_BACK_SPEED
+    ret
+
+adventure_speed_stop:
+    xor ax, ax
+    ret
+
+adventure_try_move_to_world:
+    push bx
+    push di
+    call adventure_world_to_tile
+    cmp bl, PLAY_MIN_X
+    jb adventure_try_move_fail
+    cmp bl, PLAY_MAX_X
+    ja adventure_try_move_fail
+    cmp bh, PLAY_MIN_Y
+    jb adventure_try_move_fail
+    cmp bh, PLAY_MAX_Y
+    ja adventure_try_move_fail
+    push bx
+    call get_tile
+    pop bx
+    cmp al, TILE_WALL
+    je adventure_try_move_fail
+    cmp al, TILE_EXIT_LOCKED
+    je adventure_try_move_fail
+    mov di, 0FFFFh
+    call find_enemy_at
+    jnc adventure_try_move_ok
+    cmp byte ptr [adventure_charge_timer], 0
+    je adventure_try_move_fail
+    cmp byte ptr [si + ENEMY_KIND], ENEMY_FLANKER
+    je adventure_try_move_fail
+
+adventure_try_move_ok:
+    pop di
+    pop bx
+    stc
+    ret
+
+adventure_try_move_fail:
+    pop di
+    pop bx
+    clc
+    ret
+
+adventure_world_to_tile:
+    add ax, GAME3D_WORLD_ORIGIN_X
+    mov bl, ah
+    add dx, GAME3D_WORLD_ORIGIN_Z
+    mov bh, dh
+    ret
+
+adventure_apply_vertical_motion:
+    cmp byte ptr [adventure_player_grounded], 0
+    jne adventure_grounded_motion
+    mov ax, [adventure_player_vel_y]
+    cmp ax, ADVENTURE_GLIDE_FALL_LIMIT
+    jge adventure_glide_ready
+    cmp byte ptr [key_down + SCAN_SPACE], 0
+    je adventure_glide_ready
+    mov ax, ADVENTURE_GLIDE_FALL_LIMIT
+
+adventure_glide_ready:
+    mov [adventure_player_vel_y], ax
+    add [adventure_player_world_y], ax
+    sub word ptr [adventure_player_vel_y], ADVENTURE_GRAVITY
+    mov ax, [adventure_player_world_y]
+    cmp ax, GAME3D_FLOOR_Y
+    jg adventure_airborne_done
+    mov word ptr [adventure_player_world_y], GAME3D_FLOOR_Y
+    mov word ptr [adventure_player_vel_y], 0
+    mov byte ptr [adventure_player_grounded], 1
+    ret
+
+adventure_airborne_done:
+    ret
+
+adventure_grounded_motion:
+    mov word ptr [adventure_player_world_y], GAME3D_FLOOR_Y
+    mov word ptr [adventure_player_vel_y], 0
+    ret
+
+adventure_sync_player_tile_from_world:
+    mov cl, [player_x]
+    mov ch, [player_y]
+    mov ax, [adventure_player_world_x]
+    mov dx, [adventure_player_world_z]
+    call adventure_world_to_tile
+    mov [player_x], bl
+    mov [player_y], bh
+    mov al, bl
+    sub al, cl
+    mov [last_player_dx], al
+    mov al, bh
+    sub al, ch
+    mov [last_player_dy], al
+    ret
+
+adventure_collect_gem_if_present:
+    mov bl, [player_x]
+    mov bh, [player_y]
+    call get_tile
+    cmp al, TILE_SHARD
+    jne adventure_collect_done
+    mov bl, [player_x]
+    mov bh, [player_y]
+    mov dl, TILE_FLOOR
+    call set_tile
+    mov bl, [player_x]
+    mov bh, [player_y]
+    call set_effect_focus_tile
+    inc byte ptr [data_count]
+    mov ax, SCORE_SHARD_POINTS
+    call award_score_ax
+    mov al, MSG_SHARD
+    call set_message_event
+    call adventure_check_portal_ready
+
+adventure_collect_done:
+    ret
+
+adventure_apply_hazard_if_present:
+    cmp byte ptr [adventure_player_grounded], 0
+    je adventure_hazard_done
+    cmp byte ptr [adventure_hazard_timer], 0
+    jne adventure_hazard_done
+    mov bl, [player_x]
+    mov bh, [player_y]
+    call get_tile
+    cmp al, TILE_SURGE
+    jne adventure_hazard_done
+    mov byte ptr [adventure_hazard_timer], ADVENTURE_HAZARD_COOLDOWN
+    mov bl, [player_x]
+    mov bh, [player_y]
+    call set_effect_focus_tile
+    call record_sector_hit
+    dec byte ptr [shield_count]
+    mov al, MSG_SURGE
+    call set_message_event
+    cmp byte ptr [shield_count], 0
+    jne adventure_hazard_done
+    mov al, STATE_LOSE
+    call game3d_start_endbeat_shot
+
+adventure_hazard_done:
+    ret
+
+adventure_check_charge_contact:
+    mov di, 0FFFFh
+    mov bl, [player_x]
+    mov bh, [player_y]
+    call find_enemy_at
+    jnc adventure_charge_contact_done
+    cmp byte ptr [adventure_charge_timer], 0
+    je adventure_charge_contact_done
+    cmp byte ptr [si + ENEMY_KIND], ENEMY_FLANKER
+    je adventure_charge_contact_done
+    mov bl, [si + ENEMY_X]
+    mov bh, [si + ENEMY_Y]
+    call set_effect_focus_tile
+    mov byte ptr [si + ENEMY_ALIVE], 0
+    call award_kill
+    mov al, MSG_KILL
+    call set_message_event
+
+adventure_charge_contact_done:
+    ret
+
+adventure_check_portal_ready:
+    mov bl, [exit_x]
+    mov bh, [exit_y]
+    call get_tile
+    cmp al, TILE_EXIT_OPEN
+    je adventure_portal_ready_done
+    mov al, [data_count]
+    cmp al, [adventure_realm_gem_count]
+    jb adventure_portal_ready_done
+    mov al, [adventure_objectives_done]
+    cmp al, [adventure_objectives_total]
+    jb adventure_portal_ready_done
+    call open_exit
+    mov al, MSG_GATE
+    call set_message_event
+
+adventure_portal_ready_done:
+    ret
+
+adventure_try_enter_portal:
+    cmp byte ptr [pressed_enter], 0
+    je adventure_portal_enter_done
+    mov bl, [player_x]
+    mov bh, [player_y]
+    call get_tile
+    cmp al, TILE_EXIT_OPEN
+    jne adventure_portal_enter_done
+    mov al, STATE_WIN
+    call game3d_start_endbeat_shot
+
+adventure_portal_enter_done:
+    ret
+
+adventure_maybe_step_enemies:
+    cmp byte ptr [adventure_intro_timer], 0
+    jne adventure_enemy_step_done
+    cmp byte ptr [game_state], STATE_PLAYING
+    jne adventure_enemy_step_done
+    cmp byte ptr [game3d_end_state_pending], 0
+    jne adventure_enemy_step_done
+    inc byte ptr [adventure_enemy_tick]
+    cmp byte ptr [adventure_enemy_tick], ADVENTURE_ENEMY_STEP_TICKS
+    jb adventure_enemy_step_done
+    mov byte ptr [adventure_enemy_tick], 0
+    call enemy_turn
+
+adventure_enemy_step_done:
+    ret
+
+adventure_fire_flame:
+    mov bl, [player_x]
+    mov bh, [player_y]
+    call adventure_flame_hit_tile
+    jc adventure_fire_done
+    call adventure_get_forward_target_tile
+    call adventure_flame_hit_tile
+
+adventure_fire_done:
+    ret
+
+adventure_get_forward_target_tile:
+    mov bl, [player_x]
+    mov bh, [player_y]
+    mov al, [adventure_player_yaw]
+    call adventure_get_step_from_yaw
+    add bl, al
+    add bh, ah
+    ret
+
+adventure_get_step_from_yaw:
+    cmp al, 32
+    jb adventure_step_south
+    cmp al, 96
+    jb adventure_step_east
+    cmp al, 160
+    jb adventure_step_north
+    cmp al, 224
+    jb adventure_step_west
+
+adventure_step_south:
+    xor ah, ah
+    mov al, 0
+    mov ah, 1
+    ret
+
+adventure_step_east:
+    mov al, 1
+    xor ah, ah
+    ret
+
+adventure_step_north:
+    mov al, 0
+    mov ah, -1
+    ret
+
+adventure_step_west:
+    mov al, -1
+    xor ah, ah
+    ret
+
+adventure_flame_hit_tile:
+    cmp bl, PLAY_MIN_X
+    jb adventure_flame_miss
+    cmp bl, PLAY_MAX_X
+    ja adventure_flame_miss
+    cmp bh, PLAY_MIN_Y
+    jb adventure_flame_miss
+    cmp bh, PLAY_MAX_Y
+    ja adventure_flame_miss
+    push bx
+    call get_tile
+    pop bx
+    cmp al, TILE_TERMINAL
+    je adventure_flame_switch
+    mov di, 0FFFFh
+    call find_enemy_at
+    jnc adventure_flame_miss
+    cmp byte ptr [si + ENEMY_KIND], ENEMY_FLANKER
+    jne adventure_flame_miss
+    call set_effect_focus_tile
+    mov byte ptr [si + ENEMY_ALIVE], 0
+    call award_kill
+    mov al, MSG_KILL
+    call set_message_event
+    stc
+    ret
+
+adventure_flame_switch:
+    mov dl, TILE_FLOOR
+    call set_tile
+    call set_effect_focus_tile
+    inc byte ptr [adventure_objectives_done]
+    mov al, MSG_SPOOF
+    call set_message_event
+    call adventure_check_portal_ready
+    stc
+    ret
+
+adventure_flame_miss:
+    clc
+    ret
 
 move_left:
     mov bl, [player_x]
@@ -758,8 +1382,8 @@ get_sector_rule_index:
     ret
 
 set_exit_locked:
-    mov bl, EXIT_COL
-    mov bh, EXIT_ROW
+    mov bl, [exit_x]
+    mov bh, [exit_y]
     mov dl, TILE_EXIT_LOCKED
     call set_tile
     ret
@@ -770,7 +1394,9 @@ open_exit:
     mov dl, TILE_EXIT_OPEN
     call set_tile
     call set_effect_focus_tile
+IF DEBUG_LEGACY_GAMEPLAY EQ 1
     call game3d_start_gate_unlock_shot
+ENDIF
     ret
 
 place_template_shards:

@@ -604,6 +604,37 @@ scene3d_project_vertex_loop:
 
 scene3d_project_vertex_visible:
     mov cx, [scene3d_temp_l]
+    mov bx, cx
+    cmp bx, 128
+    jae scene3d_project_vertex_project
+    shl bx, 1
+    shl bx, 1
+    shl bx, 1
+    shl bx, 1
+    shl bx, 1
+    shl bx, 1
+    shl bx, 1
+    shl bx, 1
+
+    mov ax, [scene3d_temp_v]
+    or ax, ax
+    jns scene3d_project_vertex_v_abs_ready
+    neg ax
+
+scene3d_project_vertex_v_abs_ready:
+    cmp ax, bx
+    jg scene3d_project_vertex_extreme
+    mov ax, [scene3d_temp_w]
+    or ax, ax
+    jns scene3d_project_vertex_w_abs_ready
+    neg ax
+
+scene3d_project_vertex_w_abs_ready:
+    cmp ax, bx
+    jg scene3d_project_vertex_extreme
+
+scene3d_project_vertex_project:
+    mov cx, [scene3d_temp_l]
     mov bx, [scene3d_project_scale]
     mov ax, [scene3d_temp_v]
     call scene3d_project_ax
@@ -617,6 +648,27 @@ scene3d_project_vertex_visible:
     neg ax
     add ax, [scene3d_center_y]
     mov [scene3d_vertex_y + di], ax
+    jmp scene3d_project_vertex_next
+
+scene3d_project_vertex_extreme:
+    mov ax, [scene3d_temp_v]
+    or ax, ax
+    jns scene3d_project_vertex_extreme_right
+    mov word ptr [scene3d_vertex_x + di], -320
+    jmp scene3d_project_vertex_extreme_x_done
+
+scene3d_project_vertex_extreme_right:
+    mov word ptr [scene3d_vertex_x + di], SCREEN_W + 320
+
+scene3d_project_vertex_extreme_x_done:
+    mov ax, [scene3d_temp_w]
+    or ax, ax
+    jns scene3d_project_vertex_extreme_up
+    mov word ptr [scene3d_vertex_y + di], SCREEN_H + 200
+    jmp scene3d_project_vertex_next
+
+scene3d_project_vertex_extreme_up:
+    mov word ptr [scene3d_vertex_y + di], -200
 
 scene3d_project_vertex_next:
     inc bp

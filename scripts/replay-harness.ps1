@@ -105,8 +105,11 @@ function Get-RequiredConstants {
         'STATE_PLAYING',
         'STATE_WIN',
         'STATE_LOSE',
+        'START_SHIELDS',
         'MAP_W',
         'MAP_H',
+        'PLAY_MIN_X',
+        'PLAY_MIN_Y',
         'GAME3D_FLOOR_Y',
         'SCENE3D_NEAR_Z',
         'GAME3D_VIEW_X',
@@ -142,6 +145,22 @@ function Get-RequiredConstants {
         'GAME3D_FRAME_VARIANT_CEILING',
         'GAME3D_FRAME_VARIANT_FAR_MASS',
         'GAME3D_FRAME_VARIANT_LANDMARK',
+        'GAME3D_SHOT_MOVE_IN',
+        'GAME3D_SHOT_MOVE_HOLD',
+        'GAME3D_SHOT_MOVE_OUT',
+        'GAME3D_SHOT_SECTOR_HOLD',
+        'GAME3D_SHOT_SECTOR_OUT',
+        'GAME3D_SHOT_REVEAL_IN',
+        'GAME3D_SHOT_REVEAL_HOLD',
+        'GAME3D_SHOT_REVEAL_OUT',
+        'GAME3D_SHOT_INTERACTION_IN',
+        'GAME3D_SHOT_INTERACTION_HOLD',
+        'GAME3D_SHOT_INTERACTION_OUT',
+        'GAME3D_SHOT_WARDEN_IN',
+        'GAME3D_SHOT_WARDEN_HOLD',
+        'GAME3D_SHOT_WARDEN_OUT',
+        'GAME3D_SHOT_END_IN',
+        'GAME3D_SHOT_END_HOLD',
         'GAME3D_HEADING_NORTH',
         'GAME3D_HEADING_EAST',
         'GAME3D_HEADING_SOUTH',
@@ -154,14 +173,65 @@ function Get-RequiredConstants {
         'GAME3D_YAW_EAST',
         'GAME3D_YAW_NORTH',
         'GAME3D_YAW_WEST',
+        'ADVENTURE_TURN_STEP',
+        'ADVENTURE_MOVE_SPEED',
+        'ADVENTURE_BACK_SPEED',
+        'ADVENTURE_CHARGE_SPEED',
+        'ADVENTURE_JUMP_VEL',
+        'ADVENTURE_GRAVITY',
+        'ADVENTURE_GLIDE_FALL_LIMIT',
+        'ADVENTURE_CHARGE_TICKS',
+        'ADVENTURE_FLAME_TICKS',
+        'ADVENTURE_ENEMY_STEP_TICKS',
+        'ADVENTURE_HAZARD_COOLDOWN',
+        'ADVENTURE_INTRO_TICKS',
+        'ENEMY_RUSHER',
+        'ENEMY_FLANKER',
+        'ENEMY_WARDEN',
+        'THREAT_NONE',
+        'THREAT_NEAR',
+        'THREAT_ELITE',
+        'NEAR_THREAT_DISTANCE',
+        'ELITE_THREAT_DISTANCE',
+        'SCORE_SHARD_POINTS',
+        'SCORE_KILL_POINTS',
+        'SCORE_TRAP_BONUS',
+        'SCORE_CHAIN_STEP',
+        'MSG_SECTOR',
+        'MSG_BLOCK',
+        'MSG_SHARD',
+        'MSG_GATE',
+        'MSG_HIT',
+        'MSG_KILL',
+        'MSG_PULSE',
+        'MSG_NOPULSE',
+        'MSG_SURGE',
+        'MSG_TRAP',
+        'MSG_RECHARGE',
+        'MSG_SPOOF',
+        'MSG_KEY',
+        'FEEDBACK_TICKS_MINOR',
+        'FEEDBACK_TICKS_STANDARD',
+        'FEEDBACK_TICKS_MAJOR',
         'TILE_EXIT_LOCKED',
-        'TILE_EXIT_OPEN'
+        'TILE_EXIT_OPEN',
+        'TILE_FLOOR',
+        'TILE_WALL',
+        'TILE_SHARD',
+        'TILE_SURGE',
+        'TILE_TERMINAL',
+        'TILE_KEY'
     )
 
     $constants = @{}
     foreach ($name in $constantNames) {
         $constants[$name] = Get-AsmEquValue -SourcePath $SourcePath -Name $name
     }
+
+    $constants['PLAY_MAX_X'] = $constants.MAP_W - 2
+    $constants['PLAY_MAX_Y'] = $constants.MAP_H - 2
+    $constants['GAME3D_WORLD_ORIGIN_X'] = $constants.MAP_W * 128
+    $constants['GAME3D_WORLD_ORIGIN_Z'] = $constants.MAP_H * 128
 
     return $constants
 }
@@ -223,10 +293,24 @@ function Get-AdventureRealmDefinition {
 
     $realm = $sectorData.AdventureRealm
     return [pscustomobject]@{
+        Start = (Parse-Coord -Token ([string]$realm.Start) -Context 'AdventureRealm.Start')
         Portal = [pscustomobject]@{
             X = [int](([string]$realm.Portal -split ',')[0])
             Y = [int](([string]$realm.Portal -split ',')[1])
         }
+        RequiredGems = [int]$realm.RequiredGems
+        Rows = @([string[]]$realm.Rows)
+        Gems = @(@($realm.Gems) | ForEach-Object { Parse-Coord -Token ([string]$_) -Context 'AdventureRealm.Gems entry' })
+        Switches = @(@($realm.Switches) | ForEach-Object { Parse-Coord -Token ([string]$_) -Context 'AdventureRealm.Switches entry' })
+        Hazards = @(@($realm.Hazards) | ForEach-Object { Parse-Coord -Token ([string]$_) -Context 'AdventureRealm.Hazards entry' })
+        Key = @(@($realm.Key) | ForEach-Object { Parse-Coord -Token ([string]$_) -Context 'AdventureRealm.Key entry' })
+        Enemies = @(@($realm.Enemies) | ForEach-Object {
+                [pscustomobject]@{
+                    X = [int]$_.X
+                    Y = [int]$_.Y
+                    Kind = [string]$_.Kind
+                }
+            })
         ObjectivesTotal = (@($realm.Switches)).Count + (@($realm.Key)).Count
     }
 }
@@ -477,6 +561,18 @@ function Project-WorldPoint {
         }
     }
 
+    if ($depth -lt 128) {
+        $slopeLimit = $depth * 256
+        if (([Math]::Abs($tempX) -gt $slopeLimit) -or ([Math]::Abs($tempY) -gt $slopeLimit)) {
+            return [pscustomobject]@{
+                Visible = $false
+                X = 0
+                Y = 0
+                Depth = $depth
+            }
+        }
+    }
+
     return [pscustomobject]@{
         Visible = $true
         X = ([int](($tempX * $Camera.ProjectScale) / $depth) + $Camera.CenterX)
@@ -539,12 +635,39 @@ function Get-RuntimeCueFlags {
         $flags = $flags -bor $Constants.GAME3D_CUE_FLAG_PLAYER_FALLBACK
     }
 
-    $exitProjection = Project-TileCenter -RuntimeState $RuntimeState -Constants $Constants -GameplayKits $GameplayKits -TileX $AdventureRealm.Portal.X -TileY $AdventureRealm.Portal.Y
+    $exitX = if ($RuntimeState.PSObject.Properties.Name -contains 'ExitX') { [int]$RuntimeState.ExitX } else { [int]$AdventureRealm.Portal.X }
+    $exitY = if ($RuntimeState.PSObject.Properties.Name -contains 'ExitY') { [int]$RuntimeState.ExitY } else { [int]$AdventureRealm.Portal.Y }
+    $exitProjection = Project-TileCenter -RuntimeState $RuntimeState -Constants $Constants -GameplayKits $GameplayKits -TileX $exitX -TileY $exitY
     if (-not (Test-CueReady -Projection $exitProjection -Constants $Constants)) {
         $flags = $flags -bor $Constants.GAME3D_CUE_FLAG_EXIT_FALLBACK
     }
 
+    if (($RuntimeState.PSObject.Properties.Name -contains 'SpoofTimer') -and [int]$RuntimeState.SpoofTimer -gt 0) {
+        $spoofProjection = Project-TileCenter -RuntimeState $RuntimeState -Constants $Constants -GameplayKits $GameplayKits -TileX ([int]$RuntimeState.SpoofX) -TileY ([int]$RuntimeState.SpoofY)
+        if (-not (Test-CueReady -Projection $spoofProjection -Constants $Constants)) {
+            $flags = $flags -bor $Constants.GAME3D_CUE_FLAG_SPOOF_FALLBACK
+        }
+    }
+
+    if (($RuntimeState.PSObject.Properties.Name -contains 'ThreatLevel') -and [int]$RuntimeState.ThreatLevel -ne $Constants.THREAT_NONE) {
+        $threatProjection = Project-TileCenter -RuntimeState $RuntimeState -Constants $Constants -GameplayKits $GameplayKits -TileX ([int]$RuntimeState.ThreatX) -TileY ([int]$RuntimeState.ThreatY)
+        if (-not (Test-CueReady -Projection $threatProjection -Constants $Constants)) {
+            $flags = $flags -bor $Constants.GAME3D_CUE_FLAG_THREAT_FALLBACK
+        }
+    }
+
     return $flags
+}
+
+function Get-AdventureHeadingIdFromYaw {
+    param($Constants, [int]$Yaw)
+
+    $yawByte = ($Yaw -band 0xFF)
+    if ($yawByte -lt 32) { return $Constants.GAME3D_HEADING_SOUTH }
+    if ($yawByte -lt 96) { return $Constants.GAME3D_HEADING_EAST }
+    if ($yawByte -lt 160) { return $Constants.GAME3D_HEADING_NORTH }
+    if ($yawByte -lt 224) { return $Constants.GAME3D_HEADING_WEST }
+    return $Constants.GAME3D_HEADING_SOUTH
 }
 
 function Build-RuntimeStateFromExpected {
@@ -607,14 +730,24 @@ function Get-RuntimeVerificationSignature {
     $cueFlags = Get-RuntimeCueFlags -RuntimeState $RuntimeState -Constants $Constants -GameplayKits $GameplayKits -AdventureRealm $AdventureRealm
     $kit = Get-GameplayKitForSector -GameplayKits $GameplayKits -Sector $RuntimeState.Sector
     $shotRig = $kit.ShotRigs[(Get-ShotRigKeyForMode -Constants $Constants -ShotModeId $RuntimeState.ShotMode)]
+    $headingId = if ($RuntimeState.PSObject.Properties.Name -contains 'Yaw') {
+        Get-AdventureHeadingIdFromYaw -Constants $Constants -Yaw ([int]$RuntimeState.Yaw)
+    } else {
+        [int]$RuntimeState.HeadingId
+    }
+    $exitTile = if (($RuntimeState.PSObject.Properties.Name -contains 'Map') -and ($RuntimeState.PSObject.Properties.Name -contains 'ExitX') -and ($RuntimeState.PSObject.Properties.Name -contains 'ExitY')) {
+        Get-MapTile -Map $RuntimeState.Map -Constants $Constants -X ([int]$RuntimeState.ExitX) -Y ([int]$RuntimeState.ExitY)
+    } else {
+        [int]$RuntimeState.ExitTile
+    }
 
     $signature = Update-RuntimeSignatureByte -Signature $signature -Value $RuntimeState.StateId
     $signature = Update-RuntimeSignatureByte -Signature $signature -Value $RuntimeState.Sector
     $signature = Update-RuntimeSignatureByte -Signature $signature -Value $RuntimeState.TemplateIndex
     $signature = Update-RuntimeSignatureByte -Signature $signature -Value $RuntimeState.Player.X
     $signature = Update-RuntimeSignatureByte -Signature $signature -Value $RuntimeState.Player.Y
-    $signature = Update-RuntimeSignatureByte -Signature $signature -Value $RuntimeState.HeadingId
-    $signature = Update-RuntimeSignatureByte -Signature $signature -Value (Get-RoomVariantFromHeading -Constants $Constants -HeadingId $RuntimeState.HeadingId)
+    $signature = Update-RuntimeSignatureByte -Signature $signature -Value $headingId
+    $signature = Update-RuntimeSignatureByte -Signature $signature -Value (Get-RoomVariantFromHeading -Constants $Constants -HeadingId $headingId)
     $signature = Update-RuntimeSignatureByte -Signature $signature -Value $shotRig.Pitch
     $signature = Update-RuntimeSignatureWord -Signature $signature -Value $shotRig.ProjectScale
     $signature = Update-RuntimeSignatureByte -Signature $signature -Value $cueFlags
@@ -629,7 +762,7 @@ function Get-RuntimeVerificationSignature {
     $signature = Update-RuntimeSignatureByte -Signature $signature -Value $RuntimeState.ObjectivesDone
     $signature = Update-RuntimeSignatureByte -Signature $signature -Value $RuntimeState.ObjectivesTotal
     $signature = Update-RuntimeSignatureByte -Signature $signature -Value $RuntimeState.KeyCollected
-    $signature = Update-RuntimeSignatureByte -Signature $signature -Value $RuntimeState.ExitTile
+    $signature = Update-RuntimeSignatureByte -Signature $signature -Value $exitTile
     $signature = Update-RuntimeSignatureByte -Signature $signature -Value $RuntimeState.KillCount
     $signature = Update-RuntimeSignatureWord -Signature $signature -Value $RuntimeState.Score
     $signature = Update-RuntimeSignatureByte -Signature $signature -Value $RuntimeState.Actions
@@ -637,6 +770,1228 @@ function Get-RuntimeVerificationSignature {
     $signature = Update-RuntimeSignatureByte -Signature $signature -Value $RuntimeState.PulsesUsed
     $signature = Update-RuntimeSignatureByte -Signature $signature -Value $RuntimeState.SpoofTimer
     return ($signature -band 0xFFFF)
+}
+
+function Get-StepActionName {
+    param(
+        $Step,
+        [string]$DemoName
+    )
+
+    if ($Step -is [System.Collections.IDictionary]) {
+        if (-not $Step.ContainsKey('Action')) {
+            throw ("Demo '{0}' step is missing an Action value." -f $DemoName)
+        }
+
+        return ([string]$Step['Action']).Trim().ToUpperInvariant()
+    }
+
+    $parts = ([string]$Step).Trim() -split '\s+'
+    if ($parts.Count -ne 2) {
+        throw ("Demo '{0}' step '{1}' must be 'ACTION COUNT'." -f $DemoName, $Step)
+    }
+
+    return $parts[0].Trim().ToUpperInvariant()
+}
+
+function Get-MapIndex {
+    param(
+        $Constants,
+        [int]$X,
+        [int]$Y
+    )
+
+    return (($Y * $Constants.MAP_W) + $X)
+}
+
+function Get-MapTile {
+    param(
+        [int[]]$Map,
+        $Constants,
+        [int]$X,
+        [int]$Y
+    )
+
+    return [int]$Map[(Get-MapIndex -Constants $Constants -X $X -Y $Y)]
+}
+
+function Set-MapTile {
+    param(
+        [int[]]$Map,
+        $Constants,
+        [int]$X,
+        [int]$Y,
+        [int]$Tile
+    )
+
+    $Map[(Get-MapIndex -Constants $Constants -X $X -Y $Y)] = ($Tile -band 0xFF)
+}
+
+function Get-AdventureEnemyKindId {
+    param($Constants, [string]$Kind)
+
+    switch ($Kind.ToUpperInvariant()) {
+        'FLANKER' { return $Constants.ENEMY_FLANKER }
+        'WARDEN' { return $Constants.ENEMY_WARDEN }
+        default { return $Constants.ENEMY_RUSHER }
+    }
+}
+
+function Get-AdventureShotDuration {
+    param($Constants, [int]$ShotMode)
+
+    switch ($ShotMode) {
+        { $_ -eq $Constants.GAME3D_SHOT_MOVE_SETTLE } { return ($Constants.GAME3D_SHOT_MOVE_IN + $Constants.GAME3D_SHOT_MOVE_HOLD + $Constants.GAME3D_SHOT_MOVE_OUT) }
+        { $_ -eq $Constants.GAME3D_SHOT_SECTOR_ENTRY } { return ($Constants.GAME3D_SHOT_SECTOR_HOLD + $Constants.GAME3D_SHOT_SECTOR_OUT) }
+        { $_ -eq $Constants.GAME3D_SHOT_ENEMY_REVEAL } { return ($Constants.GAME3D_SHOT_REVEAL_IN + $Constants.GAME3D_SHOT_REVEAL_HOLD + $Constants.GAME3D_SHOT_REVEAL_OUT) }
+        { $_ -eq $Constants.GAME3D_SHOT_INTERACTION } { return ($Constants.GAME3D_SHOT_INTERACTION_IN + $Constants.GAME3D_SHOT_INTERACTION_HOLD + $Constants.GAME3D_SHOT_INTERACTION_OUT) }
+        { $_ -eq $Constants.GAME3D_SHOT_WARDEN_PRESSURE } { return ($Constants.GAME3D_SHOT_WARDEN_IN + $Constants.GAME3D_SHOT_WARDEN_HOLD + $Constants.GAME3D_SHOT_WARDEN_OUT) }
+        { $_ -eq $Constants.GAME3D_SHOT_END_BEAT } { return ($Constants.GAME3D_SHOT_END_IN + $Constants.GAME3D_SHOT_END_HOLD) }
+        default { return 0 }
+    }
+}
+
+function Get-AdventureShotFrameVariant {
+    param($Constants, [int]$ShotMode)
+
+    switch ($ShotMode) {
+        { $_ -eq $Constants.GAME3D_SHOT_MOVE_SETTLE } { return $Constants.GAME3D_FRAME_VARIANT_RAIL }
+        { $_ -eq $Constants.GAME3D_SHOT_SECTOR_ENTRY } { return $Constants.GAME3D_FRAME_VARIANT_LANDMARK }
+        { $_ -eq $Constants.GAME3D_SHOT_ENEMY_REVEAL } { return $Constants.GAME3D_FRAME_VARIANT_DOOR }
+        { $_ -eq $Constants.GAME3D_SHOT_INTERACTION } { return $Constants.GAME3D_FRAME_VARIANT_DOOR }
+        { $_ -eq $Constants.GAME3D_SHOT_WARDEN_PRESSURE } { return $Constants.GAME3D_FRAME_VARIANT_CEILING }
+        { $_ -eq $Constants.GAME3D_SHOT_END_BEAT } { return $Constants.GAME3D_FRAME_VARIANT_LANDMARK }
+        default { return $Constants.GAME3D_FRAME_VARIANT_NONE }
+    }
+}
+
+function Get-MessageFeedbackTicks {
+    param($Constants, [int]$MessageId)
+
+    switch ($MessageId) {
+        { $_ -eq $Constants.MSG_SECTOR } { return $Constants.FEEDBACK_TICKS_MAJOR }
+        { $_ -eq $Constants.MSG_BLOCK } { return $Constants.FEEDBACK_TICKS_MINOR }
+        { $_ -eq $Constants.MSG_NOPULSE } { return $Constants.FEEDBACK_TICKS_MINOR }
+        { $_ -eq $Constants.MSG_GATE } { return $Constants.FEEDBACK_TICKS_MAJOR }
+        { $_ -eq $Constants.MSG_HIT } { return $Constants.FEEDBACK_TICKS_MAJOR }
+        { $_ -eq $Constants.MSG_KILL } { return $Constants.FEEDBACK_TICKS_MAJOR }
+        { $_ -eq $Constants.MSG_SURGE } { return $Constants.FEEDBACK_TICKS_MAJOR }
+        { $_ -eq $Constants.MSG_TRAP } { return $Constants.FEEDBACK_TICKS_MAJOR }
+        { $_ -eq $Constants.MSG_RECHARGE } { return $Constants.FEEDBACK_TICKS_MAJOR }
+        { $_ -eq $Constants.MSG_SPOOF } { return $Constants.FEEDBACK_TICKS_MAJOR }
+        { $_ -eq $Constants.MSG_KEY } { return $Constants.FEEDBACK_TICKS_MAJOR }
+        default { return $Constants.FEEDBACK_TICKS_STANDARD }
+    }
+}
+
+function Set-AdventureMessageEvent {
+    param(
+        $State,
+        $Constants,
+        [int]$MessageId
+    )
+
+    $State.MessageId = ($MessageId -band 0xFF)
+    $State.FeedbackTimer = Get-MessageFeedbackTicks -Constants $Constants -MessageId $MessageId
+}
+
+function Award-AdventureScore {
+    param(
+        $State,
+        [int]$Amount
+    )
+
+    $State.Score = [Math]::Min(0xFFFF, ([int]$State.Score + $Amount))
+}
+
+function Award-AdventureKill {
+    param(
+        $State,
+        $Constants
+    )
+
+    $State.KillCount = [Math]::Min(99, ([int]$State.KillCount + 1))
+    Award-AdventureScore -State $State -Amount $Constants.SCORE_KILL_POINTS
+}
+
+function Clear-AdventureActiveShot {
+    param(
+        $State,
+        $Constants
+    )
+
+    $State.ShotMode = $Constants.GAME3D_SHOT_BASE_CHASE
+    $State.ShotReason = $Constants.GAME3D_SHOT_REASON_NONE
+    $State.ShotTick = 0
+    $State.ShotDuration = 0
+    $State.ShotFrameVariant = $Constants.GAME3D_FRAME_VARIANT_NONE
+    $State.ShotSubject.X = [int]$State.Player.X
+    $State.ShotSubject.Y = [int]$State.Player.Y
+}
+
+function Start-AdventureShot {
+    param(
+        $State,
+        $Constants,
+        [int]$ShotMode,
+        [int]$ShotReason,
+        [int]$SubjectX,
+        [int]$SubjectY
+    )
+
+    if (($State.EndStatePending -ne 0) -and ($ShotMode -ne $Constants.GAME3D_SHOT_END_BEAT)) {
+        return
+    }
+
+    $State.ShotMode = ($ShotMode -band 0xFF)
+    $State.ShotReason = ($ShotReason -band 0xFF)
+    $State.ShotTick = 0
+    $State.ShotDuration = Get-AdventureShotDuration -Constants $Constants -ShotMode $ShotMode
+    $State.ShotSubject.X = $SubjectX
+    $State.ShotSubject.Y = $SubjectY
+    $State.ShotFrameVariant = Get-AdventureShotFrameVariant -Constants $Constants -ShotMode $ShotMode
+}
+
+function Start-AdventureEndBeatShot {
+    param(
+        $State,
+        $Constants,
+        [int]$TargetState
+    )
+
+    if ($State.EndStatePending -ne 0) {
+        return
+    }
+
+    $State.EndStatePending = ($TargetState -band 0xFF)
+    $shotReason = if ($TargetState -eq $Constants.STATE_WIN) { $Constants.GAME3D_SHOT_REASON_WIN } else { $Constants.GAME3D_SHOT_REASON_LOSE }
+    Start-AdventureShot -State $State -Constants $Constants -ShotMode $Constants.GAME3D_SHOT_END_BEAT -ShotReason $shotReason -SubjectX ([int]$State.Player.X) -SubjectY ([int]$State.Player.Y)
+}
+
+function Update-AdventureShotState {
+    param(
+        $State,
+        $Constants
+    )
+
+    if ($State.StateId -ne $Constants.STATE_PLAYING) {
+        return
+    }
+
+    if (($State.ShotMode -eq $Constants.GAME3D_SHOT_BASE_CHASE) -and ($State.EndStatePending -eq 0)) {
+        return
+    }
+
+    if ($State.ShotTick -lt 255) {
+        $State.ShotTick++
+    }
+
+    if ($State.ShotTick -lt $State.ShotDuration) {
+        return
+    }
+
+    if ($State.EndStatePending -ne 0) {
+        $targetState = [int]$State.EndStatePending
+        $State.EndStatePending = 0
+        Clear-AdventureActiveShot -State $State -Constants $Constants
+        $State.StateId = $targetState
+        return
+    }
+
+    Clear-AdventureActiveShot -State $State -Constants $Constants
+}
+
+function Update-AdventureRuntimeFeedback {
+    param(
+        $State,
+        $Constants
+    )
+
+    Update-AdventureShotState -State $State -Constants $Constants
+    if ($State.StateId -ne $State.LastGameState) {
+        $State.LastGameState = [int]$State.StateId
+        $State.StateTicks = 0
+    }
+
+    if ($State.StateTicks -lt 255) {
+        $State.StateTicks++
+    }
+
+    if ($State.FeedbackTimer -gt 0) {
+        $State.FeedbackTimer--
+    }
+}
+
+function New-AdventureMap {
+    param(
+        $Constants,
+        $AdventureRealm
+    )
+
+    $map = New-Object 'int[]' ($Constants.MAP_W * $Constants.MAP_H)
+    for ($y = 0; $y -lt $AdventureRealm.Rows.Count; $y++) {
+        $row = [string]$AdventureRealm.Rows[$y]
+        for ($x = 0; $x -lt $row.Length; $x++) {
+            $tile = if ($row[$x] -eq '#') { $Constants.TILE_WALL } else { $Constants.TILE_FLOOR }
+            Set-MapTile -Map $map -Constants $Constants -X $x -Y $y -Tile $tile
+        }
+    }
+
+    Set-MapTile -Map $map -Constants $Constants -X $AdventureRealm.Portal.X -Y $AdventureRealm.Portal.Y -Tile $Constants.TILE_EXIT_LOCKED
+    foreach ($coord in @($AdventureRealm.Gems)) {
+        Set-MapTile -Map $map -Constants $Constants -X $coord.X -Y $coord.Y -Tile $Constants.TILE_SHARD
+    }
+    foreach ($coord in @($AdventureRealm.Switches)) {
+        Set-MapTile -Map $map -Constants $Constants -X $coord.X -Y $coord.Y -Tile $Constants.TILE_TERMINAL
+    }
+    foreach ($coord in @($AdventureRealm.Key)) {
+        Set-MapTile -Map $map -Constants $Constants -X $coord.X -Y $coord.Y -Tile $Constants.TILE_KEY
+    }
+    foreach ($coord in @($AdventureRealm.Hazards)) {
+        Set-MapTile -Map $map -Constants $Constants -X $coord.X -Y $coord.Y -Tile $Constants.TILE_SURGE
+    }
+
+    return $map
+}
+
+function Get-AdventureWorldPositionFromTile {
+    param(
+        $Constants,
+        [int]$TileX,
+        [int]$TileY
+    )
+
+    return [pscustomobject]@{
+        X = (($TileX * 256) + 128 - ($Constants.MAP_W * 128))
+        Z = (($TileY * 256) + 128 - ($Constants.MAP_H * 128))
+    }
+}
+
+function New-AdventureRuntimeState {
+    param(
+        $Demo,
+        $Constants,
+        $AdventureRealm
+    )
+
+    $map = New-AdventureMap -Constants $Constants -AdventureRealm $AdventureRealm
+    $player = [pscustomobject]@{
+        X = [int]$AdventureRealm.Start.X
+        Y = [int]$AdventureRealm.Start.Y
+    }
+    $playerWorld = Get-AdventureWorldPositionFromTile -Constants $Constants -TileX $player.X -TileY $player.Y
+    $enemies = New-Object 'System.Collections.Generic.List[object]'
+    foreach ($enemy in @($AdventureRealm.Enemies)) {
+        $enemies.Add([pscustomobject]@{
+            Alive = $true
+            X = [int]$enemy.X
+            Y = [int]$enemy.Y
+            Kind = (Get-AdventureEnemyKindId -Constants $Constants -Kind ([string]$enemy.Kind))
+        })
+    }
+
+    $state = [pscustomobject]@{
+        Name = [string]$Demo.Name
+        StateId = $Constants.STATE_PLAYING
+        Sector = if ($Demo.PSObject.Properties.Name -contains 'StartSector') { [int]$Demo.StartSector } else { 1 }
+        TemplateIndex = 0
+        Player = $player
+        Yaw = $Constants.GAME3D_YAW_EAST
+        ShotMode = $Constants.GAME3D_SHOT_BASE_CHASE
+        ShotReason = $Constants.GAME3D_SHOT_REASON_NONE
+        ShotTick = 0
+        ShotDuration = 0
+        ShotSubject = [pscustomobject]@{
+            X = [int]$player.X
+            Y = [int]$player.Y
+        }
+        ShotFrameVariant = $Constants.GAME3D_FRAME_VARIANT_NONE
+        ShieldCount = $Constants.START_SHIELDS
+        PulseCount = 0
+        DataCount = 0
+        ObjectivesDone = 0
+        ObjectivesTotal = [int]$AdventureRealm.ObjectivesTotal
+        KeyCollected = 0
+        ExitX = [int]$AdventureRealm.Portal.X
+        ExitY = [int]$AdventureRealm.Portal.Y
+        ExitTile = $Constants.TILE_EXIT_LOCKED
+        KillCount = 0
+        Score = 0
+        Actions = 0
+        Hits = 0
+        PulsesUsed = 0
+        SpoofTimer = 0
+        SpoofX = [int]$player.X
+        SpoofY = [int]$player.Y
+        ThreatLevel = $Constants.THREAT_NONE
+        ThreatX = [int]$player.X
+        ThreatY = [int]$player.Y
+        LastPlayerDx = 0
+        LastPlayerDy = 0
+        MessageId = $Constants.MSG_SECTOR
+        FeedbackTimer = (Get-MessageFeedbackTicks -Constants $Constants -MessageId $Constants.MSG_SECTOR)
+        LastGameState = 0xFF
+        StateTicks = 0
+        EndStatePending = 0
+        RngState = [int]$Demo.Seed
+        IntroTimer = $Constants.ADVENTURE_INTRO_TICKS
+        ChargeTimer = 0
+        FlameTimer = 0
+        EnemyTick = 0
+        HazardTimer = 0
+        PlayerWorldX = [int]$playerWorld.X
+        PlayerWorldY = [int]$Constants.GAME3D_FLOOR_Y
+        PlayerWorldZ = [int]$playerWorld.Z
+        PlayerVelY = 0
+        PlayerGrounded = $true
+        Map = $map
+        Enemies = $enemies
+        DemoActive = $true
+        DemoActionCode = 'END'
+        DemoActionTicks = 0
+        DemoActionIndex = 0
+    }
+
+    Start-AdventureShot -State $state -Constants $Constants -ShotMode $Constants.GAME3D_SHOT_SECTOR_ENTRY -ShotReason $Constants.GAME3D_SHOT_REASON_SECTOR -SubjectX ([int]($Constants.MAP_W / 2)) -SubjectY ([int]($Constants.MAP_H / 2))
+    return $state
+}
+
+function New-DemoActionTape {
+    param($Demo)
+
+    $steps = New-Object 'System.Collections.Generic.List[object]'
+    foreach ($step in @($Demo.Steps)) {
+        $steps.Add([pscustomobject]@{
+            Action = (Get-StepActionName -Step $step -DemoName ([string]$Demo.Name))
+            Ticks = (Get-StepRepeatCount -Step $step -DemoName ([string]$Demo.Name))
+        })
+    }
+
+    return $steps
+}
+
+function Load-NextAdventureDemoAction {
+    param(
+        $State,
+        [System.Collections.Generic.List[object]]$ActionTape
+    )
+
+    if ($State.DemoActionIndex -ge $ActionTape.Count) {
+        $State.DemoActionCode = 'END'
+        $State.DemoActionTicks = 0
+        return
+    }
+
+    $action = $ActionTape[$State.DemoActionIndex]
+    $State.DemoActionIndex++
+    $State.DemoActionCode = [string]$action.Action
+    $State.DemoActionTicks = [int]$action.Ticks
+}
+
+function New-AdventureInputState {
+    return [pscustomobject]@{
+        PressedEnter = $false
+        PressedC = $false
+        PressedSpace = $false
+        PressedShift = $false
+        KeyW = $false
+        KeyA = $false
+        KeyS = $false
+        KeyD = $false
+        KeySpace = $false
+    }
+}
+
+function Get-AdventureInputForAction {
+    param([string]$Action)
+
+    $controlState = New-AdventureInputState
+    switch ($Action) {
+        'FORWARD' { $controlState.KeyW = $true }
+        'BACK' { $controlState.KeyS = $true }
+        'TURNLEFT' { $controlState.KeyA = $true }
+        'LEFT' { $controlState.KeyA = $true }
+        'TURNRIGHT' { $controlState.KeyD = $true }
+        'RIGHT' { $controlState.KeyD = $true }
+        'FLAME' { $controlState.PressedC = $true }
+        'PULSE' { $controlState.PressedC = $true }
+        'JUMP' { $controlState.PressedSpace = $true; $controlState.KeySpace = $true }
+        'GLIDE' { $controlState.KeySpace = $true }
+        'CHARGE' { $controlState.PressedShift = $true }
+        'ENTER' { $controlState.PressedEnter = $true }
+        default { }
+    }
+
+    return $controlState
+}
+
+function Find-AdventureEnemyAt {
+    param(
+        $State,
+        [int]$X,
+        [int]$Y,
+        $ExcludeIndex
+    )
+
+    for ($enemyIndex = 0; $enemyIndex -lt $State.Enemies.Count; $enemyIndex++) {
+        if (($null -ne $ExcludeIndex) -and ($enemyIndex -eq [int]$ExcludeIndex)) {
+            continue
+        }
+
+        $enemy = $State.Enemies[$enemyIndex]
+        if ((-not $enemy.Alive) -or ($enemy.X -ne $X) -or ($enemy.Y -ne $Y)) {
+            continue
+        }
+
+        return $enemyIndex
+    }
+
+    return -1
+}
+
+function Get-AdventureWorldToTile {
+    param(
+        $Constants,
+        [int]$WorldX,
+        [int]$WorldZ
+    )
+
+    return [pscustomobject]@{
+        X = (($WorldX + $Constants.GAME3D_WORLD_ORIGIN_X) -shr 8)
+        Y = (($WorldZ + $Constants.GAME3D_WORLD_ORIGIN_Z) -shr 8)
+    }
+}
+
+function Test-AdventureTryMoveToWorld {
+    param(
+        $State,
+        $Constants,
+        [int]$WorldX,
+        [int]$WorldZ
+    )
+
+    $tile = Get-AdventureWorldToTile -Constants $Constants -WorldX $WorldX -WorldZ $WorldZ
+    if (($tile.X -lt $Constants.PLAY_MIN_X) -or ($tile.X -gt $Constants.PLAY_MAX_X) -or ($tile.Y -lt $Constants.PLAY_MIN_Y) -or ($tile.Y -gt $Constants.PLAY_MAX_Y)) {
+        return $false
+    }
+
+    $tileValue = Get-MapTile -Map $State.Map -Constants $Constants -X $tile.X -Y $tile.Y
+    if (($tileValue -eq $Constants.TILE_WALL) -or ($tileValue -eq $Constants.TILE_EXIT_LOCKED)) {
+        return $false
+    }
+
+    $enemyIndex = Find-AdventureEnemyAt -State $State -X $tile.X -Y $tile.Y -ExcludeIndex $null
+    if ($enemyIndex -lt 0) {
+        return $true
+    }
+
+    if ($State.ChargeTimer -le 0) {
+        return $false
+    }
+
+    return ($State.Enemies[$enemyIndex].Kind -ne $Constants.ENEMY_FLANKER)
+}
+
+function Update-AdventureActiveChunk {
+    param($State)
+}
+
+function Get-AdventureMoveSpeed {
+    param(
+        $State,
+        $Constants,
+        $ControlState
+    )
+
+    if ($State.ChargeTimer -gt 0) {
+        return $Constants.ADVENTURE_CHARGE_SPEED
+    }
+    if ($ControlState.KeyW) {
+        return $Constants.ADVENTURE_MOVE_SPEED
+    }
+    if ($ControlState.KeyS) {
+        return -$Constants.ADVENTURE_BACK_SPEED
+    }
+
+    return 0
+}
+
+function Adventure-SyncPlayerTileFromWorld {
+    param(
+        $State,
+        $Constants
+    )
+
+    $oldX = [int]$State.Player.X
+    $oldY = [int]$State.Player.Y
+    $tile = Get-AdventureWorldToTile -Constants $Constants -WorldX ([int]$State.PlayerWorldX) -WorldZ ([int]$State.PlayerWorldZ)
+    $State.Player.X = [int]$tile.X
+    $State.Player.Y = [int]$tile.Y
+    $State.LastPlayerDx = ([int]$State.Player.X - $oldX)
+    $State.LastPlayerDy = ([int]$State.Player.Y - $oldY)
+    Update-AdventureActiveChunk -State $State
+}
+
+function Adventure-TickTimers {
+    param($State)
+
+    if ($State.ChargeTimer -gt 0) { $State.ChargeTimer-- }
+    if ($State.FlameTimer -gt 0) { $State.FlameTimer-- }
+    if ($State.HazardTimer -gt 0) { $State.HazardTimer-- }
+    if ($State.IntroTimer -gt 0) { $State.IntroTimer-- }
+}
+
+function Adventure-HandleTurn {
+    param(
+        $State,
+        $Constants,
+        $ControlState
+    )
+
+    if ($ControlState.KeyA) {
+        if ($ControlState.KeyD) {
+            return
+        }
+
+        $State.Yaw = (($State.Yaw - $Constants.ADVENTURE_TURN_STEP) -band 0xFF)
+        return
+    }
+
+    if ($ControlState.KeyD) {
+        $State.Yaw = (($State.Yaw + $Constants.ADVENTURE_TURN_STEP) -band 0xFF)
+    }
+}
+
+function Adventure-HandleJump {
+    param(
+        $State,
+        $Constants,
+        $ControlState
+    )
+
+    if ($ControlState.PressedSpace -and $State.PlayerGrounded) {
+        $State.PlayerVelY = $Constants.ADVENTURE_JUMP_VEL
+        $State.PlayerGrounded = $false
+    }
+}
+
+function Adventure-HandleCharge {
+    param(
+        $State,
+        $Constants,
+        $ControlState
+    )
+
+    if ($ControlState.PressedShift -and $State.PlayerGrounded -and ($State.ChargeTimer -eq 0)) {
+        $State.ChargeTimer = $Constants.ADVENTURE_CHARGE_TICKS
+    }
+}
+
+function Adventure-CheckPortalReady {
+    param(
+        $State,
+        $Constants,
+        $AdventureRealm
+    )
+
+    $exitTile = Get-MapTile -Map $State.Map -Constants $Constants -X ([int]$State.ExitX) -Y ([int]$State.ExitY)
+    if ($exitTile -eq $Constants.TILE_EXIT_OPEN) {
+        $State.ExitTile = $Constants.TILE_EXIT_OPEN
+        return
+    }
+    if ($State.DataCount -lt $AdventureRealm.RequiredGems) {
+        return
+    }
+    if ($State.ObjectivesDone -lt $State.ObjectivesTotal) {
+        return
+    }
+
+    Set-MapTile -Map $State.Map -Constants $Constants -X ([int]$State.ExitX) -Y ([int]$State.ExitY) -Tile $Constants.TILE_EXIT_OPEN
+    $State.ExitTile = $Constants.TILE_EXIT_OPEN
+    Set-AdventureMessageEvent -State $State -Constants $Constants -MessageId $Constants.MSG_GATE
+}
+
+function Adventure-FlameHitTile {
+    param(
+        $State,
+        $Constants,
+        $AdventureRealm,
+        [int]$TileX,
+        [int]$TileY
+    )
+
+    if (($TileX -lt $Constants.PLAY_MIN_X) -or ($TileX -gt $Constants.PLAY_MAX_X) -or ($TileY -lt $Constants.PLAY_MIN_Y) -or ($TileY -gt $Constants.PLAY_MAX_Y)) {
+        return $false
+    }
+
+    $tileValue = Get-MapTile -Map $State.Map -Constants $Constants -X $TileX -Y $TileY
+    if ($tileValue -eq $Constants.TILE_TERMINAL) {
+        Set-MapTile -Map $State.Map -Constants $Constants -X $TileX -Y $TileY -Tile $Constants.TILE_FLOOR
+        $State.ObjectivesDone++
+        Set-AdventureMessageEvent -State $State -Constants $Constants -MessageId $Constants.MSG_SPOOF
+        Adventure-CheckPortalReady -State $State -Constants $Constants -AdventureRealm $AdventureRealm
+        return $true
+    }
+
+    $enemyIndex = Find-AdventureEnemyAt -State $State -X $TileX -Y $TileY -ExcludeIndex $null
+    if ($enemyIndex -lt 0) {
+        return $false
+    }
+
+    if ($State.Enemies[$enemyIndex].Kind -ne $Constants.ENEMY_FLANKER) {
+        return $false
+    }
+
+    $State.Enemies[$enemyIndex].Alive = $false
+    Award-AdventureKill -State $State -Constants $Constants
+    Set-AdventureMessageEvent -State $State -Constants $Constants -MessageId $Constants.MSG_KILL
+    return $true
+}
+
+function Adventure-GetForwardTargetTile {
+    param(
+        $State,
+        $Constants
+    )
+
+    $headingId = Get-AdventureHeadingIdFromYaw -Constants $Constants -Yaw ([int]$State.Yaw)
+    $stepX = 0
+    $stepY = 0
+    switch ($headingId) {
+        { $_ -eq $Constants.GAME3D_HEADING_SOUTH } { $stepY = 1 }
+        { $_ -eq $Constants.GAME3D_HEADING_EAST } { $stepX = 1 }
+        { $_ -eq $Constants.GAME3D_HEADING_NORTH } { $stepY = -1 }
+        default { $stepX = -1 }
+    }
+
+    return [pscustomobject]@{
+        X = ([int]$State.Player.X + $stepX)
+        Y = ([int]$State.Player.Y + $stepY)
+    }
+}
+
+function Adventure-HandleFlame {
+    param(
+        $State,
+        $Constants,
+        $AdventureRealm,
+        $ControlState
+    )
+
+    if ((-not $ControlState.PressedC) -or ($State.FlameTimer -ne 0)) {
+        return
+    }
+
+    $State.FlameTimer = $Constants.ADVENTURE_FLAME_TICKS
+    if (Adventure-FlameHitTile -State $State -Constants $Constants -AdventureRealm $AdventureRealm -TileX ([int]$State.Player.X) -TileY ([int]$State.Player.Y)) {
+        return
+    }
+
+    $forward = Adventure-GetForwardTargetTile -State $State -Constants $Constants
+    [void](Adventure-FlameHitTile -State $State -Constants $Constants -AdventureRealm $AdventureRealm -TileX $forward.X -TileY $forward.Y)
+}
+
+function Adventure-HandleMovement {
+    param(
+        $State,
+        $Constants,
+        $ControlState
+    )
+
+    $speed = Get-AdventureMoveSpeed -State $State -Constants $Constants -ControlState $ControlState
+    if ($speed -eq 0) {
+        return
+    }
+
+    $sinCos = Get-FixedSinCos -AngleByte ([int]$State.Yaw)
+    $deltaX = Mul-Fixed88 -A $speed -B $sinCos.Sin
+    $deltaZ = Mul-Fixed88 -A $speed -B $sinCos.Cos
+
+    $candidateX = [int]$State.PlayerWorldX + $deltaX
+    $candidateZ = [int]$State.PlayerWorldZ
+    if (Test-AdventureTryMoveToWorld -State $State -Constants $Constants -WorldX $candidateX -WorldZ $candidateZ) {
+        $State.PlayerWorldX = $candidateX
+        $State.PlayerWorldZ = $candidateZ
+    }
+
+    $candidateX = [int]$State.PlayerWorldX
+    $candidateZ = [int]$State.PlayerWorldZ + $deltaZ
+    if (Test-AdventureTryMoveToWorld -State $State -Constants $Constants -WorldX $candidateX -WorldZ $candidateZ) {
+        $State.PlayerWorldX = $candidateX
+        $State.PlayerWorldZ = $candidateZ
+    }
+}
+
+function Adventure-ApplyVerticalMotion {
+    param(
+        $State,
+        $Constants,
+        $ControlState
+    )
+
+    if (-not $State.PlayerGrounded) {
+        if (($State.PlayerVelY -lt $Constants.ADVENTURE_GLIDE_FALL_LIMIT) -and $ControlState.KeySpace) {
+            $State.PlayerVelY = $Constants.ADVENTURE_GLIDE_FALL_LIMIT
+        }
+
+        $State.PlayerWorldY += $State.PlayerVelY
+        $State.PlayerVelY -= $Constants.ADVENTURE_GRAVITY
+        if ($State.PlayerWorldY -le $Constants.GAME3D_FLOOR_Y) {
+            $State.PlayerWorldY = $Constants.GAME3D_FLOOR_Y
+            $State.PlayerVelY = 0
+            $State.PlayerGrounded = $true
+        }
+        return
+    }
+
+    $State.PlayerWorldY = $Constants.GAME3D_FLOOR_Y
+    $State.PlayerVelY = 0
+}
+
+function Adventure-CollectGemIfPresent {
+    param(
+        $State,
+        $Constants,
+        $AdventureRealm
+    )
+
+    $tile = Get-MapTile -Map $State.Map -Constants $Constants -X ([int]$State.Player.X) -Y ([int]$State.Player.Y)
+    if ($tile -ne $Constants.TILE_SHARD) {
+        return
+    }
+
+    Set-MapTile -Map $State.Map -Constants $Constants -X ([int]$State.Player.X) -Y ([int]$State.Player.Y) -Tile $Constants.TILE_FLOOR
+    $State.DataCount++
+    Award-AdventureScore -State $State -Amount $Constants.SCORE_SHARD_POINTS
+    Set-AdventureMessageEvent -State $State -Constants $Constants -MessageId $Constants.MSG_SHARD
+    Adventure-CheckPortalReady -State $State -Constants $Constants -AdventureRealm $AdventureRealm
+}
+
+function Adventure-CollectKeyIfPresent {
+    param(
+        $State,
+        $Constants,
+        $AdventureRealm
+    )
+
+    $tile = Get-MapTile -Map $State.Map -Constants $Constants -X ([int]$State.Player.X) -Y ([int]$State.Player.Y)
+    if ($tile -ne $Constants.TILE_KEY) {
+        return
+    }
+
+    Set-MapTile -Map $State.Map -Constants $Constants -X ([int]$State.Player.X) -Y ([int]$State.Player.Y) -Tile $Constants.TILE_FLOOR
+    $State.KeyCollected = 1
+    $State.ObjectivesDone++
+    Set-AdventureMessageEvent -State $State -Constants $Constants -MessageId $Constants.MSG_KEY
+    Adventure-CheckPortalReady -State $State -Constants $Constants -AdventureRealm $AdventureRealm
+}
+
+function Record-AdventureHit {
+    param($State)
+
+    $State.Hits = [Math]::Min(255, ([int]$State.Hits + 1))
+}
+
+function Adventure-ApplyHazardIfPresent {
+    param(
+        $State,
+        $Constants
+    )
+
+    if ((-not $State.PlayerGrounded) -or ($State.HazardTimer -ne 0)) {
+        return
+    }
+
+    $tile = Get-MapTile -Map $State.Map -Constants $Constants -X ([int]$State.Player.X) -Y ([int]$State.Player.Y)
+    if ($tile -ne $Constants.TILE_SURGE) {
+        return
+    }
+
+    $State.HazardTimer = $Constants.ADVENTURE_HAZARD_COOLDOWN
+    Record-AdventureHit -State $State
+    $State.ShieldCount--
+    Set-AdventureMessageEvent -State $State -Constants $Constants -MessageId $Constants.MSG_SURGE
+    if ($State.ShieldCount -le 0) {
+        $State.ShieldCount = 0
+        Start-AdventureEndBeatShot -State $State -Constants $Constants -TargetState $Constants.STATE_LOSE
+    }
+}
+
+function Adventure-CheckChargeContact {
+    param(
+        $State,
+        $Constants
+    )
+
+    $enemyIndex = Find-AdventureEnemyAt -State $State -X ([int]$State.Player.X) -Y ([int]$State.Player.Y) -ExcludeIndex $null
+    if (($enemyIndex -lt 0) -or ($State.ChargeTimer -eq 0)) {
+        return
+    }
+
+    if ($State.Enemies[$enemyIndex].Kind -eq $Constants.ENEMY_FLANKER) {
+        return
+    }
+
+    $State.Enemies[$enemyIndex].Alive = $false
+    Award-AdventureKill -State $State -Constants $Constants
+    Set-AdventureMessageEvent -State $State -Constants $Constants -MessageId $Constants.MSG_KILL
+}
+
+function Adventure-TryEnterPortal {
+    param(
+        $State,
+        $Constants,
+        $ControlState
+    )
+
+    if (-not $ControlState.PressedEnter) {
+        return
+    }
+
+    $tile = Get-MapTile -Map $State.Map -Constants $Constants -X ([int]$State.Player.X) -Y ([int]$State.Player.Y)
+    if ($tile -ne $Constants.TILE_EXIT_OPEN) {
+        return
+    }
+
+    Start-AdventureEndBeatShot -State $State -Constants $Constants -TargetState $Constants.STATE_WIN
+}
+
+function Get-ProjectedAdventurePlayerTarget {
+    param(
+        $State,
+        $Constants
+    )
+
+    $targetX = [int]$State.Player.X
+    $targetY = [int]$State.Player.Y
+
+    if ($State.LastPlayerDx -ne 0) {
+        $candidateX = $targetX + [int]$State.LastPlayerDx
+        if (($candidateX -ge $Constants.PLAY_MIN_X) -and ($candidateX -le $Constants.PLAY_MAX_X)) {
+            $targetX = $candidateX
+        }
+    }
+
+    if ($State.LastPlayerDy -ne 0) {
+        $candidateY = $targetY + [int]$State.LastPlayerDy
+        if (($candidateY -ge $Constants.PLAY_MIN_Y) -and ($candidateY -le $Constants.PLAY_MAX_Y)) {
+            $targetY = $candidateY
+        }
+    }
+
+    return [pscustomobject]@{
+        X = $targetX
+        Y = $targetY
+    }
+}
+
+function Get-AdventureDistanceDelta {
+    param(
+        [int]$FromX,
+        [int]$FromY,
+        [int]$TargetX,
+        [int]$TargetY
+    )
+
+    return [pscustomobject]@{
+        Dx = [Math]::Abs($TargetX - $FromX)
+        Dy = [Math]::Abs($TargetY - $FromY)
+    }
+}
+
+function Get-AdventureThreatValue {
+    param(
+        $State,
+        $Constants,
+        $Enemy
+    )
+
+    $delta = Get-AdventureDistanceDelta -FromX ([int]$Enemy.X) -FromY ([int]$Enemy.Y) -TargetX ([int]$State.Player.X) -TargetY ([int]$State.Player.Y)
+    $distance = ($delta.Dx + $delta.Dy)
+    if ($distance -le $Constants.NEAR_THREAT_DISTANCE) {
+        if (($Enemy.Kind -eq $Constants.ENEMY_WARDEN) -and ($State.Sector -eq 3)) {
+            return $Constants.THREAT_ELITE
+        }
+
+        return $Constants.THREAT_NEAR
+    }
+
+    if (($Enemy.Kind -eq $Constants.ENEMY_WARDEN) -and ($State.Sector -eq 3) -and ($distance -le $Constants.ELITE_THREAT_DISTANCE)) {
+        return $Constants.THREAT_ELITE
+    }
+
+    return $Constants.THREAT_NONE
+}
+
+function Update-AdventureEnemyPressure {
+    param(
+        $State,
+        $Constants
+    )
+
+    $State.ThreatLevel = $Constants.THREAT_NONE
+    for ($enemyIndex = 0; $enemyIndex -lt $State.Enemies.Count; $enemyIndex++) {
+        $enemy = $State.Enemies[$enemyIndex]
+        if (-not $enemy.Alive) {
+            continue
+        }
+
+        $threat = Get-AdventureThreatValue -State $State -Constants $Constants -Enemy $enemy
+        if ($threat -le $State.ThreatLevel) {
+            continue
+        }
+
+        $State.ThreatLevel = $threat
+        $State.ThreatX = [int]$enemy.X
+        $State.ThreatY = [int]$enemy.Y
+        if ($State.ThreatLevel -eq $Constants.THREAT_ELITE) {
+            break
+        }
+    }
+}
+
+function Invoke-AdventureEnemyStep {
+    param(
+        $State,
+        $Constants,
+        [int]$EnemyIndex,
+        [int]$TargetX,
+        [int]$TargetY,
+        [ValidateSet('Horizontal', 'Vertical')] [string]$Axis
+    )
+
+    $enemy = $State.Enemies[$EnemyIndex]
+    $destX = [int]$enemy.X
+    $destY = [int]$enemy.Y
+
+    if ($Axis -eq 'Horizontal') {
+        if ($enemy.X -eq $TargetX) {
+            return $false
+        }
+
+        $destX += $(if ($enemy.X -lt $TargetX) { 1 } else { -1 })
+    } else {
+        if ($enemy.Y -eq $TargetY) {
+            return $false
+        }
+
+        $destY += $(if ($enemy.Y -lt $TargetY) { 1 } else { -1 })
+    }
+
+    if (($destX -eq $State.Player.X) -and ($destY -eq $State.Player.Y)) {
+        Record-AdventureHit -State $State
+        $State.ShieldCount--
+        $enemy.Alive = $false
+        Set-AdventureMessageEvent -State $State -Constants $Constants -MessageId $Constants.MSG_HIT
+        if ($State.ShieldCount -le 0) {
+            $State.ShieldCount = 0
+            Start-AdventureEndBeatShot -State $State -Constants $Constants -TargetState $Constants.STATE_LOSE
+        }
+        return $true
+    }
+
+    $tile = Get-MapTile -Map $State.Map -Constants $Constants -X $destX -Y $destY
+    if (($tile -eq $Constants.TILE_WALL) -or ($tile -eq $Constants.TILE_EXIT_LOCKED) -or ($tile -eq $Constants.TILE_EXIT_OPEN)) {
+        return $false
+    }
+
+    if ($tile -eq $Constants.TILE_SURGE) {
+        Set-MapTile -Map $State.Map -Constants $Constants -X $destX -Y $destY -Tile $Constants.TILE_FLOOR
+        $enemy.Alive = $false
+        Award-AdventureKill -State $State -Constants $Constants
+        Award-AdventureScore -State $State -Amount $Constants.SCORE_TRAP_BONUS
+        Set-AdventureMessageEvent -State $State -Constants $Constants -MessageId $Constants.MSG_TRAP
+        return $true
+    }
+
+    if ((Find-AdventureEnemyAt -State $State -X $destX -Y $destY -ExcludeIndex $EnemyIndex) -ge 0) {
+        return $false
+    }
+
+    $enemy.X = $destX
+    $enemy.Y = $destY
+    return $true
+}
+
+function Move-AdventureEnemy {
+    param(
+        $State,
+        $Constants,
+        [int]$EnemyIndex
+    )
+
+    $enemy = $State.Enemies[$EnemyIndex]
+    $target = $null
+    if ($State.SpoofTimer -gt 0) {
+        $target = [pscustomobject]@{ X = [int]$State.ExitX; Y = [int]$State.ExitY }
+    } elseif ($enemy.Kind -eq $Constants.ENEMY_FLANKER) {
+        $target = Get-ProjectedAdventurePlayerTarget -State $State -Constants $Constants
+    } elseif ($enemy.Kind -eq $Constants.ENEMY_WARDEN) {
+        $playerDelta = Get-AdventureDistanceDelta -FromX ([int]$enemy.X) -FromY ([int]$enemy.Y) -TargetX ([int]$State.Player.X) -TargetY ([int]$State.Player.Y)
+        $distance = ($playerDelta.Dx + $playerDelta.Dy)
+        if ($distance -le 6) {
+            if ($State.Sector -eq 3) {
+                $target = Get-ProjectedAdventurePlayerTarget -State $State -Constants $Constants
+            } else {
+                $target = [pscustomobject]@{ X = [int]$State.Player.X; Y = [int]$State.Player.Y }
+            }
+        } else {
+            $target = [pscustomobject]@{ X = [int]$State.ExitX; Y = [int]$State.ExitY }
+        }
+    } else {
+        $target = [pscustomobject]@{ X = [int]$State.Player.X; Y = [int]$State.Player.Y }
+    }
+
+    $delta = Get-AdventureDistanceDelta -FromX ([int]$enemy.X) -FromY ([int]$enemy.Y) -TargetX ([int]$target.X) -TargetY ([int]$target.Y)
+    if ($delta.Dy -ge $delta.Dx) {
+        if (Invoke-AdventureEnemyStep -State $State -Constants $Constants -EnemyIndex $EnemyIndex -TargetX $target.X -TargetY $target.Y -Axis 'Vertical') {
+            return
+        }
+        [void](Invoke-AdventureEnemyStep -State $State -Constants $Constants -EnemyIndex $EnemyIndex -TargetX $target.X -TargetY $target.Y -Axis 'Horizontal')
+        return
+    }
+
+    if (Invoke-AdventureEnemyStep -State $State -Constants $Constants -EnemyIndex $EnemyIndex -TargetX $target.X -TargetY $target.Y -Axis 'Horizontal') {
+        return
+    }
+    [void](Invoke-AdventureEnemyStep -State $State -Constants $Constants -EnemyIndex $EnemyIndex -TargetX $target.X -TargetY $target.Y -Axis 'Vertical')
+}
+
+function Adventure-MaybeStepEnemies {
+    param(
+        $State,
+        $Constants
+    )
+
+    if (($State.IntroTimer -ne 0) -or ($State.StateId -ne $Constants.STATE_PLAYING) -or ($State.EndStatePending -ne 0)) {
+        return
+    }
+
+    $State.EnemyTick++
+    if ($State.EnemyTick -lt $Constants.ADVENTURE_ENEMY_STEP_TICKS) {
+        return
+    }
+
+    $State.EnemyTick = 0
+    $State.ThreatLevel = $Constants.THREAT_NONE
+    for ($enemyIndex = 0; $enemyIndex -lt $State.Enemies.Count; $enemyIndex++) {
+        if (-not $State.Enemies[$enemyIndex].Alive) {
+            continue
+        }
+
+        Move-AdventureEnemy -State $State -Constants $Constants -EnemyIndex $enemyIndex
+        if ($State.StateId -ne $Constants.STATE_PLAYING) {
+            return
+        }
+    }
+
+    Update-AdventureEnemyPressure -State $State -Constants $Constants
+    if ($State.SpoofTimer -gt 0) {
+        $State.SpoofTimer--
+    }
+}
+
+function Process-AdventurePlayInput {
+    param(
+        $State,
+        $Constants,
+        $AdventureRealm,
+        $ControlState
+    )
+
+    if ($State.StateId -ne $Constants.STATE_PLAYING) {
+        return
+    }
+
+    Adventure-TickTimers -State $State
+    if ($State.EndStatePending -ne 0) {
+        return
+    }
+
+    Adventure-HandleTurn -State $State -Constants $Constants -ControlState $ControlState
+    Adventure-HandleJump -State $State -Constants $Constants -ControlState $ControlState
+    Adventure-HandleCharge -State $State -Constants $Constants -ControlState $ControlState
+    Adventure-HandleFlame -State $State -Constants $Constants -AdventureRealm $AdventureRealm -ControlState $ControlState
+    Adventure-HandleMovement -State $State -Constants $Constants -ControlState $ControlState
+    Adventure-ApplyVerticalMotion -State $State -Constants $Constants -ControlState $ControlState
+    Adventure-SyncPlayerTileFromWorld -State $State -Constants $Constants
+    Adventure-CollectGemIfPresent -State $State -Constants $Constants -AdventureRealm $AdventureRealm
+    Adventure-CollectKeyIfPresent -State $State -Constants $Constants -AdventureRealm $AdventureRealm
+    Adventure-ApplyHazardIfPresent -State $State -Constants $Constants
+    Adventure-CheckChargeContact -State $State -Constants $Constants
+    Adventure-CheckPortalReady -State $State -Constants $Constants -AdventureRealm $AdventureRealm
+    Adventure-TryEnterPortal -State $State -Constants $Constants -ControlState $ControlState
+    Adventure-MaybeStepEnemies -State $State -Constants $Constants
+}
+
+function Update-AdventureDemoFrontendState {
+    param(
+        $State,
+        $Constants
+    )
+
+    if (-not $State.DemoActive) {
+        return $true
+    }
+
+    if ((($State.StateId -eq $Constants.STATE_WIN) -or ($State.StateId -eq $Constants.STATE_LOSE)) -and ($State.LastGameState -eq $State.StateId)) {
+        $State.DemoActive = $false
+        return $true
+    }
+
+    return $false
+}
+
+function Process-AdventureDemoInput {
+    param(
+        $State,
+        $Constants,
+        $AdventureRealm,
+        [System.Collections.Generic.List[object]]$ActionTape
+    )
+
+    if ($State.DemoActionTicks -eq 0) {
+        Load-NextAdventureDemoAction -State $State -ActionTape $ActionTape
+    }
+
+    if (($State.DemoActionCode -eq 'END') -or ($State.DemoActionTicks -eq 0)) {
+        $State.DemoActive = $false
+        return $true
+    }
+
+    $controlState = Get-AdventureInputForAction -Action ([string]$State.DemoActionCode)
+    Process-AdventurePlayInput -State $State -Constants $Constants -AdventureRealm $AdventureRealm -ControlState $controlState
+    $State.DemoActionTicks--
+    return (-not $State.DemoActive)
+}
+
+function Invoke-AdventureDemoSimulation {
+    param(
+        $Demo,
+        $Constants,
+        [object[]]$GameplayKits,
+        $AdventureRealm
+    )
+
+    $state = New-AdventureRuntimeState -Demo $Demo -Constants $Constants -AdventureRealm $AdventureRealm
+    $actionTape = New-DemoActionTape -Demo $Demo
+    $maxTicks = (Get-DemoTotalTicks -Demo $Demo) + 180
+
+    for ($tickIndex = 0; $tickIndex -lt $maxTicks; $tickIndex++) {
+        if (Update-AdventureDemoFrontendState -State $state -Constants $Constants) {
+            break
+        }
+
+        Update-AdventureRuntimeFeedback -State $state -Constants $Constants
+        if (($state.StateId -eq $Constants.STATE_PLAYING) -and $state.DemoActive) {
+            if (Process-AdventureDemoInput -State $state -Constants $Constants -AdventureRealm $AdventureRealm -ActionTape $actionTape) {
+                break
+            }
+        }
+    }
+
+    $state.ExitTile = Get-MapTile -Map $state.Map -Constants $Constants -X ([int]$state.ExitX) -Y ([int]$state.ExitY)
+    return $state
 }
 
 function Get-StepRepeatCount {
@@ -658,6 +2013,17 @@ function Get-StepRepeatCount {
     }
 
     return [int]$parts[1]
+}
+
+function Get-DemoTotalTicks {
+    param($Demo)
+
+    $ticks = 0
+    foreach ($step in @($Demo.Steps)) {
+        $ticks += Get-StepRepeatCount -Step $step -DemoName ([string]$Demo.Name)
+    }
+
+    return $ticks
 }
 
 Assert-PathExists -Path $DemoSourcePath -Label 'demo source'
@@ -692,7 +2058,7 @@ for ($demoIndex = 0; $demoIndex -lt $demos.Count; $demoIndex++) {
         throw ("Demo '{0}' in {1} must define an Expected block for adventure verification." -f $demo.Name, $DemoSourcePath)
     }
 
-    $runtimeState = Build-RuntimeStateFromExpected -Demo $demo -Expected $demo.Expected -Constants $constants -AdventureRealm $adventureRealm
+    $runtimeState = Invoke-AdventureDemoSimulation -Demo $demo -Constants $constants -GameplayKits $geometryKits -AdventureRealm $adventureRealm
     $signature = Get-RuntimeVerificationSignature -RuntimeState $runtimeState -Constants $constants -GameplayKits $geometryKits -AdventureRealm $adventureRealm
     $stepTicks = 0
     foreach ($step in @($demo.Steps)) {
@@ -709,11 +2075,14 @@ for ($demoIndex = 0; $demoIndex -lt $demos.Count; $demoIndex++) {
     $reportLines.Add(("Demo {0}: {1}" -f ($demoIndex + 1), $demo.Name))
     $reportLines.Add(("  Id: {0}" -f $demo.Id))
     $reportLines.Add(("  Ticks: {0}" -f $stepTicks))
-    $reportLines.Add(("  State: {0}" -f $demo.Expected.State))
-    $reportLines.Add(("  Player: {0}" -f $demo.Expected.Player))
-    $reportLines.Add(("  Heading: {0}" -f $(if ($demo.Expected.ContainsKey('Heading')) { $demo.Expected.Heading } else { 'EAST' })))
-    $reportLines.Add(("  Objectives: {0}/{1}" -f $(if ($demo.Expected.ContainsKey('Objectives')) { $demo.Expected.Objectives } else { 0 }), $(if ($demo.Expected.ContainsKey('ObjectivesTotal')) { $demo.Expected.ObjectivesTotal } else { $adventureRealm.ObjectivesTotal })))
-    $reportLines.Add(("  Portal: {0}" -f $(if ($demo.Expected.ContainsKey('Portal')) { $demo.Expected.Portal } else { 'LOCKED' })))
+    $reportLines.Add(("  State: {0}" -f $(switch ($runtimeState.StateId) { $constants.STATE_WIN { 'WIN' } $constants.STATE_LOSE { 'LOSE' } default { 'PLAYING' } })))
+    $reportLines.Add(("  Player: {0},{1}" -f $runtimeState.Player.X, $runtimeState.Player.Y))
+    $reportLines.Add(("  HeadingId: {0}" -f (Get-AdventureHeadingIdFromYaw -Constants $constants -Yaw $runtimeState.Yaw)))
+    $reportLines.Add(("  Objectives: {0}/{1}" -f $runtimeState.ObjectivesDone, $runtimeState.ObjectivesTotal))
+    $reportLines.Add(("  PortalTile: {0}" -f $runtimeState.ExitTile))
+    $reportLines.Add(("  Score/Kills/Hits: {0}/{1}/{2}" -f $runtimeState.Score, $runtimeState.KillCount, $runtimeState.Hits))
+    $reportLines.Add(("  Shot: mode={0} reason={1} tick={2} subject={3},{4} frame={5}" -f $runtimeState.ShotMode, $runtimeState.ShotReason, $runtimeState.ShotTick, $runtimeState.ShotSubject.X, $runtimeState.ShotSubject.Y, $runtimeState.ShotFrameVariant))
+    $reportLines.Add(("  CueFlags: {0}" -f (Get-RuntimeCueFlags -RuntimeState $runtimeState -Constants $constants -GameplayKits $geometryKits -AdventureRealm $adventureRealm)))
     $reportLines.Add(("  Final signature: {0}" -f (Format-Hex16 $signature)))
     $reportLines.Add('')
 }

@@ -7,28 +7,28 @@ VERIFY_DEMO_COUNT EQU 20
 verify_demo_checkpoint_count_table db 13, 17, 0, 0, 13, 0, 17, 0
                                    db 0, 0, 0, 0, 0, 0, 0, 0
                                    db 0, 0, 0, 0
-verify_demo_final_signature_table dw 4C0Fh, 0C951h, 9DCFh, 4CB0h, 4C0Fh, 112Bh
-                                  dw 0C951h, 0EEC3h, 9DCFh, 0EEC3h, 11ADh, 0C951h
-                                  dw 11ADh, 88A1h, 58CBh, 4CB0h, 0A4ABh, 11ADh
-                                  dw 112Bh, 6F79h
+verify_demo_final_signature_table dw 0A842h, 8B34h, 0F1D0h, 4A81h, 0A842h, 8258h
+                                  dw 8B34h, 4AC1h, 0F1D0h, 25EBh, 4408h, 8B34h
+                                  dw 4408h, 5412h, 8F74h, 0A2F5h, 0394h, 5FBDh
+                                  dw 8258h, 0C278h
 verify_demo_checkpoint_table dw offset verify_demo_0_checkpoints, offset verify_demo_1_checkpoints, 0, 0
                              dw offset verify_demo_4_checkpoints, 0, offset verify_demo_6_checkpoints, 0
                              dw 0, 0, 0, 0
                              dw 0, 0, 0, 0
                              dw 0, 0, 0, 0
 
-verify_demo_0_checkpoints dw 88A1h, 0A4C3h, 0A49Dh, 0A4C7h, 0A4C7h, 0A4C7h
-                          dw 8BCDh, 8BAFh, 8BA9h, 8BFBh, 8BFBh, 4BF9h
-                          dw 4C0Fh
+verify_demo_0_checkpoints dw 4C7Bh, 64C9h, 6311h, 0E218h, 0E218h, 0E218h
+                          dw 0E122h, 0FBDEh, 0B396h, 0E34Eh, 0E34Eh, 32C7h
+                          dw 7CF6h
 
-verify_demo_1_checkpoints dw 0F993h, 09A1h, 0F95Fh, 0F985h, 0F95Bh, 0F919h
-                          dw 0F967h, 0F93Dh, 0E136h, 0EC1Bh, 0EC1Bh, 0EC1Bh
-                          dw 0EC1Bh, 0EC1Bh, 0C115h, 0C91Fh, 0C951h
+verify_demo_1_checkpoints dw 49FFh, 674Dh, 5F8Fh, 0E69Ah, 0E6E2h, 0DE2Ah
+                          dw 0E672h, 0E5FAh, 0E6EAh, 0F1C2h, 71BFh, 0D9AFh
+                          dw 0D9AFh, 0D9AFh, 0E4A9h, 53FCh, 8B34h
 
-verify_demo_4_checkpoints dw 88A1h, 0A4C3h, 0A49Dh, 0A4C7h, 0A4C7h, 0A4C7h
-                          dw 8BCDh, 8BAFh, 8BA9h, 8BFBh, 8BFBh, 4BF9h
-                          dw 4C0Fh
+verify_demo_4_checkpoints dw 4C7Bh, 64C9h, 6311h, 0E218h, 0E218h, 0E218h
+                          dw 0E122h, 0FBDEh, 0B396h, 0E34Eh, 0E34Eh, 32C7h
+                          dw 7CF6h
 
-verify_demo_6_checkpoints dw 0F993h, 09A1h, 0F95Fh, 0F985h, 0F95Bh, 0F919h
-                          dw 0F967h, 0F93Dh, 0E136h, 0EC1Bh, 0EC1Bh, 0EC1Bh
-                          dw 0EC1Bh, 0EC1Bh, 0C115h, 0C91Fh, 0C951h
+verify_demo_6_checkpoints dw 49FFh, 674Dh, 5F8Fh, 0E69Ah, 0E6E2h, 0DE2Ah
+                          dw 0E672h, 0E5FAh, 0E6EAh, 0F1C2h, 71BFh, 0D9AFh
+                          dw 0D9AFh, 0D9AFh, 0E4A9h, 53FCh, 8B34h

@@ -661,7 +661,7 @@ render_debug_overlay:
     mov bx, 16
     mov dx, 38
     mov cx, 288
-    mov bp, 20
+    mov bp, 40
     mov al, PAL_PANEL2
     call fill_rect
 
@@ -910,6 +910,90 @@ render_debug_overlay:
     mov bx, 258
     mov dx, 50
     call draw_digit_small
+
+    mov bx, 18
+    mov dx, 60
+    mov si, offset debug_shot_tag
+    mov ah, PAL_CYAN
+    call draw_text_small
+
+    mov al, [game3d_shot_mode]
+    mov ah, PAL_WHITE
+    mov bx, 30
+    mov dx, 60
+    call draw_two_digit_small
+
+    mov bx, 48
+    mov dx, 60
+    mov si, offset debug_shot_subject_x_tag
+    mov ah, PAL_CYAN
+    call draw_text_small
+
+    mov al, [game3d_shot_subject_x]
+    mov ah, PAL_WHITE
+    mov bx, 60
+    mov dx, 60
+    call draw_two_digit_small
+
+    mov bx, 78
+    mov dx, 60
+    mov si, offset debug_shot_subject_y_tag
+    mov ah, PAL_CYAN
+    call draw_text_small
+
+    mov al, [game3d_shot_subject_y]
+    mov ah, PAL_WHITE
+    mov bx, 90
+    mov dx, 60
+    call draw_two_digit_small
+
+    mov bx, 108
+    mov dx, 60
+    mov si, offset debug_frame_tag
+    mov ah, PAL_CYAN
+    call draw_text_small
+
+    mov al, [game3d_shot_frame_variant]
+    mov ah, PAL_WHITE
+    mov bx, 120
+    mov dx, 60
+    call draw_two_digit_small
+
+    mov bx, 138
+    mov dx, 60
+    mov si, offset debug_demo_code_tag
+    mov ah, PAL_CYAN
+    call draw_text_small
+
+    mov al, [demo_action_code]
+    mov ah, PAL_WHITE
+    mov bx, 150
+    mov dx, 60
+    call draw_two_digit_small
+
+    mov bx, 168
+    mov dx, 60
+    mov si, offset debug_demo_ticks_tag
+    mov ah, PAL_CYAN
+    call draw_text_small
+
+    mov al, [demo_action_ticks]
+    mov ah, PAL_WHITE
+    mov bx, 180
+    mov dx, 60
+    call draw_two_digit_small
+
+    mov bx, 198
+    mov dx, 60
+    mov si, offset debug_verify_action_tag
+    mov ah, PAL_CYAN
+    call draw_text_small
+
+    mov al, [verify_action_index]
+    mov ah, PAL_WHITE
+    mov bx, 210
+    mov dx, 60
+    call draw_two_digit_small
     ret
 
 count_live_enemies:

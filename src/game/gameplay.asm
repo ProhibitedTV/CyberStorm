@@ -223,6 +223,7 @@ move_trigger_terminal:
     call commit_player_move
     call set_spoof_anchor
     mov byte ptr [spoof_timer], SPOOF_TURNS
+    call game3d_start_terminal_shot
     mov al, MSG_SPOOF
     call set_message_event
     ret
@@ -234,7 +235,8 @@ move_use_exit:
     cmp al, TOTAL_SECTORS
     jne move_use_exit_advance
     call award_final_mastery_bonus
-    mov byte ptr [game_state], STATE_WIN
+    mov al, STATE_WIN
+    call game3d_start_endbeat_shot
     ret
 
 move_use_exit_advance:
@@ -242,7 +244,8 @@ move_use_exit_advance:
     mov al, [sector_num]
     cmp al, TOTAL_SECTORS
     jbe advance_sector
-    mov byte ptr [game_state], STATE_WIN
+    mov al, STATE_WIN
+    call game3d_start_endbeat_shot
     ret
 
 move_trigger_surge:
@@ -256,7 +259,8 @@ move_trigger_surge:
     call set_message_event
     cmp byte ptr [shield_count], 0
     jne surge_done
-    mov byte ptr [game_state], STATE_LOSE
+    mov al, STATE_LOSE
+    call game3d_start_endbeat_shot
 
 surge_done:
     ret
@@ -367,6 +371,7 @@ enemy_turn_done:
     cmp byte ptr [game_state], STATE_PLAYING
     jne enemy_turn_done_skip
     call update_enemy_pressure
+    call game3d_note_pressure_change
     cmp byte ptr [spoof_timer], 0
     je enemy_turn_done_skip
     dec byte ptr [spoof_timer]
@@ -592,7 +597,8 @@ try_enemy_step:
     call set_message_event
     cmp byte ptr [shield_count], 0
     jne step_success
-    mov byte ptr [game_state], STATE_LOSE
+    mov al, STATE_LOSE
+    call game3d_start_endbeat_shot
 step_success:
     stc
     ret
@@ -676,6 +682,7 @@ keep_pulse_count:
     call place_terminals
     call place_surge_fields
     call place_enemies
+    call game3d_start_sector_entry_shot
     ret
 
 clear_enemy_table:
@@ -763,6 +770,7 @@ open_exit:
     mov dl, TILE_EXIT_OPEN
     call set_tile
     call set_effect_focus_tile
+    call game3d_start_gate_unlock_shot
     ret
 
 place_template_shards:
@@ -1164,6 +1172,7 @@ commit_player_move:
     mov [player_x], bl
     mov [player_y], bh
     mov byte ptr [action_taken], 1
+    call game3d_start_move_settle_shot
     ret
 
 set_effect_focus_tile:

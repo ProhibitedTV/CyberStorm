@@ -154,6 +154,10 @@ demo_takeover_now:
     jmp main_loop
 
 handle_live_play_input:
+    cmp byte ptr [game3d_end_state_pending], 0
+    jne main_loop
+    cmp byte ptr [game3d_shot_mode], GAME3D_SHOT_BASE_CHASE
+    jne main_loop
     call process_play_input
     jmp main_loop
 
@@ -402,7 +406,9 @@ start_demo_index_ready:
     mov byte ptr [demo_index], bl
     xor bh, bh
     mov al, [demo_start_sector_table + bx]
+    push bx
     call set_run_start_sector_and_pulses
+    pop bx
     shl bx, 1
     mov ax, [demo_seed_table + bx]
     mov [rng_state], ax
@@ -824,27 +830,43 @@ compute_runtime_verify_signature:
     call verify_sig_mix_byte
     mov bl, [player_y]
     call verify_sig_mix_byte
-    mov si, ax
+    push ax
     call game3d_get_facing_heading
     mov dl, al
-    mov ax, si
+    pop ax
     mov bl, dl
     call verify_sig_mix_byte
-    mov si, ax
+    push ax
     mov al, dl
     call game3d_get_room_variant_from_heading
     mov dl, al
-    mov ax, si
+    pop ax
     mov bl, dl
     call verify_sig_mix_byte
-    call game3d_get_projection_pitch
+    push ax
+    call game3d_get_active_shot_pitch
     mov bl, al
+    pop ax
     call verify_sig_mix_byte
-    call game3d_get_projection_scale
+    push ax
+    call game3d_get_active_shot_project_scale
     mov dx, ax
+    pop ax
     call verify_sig_mix_word
+    push ax
     call game3d_get_runtime_cue_flags
     mov bl, al
+    pop ax
+    call verify_sig_mix_byte
+    mov bl, [game3d_shot_mode]
+    call verify_sig_mix_byte
+    mov bl, [game3d_shot_reason]
+    call verify_sig_mix_byte
+    mov bl, [game3d_shot_subject_x]
+    call verify_sig_mix_byte
+    mov bl, [game3d_shot_subject_y]
+    call verify_sig_mix_byte
+    mov bl, [game3d_shot_frame_variant]
     call verify_sig_mix_byte
     mov bl, [shield_count]
     call verify_sig_mix_byte

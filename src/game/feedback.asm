@@ -102,6 +102,7 @@ play_message_sfx_recharge:
 
 update_runtime_feedback:
     push ax
+    call game3d_update_shot_state
     mov al, [game_state]
     cmp al, [last_game_state]
     je runtime_state_stable

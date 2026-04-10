@@ -358,9 +358,10 @@
                 Rng = 0x88BA
             }
             Steps = @(
+                'WAIT 16'
                 'RIGHT 3'
                 'UP 1'
-                'WAIT 1'
+                'WAIT 5'
             )
         }
         @{
@@ -392,7 +393,7 @@
                 Rng = 0xA7CC
             }
             Steps = @(
-                'WAIT 2'
+                'WAIT 18'
             )
         }
         @{
@@ -424,7 +425,7 @@
                 Rng = 0xA7CC
             }
             Steps = @(
-                'WAIT 4'
+                'WAIT 16'
                 'RIGHT 8'
                 'UP 4'
                 'RIGHT 2'
@@ -462,7 +463,7 @@
                 Rng = 0xA7CC
             }
             Steps = @(
-                'WAIT 2'
+                'WAIT 18'
             )
         }
         @{
@@ -494,8 +495,9 @@
                 Rng = 0x764A
             }
             Steps = @(
+                'WAIT 16'
                 'RIGHT 1'
-                'WAIT 1'
+                'WAIT 5'
             )
         }
         @{
@@ -527,9 +529,10 @@
                 Rng = 0x764A
             }
             Steps = @(
+                'WAIT 16'
                 'RIGHT 1'
                 'LEFT 1'
-                'WAIT 1'
+                'WAIT 5'
             )
         }
         @{
@@ -561,9 +564,10 @@
                 Rng = 0x764A
             }
             Steps = @(
+                'WAIT 16'
                 'RIGHT 5'
                 'UP 1'
-                'WAIT 1'
+                'WAIT 5'
             )
         }
         @{
@@ -595,10 +599,11 @@
                 Rng = 0x764A
             }
             Steps = @(
+                'WAIT 16'
                 'RIGHT 5'
                 'UP 1'
                 'DOWN 1'
-                'WAIT 1'
+                'WAIT 5'
             )
         }
         @{
@@ -662,12 +667,13 @@
                 Rng = 0xA7CC
             }
             Steps = @(
+                'WAIT 16'
                 'RIGHT 1'
                 'UP 2'
                 'LEFT 2'
                 'UP 4'
                 'RIGHT 6'
-                'WAIT 1'
+                'WAIT 5'
             )
         }
         @{

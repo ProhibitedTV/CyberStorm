@@ -242,23 +242,65 @@ function Get-BitmapPixel {
     return $Bitmap.GetPixel($X, $Y)
 }
 
+function Get-LogicalBitmapPixel {
+    param(
+        [System.Drawing.Bitmap]$Bitmap,
+        [double]$LogicalX,
+        [double]$LogicalY,
+        [int]$ScreenW,
+        [int]$ScreenH
+    )
+
+    $scaledX = [int][Math]::Floor(((($LogicalX + 0.5) * $Bitmap.Width) / $ScreenW))
+    $scaledY = [int][Math]::Floor(((($LogicalY + 0.5) * $Bitmap.Height) / $ScreenH))
+    $scaledX = [Math]::Max(0, [Math]::Min($Bitmap.Width - 1, $scaledX))
+    $scaledY = [Math]::Max(0, [Math]::Min($Bitmap.Height - 1, $scaledY))
+    return (Get-BitmapPixel -Bitmap $Bitmap -X $scaledX -Y $scaledY)
+}
+
 function Get-StatusFromBitmap {
     param(
         [System.Drawing.Bitmap]$Bitmap,
         [int]$MarkerX,
         [int]$MarkerY,
         [int]$MarkerW,
-        [int]$MarkerH
+        [int]$MarkerH,
+        [int]$ScreenW,
+        [int]$ScreenH
     )
 
-    $sample = Get-BitmapPixel -Bitmap $Bitmap -X ($MarkerX + [int]($MarkerW / 2)) -Y ($MarkerY + [int]($MarkerH / 2))
     $passRef = New-RgbRef 12 52 58
     $failRef = New-RgbRef 63 18 18
-    if ((Get-ColorDistance -Color $sample -Reference $passRef) -le (Get-ColorDistance -Color $sample -Reference $failRef)) {
-        return 'PASS'
+    $passDistance = [double]::PositiveInfinity
+    $failDistance = [double]::PositiveInfinity
+    for ($logicalY = $MarkerY; $logicalY -lt ($MarkerY + $MarkerH); $logicalY++) {
+        for ($logicalX = $MarkerX; $logicalX -lt ($MarkerX + $MarkerW); $logicalX++) {
+            $sample = Get-LogicalBitmapPixel `
+                -Bitmap $Bitmap `
+                -LogicalX $logicalX `
+                -LogicalY $logicalY `
+                -ScreenW $ScreenW `
+                -ScreenH $ScreenH
+            $passDistance = [Math]::Min($passDistance, (Get-ColorDistance -Color $sample -Reference $passRef))
+            $failDistance = [Math]::Min($failDistance, (Get-ColorDistance -Color $sample -Reference $failRef))
+        }
+    }
+    $closestDistance = [Math]::Min($passDistance, $failDistance)
+    $status = 'UNKNOWN'
+    if ($closestDistance -le 20000) {
+        if ($passDistance -le $failDistance) {
+            $status = 'PASS'
+        } else {
+            $status = 'FAIL'
+        }
     }
 
-    return 'FAIL'
+    return [pscustomobject]@{
+        Status = $status
+        PassDistance = [int][Math]::Round($passDistance)
+        FailDistance = [int][Math]::Round($failDistance)
+        ClosestDistance = [int][Math]::Round($closestDistance)
+    }
 }
 
 function Get-SignatureFromBitmap {
@@ -267,17 +309,21 @@ function Get-SignatureFromBitmap {
         [int]$StartX,
         [int]$StartY,
         [int]$BitSize,
-        [int]$BitPitch
+        [int]$BitPitch,
+        [int]$ScreenW,
+        [int]$ScreenH
     )
 
     $onRef = New-RgbRef 63 63 63
     $offRef = New-RgbRef 8 14 22
     $value = 0
     for ($bitIndex = 0; $bitIndex -lt 16; $bitIndex++) {
-        $sample = Get-BitmapPixel `
+        $sample = Get-LogicalBitmapPixel `
             -Bitmap $Bitmap `
-            -X ($StartX + ($bitIndex * $BitPitch) + [int]($BitSize / 2)) `
-            -Y ($StartY + [int]($BitSize / 2))
+            -LogicalX ($StartX + ($bitIndex * $BitPitch) + ($BitSize / 2.0)) `
+            -LogicalY ($StartY + ($BitSize / 2.0)) `
+            -ScreenW $ScreenW `
+            -ScreenH $ScreenH
         $isSet = (Get-ColorDistance -Color $sample -Reference $onRef) -lt (Get-ColorDistance -Color $sample -Reference $offRef)
         if ($isSet) {
             $value = $value -bor (0x8000 -shr $bitIndex)
@@ -343,6 +389,7 @@ function Invoke-RuntimeVerifyRun {
 
     $buildArgs = @(
         '-DebugBuild',
+        '-DebugOverlay',
         '-DebugDemoBoot',
         '-DebugRuntimeVerify',
         '-DebugDemoIndex',
@@ -357,39 +404,74 @@ function Invoke-RuntimeVerifyRun {
     Stop-VmIfRunning -Name $VmName
     Ensure-VmRegistered -Name $VmName
     Stop-VmIfRunning -Name $VmName
-    Start-HeadlessVm -Name $VmName
-    Start-Sleep -Seconds (Get-WaitSecondsForDemo -Demo $Demo -RuntimeVerify)
-    Invoke-VBoxManage -Arguments @('controlvm', $VmName, 'screenshotpng', $shotPath) | Out-Null
-    if (-not (Test-Path -LiteralPath $vboxLogPath)) {
-        throw ("VBox log was not found after runtime verification boot: {0}" -f $vboxLogPath)
-    }
-
-    Copy-Item -LiteralPath $vboxLogPath -Destination $logPath -Force
-    $bitmap = [System.Drawing.Bitmap]::FromFile($shotPath)
-    try {
-        $status = Get-StatusFromBitmap `
-            -Bitmap $bitmap `
-            -MarkerX $Geometry.MarkerX `
-            -MarkerY $Geometry.MarkerY `
-            -MarkerW $Geometry.MarkerW `
-            -MarkerH $Geometry.MarkerH
-        $expectedSignature = Get-SignatureFromBitmap `
-            -Bitmap $bitmap `
-            -StartX $Geometry.BitsX `
-            -StartY $Geometry.ExpectBitsY `
-            -BitSize $Geometry.BitSize `
-            -BitPitch $Geometry.BitPitch
-        $observedSignature = Get-SignatureFromBitmap `
-            -Bitmap $bitmap `
-            -StartX $Geometry.BitsX `
-            -StartY $Geometry.ObsBitsY `
-            -BitSize $Geometry.BitSize `
-            -BitPitch $Geometry.BitPitch
-    } finally {
-        $bitmap.Dispose()
-    }
-
     $expectedStatus = if ($CorruptExpectation.IsPresent) { 'FAIL' } else { 'PASS' }
+    $initialWaitSeconds = Get-WaitSecondsForDemo -Demo $Demo -RuntimeVerify
+    $retryDelaySeconds = 6
+    $maxCaptureAttempts = 4
+    $totalWaitSeconds = $initialWaitSeconds
+    $statusSample = $null
+    $expectedSignature = 0
+    $observedSignature = 0
+
+    Start-HeadlessVm -Name $VmName
+    Start-Sleep -Seconds $initialWaitSeconds
+    for ($attempt = 1; $attempt -le $maxCaptureAttempts; $attempt++) {
+        if ($attempt -gt 1) {
+            Start-Sleep -Seconds $retryDelaySeconds
+            $totalWaitSeconds += $retryDelaySeconds
+        }
+
+        Invoke-VBoxManage -Arguments @('controlvm', $VmName, 'screenshotpng', $shotPath) | Out-Null
+        if (-not (Test-Path -LiteralPath $vboxLogPath)) {
+            throw ("VBox log was not found after runtime verification boot: {0}" -f $vboxLogPath)
+        }
+
+        Copy-Item -LiteralPath $vboxLogPath -Destination $logPath -Force
+        $bitmap = [System.Drawing.Bitmap]::FromFile($shotPath)
+        try {
+            $statusSample = Get-StatusFromBitmap `
+                -Bitmap $bitmap `
+                -MarkerX $Geometry.MarkerX `
+                -MarkerY $Geometry.MarkerY `
+                -MarkerW $Geometry.MarkerW `
+                -MarkerH $Geometry.MarkerH `
+                -ScreenW $Geometry.ScreenW `
+                -ScreenH $Geometry.ScreenH
+            if ($statusSample.Status -ne 'UNKNOWN') {
+                $expectedSignature = Get-SignatureFromBitmap `
+                    -Bitmap $bitmap `
+                    -StartX $Geometry.BitsX `
+                    -StartY $Geometry.ExpectBitsY `
+                    -BitSize $Geometry.BitSize `
+                    -BitPitch $Geometry.BitPitch `
+                    -ScreenW $Geometry.ScreenW `
+                    -ScreenH $Geometry.ScreenH
+                $observedSignature = Get-SignatureFromBitmap `
+                    -Bitmap $bitmap `
+                    -StartX $Geometry.BitsX `
+                    -StartY $Geometry.ObsBitsY `
+                    -BitSize $Geometry.BitSize `
+                    -BitPitch $Geometry.BitPitch `
+                    -ScreenW $Geometry.ScreenW `
+                    -ScreenH $Geometry.ScreenH
+            }
+        } finally {
+            $bitmap.Dispose()
+        }
+
+        if ($statusSample.Status -ne 'UNKNOWN') {
+            break
+        }
+    }
+
+    if ($null -eq $statusSample -or $statusSample.Status -eq 'UNKNOWN') {
+        $closestDistance = if ($null -eq $statusSample) { -1 } else { $statusSample.ClosestDistance }
+        $passDistance = if ($null -eq $statusSample) { -1 } else { $statusSample.PassDistance }
+        $failDistance = if ($null -eq $statusSample) { -1 } else { $statusSample.FailDistance }
+        throw ("Runtime verify demo '{0}' never reached a verify scene after {1}s (closest marker distance {2}, pass distance {3}, fail distance {4})." -f $Demo.Name, $totalWaitSeconds, $closestDistance, $passDistance, $failDistance)
+    }
+
+    $status = [string]$statusSample.Status
     if ($status -ne $expectedStatus) {
         throw ("Runtime verify demo '{0}' reported {1}, expected {2}." -f $Demo.Name, $status, $expectedStatus)
     }
@@ -403,7 +485,7 @@ function Invoke-RuntimeVerifyRun {
         ObservedSignature = (Format-Hex16 $observedSignature)
         ScreenshotPath = $shotPath
         LogPath = $logPath
-        WaitSeconds = (Get-WaitSecondsForDemo -Demo $Demo -RuntimeVerify)
+        WaitSeconds = $totalWaitSeconds
     }
 }
 
@@ -415,6 +497,8 @@ Assert-PathExists -Path $ConstantsSourcePath -Label 'constants source'
 New-Item -ItemType Directory -Force -Path $artifactDir | Out-Null
 
 $geometry = @{
+    ScreenW = Get-AsmEquValue -SourcePath $ConstantsSourcePath -Name 'SCREEN_W'
+    ScreenH = Get-AsmEquValue -SourcePath $ConstantsSourcePath -Name 'SCREEN_H'
     MarkerX = Get-AsmEquValue -SourcePath $ConstantsSourcePath -Name 'VERIFY_MARKER_X'
     MarkerY = Get-AsmEquValue -SourcePath $ConstantsSourcePath -Name 'VERIFY_MARKER_Y'
     MarkerW = Get-AsmEquValue -SourcePath $ConstantsSourcePath -Name 'VERIFY_MARKER_W'

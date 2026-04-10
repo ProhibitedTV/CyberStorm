@@ -224,41 +224,71 @@ GAME3D_MESH_BEACON_THREAT_VERTEX_COUNT EQU 9
 GAME3D_MESH_BEACON_THREAT_FACE_OFFSET EQU 3366
 GAME3D_MESH_BEACON_THREAT_FACE_COUNT EQU 12
 
-GAME3D_MESH_ENEMY_RUSHER_INDEX EQU 16
-GAME3D_MESH_ENEMY_RUSHER_VERTEX_OFFSET EQU 3438
+GAME3D_MESH_LANDMARK_VAULT_INDEX EQU 16
+GAME3D_MESH_LANDMARK_VAULT_VERTEX_OFFSET EQU 3438
+GAME3D_MESH_LANDMARK_VAULT_VERTEX_COUNT EQU 11
+GAME3D_MESH_LANDMARK_VAULT_FACE_OFFSET EQU 3504
+GAME3D_MESH_LANDMARK_VAULT_FACE_COUNT EQU 14
+
+GAME3D_MESH_LANDMARK_FURNACE_INDEX EQU 17
+GAME3D_MESH_LANDMARK_FURNACE_VERTEX_OFFSET EQU 3588
+GAME3D_MESH_LANDMARK_FURNACE_VERTEX_COUNT EQU 12
+GAME3D_MESH_LANDMARK_FURNACE_FACE_OFFSET EQU 3660
+GAME3D_MESH_LANDMARK_FURNACE_FACE_COUNT EQU 16
+
+GAME3D_MESH_LANDMARK_LOCK_INDEX EQU 18
+GAME3D_MESH_LANDMARK_LOCK_VERTEX_OFFSET EQU 3756
+GAME3D_MESH_LANDMARK_LOCK_VERTEX_COUNT EQU 11
+GAME3D_MESH_LANDMARK_LOCK_FACE_OFFSET EQU 3822
+GAME3D_MESH_LANDMARK_LOCK_FACE_COUNT EQU 14
+
+GAME3D_MESH_ENEMY_RUSHER_INDEX EQU 19
+GAME3D_MESH_ENEMY_RUSHER_VERTEX_OFFSET EQU 3906
 GAME3D_MESH_ENEMY_RUSHER_VERTEX_COUNT EQU 9
-GAME3D_MESH_ENEMY_RUSHER_FACE_OFFSET EQU 3492
+GAME3D_MESH_ENEMY_RUSHER_FACE_OFFSET EQU 3960
 GAME3D_MESH_ENEMY_RUSHER_FACE_COUNT EQU 12
 
-GAME3D_MESH_ENEMY_RUSHER_ALT_INDEX EQU 17
-GAME3D_MESH_ENEMY_RUSHER_ALT_VERTEX_OFFSET EQU 3564
+GAME3D_MESH_ENEMY_RUSHER_ALT_INDEX EQU 20
+GAME3D_MESH_ENEMY_RUSHER_ALT_VERTEX_OFFSET EQU 4032
 GAME3D_MESH_ENEMY_RUSHER_ALT_VERTEX_COUNT EQU 9
-GAME3D_MESH_ENEMY_RUSHER_ALT_FACE_OFFSET EQU 3618
+GAME3D_MESH_ENEMY_RUSHER_ALT_FACE_OFFSET EQU 4086
 GAME3D_MESH_ENEMY_RUSHER_ALT_FACE_COUNT EQU 12
 
-GAME3D_MESH_ENEMY_FLANKER_INDEX EQU 18
-GAME3D_MESH_ENEMY_FLANKER_VERTEX_OFFSET EQU 3690
+GAME3D_MESH_ENEMY_FLANKER_INDEX EQU 21
+GAME3D_MESH_ENEMY_FLANKER_VERTEX_OFFSET EQU 4158
 GAME3D_MESH_ENEMY_FLANKER_VERTEX_COUNT EQU 9
-GAME3D_MESH_ENEMY_FLANKER_FACE_OFFSET EQU 3744
+GAME3D_MESH_ENEMY_FLANKER_FACE_OFFSET EQU 4212
 GAME3D_MESH_ENEMY_FLANKER_FACE_COUNT EQU 12
 
-GAME3D_MESH_ENEMY_FLANKER_ALT_INDEX EQU 19
-GAME3D_MESH_ENEMY_FLANKER_ALT_VERTEX_OFFSET EQU 3816
+GAME3D_MESH_ENEMY_FLANKER_ALT_INDEX EQU 22
+GAME3D_MESH_ENEMY_FLANKER_ALT_VERTEX_OFFSET EQU 4284
 GAME3D_MESH_ENEMY_FLANKER_ALT_VERTEX_COUNT EQU 9
-GAME3D_MESH_ENEMY_FLANKER_ALT_FACE_OFFSET EQU 3870
+GAME3D_MESH_ENEMY_FLANKER_ALT_FACE_OFFSET EQU 4338
 GAME3D_MESH_ENEMY_FLANKER_ALT_FACE_COUNT EQU 12
 
-GAME3D_MESH_PLAYER_RUNNER_INDEX EQU 20
-GAME3D_MESH_PLAYER_RUNNER_VERTEX_OFFSET EQU 3942
+GAME3D_MESH_PLAYER_RUNNER_INDEX EQU 23
+GAME3D_MESH_PLAYER_RUNNER_VERTEX_OFFSET EQU 4410
 GAME3D_MESH_PLAYER_RUNNER_VERTEX_COUNT EQU 11
-GAME3D_MESH_PLAYER_RUNNER_FACE_OFFSET EQU 4008
+GAME3D_MESH_PLAYER_RUNNER_FACE_OFFSET EQU 4476
 GAME3D_MESH_PLAYER_RUNNER_FACE_COUNT EQU 14
 
-GAME3D_MESH_WARDEN_INDEX EQU 21
-GAME3D_MESH_WARDEN_VERTEX_OFFSET EQU 4092
+GAME3D_MESH_PLAYER_RUNNER_LEAN_INDEX EQU 24
+GAME3D_MESH_PLAYER_RUNNER_LEAN_VERTEX_OFFSET EQU 4560
+GAME3D_MESH_PLAYER_RUNNER_LEAN_VERTEX_COUNT EQU 11
+GAME3D_MESH_PLAYER_RUNNER_LEAN_FACE_OFFSET EQU 4626
+GAME3D_MESH_PLAYER_RUNNER_LEAN_FACE_COUNT EQU 14
+
+GAME3D_MESH_WARDEN_INDEX EQU 25
+GAME3D_MESH_WARDEN_VERTEX_OFFSET EQU 4710
 GAME3D_MESH_WARDEN_VERTEX_COUNT EQU 11
-GAME3D_MESH_WARDEN_FACE_OFFSET EQU 4158
+GAME3D_MESH_WARDEN_FACE_OFFSET EQU 4776
 GAME3D_MESH_WARDEN_FACE_COUNT EQU 14
+
+GAME3D_MESH_WARDEN_PRESSURE_INDEX EQU 26
+GAME3D_MESH_WARDEN_PRESSURE_VERTEX_OFFSET EQU 4860
+GAME3D_MESH_WARDEN_PRESSURE_VERTEX_COUNT EQU 11
+GAME3D_MESH_WARDEN_PRESSURE_FACE_OFFSET EQU 4926
+GAME3D_MESH_WARDEN_PRESSURE_FACE_COUNT EQU 14
 
 GAME3D_KIT_SECTOR1_INDEX EQU 0
 
@@ -269,7 +299,7 @@ GAME3D_KIT_SECTOR3_INDEX EQU 2
 SCENE3D_COUNT EQU 7
 SCENE3D_GROUP_COUNT EQU 21
 SCENE3D_MATERIAL_COUNT EQU 29
-GAME3D_MESH_COUNT EQU 22
+GAME3D_MESH_COUNT EQU 27
 GAME3D_KIT_COUNT EQU 3
 
 scene3d_vertex_offset_table dw 0, 324, 540, 684
@@ -958,23 +988,27 @@ game3d_mesh_vertex_offset_table dw 1260, 1404, 1548, 1692
                                 dw 1836, 1980, 2124, 2250
                                 dw 2376, 2502, 2646, 2790
                                 dw 2934, 3060, 3186, 3312
-                                dw 3438, 3564, 3690, 3816
-                                dw 3942, 4092
+                                dw 3438, 3588, 3756, 3906
+                                dw 4032, 4158, 4284, 4410
+                                dw 4560, 4710, 4860
 
 game3d_mesh_vertex_count_table db 16, 16, 16, 12, 12, 12, 9, 9
                                db 9, 10, 10, 10, 9, 9, 9, 9
-                               db 9, 9, 9, 9, 11, 11
+                               db 11, 12, 11, 9, 9, 9, 9, 11
+                               db 11, 11, 11
 
 game3d_mesh_face_offset_table dw 1356, 1500, 1644, 1764
                               dw 1908, 2052, 2178, 2304
                               dw 2430, 2562, 2706, 2850
                               dw 2988, 3114, 3240, 3366
-                              dw 3492, 3618, 3744, 3870
-                              dw 4008, 4158
+                              dw 3504, 3660, 3822, 3960
+                              dw 4086, 4212, 4338, 4476
+                              dw 4626, 4776, 4926
 
 game3d_mesh_face_count_table db 8, 8, 8, 12, 12, 12, 12, 12
                              db 12, 14, 14, 14, 12, 12, 12, 12
-                             db 12, 12, 12, 12, 14, 14
+                             db 14, 16, 14, 12, 12, 12, 12, 14
+                             db 14, 14, 14
 
 game3d_kit_floor_base_color_table db 13, 13, 3
 game3d_kit_floor_base_dither_table db 14, 14, 4
@@ -1013,3 +1047,57 @@ game3d_kit_horizon_a_color_table db PAL_CYAN, PAL_AMBER, PAL_RED
 game3d_kit_horizon_b_color_table db PAL_CYAN2, PAL_RED, PAL_WHITE
 game3d_kit_horizon_y_table db 34, 36, 32
 game3d_kit_wobble_strength_table db 1, 2, 2
+game3d_kit_shot_height_table dw 0526h, 04F3h, 048Dh, 04C0h
+                             dw 04E6h, 04B3h, 045Ah, 058Dh
+                             dw 0533h, 04E6h, 050Dh, 051Ah
+                             dw 04F3h, 049Ah, 05DAh, 0566h
+                             dw 051Ah, 0533h, 054Dh, 0500h
+                             dw 04B3h
+game3d_kit_shot_distance_table dw 06F3h, 065Ah, 088Dh, 059Ah
+                               dw 05CDh, 055Ah, 04F3h, 06C0h
+                               dw 061Ah, 084Dh, 0573h, 05B3h
+                               dw 0533h, 04CDh, 0680h, 05E6h
+                               dw 0800h, 0533h, 0573h, 04F3h
+                               dw 049Ah
+game3d_kit_shot_look_ahead_table dw 00DAh, 011Ah, 0000h, 0033h
+                                 dw 001Ah, 0026h, 0033h, 00F3h
+                                 dw 0126h, 0000h, 001Ah, 001Fh
+                                 dw 001Ah, 002Eh, 00CDh, 0100h
+                                 dw 0000h, 001Ah, 001Ah, 001Ah
+                                 dw 0029h
+game3d_kit_shot_pitch_table db 243, 242, 245, 242, 240, 241, 239, 245
+                            db 243, 245, 243, 242, 242, 240, 246, 245
+                            db 247, 244, 243, 243, 241
+game3d_kit_shot_project_scale_table dw 92, 96, 88, 104
+                                    dw 100, 108, 110, 96
+                                    dw 100, 90, 106, 102
+                                    dw 110, 112, 100, 104
+                                    dw 92, 110, 106, 114
+                                    dw 116
+game3d_kit_shot_horizon_table db 34, 32, 36, 30, 31, 29, 28, 36
+                              db 33, 38, 31, 32, 30, 28, 32, 30
+                              db 34, 28, 29, 27, 26
+game3d_kit_shot_focus_bias_x_table dw 0000h, 0000h, 00B3h, 0000h
+                                   dw 0000h, 0000h, 001Ah, 0000h
+                                   dw 0000h, 0FF73h, 001Fh, 0000h
+                                   dw 002Eh, 001Ah, 0000h, 0000h
+                                   dw 009Fh, 0014h, 0000h, 0033h
+                                   dw 0014h
+game3d_kit_shot_focus_bias_z_table dw 0000h, 0033h, 0FF26h, 0000h
+                                   dw 0026h, 0FFE6h, 000Dh, 0000h
+                                   dw 0040h, 0FF33h, 0000h, 0033h
+                                   dw 0FFDAh, 001Ah, 0000h, 0038h
+                                   dw 0FF3Dh, 0FFF6h, 002Eh, 0FFC8h
+                                   dw 0014h
+game3d_kit_frame_door_inset_table dw 0029h, 002Eh, 0031h
+game3d_kit_frame_door_width_table dw 0038h, 003Dh, 0043h
+game3d_kit_frame_door_height_table dw 015Ch, 017Bh, 0194h
+game3d_kit_frame_rail_inset_table dw 0085h, 008Ah, 0094h
+game3d_kit_frame_rail_width_table dw 002Eh, 0033h, 002Eh
+game3d_kit_frame_rail_height_table dw 00C8h, 00D7h, 00E6h
+game3d_kit_frame_ceiling_height_table dw 0176h, 0194h, 01A9h
+game3d_kit_frame_ceiling_thickness_table dw 003Dh, 0043h, 0048h
+game3d_kit_frame_far_mass_inset_table dw 00E1h, 00D7h, 00C3h
+game3d_kit_frame_far_mass_width_table dw 0240h, 028Dh, 02CDh
+game3d_kit_frame_far_mass_height_table dw 0148h, 0166h, 0194h
+game3d_kit_landmark_mesh_table db 16, 17, 18

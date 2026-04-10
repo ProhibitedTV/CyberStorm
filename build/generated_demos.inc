@@ -117,17 +117,18 @@ demo_script_8 db DEMO_ACTION_WAIT, 6
               db DEMO_ACTION_END, 0
 
 ; Demo 10: WARDEN PRESSURE VERIFY
-demo_script_9 db DEMO_ACTION_RIGHT, 3
+demo_script_9 db DEMO_ACTION_WAIT, 16
+              db DEMO_ACTION_RIGHT, 3
               db DEMO_ACTION_UP, 1
-              db DEMO_ACTION_WAIT, 1
+              db DEMO_ACTION_WAIT, 5
               db DEMO_ACTION_END, 0
 
 ; Demo 11: RUSHER MESH VERIFY
-demo_script_10 db DEMO_ACTION_WAIT, 2
+demo_script_10 db DEMO_ACTION_WAIT, 18
                db DEMO_ACTION_END, 0
 
 ; Demo 12: FLANKER MESH VERIFY
-demo_script_11 db DEMO_ACTION_WAIT, 4
+demo_script_11 db DEMO_ACTION_WAIT, 16
                db DEMO_ACTION_RIGHT, 8
                db DEMO_ACTION_UP, 4
                db DEMO_ACTION_RIGHT, 2
@@ -137,31 +138,35 @@ demo_script_11 db DEMO_ACTION_WAIT, 4
                db DEMO_ACTION_END, 0
 
 ; Demo 13: FAR EXIT VERIFY
-demo_script_12 db DEMO_ACTION_WAIT, 2
+demo_script_12 db DEMO_ACTION_WAIT, 18
                db DEMO_ACTION_END, 0
 
 ; Demo 14: CAMERA EAST VERIFY
-demo_script_13 db DEMO_ACTION_RIGHT, 1
-               db DEMO_ACTION_WAIT, 1
+demo_script_13 db DEMO_ACTION_WAIT, 16
+               db DEMO_ACTION_RIGHT, 1
+               db DEMO_ACTION_WAIT, 5
                db DEMO_ACTION_END, 0
 
 ; Demo 15: CAMERA WEST VERIFY
-demo_script_14 db DEMO_ACTION_RIGHT, 1
+demo_script_14 db DEMO_ACTION_WAIT, 16
+               db DEMO_ACTION_RIGHT, 1
                db DEMO_ACTION_LEFT, 1
-               db DEMO_ACTION_WAIT, 1
+               db DEMO_ACTION_WAIT, 5
                db DEMO_ACTION_END, 0
 
 ; Demo 16: CAMERA NORTH VERIFY
-demo_script_15 db DEMO_ACTION_RIGHT, 5
+demo_script_15 db DEMO_ACTION_WAIT, 16
+               db DEMO_ACTION_RIGHT, 5
                db DEMO_ACTION_UP, 1
-               db DEMO_ACTION_WAIT, 1
+               db DEMO_ACTION_WAIT, 5
                db DEMO_ACTION_END, 0
 
 ; Demo 17: CAMERA SOUTH VERIFY
-demo_script_16 db DEMO_ACTION_RIGHT, 5
+demo_script_16 db DEMO_ACTION_WAIT, 16
+               db DEMO_ACTION_RIGHT, 5
                db DEMO_ACTION_UP, 1
                db DEMO_ACTION_DOWN, 1
-               db DEMO_ACTION_WAIT, 1
+               db DEMO_ACTION_WAIT, 5
                db DEMO_ACTION_END, 0
 
 ; Demo 18: SECTOR ENTRY VERIFY
@@ -169,12 +174,13 @@ demo_script_17 db DEMO_ACTION_WAIT, 2
                db DEMO_ACTION_END, 0
 
 ; Demo 19: TERMINAL SPOOF VERIFY
-demo_script_18 db DEMO_ACTION_RIGHT, 1
+demo_script_18 db DEMO_ACTION_WAIT, 16
+               db DEMO_ACTION_RIGHT, 1
                db DEMO_ACTION_UP, 2
                db DEMO_ACTION_LEFT, 2
                db DEMO_ACTION_UP, 4
                db DEMO_ACTION_RIGHT, 6
-               db DEMO_ACTION_WAIT, 1
+               db DEMO_ACTION_WAIT, 5
                db DEMO_ACTION_END, 0
 
 ; Demo 20: GATE UNLOCK VERIFY

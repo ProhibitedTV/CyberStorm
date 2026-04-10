@@ -2180,6 +2180,27 @@ function Write-GeneratedGeometryInclude {
     $kitHorizonBColor = New-Object 'System.Collections.Generic.List[string]'
     $kitHorizonY = New-Object 'System.Collections.Generic.List[string]'
     $kitWobbleStrength = New-Object 'System.Collections.Generic.List[string]'
+    $shotRigModes = @('BaseChase', 'MoveSettle', 'SectorEntry', 'EnemyReveal', 'Interaction', 'WardenPressure', 'EndBeat')
+    $kitShotHeight = New-Object 'System.Collections.Generic.List[string]'
+    $kitShotDistance = New-Object 'System.Collections.Generic.List[string]'
+    $kitShotLookAhead = New-Object 'System.Collections.Generic.List[string]'
+    $kitShotPitch = New-Object 'System.Collections.Generic.List[string]'
+    $kitShotProjectScale = New-Object 'System.Collections.Generic.List[string]'
+    $kitShotHorizon = New-Object 'System.Collections.Generic.List[string]'
+    $kitShotFocusBiasX = New-Object 'System.Collections.Generic.List[string]'
+    $kitShotFocusBiasZ = New-Object 'System.Collections.Generic.List[string]'
+    $kitFrameDoorInset = New-Object 'System.Collections.Generic.List[string]'
+    $kitFrameDoorWidth = New-Object 'System.Collections.Generic.List[string]'
+    $kitFrameDoorHeight = New-Object 'System.Collections.Generic.List[string]'
+    $kitFrameRailInset = New-Object 'System.Collections.Generic.List[string]'
+    $kitFrameRailWidth = New-Object 'System.Collections.Generic.List[string]'
+    $kitFrameRailHeight = New-Object 'System.Collections.Generic.List[string]'
+    $kitFrameCeilingHeight = New-Object 'System.Collections.Generic.List[string]'
+    $kitFrameCeilingThickness = New-Object 'System.Collections.Generic.List[string]'
+    $kitFrameFarMassInset = New-Object 'System.Collections.Generic.List[string]'
+    $kitFrameFarMassWidth = New-Object 'System.Collections.Generic.List[string]'
+    $kitFrameFarMassHeight = New-Object 'System.Collections.Generic.List[string]'
+    $kitLandmarkMesh = New-Object 'System.Collections.Generic.List[string]'
 
     $sceneCount = 0
     $sceneGroupCount = 0
@@ -2592,6 +2613,42 @@ function Write-GeneratedGeometryInclude {
             }
         }
 
+        $shotRigs = $kit['ShotRigs']
+        if (-not ($shotRigs -is [System.Collections.IDictionary])) {
+            throw ("Gameplay kit '{0}' in {1} must define a ShotRigs block." -f $kitKey, $SourcePath)
+        }
+
+        foreach ($shotMode in $shotRigModes) {
+            if (-not $shotRigs.ContainsKey($shotMode) -or -not ($shotRigs[$shotMode] -is [System.Collections.IDictionary])) {
+                throw ("Gameplay kit '{0}' in {1} must define ShotRigs.{2} as a block." -f $kitKey, $SourcePath, $shotMode)
+            }
+
+            foreach ($shotField in @('Height', 'Distance', 'LookAhead', 'PitchDegrees', 'ProjectScale', 'Horizon', 'FocusBiasX', 'FocusBiasZ')) {
+                if (-not $shotRigs[$shotMode].ContainsKey($shotField)) {
+                    throw ("Gameplay kit '{0}' in {1} shot rig '{2}' is missing '{3}'." -f $kitKey, $SourcePath, $shotMode, $shotField)
+                }
+            }
+        }
+
+        $framing = $kit['Framing']
+        if (-not ($framing -is [System.Collections.IDictionary])) {
+            throw ("Gameplay kit '{0}' in {1} must define a Framing block." -f $kitKey, $SourcePath)
+        }
+
+        foreach ($framingField in @('DoorFrameInset', 'DoorFrameWidth', 'DoorFrameHeight', 'RailInset', 'RailWidth', 'RailHeight', 'CeilingBeamHeight', 'CeilingBeamThickness', 'FarMassInset', 'FarMassWidth', 'FarMassHeight')) {
+            if (-not $framing.ContainsKey($framingField)) {
+                throw ("Gameplay kit '{0}' in {1} framing is missing '{2}'." -f $kitKey, $SourcePath, $framingField)
+            }
+        }
+
+        $landmark = $kit['Landmark']
+        if (-not ($landmark -is [System.Collections.IDictionary])) {
+            throw ("Gameplay kit '{0}' in {1} must define a Landmark block." -f $kitKey, $SourcePath)
+        }
+        if (-not $landmark.ContainsKey('Mesh')) {
+            throw ("Gameplay kit '{0}' in {1} landmark is missing 'Mesh'." -f $kitKey, $SourcePath)
+        }
+
         $atmosphere = $kit['Atmosphere']
         if (-not ($atmosphere -is [System.Collections.IDictionary])) {
             throw ("Gameplay kit '{0}' in {1} must define an Atmosphere block." -f $kitKey, $SourcePath)
@@ -2620,6 +2677,21 @@ function Write-GeneratedGeometryInclude {
         $nearOccluderHeight = ConvertTo-GeometryFixed88 -Value $structure['NearHeight'] -Context ("Gameplay kit '{0}' structure NearHeight" -f $kitKey)
         $farSilhouetteInset = ConvertTo-GeometryFixed88 -Value $structure['FarInset'] -Context ("Gameplay kit '{0}' structure FarInset" -f $kitKey)
         $farSilhouetteHeight = ConvertTo-GeometryFixed88 -Value $structure['FarHeight'] -Context ("Gameplay kit '{0}' structure FarHeight" -f $kitKey)
+        $doorFrameInset = ConvertTo-GeometryFixed88 -Value $framing['DoorFrameInset'] -Context ("Gameplay kit '{0}' framing DoorFrameInset" -f $kitKey)
+        $doorFrameWidth = ConvertTo-GeometryFixed88 -Value $framing['DoorFrameWidth'] -Context ("Gameplay kit '{0}' framing DoorFrameWidth" -f $kitKey)
+        $doorFrameHeight = ConvertTo-GeometryFixed88 -Value $framing['DoorFrameHeight'] -Context ("Gameplay kit '{0}' framing DoorFrameHeight" -f $kitKey)
+        $railInset = ConvertTo-GeometryFixed88 -Value $framing['RailInset'] -Context ("Gameplay kit '{0}' framing RailInset" -f $kitKey)
+        $railWidth = ConvertTo-GeometryFixed88 -Value $framing['RailWidth'] -Context ("Gameplay kit '{0}' framing RailWidth" -f $kitKey)
+        $railHeight = ConvertTo-GeometryFixed88 -Value $framing['RailHeight'] -Context ("Gameplay kit '{0}' framing RailHeight" -f $kitKey)
+        $ceilingBeamHeight = ConvertTo-GeometryFixed88 -Value $framing['CeilingBeamHeight'] -Context ("Gameplay kit '{0}' framing CeilingBeamHeight" -f $kitKey)
+        $ceilingBeamThickness = ConvertTo-GeometryFixed88 -Value $framing['CeilingBeamThickness'] -Context ("Gameplay kit '{0}' framing CeilingBeamThickness" -f $kitKey)
+        $farMassInset = ConvertTo-GeometryFixed88 -Value $framing['FarMassInset'] -Context ("Gameplay kit '{0}' framing FarMassInset" -f $kitKey)
+        $farMassWidth = ConvertTo-GeometryFixed88 -Value $framing['FarMassWidth'] -Context ("Gameplay kit '{0}' framing FarMassWidth" -f $kitKey)
+        $farMassHeight = ConvertTo-GeometryFixed88 -Value $framing['FarMassHeight'] -Context ("Gameplay kit '{0}' framing FarMassHeight" -f $kitKey)
+        $landmarkMeshKey = ([string]$landmark['Mesh']).ToLowerInvariant()
+        if ([string]::IsNullOrWhiteSpace($landmarkMeshKey) -or -not $meshMap.ContainsKey($landmarkMeshKey)) {
+            throw ("Gameplay kit '{0}' in {1} must reference a known mesh for Landmark.Mesh." -f $kitKey, $SourcePath)
+        }
 
         $horizonY = [int]$atmosphere['HorizonY']
         if ($horizonY -lt 12 -or $horizonY -gt 84) {
@@ -2678,8 +2750,43 @@ function Write-GeneratedGeometryInclude {
         $kitHorizonBColor.Add($horizonB)
         $kitHorizonY.Add($horizonY.ToString())
         $kitWobbleStrength.Add($wobbleStrength.ToString())
+        foreach ($shotMode in $shotRigModes) {
+            $shotRig = $shotRigs[$shotMode]
+            $shotPitch = ConvertTo-GeometryAngleByte -Value $shotRig['PitchDegrees'] -Context ("Gameplay kit '{0}' {1} pitch" -f $kitKey, $shotMode)
+            $shotProjectScale = [int]$shotRig['ProjectScale']
+            if ($shotProjectScale -lt 48 -or $shotProjectScale -gt 160) {
+                throw ("Gameplay kit '{0}' in {1} must keep ShotRigs.{2}.ProjectScale in the 48..160 range. Found {3}." -f $kitKey, $SourcePath, $shotMode, $shotProjectScale)
+            }
 
-        $kitSummary.Add(("{0}: cam h={1} d={2} look={3}, proj p={4} s={5}, horizon={6}, wobble={7}, props {8}|{9}|{10}|{11}" -f $kitKey, $camera['Height'], $camera['Distance'], $camera['LookAhead'], $projection['PitchDegrees'], $projectionScale, $horizonY, $wobbleStrength, $kit['GateMesh'], $kit['TerminalMesh'], $kit['SurgeMesh'], $kit['ShardMesh']))
+            $shotHorizon = [int]$shotRig['Horizon']
+            if ($shotHorizon -lt 12 -or $shotHorizon -gt 84) {
+                throw ("Gameplay kit '{0}' in {1} must keep ShotRigs.{2}.Horizon in the 12..84 range. Found {3}." -f $kitKey, $SourcePath, $shotMode, $shotHorizon)
+            }
+
+            $kitShotHeight.Add((Format-Hex16Literal (ConvertTo-GeometryFixed88 -Value $shotRig['Height'] -Context ("Gameplay kit '{0}' {1} Height" -f $kitKey, $shotMode))))
+            $kitShotDistance.Add((Format-Hex16Literal (ConvertTo-GeometryFixed88 -Value $shotRig['Distance'] -Context ("Gameplay kit '{0}' {1} Distance" -f $kitKey, $shotMode))))
+            $kitShotLookAhead.Add((Format-Hex16Literal (ConvertTo-GeometryFixed88 -Value $shotRig['LookAhead'] -Context ("Gameplay kit '{0}' {1} LookAhead" -f $kitKey, $shotMode))))
+            $kitShotPitch.Add($shotPitch.ToString())
+            $kitShotProjectScale.Add($shotProjectScale.ToString())
+            $kitShotHorizon.Add($shotHorizon.ToString())
+            $kitShotFocusBiasX.Add((Format-Hex16Literal (ConvertTo-GeometryFixed88 -Value $shotRig['FocusBiasX'] -Context ("Gameplay kit '{0}' {1} FocusBiasX" -f $kitKey, $shotMode))))
+            $kitShotFocusBiasZ.Add((Format-Hex16Literal (ConvertTo-GeometryFixed88 -Value $shotRig['FocusBiasZ'] -Context ("Gameplay kit '{0}' {1} FocusBiasZ" -f $kitKey, $shotMode))))
+        }
+
+        $kitFrameDoorInset.Add((Format-Hex16Literal $doorFrameInset))
+        $kitFrameDoorWidth.Add((Format-Hex16Literal $doorFrameWidth))
+        $kitFrameDoorHeight.Add((Format-Hex16Literal $doorFrameHeight))
+        $kitFrameRailInset.Add((Format-Hex16Literal $railInset))
+        $kitFrameRailWidth.Add((Format-Hex16Literal $railWidth))
+        $kitFrameRailHeight.Add((Format-Hex16Literal $railHeight))
+        $kitFrameCeilingHeight.Add((Format-Hex16Literal $ceilingBeamHeight))
+        $kitFrameCeilingThickness.Add((Format-Hex16Literal $ceilingBeamThickness))
+        $kitFrameFarMassInset.Add((Format-Hex16Literal $farMassInset))
+        $kitFrameFarMassWidth.Add((Format-Hex16Literal $farMassWidth))
+        $kitFrameFarMassHeight.Add((Format-Hex16Literal $farMassHeight))
+        $kitLandmarkMesh.Add($meshMap[$landmarkMeshKey].Index.ToString())
+
+        $kitSummary.Add(("{0}: cam h={1} d={2} look={3}, proj p={4} s={5}, horizon={6}, landmark={7}, wobble={8}, props {9}|{10}|{11}|{12}" -f $kitKey, $camera['Height'], $camera['Distance'], $camera['LookAhead'], $projection['PitchDegrees'], $projectionScale, $horizonY, $landmark['Mesh'], $wobbleStrength, $kit['GateMesh'], $kit['TerminalMesh'], $kit['SurgeMesh'], $kit['ShardMesh']))
     }
 
     $lines.Add(("SCENE3D_COUNT EQU {0}" -f $sceneCount))
@@ -2797,6 +2904,26 @@ function Write-GeneratedGeometryInclude {
     Add-AsmDataLines -Lines $lines -Label 'game3d_kit_horizon_b_color_table' -Directive 'db' -Values $kitHorizonBColor.ToArray() -ValuesPerLine 8
     Add-AsmDataLines -Lines $lines -Label 'game3d_kit_horizon_y_table' -Directive 'db' -Values $kitHorizonY.ToArray() -ValuesPerLine 8
     Add-AsmDataLines -Lines $lines -Label 'game3d_kit_wobble_strength_table' -Directive 'db' -Values $kitWobbleStrength.ToArray() -ValuesPerLine 8
+    Add-AsmDataLines -Lines $lines -Label 'game3d_kit_shot_height_table' -Directive 'dw' -Values $kitShotHeight.ToArray() -ValuesPerLine 4
+    Add-AsmDataLines -Lines $lines -Label 'game3d_kit_shot_distance_table' -Directive 'dw' -Values $kitShotDistance.ToArray() -ValuesPerLine 4
+    Add-AsmDataLines -Lines $lines -Label 'game3d_kit_shot_look_ahead_table' -Directive 'dw' -Values $kitShotLookAhead.ToArray() -ValuesPerLine 4
+    Add-AsmDataLines -Lines $lines -Label 'game3d_kit_shot_pitch_table' -Directive 'db' -Values $kitShotPitch.ToArray() -ValuesPerLine 8
+    Add-AsmDataLines -Lines $lines -Label 'game3d_kit_shot_project_scale_table' -Directive 'dw' -Values $kitShotProjectScale.ToArray() -ValuesPerLine 4
+    Add-AsmDataLines -Lines $lines -Label 'game3d_kit_shot_horizon_table' -Directive 'db' -Values $kitShotHorizon.ToArray() -ValuesPerLine 8
+    Add-AsmDataLines -Lines $lines -Label 'game3d_kit_shot_focus_bias_x_table' -Directive 'dw' -Values $kitShotFocusBiasX.ToArray() -ValuesPerLine 4
+    Add-AsmDataLines -Lines $lines -Label 'game3d_kit_shot_focus_bias_z_table' -Directive 'dw' -Values $kitShotFocusBiasZ.ToArray() -ValuesPerLine 4
+    Add-AsmDataLines -Lines $lines -Label 'game3d_kit_frame_door_inset_table' -Directive 'dw' -Values $kitFrameDoorInset.ToArray() -ValuesPerLine 4
+    Add-AsmDataLines -Lines $lines -Label 'game3d_kit_frame_door_width_table' -Directive 'dw' -Values $kitFrameDoorWidth.ToArray() -ValuesPerLine 4
+    Add-AsmDataLines -Lines $lines -Label 'game3d_kit_frame_door_height_table' -Directive 'dw' -Values $kitFrameDoorHeight.ToArray() -ValuesPerLine 4
+    Add-AsmDataLines -Lines $lines -Label 'game3d_kit_frame_rail_inset_table' -Directive 'dw' -Values $kitFrameRailInset.ToArray() -ValuesPerLine 4
+    Add-AsmDataLines -Lines $lines -Label 'game3d_kit_frame_rail_width_table' -Directive 'dw' -Values $kitFrameRailWidth.ToArray() -ValuesPerLine 4
+    Add-AsmDataLines -Lines $lines -Label 'game3d_kit_frame_rail_height_table' -Directive 'dw' -Values $kitFrameRailHeight.ToArray() -ValuesPerLine 4
+    Add-AsmDataLines -Lines $lines -Label 'game3d_kit_frame_ceiling_height_table' -Directive 'dw' -Values $kitFrameCeilingHeight.ToArray() -ValuesPerLine 4
+    Add-AsmDataLines -Lines $lines -Label 'game3d_kit_frame_ceiling_thickness_table' -Directive 'dw' -Values $kitFrameCeilingThickness.ToArray() -ValuesPerLine 4
+    Add-AsmDataLines -Lines $lines -Label 'game3d_kit_frame_far_mass_inset_table' -Directive 'dw' -Values $kitFrameFarMassInset.ToArray() -ValuesPerLine 4
+    Add-AsmDataLines -Lines $lines -Label 'game3d_kit_frame_far_mass_width_table' -Directive 'dw' -Values $kitFrameFarMassWidth.ToArray() -ValuesPerLine 4
+    Add-AsmDataLines -Lines $lines -Label 'game3d_kit_frame_far_mass_height_table' -Directive 'dw' -Values $kitFrameFarMassHeight.ToArray() -ValuesPerLine 4
+    Add-AsmDataLines -Lines $lines -Label 'game3d_kit_landmark_mesh_table' -Directive 'db' -Values $kitLandmarkMesh.ToArray() -ValuesPerLine 8
 
     Set-Content -LiteralPath $OutputPath -Encoding ascii -Value $lines
     Assert-PathExists -Path $OutputPath -Label 'generated geometry include'

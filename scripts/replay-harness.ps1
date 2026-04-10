@@ -469,9 +469,17 @@ function Handle-ReplayStateChangeFeedback {
 function Update-ReplayFeedback {
     param(
         $State,
+        $Constants,
+        [object[]]$GameplayKits,
         [bool]$MusicEnabled,
         $MusicThemes
     )
+
+    Update-ReplayShotState -State $State -Constants $Constants
+    if ($State.GameState -eq 'PLAYING') {
+        Update-ReplayCameraTarget -State $State -GameplayKits $GameplayKits
+        Ease-ReplayCameraYaw -State $State -Constants $Constants
+    }
 
     if ($State.GameState -ne $State.LastGameState) {
         $State.LastGameState = $State.GameState
@@ -537,6 +545,46 @@ function Get-RequiredConstants {
         'GAME3D_VIEW_H',
         'GAME3D_FLOOR_Y',
         'GAME3D_CAMERA_HORIZON_CENTER_OFFSET',
+        'GAME3D_CAMERA_STEP',
+        'GAME3D_SHOT_BASE_CHASE',
+        'GAME3D_SHOT_MOVE_SETTLE',
+        'GAME3D_SHOT_SECTOR_ENTRY',
+        'GAME3D_SHOT_ENEMY_REVEAL',
+        'GAME3D_SHOT_INTERACTION',
+        'GAME3D_SHOT_WARDEN_PRESSURE',
+        'GAME3D_SHOT_END_BEAT',
+        'GAME3D_SHOT_REASON_NONE',
+        'GAME3D_SHOT_REASON_MOVE',
+        'GAME3D_SHOT_REASON_SECTOR',
+        'GAME3D_SHOT_REASON_REVEAL',
+        'GAME3D_SHOT_REASON_TERMINAL',
+        'GAME3D_SHOT_REASON_GATE',
+        'GAME3D_SHOT_REASON_WARDEN',
+        'GAME3D_SHOT_REASON_WIN',
+        'GAME3D_SHOT_REASON_LOSE',
+        'GAME3D_FRAME_VARIANT_NONE',
+        'GAME3D_FRAME_VARIANT_RAIL',
+        'GAME3D_FRAME_VARIANT_DOOR',
+        'GAME3D_FRAME_VARIANT_CEILING',
+        'GAME3D_FRAME_VARIANT_FAR_MASS',
+        'GAME3D_FRAME_VARIANT_LANDMARK',
+        'GAME3D_SHOT_MOVE_IN',
+        'GAME3D_SHOT_MOVE_HOLD',
+        'GAME3D_SHOT_MOVE_OUT',
+        'GAME3D_SHOT_SECTOR_HOLD',
+        'GAME3D_SHOT_SECTOR_OUT',
+        'GAME3D_SHOT_REVEAL_IN',
+        'GAME3D_SHOT_REVEAL_HOLD',
+        'GAME3D_SHOT_REVEAL_OUT',
+        'GAME3D_SHOT_INTERACTION_IN',
+        'GAME3D_SHOT_INTERACTION_HOLD',
+        'GAME3D_SHOT_INTERACTION_OUT',
+        'GAME3D_SHOT_WARDEN_IN',
+        'GAME3D_SHOT_WARDEN_HOLD',
+        'GAME3D_SHOT_WARDEN_OUT',
+        'GAME3D_SHOT_END_IN',
+        'GAME3D_SHOT_END_HOLD',
+        'GAME3D_CAMERA_KICK_PIXELS',
         'GAME3D_FACE_DEPTH_FAR',
         'GAME3D_PLAYER_LOCATOR_FAR_DEPTH',
         'GAME3D_CUE_EDGE_MARGIN',
@@ -582,6 +630,7 @@ function Get-GameplayKitDefinitions {
     }
 
     $expectedKitKeys = @('sector1', 'sector2', 'sector3')
+    $shotModeKeys = @('BaseChase', 'MoveSettle', 'SectorEntry', 'EnemyReveal', 'Interaction', 'WardenPressure', 'EndBeat')
     $kits = @($geometryData.GameplayKits)
     if ($kits.Count -ne $expectedKitKeys.Count) {
         throw ("Geometry source defined {0} gameplay kits, but replay expects {1}." -f $kits.Count, $expectedKitKeys.Count)
@@ -601,25 +650,55 @@ function Get-GameplayKitDefinitions {
 
         $camera = $kit.Camera
         $projection = $kit.Projection
+        $shotRigs = $kit.ShotRigs
         if (-not ($camera -is [System.Collections.IDictionary])) {
             throw ("Gameplay kit '{0}' in {1} must define a Camera block." -f $kitKey, $SourcePath)
         }
         if (-not ($projection -is [System.Collections.IDictionary])) {
             throw ("Gameplay kit '{0}' in {1} must define a Projection block." -f $kitKey, $SourcePath)
         }
+        if (-not ($shotRigs -is [System.Collections.IDictionary])) {
+            throw ("Gameplay kit '{0}' in {1} must define a ShotRigs block." -f $kitKey, $SourcePath)
+        }
+
+        $parsedShotRigs = @{}
+        foreach ($shotMode in $shotModeKeys) {
+            if (-not $shotRigs.ContainsKey($shotMode)) {
+                throw ("Gameplay kit '{0}' in {1} must define ShotRigs.{2}." -f $kitKey, $SourcePath, $shotMode)
+            }
+
+            $rig = $shotRigs[$shotMode]
+            if (-not ($rig -is [System.Collections.IDictionary])) {
+                throw ("Gameplay kit '{0}' in {1} must define ShotRigs.{2} as a block." -f $kitKey, $SourcePath, $shotMode)
+            }
+
+            $parsedShotRigs[$shotMode] = [pscustomobject]@{
+                Height = (ConvertTo-GeometryFixed88 $rig.Height)
+                Distance = (ConvertTo-GeometryFixed88 $rig.Distance)
+                LookAhead = (ConvertTo-GeometryFixed88 $rig.LookAhead)
+                Pitch = (ConvertTo-GeometryAngleByte $rig.PitchDegrees)
+                ProjectScale = [int]$rig.ProjectScale
+                Horizon = [int]$rig.Horizon
+                FocusBiasX = (ConvertTo-GeometryFixed88 $rig.FocusBiasX)
+                FocusBiasZ = (ConvertTo-GeometryFixed88 $rig.FocusBiasZ)
+            }
+        }
+
+        $baseShotRig = $parsedShotRigs['BaseChase']
 
         $definitions.Add([pscustomobject]@{
             Key = $kitKey
-            CameraHeight = (ConvertTo-GeometryFixed88 $camera.Height)
-            CameraDistance = (ConvertTo-GeometryFixed88 $camera.Distance)
-            CameraLookAhead = (ConvertTo-GeometryFixed88 $camera.LookAhead)
+            CameraHeight = $baseShotRig.Height
+            CameraDistance = $baseShotRig.Distance
+            CameraLookAhead = $baseShotRig.LookAhead
             HeadingNorthYaw = (ConvertTo-GeometryAngleByte $camera.HeadingNorthYawDegrees)
             HeadingEastYaw = (ConvertTo-GeometryAngleByte $camera.HeadingEastYawDegrees)
             HeadingSouthYaw = (ConvertTo-GeometryAngleByte $camera.HeadingSouthYawDegrees)
             HeadingWestYaw = (ConvertTo-GeometryAngleByte $camera.HeadingWestYawDegrees)
-            ProjectionPitch = (ConvertTo-GeometryAngleByte $projection.PitchDegrees)
-            ProjectionScale = [int]$projection.ProjectScale
-            HorizonY = [int]$kit.Atmosphere.HorizonY
+            ProjectionPitch = $baseShotRig.Pitch
+            ProjectionScale = $baseShotRig.ProjectScale
+            HorizonY = $baseShotRig.Horizon
+            ShotRigs = $parsedShotRigs
         })
     }
 
@@ -717,6 +796,7 @@ function New-ReplayState {
     param(
         $Constants,
         $Sectors,
+        [object[]]$GameplayKits,
         [int]$StartSector,
         [int]$Seed
     )
@@ -746,6 +826,18 @@ function New-ReplayState {
         ThreatLevel = 0
         ThreatX = $Constants.START_X
         ThreatY = $Constants.START_Y
+        ShotMode = $Constants.GAME3D_SHOT_BASE_CHASE
+        ShotReason = $Constants.GAME3D_SHOT_REASON_NONE
+        ShotTick = 0
+        ShotDuration = 0
+        ShotFrameVariant = $Constants.GAME3D_FRAME_VARIANT_NONE
+        ShotSubjectX = $Constants.START_X
+        ShotSubjectY = $Constants.START_Y
+        EndStatePending = $null
+        LastThreatLevel = 0
+        CameraHeading = 1
+        CameraYawCurrent = 0
+        CameraYawTarget = 0
         LastGameState = '__INIT__'
         StateTicks = 0
         MessageId = 'SECTOR'
@@ -774,7 +866,7 @@ function New-ReplayState {
         }
     }
 
-    Initialize-ReplayRun -State $state -Constants $Constants -Sectors $Sectors -StartSector $StartSector
+    Initialize-ReplayRun -State $state -Constants $Constants -Sectors $Sectors -GameplayKits $GameplayKits -StartSector $StartSector
     return $state
 }
 
@@ -783,6 +875,7 @@ function Initialize-ReplayRun {
         $State,
         $Constants,
         $Sectors,
+        [object[]]$GameplayKits,
         [int]$StartSector
     )
 
@@ -817,7 +910,7 @@ function Initialize-ReplayRun {
     $State.ThreatY = $Constants.START_Y
     Stop-ReplaySfx -State $State
     Stop-ReplayMusic -State $State
-    Load-ReplaySector -State $State -Constants $Constants -Sectors $Sectors
+    Load-ReplaySector -State $State -Constants $Constants -Sectors $Sectors -GameplayKits $GameplayKits
     Set-ReplayMessageEvent -State $State -MessageKey 'SECTOR'
 }
 
@@ -986,6 +1079,7 @@ function Award-FinalMasteryBonus {
 function Commit-PlayerMove {
     param(
         $State,
+        $Constants,
         [int]$TargetX,
         [int]$TargetY
     )
@@ -994,6 +1088,302 @@ function Commit-PlayerMove {
     $State.LastPlayerDy = $TargetY - $State.PlayerY
     $State.PlayerX = $TargetX
     $State.PlayerY = $TargetY
+    Start-ReplayMoveSettleShot -State $State -Constants $Constants
+}
+
+function Get-ReplayHeadingYaw {
+    param(
+        $State,
+        [object[]]$GameplayKits
+    )
+
+    $kit = Get-GameplayKitForState -State $State -GameplayKits $GameplayKits
+    switch ($State.CameraHeading) {
+        0 { return $kit.HeadingNorthYaw }
+        2 { return $kit.HeadingSouthYaw }
+        3 { return $kit.HeadingWestYaw }
+        default { return $kit.HeadingEastYaw }
+    }
+}
+
+function Sync-ReplayCameraFacing {
+    param(
+        $State,
+        [object[]]$GameplayKits
+    )
+
+    $State.CameraHeading = 1
+    $yaw = (Get-GameplayKitForState -State $State -GameplayKits $GameplayKits).HeadingEastYaw
+    $State.CameraYawCurrent = $yaw
+    $State.CameraYawTarget = $yaw
+}
+
+function Clear-ReplayActiveShot {
+    param(
+        $State,
+        $Constants
+    )
+
+    $State.ShotMode = $Constants.GAME3D_SHOT_BASE_CHASE
+    $State.ShotReason = $Constants.GAME3D_SHOT_REASON_NONE
+    $State.ShotTick = 0
+    $State.ShotDuration = 0
+    $State.ShotFrameVariant = $Constants.GAME3D_FRAME_VARIANT_NONE
+    $State.ShotSubjectX = $State.PlayerX
+    $State.ShotSubjectY = $State.PlayerY
+}
+
+function Reset-ReplayShotState {
+    param(
+        $State,
+        $Constants
+    )
+
+    Clear-ReplayActiveShot -State $State -Constants $Constants
+    $State.EndStatePending = $null
+    $State.LastThreatLevel = 0
+}
+
+function Get-ReplayShotDuration {
+    param(
+        $Constants,
+        [int]$ShotMode
+    )
+
+    switch ($ShotMode) {
+        { $_ -eq $Constants.GAME3D_SHOT_MOVE_SETTLE } { return ($Constants.GAME3D_SHOT_MOVE_IN + $Constants.GAME3D_SHOT_MOVE_HOLD + $Constants.GAME3D_SHOT_MOVE_OUT) }
+        { $_ -eq $Constants.GAME3D_SHOT_SECTOR_ENTRY } { return ($Constants.GAME3D_SHOT_SECTOR_HOLD + $Constants.GAME3D_SHOT_SECTOR_OUT) }
+        { $_ -eq $Constants.GAME3D_SHOT_ENEMY_REVEAL } { return ($Constants.GAME3D_SHOT_REVEAL_IN + $Constants.GAME3D_SHOT_REVEAL_HOLD + $Constants.GAME3D_SHOT_REVEAL_OUT) }
+        { $_ -eq $Constants.GAME3D_SHOT_INTERACTION } { return ($Constants.GAME3D_SHOT_INTERACTION_IN + $Constants.GAME3D_SHOT_INTERACTION_HOLD + $Constants.GAME3D_SHOT_INTERACTION_OUT) }
+        { $_ -eq $Constants.GAME3D_SHOT_WARDEN_PRESSURE } { return ($Constants.GAME3D_SHOT_WARDEN_IN + $Constants.GAME3D_SHOT_WARDEN_HOLD + $Constants.GAME3D_SHOT_WARDEN_OUT) }
+        { $_ -eq $Constants.GAME3D_SHOT_END_BEAT } { return ($Constants.GAME3D_SHOT_END_IN + $Constants.GAME3D_SHOT_END_HOLD) }
+        default { return 0 }
+    }
+}
+
+function Get-ReplayShotPrimaryFrameVariant {
+    param(
+        $Constants,
+        [int]$ShotMode
+    )
+
+    switch ($ShotMode) {
+        { $_ -eq $Constants.GAME3D_SHOT_MOVE_SETTLE } { return $Constants.GAME3D_FRAME_VARIANT_RAIL }
+        { $_ -eq $Constants.GAME3D_SHOT_SECTOR_ENTRY } { return $Constants.GAME3D_FRAME_VARIANT_LANDMARK }
+        { $_ -eq $Constants.GAME3D_SHOT_ENEMY_REVEAL } { return $Constants.GAME3D_FRAME_VARIANT_DOOR }
+        { $_ -eq $Constants.GAME3D_SHOT_INTERACTION } { return $Constants.GAME3D_FRAME_VARIANT_DOOR }
+        { $_ -eq $Constants.GAME3D_SHOT_WARDEN_PRESSURE } { return $Constants.GAME3D_FRAME_VARIANT_CEILING }
+        { $_ -eq $Constants.GAME3D_SHOT_END_BEAT } { return $Constants.GAME3D_FRAME_VARIANT_LANDMARK }
+        default { return $Constants.GAME3D_FRAME_VARIANT_NONE }
+    }
+}
+
+function Begin-ReplayShot {
+    param(
+        $State,
+        $Constants,
+        [int]$ShotMode,
+        [int]$ShotReason,
+        [int]$SubjectX,
+        [int]$SubjectY
+    )
+
+    if ($State.EndStatePending -and $ShotMode -ne $Constants.GAME3D_SHOT_END_BEAT) {
+        return
+    }
+
+    $State.ShotDuration = Get-ReplayShotDuration -Constants $Constants -ShotMode $ShotMode
+    $State.ShotMode = $ShotMode
+    $State.ShotReason = $ShotReason
+    $State.ShotTick = 0
+    $State.ShotSubjectX = $SubjectX
+    $State.ShotSubjectY = $SubjectY
+    $State.ShotFrameVariant = Get-ReplayShotPrimaryFrameVariant -Constants $Constants -ShotMode $ShotMode
+}
+
+function Start-ReplayMoveSettleShot {
+    param(
+        $State,
+        $Constants
+    )
+
+    if ($State.EndStatePending) {
+        return
+    }
+    if ($State.ShotMode -gt $Constants.GAME3D_SHOT_MOVE_SETTLE) {
+        return
+    }
+
+    Begin-ReplayShot -State $State -Constants $Constants -ShotMode $Constants.GAME3D_SHOT_MOVE_SETTLE -ShotReason $Constants.GAME3D_SHOT_REASON_MOVE -SubjectX $State.PlayerX -SubjectY $State.PlayerY
+}
+
+function Start-ReplaySectorEntryShot {
+    param(
+        $State,
+        $Constants
+    )
+
+    Begin-ReplayShot -State $State -Constants $Constants -ShotMode $Constants.GAME3D_SHOT_SECTOR_ENTRY -ShotReason $Constants.GAME3D_SHOT_REASON_SECTOR -SubjectX ([int]($Constants.MAP_W / 2)) -SubjectY ([int]($Constants.MAP_H / 2))
+}
+
+function Start-ReplayEnemyRevealShot {
+    param(
+        $State,
+        $Constants
+    )
+
+    if ($State.ThreatLevel -le 0) {
+        return
+    }
+    if ($State.ShotMode -eq $Constants.GAME3D_SHOT_SECTOR_ENTRY -or $State.ShotMode -eq $Constants.GAME3D_SHOT_INTERACTION) {
+        return
+    }
+    if ($State.ThreatLevel -ge 2) {
+        return
+    }
+
+    Begin-ReplayShot -State $State -Constants $Constants -ShotMode $Constants.GAME3D_SHOT_ENEMY_REVEAL -ShotReason $Constants.GAME3D_SHOT_REASON_REVEAL -SubjectX $State.ThreatX -SubjectY $State.ThreatY
+}
+
+function Start-ReplayTerminalShot {
+    param(
+        $State,
+        $Constants,
+        [int]$SubjectX,
+        [int]$SubjectY
+    )
+
+    Begin-ReplayShot -State $State -Constants $Constants -ShotMode $Constants.GAME3D_SHOT_INTERACTION -ShotReason $Constants.GAME3D_SHOT_REASON_TERMINAL -SubjectX $SubjectX -SubjectY $SubjectY
+}
+
+function Start-ReplayGateUnlockShot {
+    param(
+        $State,
+        $Constants
+    )
+
+    Begin-ReplayShot -State $State -Constants $Constants -ShotMode $Constants.GAME3D_SHOT_INTERACTION -ShotReason $Constants.GAME3D_SHOT_REASON_GATE -SubjectX $State.ExitX -SubjectY $State.ExitY
+}
+
+function Start-ReplayWardenPressureShot {
+    param(
+        $State,
+        $Constants
+    )
+
+    if ($State.ThreatLevel -ne 2) {
+        return
+    }
+
+    Begin-ReplayShot -State $State -Constants $Constants -ShotMode $Constants.GAME3D_SHOT_WARDEN_PRESSURE -ShotReason $Constants.GAME3D_SHOT_REASON_WARDEN -SubjectX $State.ThreatX -SubjectY $State.ThreatY
+}
+
+function Note-ReplayPressureChange {
+    param(
+        $State,
+        $Constants
+    )
+
+    if ($State.ThreatLevel -eq $State.LastThreatLevel) {
+        return
+    }
+
+    $State.LastThreatLevel = $State.ThreatLevel
+    if ($State.ThreatLevel -eq 2) {
+        Start-ReplayWardenPressureShot -State $State -Constants $Constants
+        return
+    }
+
+    if ($State.ThreatLevel -gt 0) {
+        Start-ReplayEnemyRevealShot -State $State -Constants $Constants
+    }
+}
+
+function Start-ReplayEndBeatShot {
+    param(
+        $State,
+        $Constants,
+        [string]$EndState
+    )
+
+    if ($State.EndStatePending) {
+        return
+    }
+
+    $State.EndStatePending = $EndState
+    $reason = if ($EndState -eq 'WIN') { $Constants.GAME3D_SHOT_REASON_WIN } else { $Constants.GAME3D_SHOT_REASON_LOSE }
+    Begin-ReplayShot -State $State -Constants $Constants -ShotMode $Constants.GAME3D_SHOT_END_BEAT -ShotReason $reason -SubjectX $State.PlayerX -SubjectY $State.PlayerY
+}
+
+function Update-ReplayShotState {
+    param(
+        $State,
+        $Constants
+    )
+
+    if ($State.GameState -ne 'PLAYING') {
+        return
+    }
+    if ($State.ShotMode -eq $Constants.GAME3D_SHOT_BASE_CHASE) {
+        return
+    }
+
+    if ($State.ShotTick -lt 255) {
+        $State.ShotTick += 1
+    }
+
+    if ($State.ShotTick -lt $State.ShotDuration) {
+        return
+    }
+
+    if ($State.EndStatePending) {
+        $endState = $State.EndStatePending
+        $State.EndStatePending = $null
+        Clear-ReplayActiveShot -State $State -Constants $Constants
+        $State.GameState = $endState
+        return
+    }
+
+    Clear-ReplayActiveShot -State $State -Constants $Constants
+}
+
+function Update-ReplayCameraTarget {
+    param(
+        $State,
+        [object[]]$GameplayKits
+    )
+
+    $heading = Get-RuntimeCameraHeading -State $State
+    if ($heading -eq $State.CameraHeading) {
+        return
+    }
+
+    $State.CameraHeading = $heading
+    $State.CameraYawTarget = Get-ReplayHeadingYaw -State $State -GameplayKits $GameplayKits
+}
+
+function Ease-ReplayCameraYaw {
+    param(
+        $State,
+        $Constants
+    )
+
+    $delta = ((($State.CameraYawTarget - $State.CameraYawCurrent + 128) -band 0xFF) - 128)
+    if ($delta -eq 0) {
+        return
+    }
+
+    if ([Math]::Abs($delta) -le $Constants.GAME3D_CAMERA_STEP) {
+        $State.CameraYawCurrent = $State.CameraYawTarget
+        return
+    }
+
+    if ($delta -lt 0) {
+        $State.CameraYawCurrent = (($State.CameraYawCurrent - $Constants.GAME3D_CAMERA_STEP) -band 0xFF)
+        return
+    }
+
+    $State.CameraYawCurrent = (($State.CameraYawCurrent + $Constants.GAME3D_CAMERA_STEP) -band 0xFF)
 }
 
 function Get-SectorRules {
@@ -1131,6 +1521,129 @@ function Get-RuntimeHeadingYaw {
     }
 }
 
+function Get-ReplayShotModeKey {
+    param(
+        $Constants,
+        [int]$ShotMode
+    )
+
+    switch ($ShotMode) {
+        { $_ -eq $Constants.GAME3D_SHOT_MOVE_SETTLE } { return 'MoveSettle' }
+        { $_ -eq $Constants.GAME3D_SHOT_SECTOR_ENTRY } { return 'SectorEntry' }
+        { $_ -eq $Constants.GAME3D_SHOT_ENEMY_REVEAL } { return 'EnemyReveal' }
+        { $_ -eq $Constants.GAME3D_SHOT_INTERACTION } { return 'Interaction' }
+        { $_ -eq $Constants.GAME3D_SHOT_WARDEN_PRESSURE } { return 'WardenPressure' }
+        { $_ -eq $Constants.GAME3D_SHOT_END_BEAT } { return 'EndBeat' }
+        default { return 'BaseChase' }
+    }
+}
+
+function Get-ReplayShotRig {
+    param(
+        $State,
+        $Constants,
+        [object[]]$GameplayKits,
+        [Nullable[int]]$ShotMode
+    )
+
+    $kit = Get-GameplayKitForState -State $State -GameplayKits $GameplayKits
+    $mode = if ($null -ne $ShotMode) { [int]$ShotMode } else { [int]$State.ShotMode }
+    return $kit.ShotRigs[(Get-ReplayShotModeKey -Constants $Constants -ShotMode $mode)]
+}
+
+function Apply-ReplayLookAheadToFocus {
+    param(
+        $State,
+        [int]$FocusX,
+        [int]$FocusZ,
+        [int]$LookAhead
+    )
+
+    if ($State.LastPlayerDx -gt 0) {
+        $FocusX += $LookAhead
+    } elseif ($State.LastPlayerDx -lt 0) {
+        $FocusX -= $LookAhead
+    }
+
+    if ($State.LastPlayerDy -gt 0) {
+        $FocusZ += $LookAhead
+    } elseif ($State.LastPlayerDy -lt 0) {
+        $FocusZ -= $LookAhead
+    }
+
+    return [pscustomobject]@{
+        X = $FocusX
+        Z = $FocusZ
+    }
+}
+
+function Blend-ReplayValue {
+    param(
+        [int]$Base,
+        [int]$Target,
+        [int]$Blend
+    )
+
+    return ($Base + [int](($Blend * ($Target - $Base)) / 256))
+}
+
+function Get-ReplayShotBlend {
+    param(
+        $State,
+        $Constants
+    )
+
+    $tick = [int]$State.ShotTick
+    switch ([int]$State.ShotMode) {
+        { $_ -eq $Constants.GAME3D_SHOT_MOVE_SETTLE } {
+            if ($tick -eq 1) { return 128 }
+            if ($tick -lt 4) { return 256 }
+            if ($tick -lt 6) { return 128 }
+            return 0
+        }
+        { $_ -eq $Constants.GAME3D_SHOT_SECTOR_ENTRY } {
+            if ($tick -le $Constants.GAME3D_SHOT_SECTOR_HOLD) { return 256 }
+            if ($tick -eq ($Constants.GAME3D_SHOT_SECTOR_HOLD + 1)) { return 192 }
+            if ($tick -eq ($Constants.GAME3D_SHOT_SECTOR_HOLD + 2)) { return 128 }
+            if ($tick -eq ($Constants.GAME3D_SHOT_SECTOR_HOLD + 3)) { return 64 }
+            return 0
+        }
+        { $_ -eq $Constants.GAME3D_SHOT_ENEMY_REVEAL } {
+            if ($tick -eq 1) { return 85 }
+            if ($tick -eq 2) { return 170 }
+            if ($tick -lt 9) { return 256 }
+            if ($tick -eq 9) { return 170 }
+            if ($tick -eq 10) { return 85 }
+            if ($tick -eq 11) { return 43 }
+            return 0
+        }
+        { $_ -eq $Constants.GAME3D_SHOT_INTERACTION } {
+            if ($tick -eq 1) { return 128 }
+            if ($tick -lt 6) { return 256 }
+            if ($tick -eq 6) { return 128 }
+            if ($tick -eq 7) { return 64 }
+            return 0
+        }
+        { $_ -eq $Constants.GAME3D_SHOT_WARDEN_PRESSURE } {
+            if ($tick -eq 1) { return 85 }
+            if ($tick -eq 2) { return 170 }
+            if ($tick -lt 8) { return 256 }
+            if ($tick -eq 8) { return 170 }
+            if ($tick -eq 9) { return 85 }
+            if ($tick -eq 10) { return 43 }
+            return 0
+        }
+        { $_ -eq $Constants.GAME3D_SHOT_END_BEAT } {
+            if ($tick -eq 1) { return 64 }
+            if ($tick -eq 2) { return 128 }
+            if ($tick -eq 3) { return 192 }
+            if ($tick -ge 4) { return 256 }
+            return 0
+        }
+        default { return 0 }
+    }
+}
+
 function Get-RuntimeCameraSetup {
     param(
         $State,
@@ -1138,39 +1651,58 @@ function Get-RuntimeCameraSetup {
         [object[]]$GameplayKits
     )
 
-    $kit = Get-GameplayKitForState -State $State -GameplayKits $GameplayKits
-    $headingYaw = Get-RuntimeHeadingYaw -State $State -GameplayKits $GameplayKits
+    $baseRig = Get-ReplayShotRig -State $State -Constants $Constants -GameplayKits $GameplayKits -ShotMode $Constants.GAME3D_SHOT_BASE_CHASE
+    $headingYaw = [int]$State.CameraYawCurrent
     $playerWorldX = ($State.PlayerX * 256) + 128 - ($Constants.MAP_W * 128)
     $playerWorldZ = ($State.PlayerY * 256) + 128 - ($Constants.MAP_H * 128)
-    $focusX = $playerWorldX
-    $focusZ = $playerWorldZ
-
-    if ($State.LastPlayerDx -gt 0) {
-        $focusX += $kit.CameraLookAhead
-    } elseif ($State.LastPlayerDx -lt 0) {
-        $focusX -= $kit.CameraLookAhead
-    }
-
-    if ($State.LastPlayerDy -gt 0) {
-        $focusZ += $kit.CameraLookAhead
-    } elseif ($State.LastPlayerDy -lt 0) {
-        $focusZ -= $kit.CameraLookAhead
-    }
+    $focus = Apply-ReplayLookAheadToFocus -State $State -FocusX $playerWorldX -FocusZ $playerWorldZ -LookAhead $baseRig.LookAhead
+    $focusX = $focus.X
+    $focusZ = $focus.Z
 
     $yaw = Get-FixedSinCos -AngleByte $headingYaw
-    $camX = $focusX - (Mul-Fixed88 -A $kit.CameraDistance -B $yaw.Sin)
-    $camZ = $focusZ - (Mul-Fixed88 -A $kit.CameraDistance -B $yaw.Cos)
-    $centerY = $Constants.GAME3D_VIEW_Y + $Constants.GAME3D_CAMERA_HORIZON_CENTER_OFFSET + $kit.HorizonY
+    $camX = $focusX - (Mul-Fixed88 -A $baseRig.Distance -B $yaw.Sin)
+    $camZ = $focusZ - (Mul-Fixed88 -A $baseRig.Distance -B $yaw.Cos)
+    $camY = $baseRig.Height
+    $centerY = $Constants.GAME3D_VIEW_Y + $Constants.GAME3D_CAMERA_HORIZON_CENTER_OFFSET + $baseRig.Horizon
+    $projectScale = $baseRig.ProjectScale
+    $pitch = $baseRig.Pitch
+
+    $blend = Get-ReplayShotBlend -State $State -Constants $Constants
+    if ($blend -gt 0) {
+        $shotRig = Get-ReplayShotRig -State $State -Constants $Constants -GameplayKits $GameplayKits -ShotMode $State.ShotMode
+        $shotWorldX = ($State.ShotSubjectX * 256) + 128 - ($Constants.MAP_W * 128)
+        $shotWorldZ = ($State.ShotSubjectY * 256) + 128 - ($Constants.MAP_H * 128)
+        $shotFocus = Apply-ReplayLookAheadToFocus -State $State -FocusX $shotWorldX -FocusZ $shotWorldZ -LookAhead $shotRig.LookAhead
+        $shotFocusX = $shotFocus.X + $shotRig.FocusBiasX
+        $shotFocusZ = $shotFocus.Z + $shotRig.FocusBiasZ
+        $shotCamX = $shotFocusX - (Mul-Fixed88 -A $shotRig.Distance -B $yaw.Sin)
+        $shotCamZ = $shotFocusZ - (Mul-Fixed88 -A $shotRig.Distance -B $yaw.Cos)
+        $shotCenterY = $Constants.GAME3D_VIEW_Y + $Constants.GAME3D_CAMERA_HORIZON_CENTER_OFFSET + $shotRig.Horizon
+        $centerY = Blend-ReplayValue -Base $centerY -Target $shotCenterY -Blend $blend
+        $projectScale = Blend-ReplayValue -Base $projectScale -Target $shotRig.ProjectScale -Blend $blend
+        $pitch = Blend-ReplayValue -Base $pitch -Target $shotRig.Pitch -Blend $blend
+        $camX = Blend-ReplayValue -Base $camX -Target $shotCamX -Blend $blend
+        $camZ = Blend-ReplayValue -Base $camZ -Target $shotCamZ -Blend $blend
+        $camY = Blend-ReplayValue -Base $camY -Target $shotRig.Height -Blend $blend
+    }
+
+    if ($State.ShotMode -in @($Constants.GAME3D_SHOT_ENEMY_REVEAL, $Constants.GAME3D_SHOT_INTERACTION, $Constants.GAME3D_SHOT_WARDEN_PRESSURE, $Constants.GAME3D_SHOT_END_BEAT)) {
+        if ($State.ShotTick -eq 1) {
+            $centerY -= $Constants.GAME3D_CAMERA_KICK_PIXELS
+        } elseif ($State.ShotTick -eq 2) {
+            $centerY -= 1
+        }
+    }
 
     return [pscustomobject]@{
         CamX = $camX
-        CamY = $kit.CameraHeight
+        CamY = $camY
         CamZ = $camZ
         Yaw = $headingYaw
         CenterX = ($Constants.GAME3D_VIEW_X + [int]($Constants.GAME3D_VIEW_W / 2))
         CenterY = $centerY
-        ProjectScale = $kit.ProjectionScale
-        Pitch = $kit.ProjectionPitch
+        ProjectScale = $projectScale
+        Pitch = $pitch
         ViewLeft = $Constants.GAME3D_VIEW_X
         ViewTop = $Constants.GAME3D_VIEW_Y
         ViewRight = $Constants.GAME3D_VIEW_X + $Constants.GAME3D_VIEW_W - 1
@@ -1302,7 +1834,8 @@ function Get-RuntimeVerificationSignature {
     )
 
     $signature = 0xA55A
-    $kit = Get-GameplayKitForState -State $State -GameplayKits $GameplayKits
+    $camera = Get-RuntimeCameraSetup -State $State -Constants $Constants -GameplayKits $GameplayKits
+    $shotRig = Get-ReplayShotRig -State $State -Constants $Constants -GameplayKits $GameplayKits -ShotMode $State.ShotMode
     $signature = Update-RuntimeSignatureByte -Signature $signature -Value (Get-GameStateId -StateName $State.GameState)
     $signature = Update-RuntimeSignatureByte -Signature $signature -Value $State.SectorNum
     $signature = Update-RuntimeSignatureByte -Signature $signature -Value $State.CurrentTemplateIndex
@@ -1310,9 +1843,14 @@ function Get-RuntimeVerificationSignature {
     $signature = Update-RuntimeSignatureByte -Signature $signature -Value $State.PlayerY
     $signature = Update-RuntimeSignatureByte -Signature $signature -Value (Get-RuntimeCameraHeading -State $State)
     $signature = Update-RuntimeSignatureByte -Signature $signature -Value (Get-RuntimeRoomVariant -State $State)
-    $signature = Update-RuntimeSignatureByte -Signature $signature -Value $kit.ProjectionPitch
-    $signature = Update-RuntimeSignatureWord -Signature $signature -Value $kit.ProjectionScale
+    $signature = Update-RuntimeSignatureByte -Signature $signature -Value $shotRig.Pitch
+    $signature = Update-RuntimeSignatureWord -Signature $signature -Value $shotRig.ProjectScale
     $signature = Update-RuntimeSignatureByte -Signature $signature -Value (Get-RuntimeCueFlags -State $State -Constants $Constants -GameplayKits $GameplayKits)
+    $signature = Update-RuntimeSignatureByte -Signature $signature -Value $State.ShotMode
+    $signature = Update-RuntimeSignatureByte -Signature $signature -Value $State.ShotReason
+    $signature = Update-RuntimeSignatureByte -Signature $signature -Value $State.ShotSubjectX
+    $signature = Update-RuntimeSignatureByte -Signature $signature -Value $State.ShotSubjectY
+    $signature = Update-RuntimeSignatureByte -Signature $signature -Value $State.ShotFrameVariant
     $signature = Update-RuntimeSignatureByte -Signature $signature -Value $State.ShieldCount
     $signature = Update-RuntimeSignatureByte -Signature $signature -Value $State.PulseCount
     $signature = Update-RuntimeSignatureByte -Signature $signature -Value $State.DataCount
@@ -1323,6 +1861,31 @@ function Get-RuntimeVerificationSignature {
     $signature = Update-RuntimeSignatureByte -Signature $signature -Value $State.SectorPulsesUsed
     $signature = Update-RuntimeSignatureByte -Signature $signature -Value $State.SpoofTimer
     return ($signature -band 0xFFFF)
+}
+
+function Get-RuntimeVerificationDebugState {
+    param(
+        $State,
+        $Constants,
+        [object[]]$GameplayKits
+    )
+
+    $shotRig = Get-ReplayShotRig -State $State -Constants $Constants -GameplayKits $GameplayKits -ShotMode $State.ShotMode
+    return [ordered]@{
+        Heading = (Get-RuntimeCameraHeading -State $State)
+        RoomVariant = (Get-RuntimeRoomVariant -State $State)
+        CueFlags = (Get-RuntimeCueFlags -State $State -Constants $Constants -GameplayKits $GameplayKits)
+        ThreatLevel = $State.ThreatLevel
+        ThreatPos = ("{0},{1}" -f $State.ThreatX, $State.ThreatY)
+        Enemies = ((@($State.Enemies | Where-Object { $_.Alive } | ForEach-Object { "{0}@{1},{2}" -f $_.Kind, $_.X, $_.Y }) -join '; '))
+        ShotTick = $State.ShotTick
+        ShotMode = $State.ShotMode
+        ShotReason = $State.ShotReason
+        ShotFrameVariant = $State.ShotFrameVariant
+        ShotSubject = ("{0},{1}" -f $State.ShotSubjectX, $State.ShotSubjectY)
+        ShotPitch = $shotRig.Pitch
+        ShotProjectScale = $shotRig.ProjectScale
+    }
 }
 
 function ConvertTo-AnchorPoint {
@@ -1599,6 +2162,7 @@ function Set-ExitLocked {
 function Open-Exit {
     param($State, $Constants)
     Set-Tile -State $State -Constants $Constants -X $State.ExitX -Y $State.ExitY -Tile 'EXIT_OPEN'
+    Start-ReplayGateUnlockShot -State $State -Constants $Constants
 }
 
 function Get-SectorEnemyCount {
@@ -1833,7 +2397,8 @@ function Load-ReplaySector {
     param(
         $State,
         $Constants,
-        $Sectors
+        $Sectors,
+        [object[]]$GameplayKits
     )
 
     if ($State.SectorNum -ne 1 -and $State.PulseCount -lt $Constants.MAX_PULSES) {
@@ -1846,6 +2411,8 @@ function Load-ReplaySector {
     $State.SpoofTimer = 0
     $State.SpoofX = $Constants.START_X
     $State.SpoofY = $Constants.START_Y
+    Reset-ReplayShotState -State $State -Constants $Constants
+    Sync-ReplayCameraFacing -State $State -GameplayKits $GameplayKits
     Reset-SectorMastery -State $State
     Clear-EnemyTable -State $State
 
@@ -1867,6 +2434,7 @@ function Load-ReplaySector {
     Place-Terminals -State $State -Constants $Constants -Sectors $Sectors -AnchorCount $anchors.Terminals.Count
     Place-Surges -State $State -Constants $Constants -Sectors $Sectors -AnchorCount $anchors.Surges.Count
     Place-Enemies -State $State -Constants $Constants -Sectors $Sectors -AnchorCount $anchors.Enemies.Count
+    Start-ReplaySectorEntryShot -State $State -Constants $Constants
 }
 
 function Get-ProjectedPlayerTarget {
@@ -1926,7 +2494,7 @@ function Try-EnemyStep {
         $enemy.Alive = $false
         Set-ReplayMessageEvent -State $State -MessageKey 'HIT'
         if ($State.ShieldCount -le 0) {
-            $State.GameState = 'LOSE'
+            Start-ReplayEndBeatShot -State $State -Constants $Constants -EndState 'LOSE'
         }
 
         return $true
@@ -2131,6 +2699,7 @@ function Run-EnemyTurn {
 
     if ($State.GameState -eq 'PLAYING') {
         Update-EnemyPressure -State $State -Constants $Constants
+        Note-ReplayPressureChange -State $State -Constants $Constants
         if ($State.SpoofTimer -gt 0) {
             $State.SpoofTimer -= 1
         }
@@ -2187,6 +2756,7 @@ function Attempt-MoveTo {
         $State,
         $Constants,
         $Sectors,
+        [object[]]$GameplayKits,
         [int]$TargetX,
         [int]$TargetY
     )
@@ -2195,7 +2765,7 @@ function Attempt-MoveTo {
     if ($enemyIndex -ge 0) {
         $State.Enemies[$enemyIndex].Alive = $false
         Award-Kill -State $State -Constants $Constants
-        Commit-PlayerMove -State $State -TargetX $TargetX -TargetY $TargetY
+        Commit-PlayerMove -State $State -Constants $Constants -TargetX $TargetX -TargetY $TargetY
         Set-ReplayMessageEvent -State $State -MessageKey 'KILL'
         return $true
     }
@@ -2212,7 +2782,7 @@ function Attempt-MoveTo {
         }
         'SHARD' {
             Set-Tile -State $State -Constants $Constants -X $TargetX -Y $TargetY -Tile 'FLOOR'
-            Commit-PlayerMove -State $State -TargetX $TargetX -TargetY $TargetY
+            Commit-PlayerMove -State $State -Constants $Constants -TargetX $TargetX -TargetY $TargetY
             $State.DataCount += 1
             Award-Score -State $State -Points $Constants.SCORE_SHARD_POINTS
             if ($State.DataCount -ge $Constants.SHARD_COUNT) {
@@ -2226,10 +2796,11 @@ function Attempt-MoveTo {
         }
         'TERMINAL' {
             Set-Tile -State $State -Constants $Constants -X $TargetX -Y $TargetY -Tile 'FLOOR'
-            Commit-PlayerMove -State $State -TargetX $TargetX -TargetY $TargetY
+            Commit-PlayerMove -State $State -Constants $Constants -TargetX $TargetX -TargetY $TargetY
             $State.SpoofX = $TargetX
             $State.SpoofY = $TargetY
             $State.SpoofTimer = $Constants.SPOOF_TURNS
+            Start-ReplayTerminalShot -State $State -Constants $Constants -SubjectX $TargetX -SubjectY $TargetY
             Set-ReplayMessageEvent -State $State -MessageKey 'SPOOF'
             return $true
         }
@@ -2238,29 +2809,29 @@ function Attempt-MoveTo {
             Finalize-SectorMastery -State $State -Constants $Constants
             if ($State.SectorNum -eq $Constants.TOTAL_SECTORS) {
                 Award-FinalMasteryBonus -State $State -Constants $Constants
-                $State.GameState = 'WIN'
+                Start-ReplayEndBeatShot -State $State -Constants $Constants -EndState 'WIN'
                 return $false
             }
 
             $State.SectorNum += 1
-            Load-ReplaySector -State $State -Constants $Constants -Sectors $Sectors
+            Load-ReplaySector -State $State -Constants $Constants -Sectors $Sectors -GameplayKits $GameplayKits
             Set-ReplayMessageEvent -State $State -MessageKey 'SECTOR'
             return $false
         }
         'SURGE' {
             Set-Tile -State $State -Constants $Constants -X $TargetX -Y $TargetY -Tile 'FLOOR'
-            Commit-PlayerMove -State $State -TargetX $TargetX -TargetY $TargetY
+            Commit-PlayerMove -State $State -Constants $Constants -TargetX $TargetX -TargetY $TargetY
             Record-SectorHit -State $State
             $State.ShieldCount -= $Constants.SURGE_PLAYER_DAMAGE
             Set-ReplayMessageEvent -State $State -MessageKey 'SURGE'
             if ($State.ShieldCount -le 0) {
-                $State.GameState = 'LOSE'
+                Start-ReplayEndBeatShot -State $State -Constants $Constants -EndState 'LOSE'
             }
 
             return $true
         }
         default {
-            Commit-PlayerMove -State $State -TargetX $TargetX -TargetY $TargetY
+            Commit-PlayerMove -State $State -Constants $Constants -TargetX $TargetX -TargetY $TargetY
             return $true
         }
     }
@@ -2271,6 +2842,7 @@ function Process-ReplayAction {
         $State,
         $Constants,
         $Sectors,
+        [object[]]$GameplayKits,
         [string]$Action
     )
 
@@ -2288,28 +2860,28 @@ function Process-ReplayAction {
         }
         'LEFT' {
             if ($State.PlayerX -gt $Constants.PLAY_MIN_X) {
-                $actionTaken = Attempt-MoveTo -State $State -Constants $Constants -Sectors $Sectors -TargetX ($State.PlayerX - 1) -TargetY $State.PlayerY
+                $actionTaken = Attempt-MoveTo -State $State -Constants $Constants -Sectors $Sectors -GameplayKits $GameplayKits -TargetX ($State.PlayerX - 1) -TargetY $State.PlayerY
             } else {
                 Set-ReplayMessageEvent -State $State -MessageKey 'BLOCK'
             }
         }
         'RIGHT' {
             if ($State.PlayerX -lt $Constants.PLAY_MAX_X) {
-                $actionTaken = Attempt-MoveTo -State $State -Constants $Constants -Sectors $Sectors -TargetX ($State.PlayerX + 1) -TargetY $State.PlayerY
+                $actionTaken = Attempt-MoveTo -State $State -Constants $Constants -Sectors $Sectors -GameplayKits $GameplayKits -TargetX ($State.PlayerX + 1) -TargetY $State.PlayerY
             } else {
                 Set-ReplayMessageEvent -State $State -MessageKey 'BLOCK'
             }
         }
         'UP' {
             if ($State.PlayerY -gt $Constants.PLAY_MIN_Y) {
-                $actionTaken = Attempt-MoveTo -State $State -Constants $Constants -Sectors $Sectors -TargetX $State.PlayerX -TargetY ($State.PlayerY - 1)
+                $actionTaken = Attempt-MoveTo -State $State -Constants $Constants -Sectors $Sectors -GameplayKits $GameplayKits -TargetX $State.PlayerX -TargetY ($State.PlayerY - 1)
             } else {
                 Set-ReplayMessageEvent -State $State -MessageKey 'BLOCK'
             }
         }
         'DOWN' {
             if ($State.PlayerY -lt $Constants.PLAY_MAX_Y) {
-                $actionTaken = Attempt-MoveTo -State $State -Constants $Constants -Sectors $Sectors -TargetX $State.PlayerX -TargetY ($State.PlayerY + 1)
+                $actionTaken = Attempt-MoveTo -State $State -Constants $Constants -Sectors $Sectors -GameplayKits $GameplayKits -TargetX $State.PlayerX -TargetY ($State.PlayerY + 1)
             } else {
                 Set-ReplayMessageEvent -State $State -MessageKey 'BLOCK'
             }
@@ -2502,15 +3074,15 @@ function Invoke-ReplayScenario {
         throw ("Demo '{0}' does not define any Steps." -f $name)
     }
 
-    $state = New-ReplayState -Constants $Constants -Sectors $Sectors -StartSector $startSector -Seed $seed
+    $state = New-ReplayState -Constants $Constants -Sectors $Sectors -GameplayKits $GameplayKits -StartSector $startSector -Seed $seed
     $captureRuntimeCheckpoints = if (($Demo -is [System.Collections.IDictionary]) -and $Demo.ContainsKey('RuntimeCheckpoints')) { [bool]$Demo['RuntimeCheckpoints'] } else { $true }
     $checkpointSignatures = New-Object 'System.Collections.Generic.List[int]'
     foreach ($step in $steps) {
         $parsedStep = Get-StepActionKey -Step $step -DemoName $name
         for ($tick = 0; $tick -lt $parsedStep.Count; $tick++) {
             $state.TraceTicks += 1
-            Update-ReplayFeedback -State $state -MusicEnabled $MusicEnabled -MusicThemes $MusicThemes
-            Process-ReplayAction -State $state -Constants $Constants -Sectors $Sectors -Action $parsedStep.Action
+            Update-ReplayFeedback -State $state -Constants $Constants -GameplayKits $GameplayKits -MusicEnabled $MusicEnabled -MusicThemes $MusicThemes
+            Process-ReplayAction -State $state -Constants $Constants -Sectors $Sectors -GameplayKits $GameplayKits -Action $parsedStep.Action
             if ($captureRuntimeCheckpoints -and $parsedStep.Action -ne 'WAIT') {
                 $checkpointSignatures.Add((Get-RuntimeVerificationSignature -State $state -Constants $Constants -GameplayKits $GameplayKits))
             }
@@ -2525,10 +3097,11 @@ function Invoke-ReplayScenario {
     }
 
     if ($state.GameState -in @('WIN', 'LOSE')) {
-        Update-ReplayFeedback -State $state -MusicEnabled $MusicEnabled -MusicThemes $MusicThemes
+        Update-ReplayFeedback -State $state -Constants $Constants -GameplayKits $GameplayKits -MusicEnabled $MusicEnabled -MusicThemes $MusicThemes
     }
 
     $observed = Get-ObservedReplayResult -State $state
+    $runtimeDebug = Get-RuntimeVerificationDebugState -State $state -Constants $Constants -GameplayKits $GameplayKits
     $expected = if (($Demo -is [System.Collections.IDictionary]) -and $Demo.ContainsKey('Expected')) { $Demo.Expected } else { $null }
     return [pscustomobject]@{
         Id = $demoId
@@ -2541,6 +3114,7 @@ function Invoke-ReplayScenario {
         Observed = $observed
         Signature = (Get-ReplaySignature -Observed $observed)
         RuntimeFinalSignature = (Get-RuntimeVerificationSignature -State $state -Constants $Constants -GameplayKits $GameplayKits)
+        RuntimeDebug = $runtimeDebug
         CheckpointSignatures = $checkpointSignatures.ToArray()
         SuggestedExpectation = (ConvertTo-ExpectationBlock -Indent '            ' -Observed $observed)
         Mismatches = (Compare-ExpectedReplayResult -DemoName $name -Expected $expected -Observed $observed)
@@ -2618,6 +3192,20 @@ foreach ($demo in $demos) {
                 $result.Observed.MusicTheme,
                 $result.Observed.MusicTicks,
                 $result.Observed.MusicNote))
+        $reportLines.Add(("  Runtime debug: hd={0} rv={1} cue={2} threat={3}@{4} tick={5} sm={6} sr={7} fv={8} subject={9} pitch={10} scale={11}" -f `
+                $result.RuntimeDebug.Heading,
+                $result.RuntimeDebug.RoomVariant,
+                $result.RuntimeDebug.CueFlags,
+                $result.RuntimeDebug.ThreatLevel,
+                $result.RuntimeDebug.ThreatPos,
+                $result.RuntimeDebug.ShotTick,
+                $result.RuntimeDebug.ShotMode,
+                $result.RuntimeDebug.ShotReason,
+                $result.RuntimeDebug.ShotFrameVariant,
+                $result.RuntimeDebug.ShotSubject,
+                $result.RuntimeDebug.ShotPitch,
+                $result.RuntimeDebug.ShotProjectScale))
+        $reportLines.Add(("  Runtime enemies: {0}" -f $result.RuntimeDebug.Enemies))
 
         if (@($result.Mismatches).Count -eq 0) {
             $reportLines.Add('  Status: PASS')

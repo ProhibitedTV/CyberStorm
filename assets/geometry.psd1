@@ -534,12 +534,100 @@ function Face {
                 PitchDegrees = -18.0
                 ProjectScale = 92
             }
+            ShotRigs = @{
+                BaseChase = @{
+                    Height = 5.15
+                    Distance = 6.95
+                    LookAhead = 0.85
+                    PitchDegrees = -18.0
+                    ProjectScale = 92
+                    Horizon = 34
+                    FocusBiasX = 0.00
+                    FocusBiasZ = 0.00
+                }
+                MoveSettle = @{
+                    Height = 4.95
+                    Distance = 6.35
+                    LookAhead = 1.10
+                    PitchDegrees = -20.0
+                    ProjectScale = 96
+                    Horizon = 32
+                    FocusBiasX = 0.00
+                    FocusBiasZ = 0.20
+                }
+                SectorEntry = @{
+                    Height = 4.55
+                    Distance = 8.55
+                    LookAhead = 0.00
+                    PitchDegrees = -16.0
+                    ProjectScale = 88
+                    Horizon = 36
+                    FocusBiasX = 0.70
+                    FocusBiasZ = -0.85
+                }
+                EnemyReveal = @{
+                    Height = 4.75
+                    Distance = 5.60
+                    LookAhead = 0.20
+                    PitchDegrees = -20.0
+                    ProjectScale = 104
+                    Horizon = 30
+                    FocusBiasX = 0.00
+                    FocusBiasZ = 0.00
+                }
+                Interaction = @{
+                    Height = 4.90
+                    Distance = 5.80
+                    LookAhead = 0.10
+                    PitchDegrees = -22.0
+                    ProjectScale = 100
+                    Horizon = 31
+                    FocusBiasX = 0.00
+                    FocusBiasZ = 0.15
+                }
+                WardenPressure = @{
+                    Height = 4.70
+                    Distance = 5.35
+                    LookAhead = 0.15
+                    PitchDegrees = -21.0
+                    ProjectScale = 108
+                    Horizon = 29
+                    FocusBiasX = 0.00
+                    FocusBiasZ = -0.10
+                }
+                EndBeat = @{
+                    Height = 4.35
+                    Distance = 4.95
+                    LookAhead = 0.20
+                    PitchDegrees = -24.0
+                    ProjectScale = 110
+                    Horizon = 28
+                    FocusBiasX = 0.10
+                    FocusBiasZ = 0.05
+                }
+            }
             Structure = @{
                 NearInset = 0.45
                 NearWidth = 0.34
                 NearHeight = 1.55
                 FarInset = 0.55
                 FarHeight = 0.72
+            }
+            Framing = @{
+                DoorFrameInset = 0.16
+                DoorFrameWidth = 0.22
+                DoorFrameHeight = 1.36
+                RailInset = 0.52
+                RailWidth = 0.18
+                RailHeight = 0.78
+                CeilingBeamHeight = 1.46
+                CeilingBeamThickness = 0.24
+                FarMassInset = 0.88
+                FarMassWidth = 2.25
+                FarMassHeight = 1.28
+            }
+            Landmark = @{
+                Mesh = 'landmark_vault'
             }
             Atmosphere = @{
                 BackdropFar = 'PAL_BG0'
@@ -576,12 +664,100 @@ function Face {
                 PitchDegrees = -16.0
                 ProjectScale = 96
             }
+            ShotRigs = @{
+                BaseChase = @{
+                    Height = 5.55
+                    Distance = 6.75
+                    LookAhead = 0.95
+                    PitchDegrees = -16.0
+                    ProjectScale = 96
+                    Horizon = 36
+                    FocusBiasX = 0.00
+                    FocusBiasZ = 0.00
+                }
+                MoveSettle = @{
+                    Height = 5.20
+                    Distance = 6.10
+                    LookAhead = 1.15
+                    PitchDegrees = -18.0
+                    ProjectScale = 100
+                    Horizon = 33
+                    FocusBiasX = 0.00
+                    FocusBiasZ = 0.25
+                }
+                SectorEntry = @{
+                    Height = 4.90
+                    Distance = 8.30
+                    LookAhead = 0.00
+                    PitchDegrees = -15.0
+                    ProjectScale = 90
+                    Horizon = 38
+                    FocusBiasX = -0.55
+                    FocusBiasZ = -0.80
+                }
+                EnemyReveal = @{
+                    Height = 5.05
+                    Distance = 5.45
+                    LookAhead = 0.10
+                    PitchDegrees = -18.0
+                    ProjectScale = 106
+                    Horizon = 31
+                    FocusBiasX = 0.12
+                    FocusBiasZ = 0.00
+                }
+                Interaction = @{
+                    Height = 5.10
+                    Distance = 5.70
+                    LookAhead = 0.12
+                    PitchDegrees = -20.0
+                    ProjectScale = 102
+                    Horizon = 32
+                    FocusBiasX = 0.00
+                    FocusBiasZ = 0.20
+                }
+                WardenPressure = @{
+                    Height = 4.95
+                    Distance = 5.20
+                    LookAhead = 0.10
+                    PitchDegrees = -19.0
+                    ProjectScale = 110
+                    Horizon = 30
+                    FocusBiasX = 0.18
+                    FocusBiasZ = -0.15
+                }
+                EndBeat = @{
+                    Height = 4.60
+                    Distance = 4.80
+                    LookAhead = 0.18
+                    PitchDegrees = -22.0
+                    ProjectScale = 112
+                    Horizon = 28
+                    FocusBiasX = 0.10
+                    FocusBiasZ = 0.10
+                }
+            }
             Structure = @{
                 NearInset = 0.40
                 NearWidth = 0.38
                 NearHeight = 1.65
                 FarInset = 0.48
                 FarHeight = 0.82
+            }
+            Framing = @{
+                DoorFrameInset = 0.18
+                DoorFrameWidth = 0.24
+                DoorFrameHeight = 1.48
+                RailInset = 0.54
+                RailWidth = 0.20
+                RailHeight = 0.84
+                CeilingBeamHeight = 1.58
+                CeilingBeamThickness = 0.26
+                FarMassInset = 0.84
+                FarMassWidth = 2.55
+                FarMassHeight = 1.40
+            }
+            Landmark = @{
+                Mesh = 'landmark_furnace'
             }
             Atmosphere = @{
                 BackdropFar = 'PAL_BG1'
@@ -618,12 +794,100 @@ function Face {
                 PitchDegrees = -14.0
                 ProjectScale = 100
             }
+            ShotRigs = @{
+                BaseChase = @{
+                    Height = 5.85
+                    Distance = 6.50
+                    LookAhead = 0.80
+                    PitchDegrees = -14.0
+                    ProjectScale = 100
+                    Horizon = 32
+                    FocusBiasX = 0.00
+                    FocusBiasZ = 0.00
+                }
+                MoveSettle = @{
+                    Height = 5.40
+                    Distance = 5.90
+                    LookAhead = 1.00
+                    PitchDegrees = -16.0
+                    ProjectScale = 104
+                    Horizon = 30
+                    FocusBiasX = 0.00
+                    FocusBiasZ = 0.22
+                }
+                SectorEntry = @{
+                    Height = 5.10
+                    Distance = 8.00
+                    LookAhead = 0.00
+                    PitchDegrees = -13.0
+                    ProjectScale = 92
+                    Horizon = 34
+                    FocusBiasX = 0.62
+                    FocusBiasZ = -0.76
+                }
+                EnemyReveal = @{
+                    Height = 5.20
+                    Distance = 5.20
+                    LookAhead = 0.10
+                    PitchDegrees = -17.0
+                    ProjectScale = 110
+                    Horizon = 28
+                    FocusBiasX = 0.08
+                    FocusBiasZ = -0.04
+                }
+                Interaction = @{
+                    Height = 5.30
+                    Distance = 5.45
+                    LookAhead = 0.10
+                    PitchDegrees = -18.0
+                    ProjectScale = 106
+                    Horizon = 29
+                    FocusBiasX = 0.00
+                    FocusBiasZ = 0.18
+                }
+                WardenPressure = @{
+                    Height = 5.00
+                    Distance = 4.95
+                    LookAhead = 0.10
+                    PitchDegrees = -18.0
+                    ProjectScale = 114
+                    Horizon = 27
+                    FocusBiasX = 0.20
+                    FocusBiasZ = -0.22
+                }
+                EndBeat = @{
+                    Height = 4.70
+                    Distance = 4.60
+                    LookAhead = 0.16
+                    PitchDegrees = -21.0
+                    ProjectScale = 116
+                    Horizon = 26
+                    FocusBiasX = 0.08
+                    FocusBiasZ = 0.08
+                }
+            }
             Structure = @{
                 NearInset = 0.36
                 NearWidth = 0.42
                 NearHeight = 1.75
                 FarInset = 0.42
                 FarHeight = 0.92
+            }
+            Framing = @{
+                DoorFrameInset = 0.19
+                DoorFrameWidth = 0.26
+                DoorFrameHeight = 1.58
+                RailInset = 0.58
+                RailWidth = 0.18
+                RailHeight = 0.90
+                CeilingBeamHeight = 1.66
+                CeilingBeamThickness = 0.28
+                FarMassInset = 0.76
+                FarMassWidth = 2.80
+                FarMassHeight = 1.58
+            }
+            Landmark = @{
+                Mesh = 'landmark_lock'
             }
             Atmosphere = @{
                 BackdropFar = 'PAL_BLACK'
@@ -917,6 +1181,60 @@ function Face {
             )
         }
         @{
+            Key = 'landmark_vault'
+            Vertices = @(
+                (M -112 0 -48), (M 112 0 -48), (M 112 0 48), (M -112 0 48),
+                (M -86 188 -34), (M 86 188 -34), (M 74 254 54), (M -74 254 54),
+                (M -32 308 -18), (M 32 308 -18), (M 0 392 0)
+            )
+            Faces = @(
+                (Face @(0, 1, 5, 4) 'vault_wall'),
+                (Face @(1, 2, 6, 5) 'vault_trim'),
+                (Face @(2, 3, 7, 6) 'vault_wall'),
+                (Face @(3, 0, 4, 7) 'panel_dark'),
+                (Face @(4, 5, 9, 8) 'panel_cyan'),
+                (Face @(5, 6, 9) 'panel_white'),
+                (Face @(6, 7, 8, 9) 'vault_trim'),
+                (Face @(8, 9, 10) 'panel_white')
+            )
+        }
+        @{
+            Key = 'landmark_furnace'
+            Vertices = @(
+                (M -128 0 -46), (M 128 0 -46), (M 128 0 46), (M -128 0 46),
+                (M -96 174 -28), (M 96 174 -28), (M 84 228 54), (M -84 228 54),
+                (M -76 292 -18), (M -28 332 -6), (M 28 332 -6), (M 76 292 -18)
+            )
+            Faces = @(
+                (Face @(0, 1, 5, 4) 'furnace_wall'),
+                (Face @(1, 2, 6, 5) 'furnace_trim'),
+                (Face @(2, 3, 7, 6) 'furnace_wall'),
+                (Face @(3, 0, 4, 7) 'panel_dark'),
+                (Face @(4, 5, 10, 9) 'panel_amber'),
+                (Face @(5, 6, 11, 10) 'panel_white'),
+                (Face @(6, 7, 8, 11) 'furnace_trim'),
+                (Face @(8, 9, 10, 11) 'panel_red')
+            )
+        }
+        @{
+            Key = 'landmark_lock'
+            Vertices = @(
+                (M -118 0 -52), (M 118 0 -52), (M 118 0 52), (M -118 0 52),
+                (M -88 206 -34), (M 88 206 -34), (M 76 276 60), (M -76 276 60),
+                (M -34 340 -20), (M 34 340 -20), (M 0 424 -40)
+            )
+            Faces = @(
+                (Face @(0, 1, 5, 4) 'lock_wall'),
+                (Face @(1, 2, 6, 5) 'panel_red'),
+                (Face @(2, 3, 7, 6) 'lock_wall'),
+                (Face @(3, 0, 4, 7) 'panel_dark'),
+                (Face @(4, 5, 9, 8) 'lock_trim'),
+                (Face @(5, 6, 9) 'panel_white'),
+                (Face @(6, 7, 8, 9) 'lock_trim'),
+                (Face @(8, 9, 10) 'panel_red')
+            )
+        }
+        @{
             Key = 'enemy_rusher'
             Vertices = @(
                 (M -34 0 -26), (M 34 0 -26), (M 34 0 26), (M -34 0 26),
@@ -1007,11 +1325,47 @@ function Face {
             )
         }
         @{
+            Key = 'player_runner_lean'
+            Vertices = @(
+                (M -52 0 -26), (M 52 0 -36), (M 52 0 28), (M -52 0 38),
+                (M -68 120 -18), (M 60 120 -34), (M 46 166 36), (M -56 176 48),
+                (M -30 254 -30), (M 24 252 -34), (M 10 332 -56)
+            )
+            Faces = @(
+                (Face @(0, 1, 5, 4) 'player_core'),
+                (Face @(1, 2, 6, 5) 'player_trim'),
+                (Face @(2, 3, 7, 6) 'player_core'),
+                (Face @(3, 0, 4, 7) 'player_trim'),
+                (Face @(4, 5, 9, 8) 'player_core'),
+                (Face @(5, 6, 9) 'player_trim'),
+                (Face @(6, 7, 8, 9) 'player_core'),
+                (Face @(8, 9, 10) 'panel_white')
+            )
+        }
+        @{
             Key = 'warden'
             Vertices = @(
                 (M -60 0 -42), (M 60 0 -42), (M 60 0 42), (M -60 0 42),
                 (M -78 148 -30), (M 78 148 -30), (M 60 204 48), (M -60 204 48),
                 (M -40 300 -10), (M 40 300 -10), (M 0 378 -38)
+            )
+            Faces = @(
+                (Face @(0, 1, 5, 4) 'warden_core'),
+                (Face @(1, 2, 6, 5) 'warden_trim'),
+                (Face @(2, 3, 7, 6) 'warden_core'),
+                (Face @(3, 0, 4, 7) 'warden_trim'),
+                (Face @(4, 5, 9, 8) 'warden_core'),
+                (Face @(5, 6, 9) 'panel_white'),
+                (Face @(6, 7, 8, 9) 'warden_core'),
+                (Face @(8, 9, 10) 'panel_red')
+            )
+        }
+        @{
+            Key = 'warden_pressure'
+            Vertices = @(
+                (M -66 0 -34), (M 66 0 -50), (M 66 0 34), (M -66 0 50),
+                (M -92 154 -18), (M 84 154 -42), (M 68 214 54), (M -74 220 70),
+                (M -54 306 -18), (M 52 300 -30), (M 18 396 -74)
             )
             Faces = @(
                 (Face @(0, 1, 5, 4) 'warden_core'),

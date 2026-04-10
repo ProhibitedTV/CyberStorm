@@ -104,6 +104,15 @@ game3d_camera_heading db GAME3D_HEADING_EAST
 game3d_camera_yaw_current db GAME3D_YAW_DEFAULT
 game3d_camera_yaw_target  db GAME3D_YAW_DEFAULT
 game3d_room_variant db GAME3D_ROOM_VARIANT_NORTHWEST
+game3d_shot_mode db GAME3D_SHOT_BASE_CHASE
+game3d_shot_reason db GAME3D_SHOT_REASON_NONE
+game3d_shot_tick db 0
+game3d_shot_duration db 0
+game3d_shot_frame_variant db GAME3D_FRAME_VARIANT_NONE
+game3d_shot_subject_x db START_X
+game3d_shot_subject_y db START_Y
+game3d_end_state_pending db 0
+game3d_last_threat_level db THREAT_NONE
 game3d_mesh_index db 0
 game3d_mesh_yaw db 0
 game3d_mesh_face_flags db 0
@@ -295,6 +304,13 @@ debug_data_tag   db 'D', 0
 debug_enemy_tag  db 'E', 0
 debug_overflow_tag db 'GO', 0
 debug_camera_tag db 'CQ', 0
+debug_shot_tag db 'SM', 0
+debug_shot_subject_x_tag db 'SX', 0
+debug_shot_subject_y_tag db 'SY', 0
+debug_frame_tag db 'FV', 0
+debug_demo_code_tag db 'DC', 0
+debug_demo_ticks_tag db 'DT', 0
+debug_verify_action_tag db 'VA', 0
 ENDIF
 
 win_line_1    db 'VAULT', 0
@@ -319,6 +335,11 @@ verify_state_py_label db 'PY', 0
 verify_state_action_label db 'AC', 0
 verify_state_heading_label db 'HD', 0
 verify_state_variant_label db 'RV', 0
+verify_state_shot_label db 'SM', 0
+verify_state_reason_label db 'SR', 0
+verify_state_subject_x_label db 'SX', 0
+verify_state_subject_y_label db 'SY', 0
+verify_state_frame_label db 'FV', 0
 verify_state_shield_label db 'SH', 0
 verify_state_pulse_label db 'PU', 0
 verify_state_data_label db 'DT', 0
@@ -326,6 +347,9 @@ verify_state_kill_label db 'KG', 0
 verify_state_game_label db 'GS', 0
 verify_state_map_label db 'MP', 0
 verify_state_score_label db 'SC', 0
+verify_state_rng_label db 'RG', 0
+verify_state_cue_label db 'CF', 0
+verify_state_tick_label db 'TK', 0
 verify_state_hits_label db 'HI', 0
 verify_state_pulses_used_label db 'PS', 0
 verify_state_spoof_label db 'SP', 0

@@ -38,11 +38,21 @@ adventure_hazard_timer   db 0
 adventure_objectives_done db 0
 adventure_objectives_total db 0
 adventure_intro_timer    db 0
+adventure_key_collected  db 0
+adventure_chunk_x        db 0FFh
+adventure_chunk_y        db 0FFh
+adventure_chunk_min_x    db 0
+adventure_chunk_max_x    db MAP_W - 1
+adventure_chunk_min_y    db 0
+adventure_chunk_max_y    db MAP_H - 1
 ; Boot drive is captured from DL on stage-two entry so post-boot bank reads do
 ; not depend on the boot sector staying resident.
 boot_drive   db 0
 rng_state    dw 0ACE1h
 last_tick    dw 0
+pit_frame_due_low dw 0
+pit_frame_due_high dw 0
+frame_skip_render db 0
 anim_phase   db 0
 splash_ticks db 0
 state_ticks  db 0
@@ -228,6 +238,7 @@ sector_score_table dw TOTAL_SECTORS dup (0)
 message_table dw offset text_msg_sector, offset text_msg_block, offset text_msg_shard, offset text_msg_gate
               dw offset text_msg_hit, offset text_msg_kill, offset text_msg_pulse, offset text_msg_nopulse
               dw offset text_msg_surge, offset text_msg_trap, offset text_msg_recharge, offset text_msg_spoof
+              dw offset text_msg_key
 
 hud_title     db 'CYBERSTORM', 0
 score_text    db 'SCORE', 0
@@ -240,7 +251,7 @@ shield_text   db 'SHIELD', 0
 pulse_text    db 'PULSE', 0
 gate_text     db 'GATE', 0
 controls_text db 'MOVE WASD OR ARROWS  C EMP  R RESET', 0
-adventure_controls_text db 'WS MOVE  AD TURN  SPACE GLIDE  SHIFT CHARGE  C FLAME', 0
+adventure_controls_text db 'WS MOVE  AD TURN  SPACE GLIDE  SHIFT CHARGE  C FLAME  ENT PORTAL', 0
 realm_text db 'REALM', 0
 gems_text db 'GEMS', 0
 goals_text db 'GOALS', 0
@@ -271,7 +282,7 @@ include generated_runtime_verify.inc
 ; payload plus scene/camera metadata tables for the phase-1 3D renderer.
 include generated_geometry.inc
 
-text_msg_sector   db 'THE REALM IS LIVE. GATHER GEMS AND LIGHT THE PEDESTALS.', 0
+text_msg_sector   db 'THE REALM IS LIVE. GATHER GEMS, CLAIM THE KEY, AND LIGHT THE PEDESTAL.', 0
 text_msg_block    db 'A CLIFF OR STONE WALL BLOCKS THE WAY.', 0
 text_msg_shard    db 'GEM COLLECTED. THE PORTAL BRIGHTENS.', 0
 text_msg_gate     db 'PORTAL OPEN. STEP THROUGH WHEN YOU ARE READY.', 0
@@ -283,6 +294,7 @@ text_msg_surge    db 'LAVA OR BAD AIR BIT BACK.', 0
 text_msg_trap     db 'THE HAZARD CAUGHT A FOE.', 0
 text_msg_recharge db 'CHAIN BREAK. EMP CHARGE RESTORED.', 0
 text_msg_spoof    db 'PEDESTAL LIT. ANOTHER PORTAL SEAL IS GONE.', 0
+text_msg_key      db 'SUN KEY CLAIMED. THE PORTAL CAN NOW UNSEAL.', 0
 
 splash_brand    db 'BITRIVER', 0
 splash_subtitle db 'SOFTWARE', 0
@@ -292,8 +304,8 @@ splash_skip_prompt db 'OTHER KEYS SKIP TO TITLE', 0
 
 title_logo    db 'CYBERSTORM', 0
 title_line_1  db 'NO OS. NO SHELL. JUST THE BREACH.', 0
-title_line_2  db 'TURN BASED INFILTRATION IN RAW VGA.', 0
-title_line_3  db 'TAKE 4 SHARDS. OPEN THE GATE. REPEAT.', 0
+title_line_2  db 'BARE METAL 3D ADVENTURE IN RAW VGA.', 0
+title_line_3  db 'GATHER GEMS. LIGHT THE REALM. OPEN THE PORTAL.', 0
 title_line_4  db 'PRESS ENTER SPACE OR MOVE TO JACK IN.', 0
 title_prompt  db 'IDLE STARTS AN ATTRACT RUN.', 0
 demo_takeover_text db 'ENTER SPACE OR LIVE KEYS TAKE OVER.', 0

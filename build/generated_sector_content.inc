@@ -86,38 +86,48 @@ sector3_intro db "WARDEN LOCK LIVE. EXTRA HUNTERS CROWD THE EXIT.", 0
 
 ; Adventure vertical-slice realm
 adventure_realm_title db "SUNSPARK GLADE", 0
-adventure_realm_intro db "GATHER THE GEMS, LIGHT THE PEDESTALS, AND OPEN THE PORTAL.", 0
+adventure_realm_intro db "GATHER THE GEMS, CLAIM THE KEY, LIGHT THE PEDESTAL, AND OPEN THE PORTAL.", 0
 adventure_realm_start_x db 4
-adventure_realm_start_y db 11
+adventure_realm_start_y db 12
 adventure_realm_portal_x db 24
 adventure_realm_portal_y db 2
-adventure_realm_gem_count db 8
-adventure_realm_switch_count db 3
+adventure_realm_required_gems db 20
+adventure_realm_gem_count db 24
+adventure_realm_switch_count db 1
+adventure_realm_key_count db 1
 adventure_realm_hazard_count db 3
-adventure_realm_enemy_count db 3
-adventure_realm_prop_count db 12
-adventure_realm_gem_table db 6, 11, 10, 11, 7, 8, 8, 5, 12, 3, 16, 9
-                          db 20, 7, 23, 4
-adventure_realm_switch_table db 18, 11, 21, 7, 23, 3
-adventure_realm_hazard_table db 14, 5, 15, 5, 20, 9
-adventure_realm_enemy_table db 9, 9, 0, 20, 5, 1, 23, 8, 2
-adventure_realm_prop_x_table db 3, 6, 9, 12, 6, 11, 18, 21, 16, 23, 24, 4
-adventure_realm_prop_y_table db 12, 12, 12, 11, 4, 4, 4, 4, 8, 2, 2, 2
-adventure_realm_prop_mesh_table db GAME3D_MESH_TREE_ROUND_INDEX, GAME3D_MESH_TREE_ROUND_INDEX, GAME3D_MESH_STONE_STACK_INDEX, GAME3D_MESH_BRIDGE_SPAN_INDEX, GAME3D_MESH_TREE_ROUND_INDEX, GAME3D_MESH_STONE_STACK_INDEX, GAME3D_MESH_TREE_ROUND_INDEX, GAME3D_MESH_STONE_STACK_INDEX
-                                db GAME3D_MESH_BRIDGE_SPAN_INDEX, GAME3D_MESH_PORTAL_ARCH_INDEX, GAME3D_MESH_TOWER_TOY_INDEX, GAME3D_MESH_TREE_ROUND_INDEX
-adventure_realm_prop_yaw_table db 9, 168, 24, 0, 13, 213, 151, 61, 46, 0, 0, 114
+adventure_realm_enemy_count db 7
+adventure_realm_prop_count db 18
+adventure_realm_gem_table db 4, 11, 6, 12, 8, 10, 10, 10, 5, 10, 8, 9
+                          db 12, 8, 15, 8, 18, 10, 20, 9, 22, 8, 24, 8
+                          db 9, 6, 16, 6, 20, 6, 24, 6, 12, 4, 15, 4
+                          db 20, 4, 24, 4, 12, 2, 15, 2, 18, 2, 20, 2
+adventure_realm_switch_table db 10, 12
+adventure_realm_key_table db 18, 4
+adventure_realm_hazard_table db 14, 6, 15, 6, 19, 8
+adventure_realm_enemy_table db 8, 12, 0, 13, 8, 0, 21, 11, 0, 24, 7, 0
+                            db 20, 5, 1, 23, 8, 1, 20, 3, 2
+adventure_realm_prop_x_table db 3, 6, 9, 12, 4, 8, 12, 17, 20, 23, 10, 23
+                             db 24, 21, 4, 8, 14, 18
+adventure_realm_prop_y_table db 12, 12, 12, 11, 9, 8, 6, 6, 5, 5, 12, 2
+                             db 2, 2, 2, 2, 2, 3
+adventure_realm_prop_mesh_table db GAME3D_MESH_TREE_ROUND_INDEX, GAME3D_MESH_TREE_ROUND_INDEX, GAME3D_MESH_STONE_STACK_INDEX, GAME3D_MESH_BRIDGE_SPAN_INDEX, GAME3D_MESH_TREE_ROUND_INDEX, GAME3D_MESH_STONE_STACK_INDEX, GAME3D_MESH_BRIDGE_SPAN_INDEX, GAME3D_MESH_STONE_STACK_INDEX
+                                db GAME3D_MESH_TREE_ROUND_INDEX, GAME3D_MESH_TREE_ROUND_INDEX, GAME3D_MESH_SWITCH_PEDESTAL_INDEX, GAME3D_MESH_PORTAL_ARCH_INDEX, GAME3D_MESH_TOWER_TOY_INDEX, GAME3D_MESH_STONE_STACK_INDEX, GAME3D_MESH_TREE_ROUND_INDEX, GAME3D_MESH_TOWER_TOY_INDEX
+                                db GAME3D_MESH_BRIDGE_SPAN_INDEX, GAME3D_MESH_STONE_STACK_INDEX
+adventure_realm_prop_yaw_table db 11, 162, 24, 0, 60, 222, 0, 88, 134, 23, 0, 0
+                               db 0, 0, 114, 9, 0, 64
 adventure_realm_map db "############################"
                     db "#..........................#"
-                    db "#..######........######....#"
-                    db "#..#....#........#....#....#"
-                    db "#..#....####..####....#....#"
-                    db "#..#..................#....#"
-                    db "#..####..########..####....#"
-                    db "#.....#..#......#..#.......#"
-                    db "#.....#..#......#..#..###..#"
-                    db "#..####..#......#..#..#....#"
-                    db "#..#.....####..##..##.#....#"
-                    db "#..#..................#....#"
-                    db "#..#######..#######...#....#"
+                    db "#..######.............##...#"
+                    db "#..#....#....####.....##...#"
+                    db "#..#....#.............##...#"
+                    db "#..#....#######..####......#"
+                    db "#..#.............#.........#"
+                    db "#..######..###...#..#####..#"
+                    db "#.........#......#......#..#"
+                    db "#..#####..#..########..#...#"
+                    db "#..#......#...........##...#"
+                    db "#..#..##########......##...#"
+                    db "#..#.................###...#"
                     db "#..........................#"
                     db "############################"

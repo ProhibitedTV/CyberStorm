@@ -2,33 +2,12 @@
 ; source: replay-harness results
 ; edit assets/demos.psd1 or gameplay constants instead of this include
 
-VERIFY_DEMO_COUNT EQU 20
+VERIFY_DEMO_COUNT EQU 11
 
-verify_demo_checkpoint_count_table db 13, 17, 0, 0, 13, 0, 17, 0
-                                   db 0, 0, 0, 0, 0, 0, 0, 0
-                                   db 0, 0, 0, 0
-verify_demo_final_signature_table dw 2F25h, 8B34h, 0F1D0h, 4A79h, 2F25h, 8258h
-                                  dw 8B34h, 4AC1h, 0F1D0h, 25EBh, 4408h, 8B34h
-                                  dw 4408h, 5436h, 0F98h, 0A19h, 03E8h, 5FBDh
-                                  dw 8258h, 0C6CCh
-verify_demo_checkpoint_table dw offset verify_demo_0_checkpoints, offset verify_demo_1_checkpoints, 0, 0
-                             dw offset verify_demo_4_checkpoints, 0, offset verify_demo_6_checkpoints, 0
+verify_demo_checkpoint_count_table db 0, 0, 0, 0, 0, 0, 0, 0
+                                   db 0, 0, 0
+verify_demo_final_signature_table dw 8AF6h, 0F85Eh, 1552h, 14D2h, 386Ch, 1552h
+                                  dw 0F85Eh, 0DCD0h, 0C14Ch, 52DAh, 33F5h
+verify_demo_checkpoint_table dw 0, 0, 0, 0
                              dw 0, 0, 0, 0
-                             dw 0, 0, 0, 0
-                             dw 0, 0, 0, 0
-
-verify_demo_0_checkpoints dw 4C83h, 4B41h, 61F9h, 0E2B0h, 62B1h, 62B1h
-                          dw 61AAh, 0FC32h, 0B3EAh, 0E402h, 0E402h, 28CBh
-                          dw 837Ah
-
-verify_demo_1_checkpoints dw 49FFh, 674Dh, 5F8Fh, 0E69Ah, 0E6E2h, 0DE2Ah
-                          dw 0E672h, 0E5FAh, 0E6EAh, 0F1C2h, 71BFh, 0D9AFh
-                          dw 0D9AFh, 0D9AFh, 0E4A9h, 53FCh, 8B34h
-
-verify_demo_4_checkpoints dw 4C83h, 4B41h, 61F9h, 0E2B0h, 62B1h, 62B1h
-                          dw 61AAh, 0FC32h, 0B3EAh, 0E402h, 0E402h, 28CBh
-                          dw 837Ah
-
-verify_demo_6_checkpoints dw 49FFh, 674Dh, 5F8Fh, 0E69Ah, 0E6E2h, 0DE2Ah
-                          dw 0E672h, 0E5FAh, 0E6EAh, 0F1C2h, 71BFh, 0D9AFh
-                          dw 0D9AFh, 0D9AFh, 0E4A9h, 53FCh, 8B34h
+                             dw 0, 0, 0

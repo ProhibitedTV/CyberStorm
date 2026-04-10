@@ -121,6 +121,7 @@ adventure_skip_reset:
     call adventure_apply_vertical_motion
     call adventure_sync_player_tile_from_world
     call adventure_collect_gem_if_present
+    call adventure_collect_key_if_present
     call adventure_apply_hazard_if_present
     call adventure_check_charge_contact
     call adventure_check_portal_ready
@@ -134,6 +135,7 @@ adventure_input_done:
 initialize_adventure_run_state:
     mov byte ptr [game_state], STATE_PLAYING
     mov byte ptr [sector_num], 1
+    mov byte ptr [current_template_index], 0
     mov byte ptr [title_idle_ticks], 0
     mov byte ptr [run_start_enter_guard], RUN_START_ENTER_GUARD_TICKS
     mov byte ptr [shield_count], START_SHIELDS
@@ -152,6 +154,9 @@ initialize_adventure_run_state:
     mov byte ptr [adventure_objectives_done], 0
     mov byte ptr [adventure_objectives_total], 0
     mov byte ptr [adventure_intro_timer], 0
+    mov byte ptr [adventure_key_collected], 0
+    mov byte ptr [adventure_chunk_x], 0FFh
+    mov byte ptr [adventure_chunk_y], 0FFh
     mov word ptr [adventure_player_vel_y], 0
     mov word ptr [adventure_player_world_y], GAME3D_FLOOR_Y
     call reset_run_mastery
@@ -181,6 +186,8 @@ load_adventure_realm:
 
     mov al, [adventure_realm_switch_count]
     mov [adventure_objectives_total], al
+    mov al, [adventure_realm_key_count]
+    add [adventure_objectives_total], al
 
     mov si, offset adventure_realm_gem_table
     xor cx, cx
@@ -192,6 +199,12 @@ load_adventure_realm:
     xor cx, cx
     mov cl, [adventure_realm_switch_count]
     mov dl, TILE_TERMINAL
+    call adventure_place_coord_table
+
+    mov si, offset adventure_realm_key_table
+    xor cx, cx
+    mov cl, [adventure_realm_key_count]
+    mov dl, TILE_KEY
     call adventure_place_coord_table
 
     mov si, offset adventure_realm_hazard_table
@@ -214,6 +227,7 @@ load_adventure_realm:
     mov word ptr [adventure_player_vel_y], 0
     mov byte ptr [adventure_player_grounded], 1
     mov byte ptr [adventure_player_yaw], GAME3D_YAW_EAST
+    call adventure_update_active_chunk
     mov byte ptr [adventure_intro_timer], ADVENTURE_INTRO_TICKS
     call game3d_start_sector_entry_shot
     ret
@@ -502,6 +516,7 @@ adventure_sync_player_tile_from_world:
     mov al, bh
     sub al, ch
     mov [last_player_dy], al
+    call adventure_update_active_chunk
     ret
 
 adventure_collect_gem_if_present:
@@ -525,6 +540,28 @@ adventure_collect_gem_if_present:
     call adventure_check_portal_ready
 
 adventure_collect_done:
+    ret
+
+adventure_collect_key_if_present:
+    mov bl, [player_x]
+    mov bh, [player_y]
+    call get_tile
+    cmp al, TILE_KEY
+    jne adventure_collect_key_done
+    mov bl, [player_x]
+    mov bh, [player_y]
+    mov dl, TILE_FLOOR
+    call set_tile
+    mov bl, [player_x]
+    mov bh, [player_y]
+    call set_effect_focus_tile
+    mov byte ptr [adventure_key_collected], 1
+    inc byte ptr [adventure_objectives_done]
+    mov al, MSG_KEY
+    call set_message_event
+    call adventure_check_portal_ready
+
+adventure_collect_key_done:
     ret
 
 adventure_apply_hazard_if_present:
@@ -581,7 +618,7 @@ adventure_check_portal_ready:
     cmp al, TILE_EXIT_OPEN
     je adventure_portal_ready_done
     mov al, [data_count]
-    cmp al, [adventure_realm_gem_count]
+    cmp al, [adventure_realm_required_gems]
     jb adventure_portal_ready_done
     mov al, [adventure_objectives_done]
     cmp al, [adventure_objectives_total]
@@ -605,6 +642,133 @@ adventure_try_enter_portal:
     call game3d_start_endbeat_shot
 
 adventure_portal_enter_done:
+    ret
+
+adventure_update_active_chunk:
+    push ax
+    push dx
+    mov al, [player_x]
+    call adventure_get_chunk_x_from_tile
+    mov dl, al
+    mov al, [player_y]
+    call adventure_get_chunk_y_from_tile
+    mov dh, al
+    cmp dl, [adventure_chunk_x]
+    jne adventure_chunk_apply
+    cmp dh, [adventure_chunk_y]
+    jne adventure_chunk_apply
+    pop dx
+    pop ax
+    ret
+
+adventure_chunk_apply:
+    mov [adventure_chunk_x], dl
+    mov [adventure_chunk_y], dh
+    mov al, dl
+    call adventure_get_chunk_min_x
+    mov [adventure_chunk_min_x], al
+    mov al, dl
+    call adventure_get_chunk_max_x
+    mov [adventure_chunk_max_x], al
+    mov al, dh
+    call adventure_get_chunk_min_y
+    mov [adventure_chunk_min_y], al
+    mov al, dh
+    call adventure_get_chunk_max_y
+    mov [adventure_chunk_max_y], al
+    call game3d_mark_room_dirty
+    pop dx
+    pop ax
+    ret
+
+adventure_get_chunk_x_from_tile:
+    cmp al, ADVENTURE_CHUNK_W * 3
+    jae adventure_chunk_x_three
+    cmp al, ADVENTURE_CHUNK_W * 2
+    jae adventure_chunk_x_two
+    cmp al, ADVENTURE_CHUNK_W
+    jae adventure_chunk_x_one
+    xor al, al
+    ret
+
+adventure_chunk_x_one:
+    mov al, 1
+    ret
+
+adventure_chunk_x_two:
+    mov al, 2
+    ret
+
+adventure_chunk_x_three:
+    mov al, 3
+    ret
+
+adventure_get_chunk_y_from_tile:
+    cmp al, ADVENTURE_CHUNK_H * 2
+    jae adventure_chunk_y_two
+    cmp al, ADVENTURE_CHUNK_H
+    jae adventure_chunk_y_one
+    xor al, al
+    ret
+
+adventure_chunk_y_one:
+    mov al, 1
+    ret
+
+adventure_chunk_y_two:
+    mov al, 2
+    ret
+
+adventure_get_chunk_min_x:
+    cmp al, 1
+    jbe adventure_chunk_min_x_zero
+    cmp al, 2
+    je adventure_chunk_min_x_mid
+    mov al, 14
+    ret
+
+adventure_chunk_min_x_zero:
+    xor al, al
+    ret
+
+adventure_chunk_min_x_mid:
+    mov al, 7
+    ret
+
+adventure_get_chunk_max_x:
+    cmp al, 0
+    je adventure_chunk_max_x_low
+    cmp al, 1
+    je adventure_chunk_max_x_mid
+    mov al, MAP_W - 1
+    ret
+
+adventure_chunk_max_x_low:
+    mov al, 13
+    ret
+
+adventure_chunk_max_x_mid:
+    mov al, 20
+    ret
+
+adventure_get_chunk_min_y:
+    cmp al, 2
+    je adventure_chunk_min_y_high
+    xor al, al
+    ret
+
+adventure_chunk_min_y_high:
+    mov al, 5
+    ret
+
+adventure_get_chunk_max_y:
+    cmp al, 0
+    je adventure_chunk_max_y_low
+    mov al, MAP_H - 1
+    ret
+
+adventure_chunk_max_y_low:
+    mov al, 9
     ret
 
 adventure_maybe_step_enemies:

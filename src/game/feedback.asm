@@ -28,6 +28,8 @@ get_message_feedback_ticks:
     je feedback_major
     cmp al, MSG_SPOOF
     je feedback_major
+    cmp al, MSG_KEY
+    je feedback_major
     mov al, FEEDBACK_TICKS_STANDARD
     ret
 
@@ -63,6 +65,8 @@ play_message_sfx:
     cmp al, MSG_RECHARGE
     je play_message_sfx_recharge
     cmp al, MSG_SPOOF
+    je play_message_sfx_recharge
+    cmp al, MSG_KEY
     je play_message_sfx_recharge
     ret
 

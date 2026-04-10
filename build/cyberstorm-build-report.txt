@@ -1,5 +1,5 @@
 CyberStorm Build Report
-Generated: 2026-04-09 21:00:04 -06:00
+Generated: 2026-04-10 08:38:53 -06:00
 
 Toolchain
   Assembler: MASM
@@ -21,7 +21,7 @@ Audio Policy
 
 Render Path
   Scene renderer: SCENES_3D
-  Gameplay renderer: GAMEPLAY_3D_ROOM
+  Gameplay renderer: GAMEPLAY_3D_ADVENTURE
   Debug switches: -DebugRender2D keeps the legacy 2D oracle, -DebugRender3D forces the low-poly 3D room path explicitly.
 
 Generated Art
@@ -77,9 +77,9 @@ Generated Content
   Shard pools: S1: sector1_map_a(6:19x11), sector1_map_b(6:20x11), sector1_map_c(6:21x11) | S2: sector2_map_a(6:20x13), sector2_map_b(6:21x11), sector2_map_c(6:19x11) | S3: sector3_map_a(6:19x11), sector3_map_b(6:20x13), sector3_map_c(6:20x13)
   Demo source: C:\Users\RhythmicCarnage\Desktop\CyberStorm\assets\demos.psd1
   Demo include: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\generated_demos.inc
-  Demos: 20
-  Demo steps: 117
-  Demo summary: SCOUT ATTRACT [gameplay] (S1, capture 15t, 8 steps), SURGE ATTRACT [hazard] (S2, capture 18t, 7 steps), WARDEN ATTRACT [elite-pressure] (S3, capture 12t, 9 steps), SECTOR 1 DEPTH SHOWCASE [sector1-depth] (S1, capture 10t, 3 steps), SECTOR 1 THREAT SHOWCASE [sector1-threat] (S1, capture 15t, 8 steps), SECTOR 2 DEPTH SHOWCASE [sector2-depth] (S2, capture 12t, 6 steps), SECTOR 2 THREAT SHOWCASE [sector2-threat] (S2, capture 18t, 7 steps), SECTOR 3 DEPTH SHOWCASE [sector3-depth] (S3, capture 8t, 3 steps), SECTOR 3 THREAT SHOWCASE [sector3-threat] (S3, capture 12t, 9 steps), WARDEN PRESSURE VERIFY [technical] (S3, capture 10t, 4 steps), RUSHER MESH VERIFY [technical] (S2, capture 4t, 1 steps), FLANKER MESH VERIFY [technical] (S2, capture 14t, 7 steps), FAR EXIT VERIFY [technical] (S2, capture 4t, 1 steps), CAMERA EAST VERIFY [technical] (S1, capture 6t, 3 steps), CAMERA WEST VERIFY [technical] (S1, capture 8t, 4 steps), CAMERA NORTH VERIFY [technical] (S1, capture 12t, 4 steps), CAMERA SOUTH VERIFY [technical] (S1, capture 14t, 5 steps), SECTOR ENTRY VERIFY [technical] (S2, capture 4t, 1 steps), TERMINAL SPOOF VERIFY [technical] (S2, capture 16t, 7 steps), GATE UNLOCK VERIFY [technical] (S1, capture 58t, 20 steps)
+  Demos: 11
+  Demo steps: 61
+  Demo summary: SUNSPARK ATTRACT A [gameplay] (S1, capture 52t, 5 steps), SUNSPARK ATTRACT B [gameplay] (S1, capture 50t, 4 steps), ADVENTURE IDLE VERIFY [technical] (S1, capture 46t, 1 steps), ADVENTURE TURN VERIFY [technical] (S1, capture 48t, 3 steps), ADVENTURE RUN VERIFY [technical] (S1, capture 56t, 3 steps), ADVENTURE JUMP GLIDE VERIFY [technical] (S1, capture 64t, 4 steps), ADVENTURE CHARGE HIT VERIFY [technical] (S1, capture 58t, 4 steps), ADVENTURE SWITCH VERIFY [technical] (S1, capture 66t, 6 steps), ADVENTURE KEY VERIFY [technical] (S1, capture 92t, 8 steps), ADVENTURE PORTAL UNLOCK VERIFY [technical] (S1, capture 120t, 11 steps), ADVENTURE PORTAL COMPLETE VERIFY [technical] (S1, capture 136t, 12 steps)
   Runtime verify include: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\generated_runtime_verify.inc
   Music source: C:\Users\RhythmicCarnage\Desktop\CyberStorm\assets\music.psd1
   Music include: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\generated_music.inc
@@ -89,27 +89,18 @@ Generated Content
 
 Replay Harness
   Report: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-replay-report.txt
-  Scenarios: 20
-  SCOUT ATTRACT: PLAYING|S1|sector1_map_c|P7,13|H5|C2|D1|K0|E5|SCORE100|A10|HITS0|PU1|SP0|RNG0x764A
-  SURGE ATTRACT: PLAYING|S2|sector2_map_b|P8,11|H5|C3|D1|K1|E6|SCORE170|A13|HITS0|PU1|SP0|RNG0xA7CC
-  WARDEN ATTRACT: PLAYING|S3|sector3_map_c|P6,13|H5|C4|D1|K0|E10|SCORE100|A7|HITS0|PU1|SP0|RNG0x88BA
-  SECTOR 1 DEPTH SHOWCASE: PLAYING|S1|sector1_map_c|P7,12|H5|C3|D1|K0|E5|SCORE100|A6|HITS0|PU0|SP0|RNG0x764A
-  SECTOR 1 THREAT SHOWCASE: PLAYING|S1|sector1_map_c|P7,13|H5|C2|D1|K0|E5|SCORE100|A10|HITS0|PU1|SP0|RNG0x764A
-  SECTOR 2 DEPTH SHOWCASE: PLAYING|S2|sector2_map_b|P7,7|H5|C4|D0|K1|E6|SCORE70|A15|HITS0|PU0|SP2|RNG0xA7CC
-  SECTOR 2 THREAT SHOWCASE: PLAYING|S2|sector2_map_b|P8,11|H5|C3|D1|K1|E6|SCORE170|A13|HITS0|PU1|SP0|RNG0xA7CC
-  SECTOR 3 DEPTH SHOWCASE: PLAYING|S3|sector3_map_c|P5,13|H5|C5|D1|K0|E10|SCORE100|A3|HITS0|PU0|SP0|RNG0x88BA
-  SECTOR 3 THREAT SHOWCASE: PLAYING|S3|sector3_map_c|P6,13|H5|C4|D1|K0|E10|SCORE100|A7|HITS0|PU1|SP0|RNG0x88BA
-  WARDEN PRESSURE VERIFY: PLAYING|S3|sector3_map_c|P5,13|H5|C5|D1|K0|E10|SCORE100|A3|HITS0|PU0|SP0|RNG0x88BA
-  RUSHER MESH VERIFY: PLAYING|S2|sector2_map_b|P2,13|H5|C4|D0|K0|E7|SCORE0|A0|HITS0|PU0|SP0|RNG0xA7CC
-  FLANKER MESH VERIFY: PLAYING|S2|sector2_map_b|P8,11|H5|C3|D1|K1|E6|SCORE170|A13|HITS0|PU1|SP0|RNG0xA7CC
-  FAR EXIT VERIFY: PLAYING|S2|sector2_map_b|P2,13|H5|C4|D0|K0|E7|SCORE0|A0|HITS0|PU0|SP0|RNG0xA7CC
-  CAMERA EAST VERIFY: PLAYING|S1|sector1_map_c|P3,13|H5|C3|D0|K0|E5|SCORE0|A1|HITS0|PU0|SP0|RNG0x764A
-  CAMERA WEST VERIFY: PLAYING|S1|sector1_map_c|P2,13|H5|C3|D0|K0|E5|SCORE0|A2|HITS0|PU0|SP0|RNG0x764A
-  CAMERA NORTH VERIFY: PLAYING|S1|sector1_map_c|P7,12|H5|C3|D1|K0|E5|SCORE100|A6|HITS0|PU0|SP0|RNG0x764A
-  CAMERA SOUTH VERIFY: PLAYING|S1|sector1_map_c|P7,13|H5|C3|D1|K0|E5|SCORE100|A7|HITS0|PU0|SP0|RNG0x764A
-  SECTOR ENTRY VERIFY: PLAYING|S2|sector2_map_b|P2,13|H5|C4|D0|K0|E7|SCORE0|A0|HITS0|PU0|SP0|RNG0xA7CC
-  TERMINAL SPOOF VERIFY: PLAYING|S2|sector2_map_b|P7,7|H5|C4|D0|K1|E6|SCORE70|A15|HITS0|PU0|SP2|RNG0xA7CC
-  GATE UNLOCK VERIFY: PLAYING|S1|sector1_map_c|P24,3|H4|C3|D4|K1|E3|SCORE430|A68|HITS1|PU0|SP0|RNG0x764A
+  Scenarios: 11
+  SUNSPARK ATTRACT A: final 0x8AF6
+  SUNSPARK ATTRACT B: final 0xF85E
+  ADVENTURE IDLE VERIFY: final 0x1552
+  ADVENTURE TURN VERIFY: final 0x14D2
+  ADVENTURE RUN VERIFY: final 0x386C
+  ADVENTURE JUMP GLIDE VERIFY: final 0x1552
+  ADVENTURE CHARGE HIT VERIFY: final 0xF85E
+  ADVENTURE SWITCH VERIFY: final 0xDCD0
+  ADVENTURE KEY VERIFY: final 0xC14C
+  ADVENTURE PORTAL UNLOCK VERIFY: final 0x52DA
+  ADVENTURE PORTAL COMPLETE VERIFY: final 0x33F5
 
 Balance Harness
   Report: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-balance-report.txt
@@ -131,11 +122,11 @@ Balance Harness
 Regression Harness
   Report: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-regression-report.txt
   Boot sector: 512 bytes, signature 0x55AA, LBA 0 matches both image files
-  Stage two: 59548 bytes, 117 sectors, GAME_SECTORS matches, entry near jmp to 0x13C5
-  Map bank: 3780 bytes (4096 padded), 8 sectors, LBA 118..125
-  Presentation bank: 19968 bytes (19968 padded), 39 sectors, LBA 126..164
-  Geometry bank: 6216 bytes (6656 padded), 13 sectors, LBA 165..177
-  Images: .img and .vfd match exactly, unused tail zero-filled from byte 91136
+  Stage two: 60051 bytes, 118 sectors, GAME_SECTORS matches, entry near jmp to 0x13CD
+  Map bank: 3780 bytes (4096 padded), 8 sectors, LBA 119..126
+  Presentation bank: 19968 bytes (19968 padded), 39 sectors, LBA 127..165
+  Geometry bank: 6216 bytes (6656 padded), 13 sectors, LBA 166..178
+  Images: .img and .vfd match exactly, unused tail zero-filled from byte 91648
   Diagnostics: boot.lst and game.lst are present for post-failure inspection
 
 Frontend Verify
@@ -153,36 +144,36 @@ Showcase Capture
 
 Asset Banks
   Layout include: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\generated_bank_layout.inc
-  Map bank: 3780 bytes (4096 padded), 8 sectors, LBA 118..125, load 0x7000:0000, payload C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-map-bank.bin
-  Presentation bank: 19968 bytes (19968 padded), 39 sectors, LBA 126..164, load 0x7800:0000, payload C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-presentation-bank.bin
-  Geometry bank: 6216 bytes (6656 padded), 13 sectors, LBA 165..177, load 0x8000:0000, payload C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-geometry-bank.bin
+  Map bank: 3780 bytes (4096 padded), 8 sectors, LBA 119..126, load 0x7000:0000, payload C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-map-bank.bin
+  Presentation bank: 19968 bytes (19968 padded), 39 sectors, LBA 127..165, load 0x7800:0000, payload C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-presentation-bank.bin
+  Geometry bank: 6216 bytes (6656 padded), 13 sectors, LBA 166..178, load 0x8000:0000, payload C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-geometry-bank.bin
 
 Screenshots
   Housekeeping: kept 6 source screenshots, removed 0, rotated 3 README slots
   readme-shot-1.png [title] <- manual-camera-east-props-effects.png
-  readme-shot-2.png [gameplay] <- manual-camera-east-room-only.png
-  readme-shot-3.png [payoff] <- manual-camera-east-backdrop-only.png
+  readme-shot-2.png [gameplay] <- manual-camera-east-backdrop-only.png
+  readme-shot-3.png [payoff] <- manual-camera-east-full-3d.png
 
 Layout
   Boot code bytes: 132 / 510
   Boot code free bytes: 378
-  Stage2 bytes: 59548
-  Stage2 free bytes before 64 KiB limit: 5988
-  Stage2 padded bytes: 59904
-  Stage2 sectors: 117
-  Image bytes used: 90024 / 1474560
-  Image free bytes: 1384536
-  Disk footprint bytes: 91136 / 1474560
-  Disk footprint free bytes: 1383424
+  Stage2 bytes: 60051
+  Stage2 free bytes before 64 KiB limit: 5485
+  Stage2 padded bytes: 60416
+  Stage2 sectors: 118
+  Image bytes used: 90527 / 1474560
+  Image free bytes: 1384033
+  Disk footprint bytes: 91648 / 1474560
+  Disk footprint free bytes: 1382912
   Boot load address: 0000:7C00 (phys 0x00007C00)
   Stage2 load address: 0x1000:0x0000 (phys 0x00010000)
   Boot signature: 0x55AA @ byte 510
-  Stage2 LBA range: 1..117
+  Stage2 LBA range: 1..118
   Boot section: .text$mn (relocations applied: 3)
-  Stage2 section: .text$mn (relocations applied: 2832)
+  Stage2 section: .text$mn (relocations applied: 2880)
   Assembler warnings: boot=1, stage2=1
   Boot 'start' symbol offset: 0x0000
-  Stage2 'start' symbol offset: 0x13C5
+  Stage2 'start' symbol offset: 0x13CD
 
 Artifacts
   C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\generated_art.inc
@@ -215,4 +206,4 @@ Artifacts
   C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm.vfd
 
 Warnings
-  Stage two is within 5988 bytes of the 64 KiB load limit.
+  Stage two is within 5485 bytes of the 64 KiB load limit.

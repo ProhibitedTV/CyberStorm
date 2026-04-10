@@ -201,7 +201,7 @@ function Get-WaitSecondsForDemo {
 
     $ticks = Get-DemoTotalTicks -Demo $Demo
     $extraTicks = if ($RuntimeVerify.IsPresent) { 30 } else { 8 }
-    $seconds = 6 + [int][Math]::Ceiling(($ticks + $extraTicks) / 18.2)
+    $seconds = 6 + [int][Math]::Ceiling(($ticks + $extraTicks) / 30.0)
     return [Math]::Max(30, $seconds)
 }
 

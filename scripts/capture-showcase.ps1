@@ -164,7 +164,7 @@ function Get-CaptureWaitSeconds {
     param($Demo)
 
     $captureTicks = [int]$Demo.CaptureTicks
-    $seconds = 6 + [int][Math]::Ceiling(($captureTicks + 6) / 18.2)
+    $seconds = 6 + [int][Math]::Ceiling(($captureTicks + 6) / 30.0)
     return [Math]::Max(10, $seconds)
 }
 

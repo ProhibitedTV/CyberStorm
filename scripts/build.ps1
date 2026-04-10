@@ -1400,7 +1400,7 @@ function Write-GeneratedSectorIncludes {
             throw ("AdventureRealm in {0} must be a hashtable." -f $SourcePath)
         }
 
-        foreach ($requiredAdventureKey in @('Title', 'Intro', 'Start', 'Portal', 'Rows')) {
+        foreach ($requiredAdventureKey in @('Title', 'Intro', 'Start', 'Portal', 'RequiredGems', 'Key', 'Rows')) {
             if (-not $adventureRealm.ContainsKey($requiredAdventureKey)) {
                 throw ("AdventureRealm in {0} is missing '{1}'." -f $SourcePath, $requiredAdventureKey)
             }
@@ -1408,9 +1408,13 @@ function Write-GeneratedSectorIncludes {
 
         $adventureTitle = [string]$adventureRealm['Title']
         $adventureIntro = [string]$adventureRealm['Intro']
+        $adventureRequiredGems = [int]$adventureRealm['RequiredGems']
         $adventureRows = @($adventureRealm['Rows'] | ForEach-Object { [string]$_ })
         if ($adventureRows.Count -ne $ExpectedMapHeight) {
             throw ("AdventureRealm in {0} must define exactly {1} rows." -f $SourcePath, $ExpectedMapHeight)
+        }
+        if ($adventureRequiredGems -lt 0 -or $adventureRequiredGems -gt 255) {
+            throw ("AdventureRealm.RequiredGems in {0} must stay in the 0..255 range. Found {1}." -f $SourcePath, $adventureRequiredGems)
         }
 
         $adventureStart = ConvertTo-AnchorPoint -Token ([string]$adventureRealm['Start']) -Context 'AdventureRealm.Start' -MapWidth $ExpectedMapWidth -MapHeight $ExpectedMapHeight
@@ -1435,6 +1439,13 @@ function Write-GeneratedSectorIncludes {
             $point = ConvertTo-AnchorPoint -Token ([string]$token) -Context 'AdventureRealm.Switches' -MapWidth $ExpectedMapWidth -MapHeight $ExpectedMapHeight
             $adventureSwitchBytes.Add($point.X.ToString())
             $adventureSwitchBytes.Add($point.Y.ToString())
+        }
+
+        $adventureKeyBytes = New-Object 'System.Collections.Generic.List[string]'
+        foreach ($token in @($adventureRealm['Key'])) {
+            $point = ConvertTo-AnchorPoint -Token ([string]$token) -Context 'AdventureRealm.Key' -MapWidth $ExpectedMapWidth -MapHeight $ExpectedMapHeight
+            $adventureKeyBytes.Add($point.X.ToString())
+            $adventureKeyBytes.Add($point.Y.ToString())
         }
 
         $adventureHazardBytes = New-Object 'System.Collections.Generic.List[string]'
@@ -1492,13 +1503,16 @@ function Write-GeneratedSectorIncludes {
         $sectorLines.Add(("adventure_realm_start_y db {0}" -f $adventureStart.Y))
         $sectorLines.Add(("adventure_realm_portal_x db {0}" -f $adventurePortal.X))
         $sectorLines.Add(("adventure_realm_portal_y db {0}" -f $adventurePortal.Y))
+        $sectorLines.Add(("adventure_realm_required_gems db {0}" -f $adventureRequiredGems))
         $sectorLines.Add(("adventure_realm_gem_count db {0}" -f ($adventureGemBytes.Count / 2)))
         $sectorLines.Add(("adventure_realm_switch_count db {0}" -f ($adventureSwitchBytes.Count / 2)))
+        $sectorLines.Add(("adventure_realm_key_count db {0}" -f ($adventureKeyBytes.Count / 2)))
         $sectorLines.Add(("adventure_realm_hazard_count db {0}" -f ($adventureHazardBytes.Count / 2)))
         $sectorLines.Add(("adventure_realm_enemy_count db {0}" -f ($adventureEnemyBytes.Count / 3)))
         $sectorLines.Add(("adventure_realm_prop_count db {0}" -f $adventurePropXs.Count))
         Add-AsmDataLines -Lines $sectorLines -Label 'adventure_realm_gem_table' -Directive 'db' -Values $(if ($adventureGemBytes.Count -gt 0) { $adventureGemBytes.ToArray() } else { @('0') }) -ValuesPerLine 12
         Add-AsmDataLines -Lines $sectorLines -Label 'adventure_realm_switch_table' -Directive 'db' -Values $(if ($adventureSwitchBytes.Count -gt 0) { $adventureSwitchBytes.ToArray() } else { @('0') }) -ValuesPerLine 12
+        Add-AsmDataLines -Lines $sectorLines -Label 'adventure_realm_key_table' -Directive 'db' -Values $(if ($adventureKeyBytes.Count -gt 0) { $adventureKeyBytes.ToArray() } else { @('0') }) -ValuesPerLine 12
         Add-AsmDataLines -Lines $sectorLines -Label 'adventure_realm_hazard_table' -Directive 'db' -Values $(if ($adventureHazardBytes.Count -gt 0) { $adventureHazardBytes.ToArray() } else { @('0') }) -ValuesPerLine 12
         Add-AsmDataLines -Lines $sectorLines -Label 'adventure_realm_enemy_table' -Directive 'db' -Values $(if ($adventureEnemyBytes.Count -gt 0) { $adventureEnemyBytes.ToArray() } else { @('0') }) -ValuesPerLine 12
         Add-AsmDataLines -Lines $sectorLines -Label 'adventure_realm_prop_x_table' -Directive 'db' -Values $(if ($adventurePropXs.Count -gt 0) { $adventurePropXs.ToArray() } else { @('0') }) -ValuesPerLine 12
@@ -1556,17 +1570,26 @@ function Write-GeneratedDemoInclude {
     }
 
     $actionTokenMap = @{
-        'WAIT'  = 'DEMO_ACTION_WAIT'
-        'LEFT'  = 'DEMO_ACTION_LEFT'
-        'RIGHT' = 'DEMO_ACTION_RIGHT'
-        'UP'    = 'DEMO_ACTION_UP'
-        'DOWN'  = 'DEMO_ACTION_DOWN'
-        'PULSE' = 'DEMO_ACTION_PULSE'
-        'A'     = 'DEMO_ACTION_LEFT'
-        'D'     = 'DEMO_ACTION_RIGHT'
-        'W'     = 'DEMO_ACTION_UP'
-        'S'     = 'DEMO_ACTION_DOWN'
-        'C'     = 'DEMO_ACTION_PULSE'
+        'WAIT'       = 'DEMO_ACTION_WAIT'
+        'FORWARD'    = 'DEMO_ACTION_FORWARD'
+        'BACK'       = 'DEMO_ACTION_BACK'
+        'TURNLEFT'   = 'DEMO_ACTION_TURN_LEFT'
+        'TURN_LEFT'  = 'DEMO_ACTION_TURN_LEFT'
+        'TURNRIGHT'  = 'DEMO_ACTION_TURN_RIGHT'
+        'TURN_RIGHT' = 'DEMO_ACTION_TURN_RIGHT'
+        'FLAME'      = 'DEMO_ACTION_FLAME'
+        'JUMP'       = 'DEMO_ACTION_JUMP'
+        'GLIDE'      = 'DEMO_ACTION_GLIDE'
+        'CHARGE'     = 'DEMO_ACTION_CHARGE'
+        'ENTER'      = 'DEMO_ACTION_ENTER'
+        'W'          = 'DEMO_ACTION_FORWARD'
+        'S'          = 'DEMO_ACTION_BACK'
+        'A'          = 'DEMO_ACTION_TURN_LEFT'
+        'D'          = 'DEMO_ACTION_TURN_RIGHT'
+        'C'          = 'DEMO_ACTION_FLAME'
+        'SPACE'      = 'DEMO_ACTION_JUMP'
+        'SHIFT'      = 'DEMO_ACTION_CHARGE'
+        'RETURN'     = 'DEMO_ACTION_ENTER'
     }
 
     $demos = @($demoData['Demos'])
@@ -4036,11 +4059,11 @@ $debugDemoIndexValue = if ($demoIndexProvided) { [int]$DebugDemoIndex } else { 0
 $debugFrontendScenarioValue = if ($frontendScenarioProvided) { [int]$DebugFrontendScenario } else { 0 }
 $debugVerifyCorruptDemoIndexValue = if ($verifyCorruptDemoProvided) { [int]$DebugVerifyCorruptDemoIndex } else { 255 }
 $debugFrontendCorruptScenarioValue = if ($verifyCorruptFrontendProvided) { [int]$DebugFrontendCorruptScenario } else { 255 }
-$legacyGameplayMode = $DebugDemoBoot.IsPresent -or $DebugRuntimeVerify.IsPresent -or $render2DOverride
+$legacyGameplayMode = $render2DOverride
 $sceneRenderModeValue = if ($render2DOverride) { 0 } else { 1 }
 $sceneRenderModeName = if ($render2DOverride) { 'SCENES_2D_DEBUG' } else { 'SCENES_3D' }
 $gameplayRenderModeValue = if ($render2DOverride) { 0 } else { 1 }
-$gameplayRenderModeName = if ($render2DOverride) { 'GAMEPLAY_2D_DEBUG' } else { 'GAMEPLAY_3D_ROOM' }
+$gameplayRenderModeName = if ($render2DOverride) { 'GAMEPLAY_2D_DEBUG' } else { 'GAMEPLAY_3D_ADVENTURE' }
 $debugConfigLines = @(
     '; generated by scripts/build.ps1'
     ("DEBUG_BUILD EQU {0}" -f ([int]$debugProfile))

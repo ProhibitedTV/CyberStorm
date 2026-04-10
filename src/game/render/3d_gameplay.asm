@@ -142,6 +142,9 @@ game3d_begin_shot_done:
     ret
 
 game3d_start_move_settle_shot:
+IF DEBUG_LEGACY_GAMEPLAY EQ 0
+    ret
+ENDIF
     cmp byte ptr [game3d_end_state_pending], 0
     jne game3d_start_move_settle_done
     mov al, [game3d_shot_mode]
@@ -165,6 +168,9 @@ game3d_start_sector_entry_shot:
     ret
 
 game3d_start_enemy_reveal_shot:
+IF DEBUG_LEGACY_GAMEPLAY EQ 0
+    ret
+ENDIF
     cmp byte ptr [threat_level], THREAT_NONE
     je game3d_start_enemy_reveal_done
     mov al, [game3d_shot_mode]
@@ -184,12 +190,18 @@ game3d_start_enemy_reveal_done:
     ret
 
 game3d_start_terminal_shot:
+IF DEBUG_LEGACY_GAMEPLAY EQ 0
+    ret
+ENDIF
     mov al, GAME3D_SHOT_INTERACTION
     mov ah, GAME3D_SHOT_REASON_TERMINAL
     call game3d_begin_shot
     ret
 
 game3d_start_gate_unlock_shot:
+IF DEBUG_LEGACY_GAMEPLAY EQ 0
+    ret
+ENDIF
     mov al, GAME3D_SHOT_INTERACTION
     mov ah, GAME3D_SHOT_REASON_GATE
     mov bl, [exit_x]
@@ -198,6 +210,9 @@ game3d_start_gate_unlock_shot:
     ret
 
 game3d_start_warden_pressure_shot:
+IF DEBUG_LEGACY_GAMEPLAY EQ 0
+    ret
+ENDIF
     cmp byte ptr [threat_level], THREAT_ELITE
     jne game3d_start_warden_pressure_done
     mov al, GAME3D_SHOT_WARDEN_PRESSURE
@@ -210,6 +225,11 @@ game3d_start_warden_pressure_done:
     ret
 
 game3d_note_pressure_change:
+IF DEBUG_LEGACY_GAMEPLAY EQ 0
+    mov al, [threat_level]
+    mov [game3d_last_threat_level], al
+    ret
+ENDIF
     mov al, [threat_level]
     cmp al, [game3d_last_threat_level]
     je game3d_note_pressure_done
@@ -1503,6 +1523,9 @@ game3d_compile_east_done:
     ret
 
 game3d_compile_gate_lane_strips:
+IF DEBUG_LEGACY_GAMEPLAY EQ 0
+    ret
+ENDIF
     xor dh, dh
     xor ch, ch
 
@@ -3242,7 +3265,34 @@ game3d_get_shard_mesh_index:
     pop bx
     ret
 
+game3d_tile_in_active_chunk_range:
+IF DEBUG_LEGACY_GAMEPLAY
+    mov al, 1
+    ret
+ENDIF
+    mov al, bl
+    cmp al, [adventure_chunk_min_x]
+    jb game3d_tile_chunk_no
+    cmp al, [adventure_chunk_max_x]
+    ja game3d_tile_chunk_no
+    mov al, bh
+    cmp al, [adventure_chunk_min_y]
+    jb game3d_tile_chunk_no
+    cmp al, [adventure_chunk_max_y]
+    ja game3d_tile_chunk_no
+    mov al, 1
+    ret
+
+game3d_tile_chunk_no:
+    xor al, al
+    ret
+
 game3d_should_emit_north_face:
+IF DEBUG_LEGACY_GAMEPLAY EQ 0
+    call game3d_tile_in_active_chunk_range
+    cmp al, 0
+    je game3d_face_no
+ENDIF
     call game3d_is_wall_tile
     cmp al, 0
     je game3d_face_no
@@ -3255,6 +3305,11 @@ game3d_should_emit_north_face:
     jmp game3d_face_no
 
 game3d_should_emit_south_face:
+IF DEBUG_LEGACY_GAMEPLAY EQ 0
+    call game3d_tile_in_active_chunk_range
+    cmp al, 0
+    je game3d_face_no
+ENDIF
     call game3d_is_wall_tile
     cmp al, 0
     je game3d_face_no
@@ -3267,6 +3322,11 @@ game3d_should_emit_south_face:
     jmp game3d_face_no
 
 game3d_should_emit_west_face:
+IF DEBUG_LEGACY_GAMEPLAY EQ 0
+    call game3d_tile_in_active_chunk_range
+    cmp al, 0
+    je game3d_face_no
+ENDIF
     call game3d_is_wall_tile
     cmp al, 0
     je game3d_face_no
@@ -3279,6 +3339,11 @@ game3d_should_emit_west_face:
     jmp game3d_face_no
 
 game3d_should_emit_east_face:
+IF DEBUG_LEGACY_GAMEPLAY EQ 0
+    call game3d_tile_in_active_chunk_range
+    cmp al, 0
+    je game3d_face_no
+ENDIF
     call game3d_is_wall_tile
     cmp al, 0
     je game3d_face_no
@@ -4284,6 +4349,13 @@ game3d_prop_row_loop:
     mov cx, MAP_W
 
 game3d_prop_col_loop:
+IF DEBUG_LEGACY_GAMEPLAY EQ 0
+    mov bl, dl
+    mov bh, dh
+    call game3d_tile_in_active_chunk_range
+    cmp al, 0
+    je game3d_prop_next
+ENDIF
     mov al, [si]
     cmp al, TILE_SHARD
     je game3d_prop_shard
@@ -4291,6 +4363,8 @@ game3d_prop_col_loop:
     je game3d_prop_terminal
     cmp al, TILE_SURGE
     je game3d_prop_surge
+    cmp al, TILE_KEY
+    je game3d_prop_key
     cmp al, TILE_EXIT_LOCKED
     je game3d_prop_gate_locked
     cmp al, TILE_EXIT_OPEN
@@ -4342,6 +4416,24 @@ game3d_prop_surge:
     push si
     push dx
     call game3d_get_surge_mesh_index
+    mov bl, dl
+    mov bh, dh
+    xor dl, dl
+    call game3d_prepare_mesh_at_tile
+    call game3d_draw_mesh_instance
+    pop dx
+    pop si
+    jmp game3d_prop_next
+
+game3d_prop_key:
+    mov bl, dl
+    mov bh, dh
+    mov al, PAL_AMBER
+    mov ah, PAL_WHITE
+    call game3d_draw_tile_glow_3d
+    push si
+    push dx
+    call game3d_get_shard_mesh_index
     mov bl, dl
     mov bh, dh
     xor dl, dl
@@ -4404,6 +4496,13 @@ render_enemies_3d:
 game3d_enemy_loop:
     cmp byte ptr [si + ENEMY_ALIVE], 0
     je game3d_enemy_next
+IF DEBUG_LEGACY_GAMEPLAY EQ 0
+    mov bl, [si + ENEMY_X]
+    mov bh, [si + ENEMY_Y]
+    call game3d_tile_in_active_chunk_range
+    cmp al, 0
+    je game3d_enemy_next
+ENDIF
     push cx
     call game3d_get_enemy_floor_colors
     mov bl, [si + ENEMY_X]
@@ -4478,10 +4577,15 @@ render_adventure_static_prop_loop:
     push cx
     mov bl, [adventure_realm_prop_x_table + si]
     mov bh, [adventure_realm_prop_y_table + si]
+    call game3d_tile_in_active_chunk_range
+    cmp al, 0
+    je render_adventure_static_prop_next
     mov al, [adventure_realm_prop_mesh_table + si]
     mov dl, [adventure_realm_prop_yaw_table + si]
     call game3d_prepare_mesh_at_tile
     call game3d_draw_mesh_instance
+
+render_adventure_static_prop_next:
     inc si
     pop cx
     loop render_adventure_static_prop_loop
@@ -4547,6 +4651,8 @@ render_adventure_world_effects_3d:
     je game3d_draw_focus_marker_3d
     cmp al, MSG_SPOOF
     je game3d_draw_focus_marker_3d
+    cmp al, MSG_KEY
+    je game3d_draw_focus_marker_3d
 
 render_adventure_world_effects_done:
     ret
@@ -4592,6 +4698,7 @@ game3d_draw_exit_marker_3d:
     push bx
     push cx
     push dx
+IF DEBUG_LEGACY_GAMEPLAY
     call game3d_get_lane_material
     mov [scene3d_temp_color], al
     mov [scene3d_temp_dither], ah
@@ -4620,6 +4727,7 @@ game3d_exit_lane_next:
     jmp game3d_exit_lane_loop
 
 game3d_exit_lane_done:
+ENDIF
     pop dx
     pop cx
     pop bx

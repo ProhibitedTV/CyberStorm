@@ -32,9 +32,6 @@ ELSE
 
 seed_ready:
 ENDIF
-    xor ah, ah
-    int 1Ah
-    mov [last_tick], dx
     mov byte ptr [anim_phase], 0
     mov byte ptr [splash_ticks], 0
     mov byte ptr [title_idle_ticks], 0
@@ -43,6 +40,7 @@ ENDIF
     mov byte ptr [demo_action_code], DEMO_ACTION_END
     mov byte ptr [demo_action_ticks], 0
     mov word ptr [demo_script_ptr], 0
+    call init_frame_clock
 IF DEBUG_DEMO_BOOT
     call start_selected_demo_run
 ELSEIF DEBUG_FRONTEND_VERIFY
@@ -65,7 +63,10 @@ ELSE
 ENDIF
     call update_frontend_state
     call update_runtime_feedback
+    cmp byte ptr [frame_skip_render], 0
+    jne main_loop_skip_render
     call render_screen
+main_loop_skip_render:
     cmp byte ptr [game_state], STATE_PLAYING
     je handle_play_input
 
@@ -174,19 +175,81 @@ ELSE
 ENDIF
 
 wait_frame_tick:
+    ; The PIT stays BIOS-configured, but the runtime now polls it directly and
+    ; advances the simulation on a fixed 30 Hz cadence.
+    mov byte ptr [frame_skip_render], 0
+
 wait_frame_tick_loop:
-    ; BIOS tick count (~18.2 Hz) is the only global clock in the runtime.
-    xor ah, ah
-    int 1Ah
-    cmp dx, [last_tick]
-    je wait_frame_tick_loop
-    mov [last_tick], dx
+    call read_pit_timestamp
+    cmp dx, [pit_frame_due_high]
+    jb wait_frame_tick_loop
+    ja wait_frame_tick_due
+    cmp ax, [pit_frame_due_low]
+    jb wait_frame_tick_loop
+
+wait_frame_tick_due:
     inc byte ptr [anim_phase]
     cmp byte ptr [run_start_enter_guard], 0
     je wait_frame_tick_done
     dec byte ptr [run_start_enter_guard]
 
 wait_frame_tick_done:
+    mov bx, [pit_frame_due_low]
+    mov cx, [pit_frame_due_high]
+
+wait_frame_tick_advance:
+    add bx, PIT_FIXED_STEP_30HZ
+    adc cx, 0
+    cmp dx, cx
+    jb wait_frame_tick_store
+    ja wait_frame_tick_skip
+    cmp ax, bx
+    jb wait_frame_tick_store
+
+wait_frame_tick_skip:
+    mov byte ptr [frame_skip_render], 1
+    jmp wait_frame_tick_advance
+
+wait_frame_tick_store:
+    mov [pit_frame_due_low], bx
+    mov [pit_frame_due_high], cx
+    ret
+
+init_frame_clock:
+    call read_pit_timestamp
+    add ax, PIT_FIXED_STEP_30HZ
+    mov [pit_frame_due_low], ax
+    mov [pit_frame_due_high], dx
+    jnc init_frame_clock_done
+    inc word ptr [pit_frame_due_high]
+
+init_frame_clock_done:
+    ret
+
+read_pit_timestamp:
+    push bx
+    push cx
+
+read_pit_timestamp_retry:
+    xor ah, ah
+    int 1Ah
+    mov bx, dx
+    xor al, al
+    out 43h, al
+    in al, 40h
+    mov cl, al
+    in al, 40h
+    mov ch, al
+    xor ah, ah
+    int 1Ah
+    cmp dx, bx
+    jne read_pit_timestamp_retry
+    mov ax, 0FFFFh
+    sub ax, cx
+    mov dx, bx
+    mov [last_tick], dx
+    pop cx
+    pop bx
     ret
 
 update_frontend_state:
@@ -475,6 +538,82 @@ ENDIF
     ret
 
 process_demo_input:
+IF DEBUG_LEGACY_GAMEPLAY EQ 0
+    cmp byte ptr [demo_action_ticks], 0
+    jne demo_have_adventure_action
+    call load_next_demo_action
+
+demo_have_adventure_action:
+    call clear_demo_runtime_keys
+    mov al, [demo_action_code]
+    cmp al, DEMO_ACTION_END
+    je demo_finished
+    cmp byte ptr [demo_action_ticks], 0
+    je demo_finished
+    cmp al, DEMO_ACTION_WAIT
+    je demo_run_adventure_action
+    cmp al, DEMO_ACTION_FORWARD
+    je demo_hold_forward
+    cmp al, DEMO_ACTION_BACK
+    je demo_hold_back
+    cmp al, DEMO_ACTION_TURN_LEFT
+    je demo_hold_turn_left
+    cmp al, DEMO_ACTION_TURN_RIGHT
+    je demo_hold_turn_right
+    cmp al, DEMO_ACTION_FLAME
+    je demo_press_flame
+    cmp al, DEMO_ACTION_JUMP
+    je demo_press_jump
+    cmp al, DEMO_ACTION_GLIDE
+    je demo_hold_glide
+    cmp al, DEMO_ACTION_CHARGE
+    je demo_press_charge
+    cmp al, DEMO_ACTION_ENTER
+    je demo_press_enter
+    jmp demo_finished
+
+demo_hold_forward:
+    mov byte ptr [key_down + SCAN_W], 1
+    jmp demo_run_adventure_action
+
+demo_hold_back:
+    mov byte ptr [key_down + SCAN_S], 1
+    jmp demo_run_adventure_action
+
+demo_hold_turn_left:
+    mov byte ptr [key_down + SCAN_A], 1
+    jmp demo_run_adventure_action
+
+demo_hold_turn_right:
+    mov byte ptr [key_down + SCAN_D], 1
+    jmp demo_run_adventure_action
+
+demo_press_flame:
+    mov byte ptr [pressed_c], 1
+    jmp demo_run_adventure_action
+
+demo_press_jump:
+    mov byte ptr [pressed_space], 1
+    mov byte ptr [key_down + SCAN_SPACE], 1
+    jmp demo_run_adventure_action
+
+demo_hold_glide:
+    mov byte ptr [key_down + SCAN_SPACE], 1
+    jmp demo_run_adventure_action
+
+demo_press_charge:
+    mov byte ptr [pressed_shift], 1
+    mov byte ptr [key_down + SCAN_LSHIFT], 1
+    jmp demo_run_adventure_action
+
+demo_press_enter:
+    mov byte ptr [pressed_enter], 1
+
+demo_run_adventure_action:
+    call process_play_input
+    dec byte ptr [demo_action_ticks]
+    ret
+ENDIF
     cmp byte ptr [demo_action_ticks], 0
     jne demo_have_action
     call load_next_demo_action
@@ -532,6 +671,22 @@ IF DEBUG_RUNTIME_VERIFY
 ELSE
     call return_to_title
 ENDIF
+    ret
+
+clear_demo_runtime_keys:
+    call clear_pressed_latches
+    mov byte ptr [key_down + SCAN_W], 0
+    mov byte ptr [key_down + SCAN_A], 0
+    mov byte ptr [key_down + SCAN_S], 0
+    mov byte ptr [key_down + SCAN_D], 0
+    mov byte ptr [key_down + SCAN_C], 0
+    mov byte ptr [key_down + SCAN_SPACE], 0
+    mov byte ptr [key_down + SCAN_LSHIFT], 0
+    mov byte ptr [key_down + SCAN_ENTER], 0
+    mov byte ptr [key_down + SCAN_UP_EXT], 0
+    mov byte ptr [key_down + SCAN_LEFT_EXT], 0
+    mov byte ptr [key_down + SCAN_RIGHT_EXT], 0
+    mov byte ptr [key_down + SCAN_DOWN_EXT], 0
     ret
 
 load_next_demo_action:
@@ -847,7 +1002,12 @@ compute_runtime_verify_signature:
     mov bl, [player_y]
     call verify_sig_mix_byte
     push ax
+IF DEBUG_LEGACY_GAMEPLAY
     call game3d_get_facing_heading
+ELSE
+    mov al, [adventure_player_yaw]
+    call game3d_get_adventure_heading_from_yaw
+ENDIF
     mov dl, al
     pop ax
     mov bl, dl
@@ -890,6 +1050,22 @@ compute_runtime_verify_signature:
     call verify_sig_mix_byte
     mov bl, [data_count]
     call verify_sig_mix_byte
+IF DEBUG_LEGACY_GAMEPLAY EQ 0
+    mov bl, [adventure_objectives_done]
+    call verify_sig_mix_byte
+    mov bl, [adventure_objectives_total]
+    call verify_sig_mix_byte
+    mov bl, [adventure_key_collected]
+    call verify_sig_mix_byte
+    mov bl, [exit_x]
+    mov bh, [exit_y]
+    push ax
+    call get_tile
+    mov dl, al
+    pop ax
+    mov bl, dl
+    call verify_sig_mix_byte
+ENDIF
     mov bl, [kill_count]
     call verify_sig_mix_byte
     mov dx, [score_total]

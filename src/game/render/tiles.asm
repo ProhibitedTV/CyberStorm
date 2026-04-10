@@ -48,6 +48,8 @@ draw_tile:
     je draw_surge_tile
     cmp al, TILE_TERMINAL
     je draw_terminal_tile
+    cmp al, TILE_KEY
+    je draw_key_tile
     jmp draw_floor_tile
 
 draw_floor_tile:
@@ -95,6 +97,14 @@ draw_terminal_tile:
     call get_terminal_tile_frame
     call draw_bitmap8
     call draw_terminal_edge_light
+    ret
+
+draw_key_tile:
+    call draw_floor_tile
+    call draw_shard_glow
+    call draw_terminal_edge_light
+    call get_shard_sprite
+    call draw_sprite8
     ret
 
 get_floor_tile_frame:

@@ -32,25 +32,26 @@ $targetPath = Join-Path $root ("deploy\virtualbox\{0}\Logs\VBox.log" -f $VmName)
 function Invoke-VBoxManage {
     param(
         [string[]]$Arguments,
-        [int]$Attempt = 0
+        [int]$Attempt = 0,
+        [int]$TimeoutSeconds = 30
     )
 
-    $captured = New-Object 'System.Collections.Generic.List[string]'
+    $capturedLines = New-Object 'System.Collections.Generic.List[string]'
     $previousErrorActionPreference = $ErrorActionPreference
     $ErrorActionPreference = 'Continue'
     try {
         & $vbox @Arguments 2>&1 | ForEach-Object {
-            $captured.Add($_.ToString())
+            $capturedLines.Add($_.ToString())
         }
     } finally {
         $ErrorActionPreference = $previousErrorActionPreference
     }
 
     if ($LASTEXITCODE -eq 0) {
-        return $captured.ToArray()
+        return $capturedLines.ToArray()
     }
 
-    $message = $captured -join [Environment]::NewLine
+    $message = $capturedLines -join [Environment]::NewLine
     if ($Attempt -lt 3 -and $message -match 'CO_E_SERVER_EXEC_FAILURE|Failed to create the VirtualBox object') {
         $previousErrorActionPreference = $ErrorActionPreference
         $ErrorActionPreference = 'Continue'
@@ -60,10 +61,74 @@ function Invoke-VBoxManage {
             $ErrorActionPreference = $previousErrorActionPreference
         }
         Start-Sleep -Seconds (2 + ($Attempt * 3))
-        return Invoke-VBoxManage -Arguments $Arguments -Attempt ($Attempt + 1)
+        return Invoke-VBoxManage -Arguments $Arguments -Attempt ($Attempt + 1) -TimeoutSeconds $TimeoutSeconds
     }
 
     throw ("VBoxManage failed: {0}`n{1}" -f ($Arguments -join ' '), $message)
+}
+
+function Get-VmState {
+    param([string]$Name)
+
+    $infoLines = Invoke-VBoxManage -Arguments @('showvminfo', $Name, '--machinereadable') -TimeoutSeconds 20
+    $stateLine = $infoLines | Where-Object { $_ -match '^VMState=' } | Select-Object -First 1
+    if ($stateLine -and $stateLine -match '^VMState="?([^"]+)"?$') {
+        return $Matches[1]
+    }
+
+    return 'unknown'
+}
+
+function Ensure-VmReadyForCapture {
+    param([string]$Name)
+
+    for ($attempt = 0; $attempt -lt 10; $attempt++) {
+        $state = Get-VmState -Name $Name
+        if ($state -eq 'running') {
+            return
+        }
+
+        if ($state -eq 'paused') {
+            Invoke-VBoxManage -Arguments @('controlvm', $Name, 'resume') -TimeoutSeconds 20 | Out-Null
+        }
+
+        Start-Sleep -Milliseconds 500
+    }
+
+    throw ("VM '{0}' never reached a capture-ready running state." -f $Name)
+}
+
+function Invoke-VmScreenshot {
+    param(
+        [string]$Name,
+        [string]$OutputPath
+    )
+
+    if (Test-Path -LiteralPath $OutputPath) {
+        Remove-Item -LiteralPath $OutputPath -Force
+    }
+
+    for ($attempt = 0; $attempt -lt 5; $attempt++) {
+        try {
+            Invoke-VBoxManage -Arguments @('controlvm', $Name, 'screenshotpng', $OutputPath) -TimeoutSeconds 45 | Out-Null
+        } catch {
+            if ($attempt -ge 4) {
+                throw
+            }
+        }
+
+        for ($fileAttempt = 0; $fileAttempt -lt 20; $fileAttempt++) {
+            if (Test-Path -LiteralPath $OutputPath) {
+                return
+            }
+
+            Start-Sleep -Milliseconds 250
+        }
+
+        Start-Sleep -Seconds 1
+    }
+
+    throw ("VM screenshot was not created: {0}" -f $OutputPath)
 }
 
 function Stop-VmIfRunning {
@@ -97,7 +162,7 @@ function Ensure-VmRegistered {
     param([string]$Name)
 
     try {
-        Invoke-VBoxManage -Arguments @('showvminfo', $Name) | Out-Null
+        Invoke-VBoxManage -Arguments @('showvminfo', $Name, '--machinereadable') -TimeoutSeconds 20 | Out-Null
     } catch {
         if ($_.Exception.Message -match 'Could not find a registered machine named|VBOX_E_OBJECT_NOT_FOUND') {
             Invoke-DeployVm -Name $Name
@@ -183,7 +248,7 @@ try {
 
     Start-HeadlessVm -Name $VmName
     Start-Sleep -Seconds $startupCaptureSeconds
-    Invoke-VBoxManage -Arguments @('controlvm', $VmName, 'screenshotpng', $startupScreenshotPath) | Out-Null
+    Invoke-VmScreenshot -Name $VmName -OutputPath $startupScreenshotPath
     if (-not (Test-Path -LiteralPath $startupScreenshotPath)) {
         throw ("VM smoke startup screenshot was not created: {0}" -f $startupScreenshotPath)
     }
@@ -192,7 +257,7 @@ try {
         Start-Sleep -Seconds $titleSleepSeconds
     }
 
-    Invoke-VBoxManage -Arguments @('controlvm', $VmName, 'screenshotpng', $titleScreenshotPath) | Out-Null
+    Invoke-VmScreenshot -Name $VmName -OutputPath $titleScreenshotPath
     if (-not (Test-Path -LiteralPath $titleScreenshotPath)) {
         throw ("VM smoke title screenshot was not created: {0}" -f $titleScreenshotPath)
     }
@@ -214,7 +279,7 @@ try {
         throw 'VBox log never reached the floppy boot path.'
     }
 
-    Invoke-VBoxManage -Arguments @('controlvm', $VmName, 'screenshotpng', $screenshotPath) | Out-Null
+    Invoke-VmScreenshot -Name $VmName -OutputPath $screenshotPath
     if (-not (Test-Path -LiteralPath $screenshotPath)) {
         throw ("VM smoke screenshot was not created: {0}" -f $screenshotPath)
     }

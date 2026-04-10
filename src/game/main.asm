@@ -382,6 +382,17 @@ clear_runtime_verify_state:
     mov byte ptr [verify_result_demo_index], 0
     mov word ptr [verify_expected_signature], 0
     mov word ptr [verify_observed_signature], 0
+    mov byte ptr [verify_snapshot_heading], 0
+    mov byte ptr [verify_snapshot_variant], 0
+    mov byte ptr [verify_snapshot_cue_flags], 0
+    mov byte ptr [verify_snapshot_intro_timer], 0
+    mov byte ptr [verify_snapshot_enemy_tick], 0
+    mov byte ptr [verify_snapshot_threat_level], THREAT_NONE
+    mov byte ptr [verify_snapshot_threat_x], START_X
+    mov byte ptr [verify_snapshot_threat_y], START_Y
+    mov word ptr [verify_snapshot_enemy0], 0
+    mov word ptr [verify_snapshot_enemy1], 0
+    mov word ptr [verify_snapshot_enemy2], 0
     mov byte ptr [verify_mode], VERIFY_MODE_REPLAY
     mov byte ptr [verify_frontend_scenario], FRONTEND_VERIFY_NONE
     mov byte ptr [verify_frontend_ticks], 0
@@ -990,6 +1001,7 @@ compute_runtime_verify_signature:
     push cx
     push dx
     push si
+    call capture_runtime_verify_snapshot
     mov ax, 0A55Ah
     mov bl, [game_state]
     call verify_sig_mix_byte
@@ -1079,6 +1091,86 @@ ENDIF
     mov bl, [spoof_timer]
     call verify_sig_mix_byte
     pop si
+    pop dx
+    pop cx
+    pop bx
+    ret
+
+capture_runtime_verify_snapshot:
+    push ax
+    push bx
+    push cx
+    push dx
+    push si
+
+IF DEBUG_LEGACY_GAMEPLAY
+    call game3d_get_facing_heading
+ELSE
+    mov al, [adventure_player_yaw]
+    call game3d_get_adventure_heading_from_yaw
+ENDIF
+    mov [verify_snapshot_heading], al
+    call game3d_get_room_variant_from_heading
+    mov [verify_snapshot_variant], al
+    call game3d_get_runtime_cue_flags
+    mov [verify_snapshot_cue_flags], al
+    mov al, [adventure_intro_timer]
+    mov [verify_snapshot_intro_timer], al
+    mov al, [adventure_enemy_tick]
+    mov [verify_snapshot_enemy_tick], al
+    mov al, [threat_level]
+    mov [verify_snapshot_threat_level], al
+    mov al, [threat_x]
+    mov [verify_snapshot_threat_x], al
+    mov al, [threat_y]
+    mov [verify_snapshot_threat_y], al
+
+    mov si, offset enemies
+    call pack_runtime_verify_enemy_fingerprint
+    mov [verify_snapshot_enemy0], ax
+    add si, ENEMY_SIZE
+    call pack_runtime_verify_enemy_fingerprint
+    mov [verify_snapshot_enemy1], ax
+    add si, ENEMY_SIZE
+    call pack_runtime_verify_enemy_fingerprint
+    mov [verify_snapshot_enemy2], ax
+
+    pop si
+    pop dx
+    pop cx
+    pop bx
+    pop ax
+    ret
+
+pack_runtime_verify_enemy_fingerprint:
+    push bx
+    push cx
+    push dx
+    xor ax, ax
+    cmp byte ptr [si + ENEMY_ALIVE], 0
+    je pack_runtime_verify_enemy_done
+
+    mov al, [si + ENEMY_Y]
+    and al, 3Fh
+    xor ah, ah
+    mov dx, ax
+
+    xor ax, ax
+    mov al, [si + ENEMY_X]
+    and al, 1Fh
+    mov cl, 6
+    shl ax, cl
+    or ax, dx
+
+    xor dx, dx
+    mov dl, [si + ENEMY_KIND]
+    and dl, 03h
+    mov cl, 12
+    shl dx, cl
+    or ax, dx
+    or ax, 8000h
+
+pack_runtime_verify_enemy_done:
     pop dx
     pop cx
     pop bx

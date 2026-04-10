@@ -75,6 +75,17 @@ verify_action_index db 0
 verify_result_demo_index db 0
 verify_expected_signature dw 0
 verify_observed_signature dw 0
+verify_snapshot_heading db 0
+verify_snapshot_variant db 0
+verify_snapshot_cue_flags db 0
+verify_snapshot_intro_timer db 0
+verify_snapshot_enemy_tick db 0
+verify_snapshot_threat_level db THREAT_NONE
+verify_snapshot_threat_x db START_X
+verify_snapshot_threat_y db START_Y
+verify_snapshot_enemy0 dw 0
+verify_snapshot_enemy1 dw 0
+verify_snapshot_enemy2 dw 0
 ; verify_mode reuses the shared PASS/FAIL scenes for both replay verification
 ; and the debug-only frontend trust scenarios.
 verify_mode db VERIFY_MODE_REPLAY
@@ -388,6 +399,14 @@ verify_state_tick_label db 'TK', 0
 verify_state_hits_label db 'HI', 0
 verify_state_pulses_used_label db 'PS', 0
 verify_state_spoof_label db 'SP', 0
+verify_state_intro_label db 'IT', 0
+verify_state_enemy_tick_label db 'ET', 0
+verify_state_threat_label db 'TH', 0
+verify_state_threat_x_label db 'TX', 0
+verify_state_threat_y_label db 'TY', 0
+verify_state_enemy0_label db 'E0', 0
+verify_state_enemy1_label db 'E1', 0
+verify_state_enemy2_label db 'E2', 0
 verify_prompt db 'ENTER OR SPACE RETURNS TO TITLE.', 0
 frontend_verify_pass_headline db 'FRONTEND PASS', 0
 frontend_verify_fail_headline db 'FRONTEND FAIL', 0

@@ -480,31 +480,55 @@ IF DEBUG_RUNTIME_VERIFY
 render_gameplay_3d_live:
 ENDIF
     call game3d_update_camera_target
+IF DEBUG_RENDER_STAGE GE 0
     call game3d_draw_view_backdrop
+ENDIF
+IF DEBUG_RENDER_STAGE GE 1
     call game3d_build_room_if_dirty
     call game3d_setup_camera
     call game3d_render_room
+ENDIF
+IF DEBUG_RENDER_STAGE GE 2
     call render_gameplay_landmark_3d
     call render_gameplay_props_3d
+ENDIF
+IF DEBUG_RENDER_STAGE GE 4
     call render_gameplay_world_effects_3d
+ENDIF
+IF DEBUG_RENDER_STAGE GE 3
     call render_enemies_3d
     call render_player_3d
+ENDIF
+IF DEBUG_RENDER_STAGE GE 5
     call render_gameplay_overlay_effects_3d
+ENDIF
     ret
 
 render_gameplay_adventure_3d:
     call game3d_update_adventure_camera_target
+IF DEBUG_RENDER_STAGE GE 0
     call game3d_draw_view_backdrop
+ENDIF
+IF DEBUG_RENDER_STAGE GE 1
     call game3d_build_room_if_dirty
     call game3d_setup_adventure_camera
     call game3d_render_room
+ENDIF
+IF DEBUG_RENDER_STAGE GE 2
     call render_gameplay_landmark_3d
     call render_adventure_static_props_3d
     call render_gameplay_props_3d
+ENDIF
+IF DEBUG_RENDER_STAGE GE 4
     call render_adventure_world_effects_3d
+ENDIF
+IF DEBUG_RENDER_STAGE GE 3
     call render_enemies_3d
     call render_adventure_player_3d
+ENDIF
+IF DEBUG_RENDER_STAGE GE 5
     call render_gameplay_overlay_effects_3d
+ENDIF
     ret
 
 game3d_update_adventure_camera_target:

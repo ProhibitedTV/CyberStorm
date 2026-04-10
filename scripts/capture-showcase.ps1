@@ -7,6 +7,7 @@ param(
     [switch]$SfxOnly,
     [string]$VmName = 'CyberStorm',
     [string]$DemoSourcePath = (Join-Path (Join-Path $PSScriptRoot '..') 'assets\demos.psd1'),
+    [string]$ConstantsSourcePath = (Join-Path (Join-Path $PSScriptRoot '..') 'src\game\constants.inc'),
     [string]$BuildScriptPath = (Join-Path $PSScriptRoot 'build.ps1'),
     [string]$DeployScriptPath = (Join-Path $PSScriptRoot 'deploy-vm.ps1'),
     [string]$VmSmokeScriptPath = (Join-Path $PSScriptRoot 'vm-smoke.ps1'),
@@ -20,6 +21,8 @@ $ErrorActionPreference = 'Stop'
 if ($ExperimentalMusic.IsPresent -and $SfxOnly.IsPresent) {
     throw 'Use either -ExperimentalMusic (legacy alias) or -SfxOnly, not both.'
 }
+
+Add-Type -AssemblyName System.Drawing
 
 $root = Split-Path -Parent $PSScriptRoot
 $buildDir = Join-Path $root 'build'
@@ -60,28 +63,50 @@ function Import-StructuredDataFile {
     return $data
 }
 
+function Get-AsmEquValue {
+    param(
+        [string]$SourcePath,
+        [string]$Name
+    )
+
+    Assert-PathExists -Path $SourcePath -Label 'assembly constants source'
+    $pattern = "^\s*{0}\s+equ\s+([0-9A-Fa-f]+h|\d+)\s*(?:;.*)?$" -f [regex]::Escape($Name)
+    $match = Select-String -LiteralPath $SourcePath -Pattern $pattern | Select-Object -First 1
+    if (-not $match) {
+        throw ("Could not find numeric '{0} equ <value>' in {1}" -f $Name, $SourcePath)
+    }
+
+    $token = $match.Matches[0].Groups[1].Value
+    if ($token -match '^[0-9A-Fa-f]+h$') {
+        return [Convert]::ToInt32($token.Substring(0, $token.Length - 1), 16)
+    }
+
+    return [int]$token
+}
+
 function Invoke-VBoxManage {
     param(
         [string[]]$Arguments,
-        [int]$Attempt = 0
+        [int]$Attempt = 0,
+        [int]$TimeoutSeconds = 30
     )
 
-    $captured = New-Object 'System.Collections.Generic.List[string]'
+    $capturedLines = New-Object 'System.Collections.Generic.List[string]'
     $previousErrorActionPreference = $ErrorActionPreference
     $ErrorActionPreference = 'Continue'
     try {
         & $vbox @Arguments 2>&1 | ForEach-Object {
-            $captured.Add($_.ToString())
+            $capturedLines.Add($_.ToString())
         }
     } finally {
         $ErrorActionPreference = $previousErrorActionPreference
     }
 
     if ($LASTEXITCODE -eq 0) {
-        return $captured.ToArray()
+        return $capturedLines.ToArray()
     }
 
-    $message = $captured -join [Environment]::NewLine
+    $message = $capturedLines -join [Environment]::NewLine
     if ($Attempt -lt 3 -and $message -match 'CO_E_SERVER_EXEC_FAILURE|Failed to create the VirtualBox object') {
         $previousErrorActionPreference = $ErrorActionPreference
         $ErrorActionPreference = 'Continue'
@@ -91,10 +116,74 @@ function Invoke-VBoxManage {
             $ErrorActionPreference = $previousErrorActionPreference
         }
         Start-Sleep -Seconds (2 + ($Attempt * 3))
-        return Invoke-VBoxManage -Arguments $Arguments -Attempt ($Attempt + 1)
+        return Invoke-VBoxManage -Arguments $Arguments -Attempt ($Attempt + 1) -TimeoutSeconds $TimeoutSeconds
     }
 
     throw ("VBoxManage failed: {0}`n{1}" -f ($Arguments -join ' '), $message)
+}
+
+function Get-VmState {
+    param([string]$Name)
+
+    $infoLines = Invoke-VBoxManage -Arguments @('showvminfo', $Name, '--machinereadable') -TimeoutSeconds 20
+    $stateLine = $infoLines | Where-Object { $_ -match '^VMState=' } | Select-Object -First 1
+    if ($stateLine -and $stateLine -match '^VMState="?([^"]+)"?$') {
+        return $Matches[1]
+    }
+
+    return 'unknown'
+}
+
+function Ensure-VmReadyForCapture {
+    param([string]$Name)
+
+    for ($attempt = 0; $attempt -lt 10; $attempt++) {
+        $state = Get-VmState -Name $Name
+        if ($state -eq 'running') {
+            return
+        }
+
+        if ($state -eq 'paused') {
+            Invoke-VBoxManage -Arguments @('controlvm', $Name, 'resume') -TimeoutSeconds 20 | Out-Null
+        }
+
+        Start-Sleep -Milliseconds 500
+    }
+
+    throw ("VM '{0}' never reached a capture-ready running state." -f $Name)
+}
+
+function Invoke-VmScreenshot {
+    param(
+        [string]$Name,
+        [string]$OutputPath
+    )
+
+    if (Test-Path -LiteralPath $OutputPath) {
+        Remove-Item -LiteralPath $OutputPath -Force
+    }
+
+    for ($attempt = 0; $attempt -lt 5; $attempt++) {
+        try {
+            Invoke-VBoxManage -Arguments @('controlvm', $Name, 'screenshotpng', $OutputPath) -TimeoutSeconds 45 | Out-Null
+        } catch {
+            if ($attempt -ge 4) {
+                throw
+            }
+        }
+
+        for ($fileAttempt = 0; $fileAttempt -lt 20; $fileAttempt++) {
+            if (Test-Path -LiteralPath $OutputPath) {
+                return
+            }
+
+            Start-Sleep -Milliseconds 250
+        }
+
+        Start-Sleep -Seconds 1
+    }
+
+    throw ("VM screenshot was not created: {0}" -f $OutputPath)
 }
 
 function Stop-VmIfRunning {
@@ -128,7 +217,7 @@ function Ensure-VmRegistered {
     param([string]$Name)
 
     try {
-        Invoke-VBoxManage -Arguments @('showvminfo', $Name) | Out-Null
+        Invoke-VBoxManage -Arguments @('showvminfo', $Name, '--machinereadable') -TimeoutSeconds 20 | Out-Null
     } catch {
         if ($_.Exception.Message -match 'Could not find a registered machine named|VBOX_E_OBJECT_NOT_FOUND') {
             Invoke-DeployVm -Name $Name
@@ -166,6 +255,141 @@ function Get-CaptureWaitSeconds {
     $captureTicks = [int]$Demo.CaptureTicks
     $seconds = 6 + [int][Math]::Ceiling(($captureTicks + 6) / 30.0)
     return [Math]::Max(10, $seconds)
+}
+
+function Convert-VgaChannel {
+    param([int]$Value)
+    return [int][Math]::Round(($Value * 255.0) / 63.0)
+}
+
+function New-RgbRef {
+    param([int]$R, [int]$G, [int]$B)
+
+    return [pscustomobject]@{
+        R = (Convert-VgaChannel $R)
+        G = (Convert-VgaChannel $G)
+        B = (Convert-VgaChannel $B)
+    }
+}
+
+function Get-ColorDistance {
+    param(
+        $Color,
+        $Reference
+    )
+
+    $dr = [double]($Color.R - $Reference.R)
+    $dg = [double]($Color.G - $Reference.G)
+    $db = [double]($Color.B - $Reference.B)
+    return (($dr * $dr) + ($dg * $dg) + ($db * $db))
+}
+
+function Get-BitmapPixel {
+    param(
+        [System.Drawing.Bitmap]$Bitmap,
+        [int]$X,
+        [int]$Y
+    )
+
+    return $Bitmap.GetPixel($X, $Y)
+}
+
+function Get-LogicalBitmapPixel {
+    param(
+        [System.Drawing.Bitmap]$Bitmap,
+        [double]$LogicalX,
+        [double]$LogicalY,
+        [int]$ScreenW,
+        [int]$ScreenH
+    )
+
+    $scaledX = [int][Math]::Floor(((($LogicalX + 0.5) * $Bitmap.Width) / $ScreenW))
+    $scaledY = [int][Math]::Floor(((($LogicalY + 0.5) * $Bitmap.Height) / $ScreenH))
+    $scaledX = [Math]::Max(0, [Math]::Min($Bitmap.Width - 1, $scaledX))
+    $scaledY = [Math]::Max(0, [Math]::Min($Bitmap.Height - 1, $scaledY))
+    return (Get-BitmapPixel -Bitmap $Bitmap -X $scaledX -Y $scaledY)
+}
+
+function Get-StatusFromBitmap {
+    param(
+        [System.Drawing.Bitmap]$Bitmap,
+        [int]$MarkerX,
+        [int]$MarkerY,
+        [int]$MarkerW,
+        [int]$MarkerH,
+        [int]$ScreenW,
+        [int]$ScreenH
+    )
+
+    $passRef = New-RgbRef 12 52 58
+    $failRef = New-RgbRef 63 18 18
+    $passDistance = [double]::PositiveInfinity
+    $failDistance = [double]::PositiveInfinity
+    for ($logicalY = $MarkerY; $logicalY -lt ($MarkerY + $MarkerH); $logicalY++) {
+        for ($logicalX = $MarkerX; $logicalX -lt ($MarkerX + $MarkerW); $logicalX++) {
+            $sample = Get-LogicalBitmapPixel -Bitmap $Bitmap -LogicalX $logicalX -LogicalY $logicalY -ScreenW $ScreenW -ScreenH $ScreenH
+            $passDistance = [Math]::Min($passDistance, (Get-ColorDistance -Color $sample -Reference $passRef))
+            $failDistance = [Math]::Min($failDistance, (Get-ColorDistance -Color $sample -Reference $failRef))
+        }
+    }
+
+    $closestDistance = [Math]::Min($passDistance, $failDistance)
+    if ($closestDistance -gt 20000) {
+        return 'UNKNOWN'
+    }
+
+    if ($passDistance -le $failDistance) {
+        return 'PASS'
+    }
+
+    return 'FAIL'
+}
+
+function Test-ShowcaseBitmap {
+    param(
+        [System.Drawing.Bitmap]$Bitmap,
+        [hashtable]$Geometry
+    )
+
+    $luminance = 0.0
+    $samples = 0
+    for ($logicalY = 24; $logicalY -le 168; $logicalY += 24) {
+        for ($logicalX = 24; $logicalX -le 296; $logicalX += 24) {
+            $sample = Get-LogicalBitmapPixel -Bitmap $Bitmap -LogicalX $logicalX -LogicalY $logicalY -ScreenW $Geometry.ScreenW -ScreenH $Geometry.ScreenH
+            $luminance += ((0.2126 * $sample.R) + (0.7152 * $sample.G) + (0.0722 * $sample.B))
+            $samples++
+        }
+    }
+
+    $averageLuminance = if ($samples -gt 0) { ($luminance / $samples) } else { 0.0 }
+    $status = Get-StatusFromBitmap -Bitmap $Bitmap -MarkerX $Geometry.MarkerX -MarkerY $Geometry.MarkerY -MarkerW $Geometry.MarkerW -MarkerH $Geometry.MarkerH -ScreenW $Geometry.ScreenW -ScreenH $Geometry.ScreenH
+    return [pscustomobject]@{
+        AverageLuminance = [double]$averageLuminance
+        VerifyStatus = [string]$status
+    }
+}
+
+function Assert-ShowcaseBitmap {
+    param(
+        [string]$ImagePath,
+        [string]$Role,
+        [hashtable]$Geometry
+    )
+
+    $bitmap = [System.Drawing.Bitmap]::FromFile($ImagePath)
+    try {
+        $analysis = Test-ShowcaseBitmap -Bitmap $bitmap -Geometry $Geometry
+    } finally {
+        $bitmap.Dispose()
+    }
+
+    if ($analysis.AverageLuminance -lt 18.0) {
+        throw ("Showcase role '{0}' captured a black or near-black frame: {1}" -f $Role, $ImagePath)
+    }
+
+    if ($analysis.VerifyStatus -ne 'UNKNOWN') {
+        throw ("Showcase role '{0}' captured a verify/debug scene ({1}): {2}" -f $Role, $analysis.VerifyStatus, $ImagePath)
+    }
 }
 
 function Invoke-ChildBuild {
@@ -217,19 +441,18 @@ function Invoke-DemoCapture {
     $rawShotPath = Join-Path $ArtifactDir ("showcase-{0}-{1}.png" -f $reportRole, $demoId)
     $logPath = Join-Path $ArtifactDir ("showcase-{0}-{1}.log" -f $reportRole, $demoId)
 
+    Stop-VmIfRunning -Name $VmName
+    Ensure-VmRegistered -Name $VmName
+    Stop-VmIfRunning -Name $VmName
     Invoke-ChildBuild -ExtraArguments @(
         '-DebugBuild',
         '-DebugDemoBoot',
         '-DebugDemoIndex',
         $DemoIndex.ToString()
     )
-
-    Stop-VmIfRunning -Name $VmName
-    Ensure-VmRegistered -Name $VmName
-    Stop-VmIfRunning -Name $VmName
     Start-HeadlessVm -Name $VmName
     Start-Sleep -Seconds (Get-CaptureWaitSeconds -Demo $Demo)
-    Invoke-VBoxManage -Arguments @('controlvm', $VmName, 'screenshotpng', $rawShotPath) | Out-Null
+    Invoke-VmScreenshot -Name $VmName -OutputPath $rawShotPath
     Copy-Item -LiteralPath $rawShotPath -Destination $shotPath -Force
     if (-not (Test-Path -LiteralPath $vboxLogPath)) {
         throw ("VBox log was not found after showcase demo boot: {0}" -f $vboxLogPath)
@@ -258,22 +481,23 @@ function Invoke-DirectGameplayCapture {
     $rawShotPath = Join-Path $ArtifactDir ("showcase-{0}-direct.png" -f $Role)
     $logPath = Join-Path $ArtifactDir ("showcase-{0}-direct.log" -f $Role)
 
+    Stop-VmIfRunning -Name $VmName
+    Ensure-VmRegistered -Name $VmName
+    Stop-VmIfRunning -Name $VmName
     Invoke-ChildBuild -ExtraArguments @(
         '-DebugBuild',
         '-DebugRender3D',
+        '-DebugRenderStage',
+        '5',
         '-DebugStartInGame',
         '-DebugStartSector',
         '1',
         '-DebugSeed',
         '4660'
     )
-
-    Stop-VmIfRunning -Name $VmName
-    Ensure-VmRegistered -Name $VmName
-    Stop-VmIfRunning -Name $VmName
     Start-HeadlessVm -Name $VmName
     Start-Sleep -Seconds $waitSeconds
-    Invoke-VBoxManage -Arguments @('controlvm', $VmName, 'screenshotpng', $rawShotPath) | Out-Null
+    Invoke-VmScreenshot -Name $VmName -OutputPath $rawShotPath
     Copy-Item -LiteralPath $rawShotPath -Destination $shotPath -Force
     if (-not (Test-Path -LiteralPath $vboxLogPath)) {
         throw ("VBox log was not found after direct gameplay boot: {0}" -f $vboxLogPath)
@@ -296,8 +520,18 @@ Assert-PathExists -Path $DeployScriptPath -Label 'deploy script'
 Assert-PathExists -Path $VmSmokeScriptPath -Label 'vm smoke script'
 Assert-PathExists -Path $RuntimeVerifyScriptPath -Label 'runtime verify script'
 Assert-PathExists -Path $DemoSourcePath -Label 'demo source'
+Assert-PathExists -Path $ConstantsSourcePath -Label 'constants source'
 Assert-PathExists -Path $vbox -Label 'VBoxManage'
 New-Item -ItemType Directory -Force -Path $artifactDir | Out-Null
+
+$geometry = @{
+    ScreenW = Get-AsmEquValue -SourcePath $ConstantsSourcePath -Name 'SCREEN_W'
+    ScreenH = Get-AsmEquValue -SourcePath $ConstantsSourcePath -Name 'SCREEN_H'
+    MarkerX = Get-AsmEquValue -SourcePath $ConstantsSourcePath -Name 'VERIFY_MARKER_X'
+    MarkerY = Get-AsmEquValue -SourcePath $ConstantsSourcePath -Name 'VERIFY_MARKER_Y'
+    MarkerW = Get-AsmEquValue -SourcePath $ConstantsSourcePath -Name 'VERIFY_MARKER_W'
+    MarkerH = Get-AsmEquValue -SourcePath $ConstantsSourcePath -Name 'VERIFY_MARKER_H'
+}
 
 $artifactPaths = New-Object 'System.Collections.Generic.List[string]'
 $summaryLines = New-Object 'System.Collections.Generic.List[string]'
@@ -311,11 +545,36 @@ $restoreRelease = $true
 
 try {
     Ensure-VmRegistered -Name $VmName
+    $runtimeVerifyReport = Join-Path $buildDir 'cyberstorm-runtime-verify-report.txt'
+    $runtimeVerifyArgs = @(
+        '-Assembler', $Assembler,
+        '-RenderMode', '3D',
+        '-ReportPath', $runtimeVerifyReport
+    )
+    if (-not [string]::IsNullOrWhiteSpace($AssemblerPath)) {
+        $runtimeVerifyArgs += @('-AssemblerPath', $AssemblerPath)
+    }
+    if (-not [string]::IsNullOrWhiteSpace($MasmPath)) {
+        $runtimeVerifyArgs += @('-MasmPath', $MasmPath)
+    }
+    if ($SfxOnly.IsPresent) {
+        $runtimeVerifyArgs += '-SfxOnly'
+    }
+    $runtimeVerifyResult = & $RuntimeVerifyScriptPath @runtimeVerifyArgs
+    $artifactPaths.Add($runtimeVerifyResult.ReportPath)
+    $reportLines.Add('Prerequisite: runtime verify')
+    $reportLines.Add(("  Report: {0}" -f $runtimeVerifyResult.ReportPath))
+    foreach ($summaryLine in @($runtimeVerifyResult.SummaryLines)) {
+        $reportLines.Add(("  {0}" -f $summaryLine))
+    }
+    $reportLines.Add('')
+
     $vmSmokeReport = Join-Path $buildDir 'cyberstorm-vm-smoke-report.txt'
     $vmSmokeResult = & $VmSmokeScriptPath -ReportPath $vmSmokeReport
     $titleSource = Join-Path $buildDir 'vm-smoke\cyberstorm-vm-smoke-title.png'
     $titleTarget = Join-Path $artifactDir 'showcase-title.png'
     Copy-Item -LiteralPath $titleSource -Destination $titleTarget -Force
+    Assert-ShowcaseBitmap -ImagePath $titleTarget -Role 'title' -Geometry $geometry
     $artifactPaths.Add($titleTarget)
     $summaryLines.Add(("title: {0}" -f $titleTarget))
     $reportLines.Add('Role: title')
@@ -324,6 +583,7 @@ try {
     $reportLines.Add('')
 
     $beautyCapture = Invoke-DirectGameplayCapture -ArtifactDir $artifactDir -Role 'beauty' -WaitSeconds 5
+    Assert-ShowcaseBitmap -ImagePath $beautyCapture.ScreenshotPath -Role 'beauty' -Geometry $geometry
     $artifactPaths.Add($beautyCapture.ScreenshotPath)
     $artifactPaths.Add($beautyCapture.RawScreenshotPath)
     $artifactPaths.Add($beautyCapture.LogPath)
@@ -337,6 +597,7 @@ try {
     $reportLines.Add('')
 
     $actionCapture = Invoke-DirectGameplayCapture -ArtifactDir $artifactDir -Role 'action' -WaitSeconds 12
+    Assert-ShowcaseBitmap -ImagePath $actionCapture.ScreenshotPath -Role 'action' -Geometry $geometry
     $artifactPaths.Add($actionCapture.ScreenshotPath)
     $artifactPaths.Add($actionCapture.RawScreenshotPath)
     $artifactPaths.Add($actionCapture.LogPath)

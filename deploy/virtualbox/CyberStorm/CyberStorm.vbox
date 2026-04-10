@@ -4,20 +4,21 @@
 ** If you make changes to this file while any VirtualBox related application
 ** is running, your changes will be overwritten later, without taking effect.
 ** Use VBoxManage or the VirtualBox Manager GUI to make changes.
+**
+** Written by VirtualBox 7.2.6 (r172322)
 -->
 <VirtualBox xmlns="http://www.virtualbox.org/" version="1.19-windows">
-  <Machine uuid="{00e48714-e3ea-458c-82ad-e41539e2d25c}" name="CyberStorm" OSType="Other" snapshotFolder="Snapshots" lastStateChange="2026-04-10T16:18:21Z">
+  <Machine uuid="{00e48714-e3ea-458c-82ad-e41539e2d25c}" name="CyberStorm" OSType="Other" snapshotFolder="Snapshots" lastStateChange="2026-04-10T20:32:11Z">
     <MediaRegistry>
       <FloppyImages>
         <Image uuid="{aa73f26b-98f9-4ce7-b144-688151f6bc3d}" location="C:/Users/RhythmicCarnage/Desktop/CyberStorm/build/cyberstorm.vfd"/>
       </FloppyImages>
     </MediaRegistry>
+    <ExtraData>
+      <ExtraDataItem name="GUI/LastCloseAction" value="Detach"/>
+      <ExtraDataItem name="GUI/LastNormalWindowPosition" value="2560,258,640,443"/>
+    </ExtraData>
     <Hardware>
-      <CPU>
-        <PAE enabled="true"/>
-        <LongMode enabled="false"/>
-        <HardwareVirtExLargePages enabled="true"/>
-      </CPU>
       <Memory RAMSize="32"/>
       <Boot>
         <Order position="1" device="Floppy"/>
@@ -25,6 +26,7 @@
         <Order position="3" device="None"/>
         <Order position="4" device="None"/>
       </Boot>
+      <Firmware/>
       <BIOS>
         <SmbiosUuidLittleEndian enabled="true"/>
       </BIOS>
@@ -35,6 +37,9 @@
       </Network>
       <AudioAdapter controller="SB16" useDefault="true" driver="WAS" enabled="true" enabledOut="true"/>
       <Clipboard/>
+      <GuestProperties>
+        <GuestProperty name="/VirtualBox/HostInfo/GUI/LanguageID" value="en_US" timestamp="1775848924766566400" flags="RDONLYGUEST"/>
+      </GuestProperties>
       <StorageControllers>
         <StorageController name="Floppy" type="I82078" PortCount="1" useHostIOCache="true" Bootable="true">
           <AttachedDevice type="Floppy" hotpluggable="false" port="0" device="0">
@@ -42,6 +47,11 @@
           </AttachedDevice>
         </StorageController>
       </StorageControllers>
+      <CPU>
+        <HardwareVirtExLargePages enabled="true"/>
+        <PAE enabled="true"/>
+        <LongMode enabled="false"/>
+      </CPU>
     </Hardware>
   </Machine>
 </VirtualBox>

@@ -1355,7 +1355,7 @@ verify_body_ready:
     mov si, offset verify_state_heading_label
     mov ah, PAL_WHITE
     call draw_text_small
-    call game3d_get_facing_heading
+    mov al, [verify_snapshot_heading]
     mov ah, PAL_WHITE
     mov bx, 186
     mov dx, 94
@@ -1366,8 +1366,7 @@ verify_body_ready:
     mov si, offset verify_state_variant_label
     mov ah, PAL_WHITE
     call draw_text_small
-    call game3d_get_facing_heading
-    call game3d_get_room_variant_from_heading
+    mov al, [verify_snapshot_variant]
     mov ah, PAL_WHITE
     mov bx, 220
     mov dx, 94
@@ -1463,7 +1462,7 @@ verify_state_detail_done:
     mov si, offset verify_state_cue_label
     mov ah, PAL_WHITE
     call draw_text_small
-    call game3d_get_runtime_cue_flags
+    mov al, [verify_snapshot_cue_flags]
     mov ah, PAL_WHITE
     mov bx, 152
     mov dx, 110
@@ -1599,6 +1598,121 @@ verify_step_label_ready:
     mov dx, VERIFY_OBS_BITS_Y
     call draw_verify_signature_bits
 
+    cmp byte ptr [verify_mode], VERIFY_MODE_FRONTEND
+    je verify_draw_prompt_box
+
+    mov bx, 56
+    mov dx, 168
+    mov cx, 246
+    mov bp, 22
+    mov al, PAL_PANEL2
+    call fill_rect
+
+    mov bx, 54
+    mov dx, 166
+    mov cx, 250
+    mov bp, 26
+    test byte ptr [anim_phase], 1
+    jz verify_prompt_frame_base
+    mov al, PAL_WHITE
+    jmp verify_prompt_frame_ready
+
+verify_prompt_frame_base:
+    call get_verify_scene_accent_color
+
+verify_prompt_frame_ready:
+    call draw_rect_outline
+
+    mov bx, 64
+    mov dx, 172
+    mov si, offset verify_state_intro_label
+    mov ah, PAL_WHITE
+    call draw_text_small
+    mov al, [verify_snapshot_intro_timer]
+    mov ah, PAL_WHITE
+    mov bx, 80
+    mov dx, 172
+    call draw_two_digit_small
+
+    mov bx, 98
+    mov dx, 172
+    mov si, offset verify_state_enemy_tick_label
+    mov ah, PAL_WHITE
+    call draw_text_small
+    mov al, [verify_snapshot_enemy_tick]
+    mov ah, PAL_WHITE
+    mov bx, 114
+    mov dx, 172
+    call draw_two_digit_small
+
+    mov bx, 132
+    mov dx, 172
+    mov si, offset verify_state_threat_label
+    mov ah, PAL_WHITE
+    call draw_text_small
+    mov al, [verify_snapshot_threat_level]
+    mov ah, PAL_WHITE
+    mov bx, 148
+    mov dx, 172
+    call draw_two_digit_small
+
+    mov bx, 166
+    mov dx, 172
+    mov si, offset verify_state_threat_x_label
+    mov ah, PAL_WHITE
+    call draw_text_small
+    mov al, [verify_snapshot_threat_x]
+    mov ah, PAL_WHITE
+    mov bx, 182
+    mov dx, 172
+    call draw_two_digit_small
+
+    mov bx, 200
+    mov dx, 172
+    mov si, offset verify_state_threat_y_label
+    mov ah, PAL_WHITE
+    call draw_text_small
+    mov al, [verify_snapshot_threat_y]
+    mov ah, PAL_WHITE
+    mov bx, 216
+    mov dx, 172
+    call draw_two_digit_small
+
+    mov bx, 64
+    mov dx, 180
+    mov si, offset verify_state_enemy0_label
+    mov ah, PAL_WHITE
+    call draw_text_small
+    mov ax, [verify_snapshot_enemy0]
+    mov bx, 80
+    mov dx, 180
+    mov cl, PAL_WHITE
+    call draw_word_hex_small
+
+    mov bx, 138
+    mov dx, 180
+    mov si, offset verify_state_enemy1_label
+    mov ah, PAL_WHITE
+    call draw_text_small
+    mov ax, [verify_snapshot_enemy1]
+    mov bx, 154
+    mov dx, 180
+    mov cl, PAL_WHITE
+    call draw_word_hex_small
+
+    mov bx, 212
+    mov dx, 180
+    mov si, offset verify_state_enemy2_label
+    mov ah, PAL_WHITE
+    call draw_text_small
+    mov ax, [verify_snapshot_enemy2]
+    mov bx, 228
+    mov dx, 180
+    mov cl, PAL_WHITE
+    call draw_word_hex_small
+    ret
+
+verify_draw_prompt_box:
     mov bx, 74
     mov dx, 170
     mov cx, 172
@@ -1611,14 +1725,14 @@ verify_step_label_ready:
     mov cx, 176
     mov bp, 14
     test byte ptr [anim_phase], 1
-    jz verify_prompt_frame_base
+    jz verify_prompt_frontend_base
     mov al, PAL_WHITE
-    jmp verify_prompt_frame_ready
+    jmp verify_prompt_frontend_ready
 
-verify_prompt_frame_base:
+verify_prompt_frontend_base:
     call get_verify_scene_accent_color
 
-verify_prompt_frame_ready:
+verify_prompt_frontend_ready:
     call draw_rect_outline
 
     mov bx, 86

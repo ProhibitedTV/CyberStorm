@@ -772,6 +772,43 @@ function Get-RuntimeVerificationSignature {
     return ($signature -band 0xFFFF)
 }
 
+function Get-AdventureEnemyFingerprint {
+    param(
+        $State,
+        [int]$EnemyIndex
+    )
+
+    if (($EnemyIndex -lt 0) -or ($EnemyIndex -ge $State.Enemies.Count)) {
+        return 0
+    }
+
+    $enemy = $State.Enemies[$EnemyIndex]
+    if (-not $enemy.Alive) {
+        return 0
+    }
+
+    $fingerprint = 0x8000
+    $fingerprint = $fingerprint -bor ((([int]$enemy.Kind) -band 0x03) -shl 12)
+    $fingerprint = $fingerprint -bor ((([int]$enemy.X) -band 0x1F) -shl 6)
+    $fingerprint = $fingerprint -bor ((([int]$enemy.Y) -band 0x3F))
+    return ($fingerprint -band 0xFFFF)
+}
+
+function Get-AdventureAutonomousDiagnostics {
+    param($State)
+
+    return [pscustomobject]@{
+        IntroTimer = [int]$State.IntroTimer
+        EnemyTick = [int]$State.EnemyTick
+        ThreatLevel = [int]$State.ThreatLevel
+        ThreatX = [int]$State.ThreatX
+        ThreatY = [int]$State.ThreatY
+        Enemy0 = (Get-AdventureEnemyFingerprint -State $State -EnemyIndex 0)
+        Enemy1 = (Get-AdventureEnemyFingerprint -State $State -EnemyIndex 1)
+        Enemy2 = (Get-AdventureEnemyFingerprint -State $State -EnemyIndex 2)
+    }
+}
+
 function Get-StepActionName {
     param(
         $Step,
@@ -2060,6 +2097,7 @@ for ($demoIndex = 0; $demoIndex -lt $demos.Count; $demoIndex++) {
 
     $runtimeState = Invoke-AdventureDemoSimulation -Demo $demo -Constants $constants -GameplayKits $geometryKits -AdventureRealm $adventureRealm
     $signature = Get-RuntimeVerificationSignature -RuntimeState $runtimeState -Constants $constants -GameplayKits $geometryKits -AdventureRealm $adventureRealm
+    $diagnostics = Get-AdventureAutonomousDiagnostics -State $runtimeState
     $stepTicks = 0
     foreach ($step in @($demo.Steps)) {
         $stepTicks += Get-StepRepeatCount -Step $step -DemoName ([string]$demo.Name)
@@ -2083,6 +2121,8 @@ for ($demoIndex = 0; $demoIndex -lt $demos.Count; $demoIndex++) {
     $reportLines.Add(("  Score/Kills/Hits: {0}/{1}/{2}" -f $runtimeState.Score, $runtimeState.KillCount, $runtimeState.Hits))
     $reportLines.Add(("  Shot: mode={0} reason={1} tick={2} subject={3},{4} frame={5}" -f $runtimeState.ShotMode, $runtimeState.ShotReason, $runtimeState.ShotTick, $runtimeState.ShotSubject.X, $runtimeState.ShotSubject.Y, $runtimeState.ShotFrameVariant))
     $reportLines.Add(("  CueFlags: {0}" -f (Get-RuntimeCueFlags -RuntimeState $runtimeState -Constants $constants -GameplayKits $geometryKits -AdventureRealm $adventureRealm)))
+    $reportLines.Add(("  Autonomous: intro={0} enemyTick={1} threat={2} tile={3},{4}" -f $diagnostics.IntroTimer, $diagnostics.EnemyTick, $diagnostics.ThreatLevel, $diagnostics.ThreatX, $diagnostics.ThreatY))
+    $reportLines.Add(("  EnemySlots: e0={0} e1={1} e2={2}" -f (Format-Hex16 $diagnostics.Enemy0), (Format-Hex16 $diagnostics.Enemy1), (Format-Hex16 $diagnostics.Enemy2)))
     $reportLines.Add(("  Final signature: {0}" -f (Format-Hex16 $signature)))
     $reportLines.Add('')
 }

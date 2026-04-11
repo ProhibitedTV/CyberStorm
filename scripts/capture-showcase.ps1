@@ -7,6 +7,7 @@ param(
     [switch]$SfxOnly,
     [string]$VmName = 'CyberStorm',
     [string]$DemoSourcePath = (Join-Path (Join-Path $PSScriptRoot '..') 'assets\demos.psd1'),
+    [string]$SectorSourcePath = (Join-Path (Join-Path $PSScriptRoot '..') 'assets\sectors.psd1'),
     [string]$ConstantsSourcePath = (Join-Path (Join-Path $PSScriptRoot '..') 'src\game\constants.inc'),
     [string]$BuildScriptPath = (Join-Path $PSScriptRoot 'build.ps1'),
     [string]$DeployScriptPath = (Join-Path $PSScriptRoot 'deploy-vm.ps1'),
@@ -255,6 +256,80 @@ function Get-CaptureWaitSeconds {
     $captureTicks = [int]$Demo.CaptureTicks
     $seconds = 6 + [int][Math]::Ceiling(($captureTicks + 6) / 30.0)
     return [Math]::Max(10, $seconds)
+}
+
+function Get-ShowcaseCapturePlan {
+    param(
+        [string]$SectorSourcePath,
+        [string]$DemoSourcePath
+    )
+
+    $sectorData = Import-StructuredDataFile -SourcePath $SectorSourcePath -Label 'sector source'
+    if (-not $sectorData.ContainsKey('AdventureRealm')) {
+        throw ("Sector source does not define AdventureRealm capture data: {0}" -f $SectorSourcePath)
+    }
+
+    $realm = $sectorData['AdventureRealm']
+    if (-not ($realm -is [System.Collections.IDictionary])) {
+        throw ("AdventureRealm in {0} must be a hashtable." -f $SectorSourcePath)
+    }
+
+    if (-not $realm.ContainsKey('CaptureAnchors')) {
+        throw ("AdventureRealm in {0} is missing CaptureAnchors." -f $SectorSourcePath)
+    }
+
+    $captureAnchors = $realm['CaptureAnchors']
+    if (-not ($captureAnchors -is [System.Collections.IDictionary])) {
+        throw ("AdventureRealm.CaptureAnchors in {0} must be a hashtable." -f $SectorSourcePath)
+    }
+
+    $demoData = Import-StructuredDataFile -SourcePath $DemoSourcePath -Label 'demo source'
+    if (-not $demoData.ContainsKey('Demos')) {
+        throw ("Demo source must define a 'Demos' array: {0}" -f $DemoSourcePath)
+    }
+
+    $demos = @($demoData['Demos'])
+    $demoIndexById = @{}
+    for ($demoIndex = 0; $demoIndex -lt $demos.Count; $demoIndex++) {
+        $demo = $demos[$demoIndex]
+        $demoId = ([string]$demo['Id']).Trim()
+        if (-not [string]::IsNullOrWhiteSpace($demoId) -and -not $demoIndexById.ContainsKey($demoId)) {
+            $demoIndexById[$demoId] = $demoIndex
+        }
+    }
+
+    $plan = New-Object 'System.Collections.Generic.List[object]'
+    foreach ($anchorKey in @('Beauty', 'Action')) {
+        if (-not $captureAnchors.ContainsKey($anchorKey)) {
+            throw ("AdventureRealm.CaptureAnchors in {0} is missing '{1}'." -f $SectorSourcePath, $anchorKey)
+        }
+
+        $demoId = ([string]$captureAnchors[$anchorKey]).Trim()
+        if (-not $demoIndexById.ContainsKey($demoId)) {
+            throw ("AdventureRealm.CaptureAnchors.{0} references missing demo '{1}'." -f $anchorKey, $demoId)
+        }
+
+        $demoIndex = [int]$demoIndexById[$demoId]
+        $demo = $demos[$demoIndex]
+        $expectedRole = $anchorKey.ToLowerInvariant()
+        $captureRole = ([string]$demo['CaptureRole']).Trim().ToLowerInvariant()
+        if ($captureRole -ne $expectedRole) {
+            throw ("Demo '{0}' must use CaptureRole '{1}' to satisfy AdventureRealm.CaptureAnchors.{2}." -f $demoId, $expectedRole, $anchorKey)
+        }
+        if (($demo.ContainsKey('RuntimeVerify')) -and [bool]$demo['RuntimeVerify']) {
+            throw ("Demo '{0}' cannot be used as a public capture anchor because RuntimeVerify is enabled." -f $demoId)
+        }
+
+        $plan.Add([pscustomobject]@{
+            Anchor = $anchorKey
+            Role = $expectedRole
+            DemoId = $demoId
+            DemoIndex = $demoIndex
+            Demo = $demo
+        })
+    }
+
+    return $plan.ToArray()
 }
 
 function Convert-VgaChannel {
@@ -520,6 +595,7 @@ Assert-PathExists -Path $DeployScriptPath -Label 'deploy script'
 Assert-PathExists -Path $VmSmokeScriptPath -Label 'vm smoke script'
 Assert-PathExists -Path $RuntimeVerifyScriptPath -Label 'runtime verify script'
 Assert-PathExists -Path $DemoSourcePath -Label 'demo source'
+Assert-PathExists -Path $SectorSourcePath -Label 'sector source'
 Assert-PathExists -Path $ConstantsSourcePath -Label 'constants source'
 Assert-PathExists -Path $vbox -Label 'VBoxManage'
 New-Item -ItemType Directory -Force -Path $artifactDir | Out-Null
@@ -531,6 +607,11 @@ $geometry = @{
     MarkerY = Get-AsmEquValue -SourcePath $ConstantsSourcePath -Name 'VERIFY_MARKER_Y'
     MarkerW = Get-AsmEquValue -SourcePath $ConstantsSourcePath -Name 'VERIFY_MARKER_W'
     MarkerH = Get-AsmEquValue -SourcePath $ConstantsSourcePath -Name 'VERIFY_MARKER_H'
+}
+$showcaseCapturePlan = @(Get-ShowcaseCapturePlan -SectorSourcePath $SectorSourcePath -DemoSourcePath $DemoSourcePath)
+$showcaseCapturePlanByRole = @{}
+foreach ($capturePlanEntry in $showcaseCapturePlan) {
+    $showcaseCapturePlanByRole[[string]$capturePlanEntry.Role] = $capturePlanEntry
 }
 
 $artifactPaths = New-Object 'System.Collections.Generic.List[string]'
@@ -582,28 +663,32 @@ try {
     $reportLines.Add(("  Screenshot: {0}" -f $titleTarget))
     $reportLines.Add('')
 
-    $beautyCapture = Invoke-DirectGameplayCapture -ArtifactDir $artifactDir -Role 'beauty' -WaitSeconds 5
+    $beautyPlan = $showcaseCapturePlanByRole['beauty']
+    $beautyCapture = Invoke-DemoCapture -Demo $beautyPlan.Demo -DemoIndex $beautyPlan.DemoIndex -ArtifactDir $artifactDir
     Assert-ShowcaseBitmap -ImagePath $beautyCapture.ScreenshotPath -Role 'beauty' -Geometry $geometry
     $artifactPaths.Add($beautyCapture.ScreenshotPath)
     $artifactPaths.Add($beautyCapture.RawScreenshotPath)
     $artifactPaths.Add($beautyCapture.LogPath)
     $summaryLines.Add(("beauty: {0}" -f $beautyCapture.ScreenshotPath))
     $reportLines.Add('Role: beauty')
-    $reportLines.Add(("  Source: {0}" -f $beautyCapture.Source))
+    $reportLines.Add(("  Source: AdventureRealm.CaptureAnchors.Beauty -> {0}" -f $beautyPlan.DemoId))
+    $reportLines.Add(("  Demo: {0}" -f ([string]$beautyPlan.Demo.Name)))
     $reportLines.Add(("  Wait: {0}s" -f $beautyCapture.WaitSeconds))
     $reportLines.Add(("  Screenshot: {0}" -f $beautyCapture.ScreenshotPath))
     $reportLines.Add(("  Raw screenshot: {0}" -f $beautyCapture.RawScreenshotPath))
     $reportLines.Add(("  VBox log: {0}" -f $beautyCapture.LogPath))
     $reportLines.Add('')
 
-    $actionCapture = Invoke-DirectGameplayCapture -ArtifactDir $artifactDir -Role 'action' -WaitSeconds 12
+    $actionPlan = $showcaseCapturePlanByRole['action']
+    $actionCapture = Invoke-DemoCapture -Demo $actionPlan.Demo -DemoIndex $actionPlan.DemoIndex -ArtifactDir $artifactDir
     Assert-ShowcaseBitmap -ImagePath $actionCapture.ScreenshotPath -Role 'action' -Geometry $geometry
     $artifactPaths.Add($actionCapture.ScreenshotPath)
     $artifactPaths.Add($actionCapture.RawScreenshotPath)
     $artifactPaths.Add($actionCapture.LogPath)
     $summaryLines.Add(("action: {0}" -f $actionCapture.ScreenshotPath))
     $reportLines.Add('Role: action')
-    $reportLines.Add(("  Source: {0}" -f $actionCapture.Source))
+    $reportLines.Add(("  Source: AdventureRealm.CaptureAnchors.Action -> {0}" -f $actionPlan.DemoId))
+    $reportLines.Add(("  Demo: {0}" -f ([string]$actionPlan.Demo.Name)))
     $reportLines.Add(("  Wait: {0}s" -f $actionCapture.WaitSeconds))
     $reportLines.Add(("  Screenshot: {0}" -f $actionCapture.ScreenshotPath))
     $reportLines.Add(("  Raw screenshot: {0}" -f $actionCapture.RawScreenshotPath))

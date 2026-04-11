@@ -1402,7 +1402,7 @@ function Write-GeneratedSectorIncludes {
             throw ("AdventureRealm in {0} must be a hashtable." -f $SourcePath)
         }
 
-        foreach ($requiredAdventureKey in @('Title', 'Intro', 'Start', 'Portal', 'RequiredGems', 'Key', 'Rows')) {
+        foreach ($requiredAdventureKey in @('Title', 'Intro', 'Start', 'Portal', 'RequiredGems', 'Key', 'Rows', 'MacroZones', 'RouteBeats', 'CaptureAnchors')) {
             if (-not $adventureRealm.ContainsKey($requiredAdventureKey)) {
                 throw ("AdventureRealm in {0} is missing '{1}'." -f $SourcePath, $requiredAdventureKey)
             }
@@ -1412,12 +1412,85 @@ function Write-GeneratedSectorIncludes {
         $adventureIntro = [string]$adventureRealm['Intro']
         $adventureRequiredGems = [int]$adventureRealm['RequiredGems']
         $adventureRows = @($adventureRealm['Rows'] | ForEach-Object { [string]$_ })
+        $adventureMacroZones = @($adventureRealm['MacroZones'])
+        $adventureRouteBeats = @($adventureRealm['RouteBeats'])
+        $adventureCaptureAnchors = $adventureRealm['CaptureAnchors']
         if ($adventureRows.Count -ne $ExpectedMapHeight) {
             throw ("AdventureRealm in {0} must define exactly {1} rows." -f $SourcePath, $ExpectedMapHeight)
         }
         if ($adventureRequiredGems -lt 0 -or $adventureRequiredGems -gt 255) {
             throw ("AdventureRealm.RequiredGems in {0} must stay in the 0..255 range. Found {1}." -f $SourcePath, $adventureRequiredGems)
         }
+        if ($adventureMacroZones.Count -eq 0) {
+            throw ("AdventureRealm in {0} must define at least one MacroZones entry." -f $SourcePath)
+        }
+        if ($adventureRouteBeats.Count -eq 0) {
+            throw ("AdventureRealm in {0} must define at least one RouteBeats entry." -f $SourcePath)
+        }
+        if (-not ($adventureCaptureAnchors -is [System.Collections.IDictionary])) {
+            throw ("AdventureRealm.CaptureAnchors in {0} must be a hashtable." -f $SourcePath)
+        }
+
+        $adventureMacroZoneSummary = New-Object 'System.Collections.Generic.List[string]'
+        $adventureRouteBeatSummary = New-Object 'System.Collections.Generic.List[string]'
+        $adventureZoneIds = New-Object 'System.Collections.Generic.HashSet[string]' ([System.StringComparer]::OrdinalIgnoreCase)
+        foreach ($zoneEntry in $adventureMacroZones) {
+            if (-not ($zoneEntry -is [System.Collections.IDictionary])) {
+                throw ("AdventureRealm.MacroZones in {0} must be hashtables with Id and Label." -f $SourcePath)
+            }
+
+            $zoneId = ([string]$zoneEntry['Id']).Trim()
+            $zoneLabel = ([string]$zoneEntry['Label']).Trim()
+            $zoneBounds = if ($zoneEntry.ContainsKey('Bounds')) { ([string]$zoneEntry['Bounds']).Trim() } else { '' }
+            if ([string]::IsNullOrWhiteSpace($zoneId) -or $zoneId -notmatch '^[a-z0-9]+(?:-[a-z0-9]+)*$') {
+                throw ("AdventureRealm.MacroZones in {0} must use lowercase slug Id values. Found '{1}'." -f $SourcePath, $zoneEntry['Id'])
+            }
+            if ([string]::IsNullOrWhiteSpace($zoneLabel)) {
+                throw ("AdventureRealm.MacroZones entry '{0}' in {1} is missing Label." -f $zoneId, $SourcePath)
+            }
+            if (-not $adventureZoneIds.Add($zoneId)) {
+                throw ("AdventureRealm.MacroZones in {0} reused Id '{1}'." -f $SourcePath, $zoneId)
+            }
+
+            if ([string]::IsNullOrWhiteSpace($zoneBounds)) {
+                $adventureMacroZoneSummary.Add(("{0} ({1})" -f $zoneId, $zoneLabel))
+            } else {
+                $adventureMacroZoneSummary.Add(("{0} ({1}, {2})" -f $zoneId, $zoneLabel, $zoneBounds))
+            }
+        }
+
+        foreach ($beatEntry in @($adventureRouteBeats | Sort-Object -Property @{ Expression = { [int]$_.Sequence }; Ascending = $true })) {
+            if (-not ($beatEntry -is [System.Collections.IDictionary])) {
+                throw ("AdventureRealm.RouteBeats in {0} must be hashtables with Zone, Sequence, and Summary." -f $SourcePath)
+            }
+
+            $zoneId = ([string]$beatEntry['Zone']).Trim()
+            $sequence = [int]$beatEntry['Sequence']
+            $summary = ([string]$beatEntry['Summary']).Trim()
+            if (-not $adventureZoneIds.Contains($zoneId)) {
+                throw ("AdventureRealm.RouteBeats in {0} referenced unknown zone '{1}'." -f $SourcePath, $zoneId)
+            }
+            if ($sequence -lt 1 -or $sequence -gt 255) {
+                throw ("AdventureRealm.RouteBeats in {0} must use Sequence values in the 1..255 range. Found {1}." -f $SourcePath, $sequence)
+            }
+            if ([string]::IsNullOrWhiteSpace($summary)) {
+                throw ("AdventureRealm.RouteBeats in {0} is missing Summary for zone '{1}'." -f $SourcePath, $zoneId)
+            }
+
+            $adventureRouteBeatSummary.Add(("#{0} {1}: {2}" -f $sequence, $zoneId, $summary))
+        }
+
+        foreach ($captureKey in @('Beauty', 'Action')) {
+            if (-not $adventureCaptureAnchors.ContainsKey($captureKey)) {
+                throw ("AdventureRealm.CaptureAnchors in {0} is missing '{1}'." -f $SourcePath, $captureKey)
+            }
+
+            $captureId = ([string]$adventureCaptureAnchors[$captureKey]).Trim()
+            if ([string]::IsNullOrWhiteSpace($captureId) -or $captureId -notmatch '^[a-z0-9]+(?:-[a-z0-9]+)*$') {
+                throw ("AdventureRealm.CaptureAnchors.{0} in {1} must reference a lowercase demo Id. Found '{2}'." -f $captureKey, $SourcePath, $adventureCaptureAnchors[$captureKey])
+            }
+        }
+        $adventureCaptureSummary = ("beauty={0}, action={1}" -f ([string]$adventureCaptureAnchors['Beauty']).Trim(), ([string]$adventureCaptureAnchors['Action']).Trim())
 
         $adventureStart = ConvertTo-AnchorPoint -Token ([string]$adventureRealm['Start']) -Context 'AdventureRealm.Start' -MapWidth $ExpectedMapWidth -MapHeight $ExpectedMapHeight
         $adventurePortal = ConvertTo-AnchorPoint -Token ([string]$adventureRealm['Portal']) -Context 'AdventureRealm.Portal' -MapWidth $ExpectedMapWidth -MapHeight $ExpectedMapHeight
@@ -1555,6 +1628,10 @@ function Write-GeneratedSectorIncludes {
         AnchorSummary = ($anchorSummary -join ' | ')
         ScenarioSummary = ($scenarioSummary -join ' | ')
         ShardPoolSummary = ($shardPoolSummary -join ' | ')
+        AdventureRealmSummary = if ($contentData.ContainsKey('AdventureRealm')) { ("{0} start {1},{2} -> portal {3},{4}, gems {5}/{6}" -f $adventureTitle, $adventureStart.X, $adventureStart.Y, $adventurePortal.X, $adventurePortal.Y, ($adventureGemBytes.Count / 2), $adventureRequiredGems) } else { 'none' }
+        AdventureZoneSummary = if ($contentData.ContainsKey('AdventureRealm')) { ($adventureMacroZoneSummary -join ' | ') } else { 'none' }
+        AdventureRouteSummary = if ($contentData.ContainsKey('AdventureRealm')) { ($adventureRouteBeatSummary -join ' | ') } else { 'none' }
+        AdventureCaptureSummary = if ($contentData.ContainsKey('AdventureRealm')) { $adventureCaptureSummary } else { 'none' }
         AdventureRealmPresent = $contentData.ContainsKey('AdventureRealm')
     }
 }
@@ -3574,7 +3651,8 @@ function Sync-ReadmeScreenshots {
             }
         )
 
-        $showcaseAvailable = $false
+        $showcaseAvailable = $true
+        $resolvedShowcaseSlots = New-Object 'System.Collections.Generic.List[object]'
         for ($slotIndex = 0; $slotIndex -lt [Math]::Min($ReadmeSlotCount, $showcaseSlots.Count); $slotIndex++) {
             $slotName = $slotNames[$slotIndex]
             $slotConfig = $showcaseSlots[$slotIndex]
@@ -3588,16 +3666,23 @@ function Sync-ReadmeScreenshots {
             }
 
             if ($null -eq $candidatePath) {
-                continue
+                $showcaseAvailable = $false
+                break
             }
 
-            $showcaseAvailable = $true
-            $slotPath = Join-Path $BuildDir $slotName
-            Copy-Item -LiteralPath $candidatePath -Destination $slotPath -Force
-            $showcaseSummary.Add(("{0} [{1}] <- {2}" -f $slotName, $slotConfig.Label, ([IO.Path]::GetFileName($candidatePath))))
+            $resolvedShowcaseSlots.Add([pscustomobject]@{
+                SlotName = $slotName
+                Label = $slotConfig.Label
+                CandidatePath = $candidatePath
+            })
         }
 
         if ($showcaseAvailable) {
+            foreach ($resolvedSlot in $resolvedShowcaseSlots) {
+                $slotPath = Join-Path $BuildDir $resolvedSlot.SlotName
+                Copy-Item -LiteralPath $resolvedSlot.CandidatePath -Destination $slotPath -Force
+                $showcaseSummary.Add(("{0} [{1}] <- {2}" -f $resolvedSlot.SlotName, $resolvedSlot.Label, ([IO.Path]::GetFileName($resolvedSlot.CandidatePath))))
+            }
             Set-Content -LiteralPath $rotationStatePath -Encoding ascii -Value '0'
             return [pscustomobject]@{
                 RotationStatePath = $rotationStatePath
@@ -3607,6 +3692,25 @@ function Sync-ReadmeScreenshots {
                 ReadmeSlots = @($showcaseSummary)
             }
         }
+    }
+
+    $preservedSlots = New-Object 'System.Collections.Generic.List[string]'
+    foreach ($slotName in $slotNames) {
+        $slotPath = Join-Path $BuildDir $slotName
+        if (Test-Path -LiteralPath $slotPath) {
+            Remove-Item -LiteralPath $slotPath -Force
+            $preservedSlots.Add(("{0} [cleared] <- showcase capture incomplete; public slot removed until verified title/beauty/action captures exist" -f $slotName))
+        } else {
+            $preservedSlots.Add(("{0} [missing] <- showcase capture incomplete; refusing to rotate debug or manual frames into public slots" -f $slotName))
+        }
+    }
+    Set-Content -LiteralPath $rotationStatePath -Encoding ascii -Value '0'
+    return [pscustomobject]@{
+        RotationStatePath = $rotationStatePath
+        SourceCount = $sourceScreenshots.Count
+        RemovedCount = $removed.Count
+        RemovedNames = @($removed)
+        ReadmeSlots = @($preservedSlots)
     }
 
     $slotTaxonomy = @(
@@ -4269,6 +4373,10 @@ $generatedContentLines = @(
     ("Anchors: {0}" -f $generatedSectors.AnchorSummary)
     ("Scenarios: {0}" -f $generatedSectors.ScenarioSummary)
     ("Shard pools: {0}" -f $generatedSectors.ShardPoolSummary)
+    ("Adventure realm: {0}" -f $generatedSectors.AdventureRealmSummary)
+    ("Adventure zones: {0}" -f $generatedSectors.AdventureZoneSummary)
+    ("Adventure beats: {0}" -f $generatedSectors.AdventureRouteSummary)
+    ("Adventure capture: {0}" -f $generatedSectors.AdventureCaptureSummary)
     ("Demo source: {0}" -f $generatedDemos.SourcePath)
     ("Demo include: {0}" -f $generatedDemos.OutputPath)
     ("Demos: {0}" -f $generatedDemos.DemoCount)
@@ -4569,7 +4677,7 @@ foreach ($runtimeVerifyLine in $runtimeVerifyLines) {
 }
 
 $showcaseArtifacts = @()
-$showcaseSourceSelection = 'Selection: branding uses the title screen, beauty uses a clean direct-to-game realm panorama, and action uses a later direct-to-game gameplay frame with enemies and objectives in view.'
+$showcaseSourceSelection = 'Selection: branding uses the title screen, and beauty/action use authored AdventureRealm capture anchors so public shots come from curated in-engine demos rather than ad hoc debug frames.'
 if ($CaptureShowcase.IsPresent) {
     $showcaseResult = & $showcaseCaptureScript `
         -Assembler $Assembler `
@@ -4603,7 +4711,7 @@ foreach ($showcaseLine in $showcaseCaptureLines) {
 }
 
 $screenshotSync = Sync-ReadmeScreenshots -BuildDir $buildDir -PoolKeepCount $screenshotPoolKeepCount -ReadmeSlotCount $readmeScreenshotCount -ReadmeSlotPrefix $readmeScreenshotPrefix -ShowcaseDir (Join-Path $buildDir 'showcase')
-$screenshotHousekeepingText = ("kept {0} source screenshots, removed {1}, rotated {2} README slots" -f $screenshotSync.SourceCount, $screenshotSync.RemovedCount, $readmeScreenshotCount)
+$screenshotHousekeepingText = ("kept {0} source screenshots, removed {1}, README slots now follow the verified showcase-only policy" -f $screenshotSync.SourceCount, $screenshotSync.RemovedCount)
 
 $bootStartOffset = Get-SymbolValue -ObjectModel $bootFlat.ObjectModel -Names @('start', '_start')
 $stageStartOffset = Get-SymbolValue -ObjectModel $gameFlat.ObjectModel -Names @('start', '_start')

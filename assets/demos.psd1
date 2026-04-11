@@ -2,11 +2,11 @@
     Demos = @(
         @{
             Id = 'glade-attract-a'
-            Name = 'SUNSPARK ATTRACT A'
+            Name = 'SUNSPARK BEAUTY PASS'
             StartSector = 1
             Seed = 0x1234
             Attract = $true
-            CaptureRole = 'gameplay'
+            CaptureRole = 'beauty'
             CaptureTicks = 52
             RuntimeVerify = $false
             Expected = @{
@@ -36,11 +36,11 @@
         }
         @{
             Id = 'glade-attract-b'
-            Name = 'SUNSPARK ATTRACT B'
+            Name = 'SUNSPARK ACTION PASS'
             StartSector = 1
             Seed = 0x2468
             Attract = $true
-            CaptureRole = 'gameplay'
+            CaptureRole = 'action'
             CaptureTicks = 50
             RuntimeVerify = $false
             Expected = @{

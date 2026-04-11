@@ -20,7 +20,7 @@ demo_attract_flag_table db 1, 1, 0, 0, 0, 0, 0, 0
 demo_capture_tick_table db 52, 50, 46, 48, 56, 64, 58, 66
                         db 92, 120, 136
 
-; Demo 1: SUNSPARK ATTRACT A
+; Demo 1: SUNSPARK BEAUTY PASS
 demo_script_0 db DEMO_ACTION_WAIT, 40
               db DEMO_ACTION_FORWARD, 12
               db DEMO_ACTION_TURN_RIGHT, 4
@@ -28,7 +28,7 @@ demo_script_0 db DEMO_ACTION_WAIT, 40
               db DEMO_ACTION_WAIT, 8
               db DEMO_ACTION_END, 0
 
-; Demo 2: SUNSPARK ATTRACT B
+; Demo 2: SUNSPARK ACTION PASS
 demo_script_1 db DEMO_ACTION_WAIT, 40
               db DEMO_ACTION_CHARGE, 1
               db DEMO_ACTION_WAIT, 12
@@ -115,8 +115,8 @@ demo_script_10 db DEMO_ACTION_WAIT, 40
                db DEMO_ACTION_END, 0
 
 
-demo_name_0 db 'SUNSPARK ATTRACT A', 0
-demo_name_1 db 'SUNSPARK ATTRACT B', 0
+demo_name_0 db 'SUNSPARK BEAUTY PASS', 0
+demo_name_1 db 'SUNSPARK ACTION PASS', 0
 demo_name_2 db 'ADVENTURE IDLE VERIFY', 0
 demo_name_3 db 'ADVENTURE TURN VERIFY', 0
 demo_name_4 db 'ADVENTURE RUN VERIFY', 0

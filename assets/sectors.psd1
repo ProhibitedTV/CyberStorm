@@ -330,10 +330,30 @@
     )
     AdventureRealm = @{
         Title = 'SUNSPARK GLADE'
-        Intro = 'GATHER THE GEMS, CLAIM THE KEY, LIGHT THE PEDESTAL, AND OPEN THE PORTAL.'
+        Intro = 'FOLLOW THE GEM TRAIL, SPARK THE PEDESTAL, CLAIM THE HILLTOP KEY, AND WAKE THE PORTAL.'
         Start = '4,12'
         Portal = '24,2'
         RequiredGems = 20
+        MacroZones = @(
+            @{ Id = 'start-glade'; Label = 'Start Glade'; Bounds = '2,10,10,13' }
+            @{ Id = 'first-loop'; Label = 'First Loop'; Bounds = '8,8,16,11' }
+            @{ Id = 'charge-lane'; Label = 'Charge Lane'; Bounds = '6,11,12,13' }
+            @{ Id = 'high-key-terrace'; Label = 'High Key Terrace'; Bounds = '14,3,22,6' }
+            @{ Id = 'glide-return'; Label = 'Glide Return'; Bounds = '18,7,25,10' }
+            @{ Id = 'portal-plaza'; Label = 'Portal Plaza'; Bounds = '21,1,25,4' }
+        )
+        RouteBeats = @(
+            @{ Zone = 'start-glade'; Sequence = 1; Summary = 'Opening gem ribbon and a clean first read of the portal tower.' }
+            @{ Zone = 'first-loop'; Sequence = 2; Summary = 'A broad first bend that teaches the realm without crowding the player.' }
+            @{ Zone = 'charge-lane'; Sequence = 3; Summary = 'One obvious rusher and the flame pedestal in an open teaching lane.' }
+            @{ Zone = 'high-key-terrace'; Sequence = 4; Summary = 'The visible hilltop key route framed against the skyline.' }
+            @{ Zone = 'glide-return'; Sequence = 5; Summary = 'A return lane with one hazard lesson and a late combat beat.' }
+            @{ Zone = 'portal-plaza'; Sequence = 6; Summary = 'The unlocked arch, the sparse warden set-piece, and the finish.' }
+        )
+        CaptureAnchors = @{
+            Beauty = 'glade-attract-a'
+            Action = 'glade-attract-b'
+        }
         Key = @(
             '18,4'
         )
@@ -341,13 +361,13 @@
             '############################'
             '#..........................#'
             '#..######.............##...#'
-            '#..#....#....####.....##...#'
             '#..#....#.............##...#'
-            '#..#....#######..####......#'
+            '#..#....#.............##...#'
+            '#..#....#####....####......#'
             '#..#.............#.........#'
-            '#..######..###...#..#####..#'
-            '#.........#......#......#..#'
-            '#..#####..#..########..#...#'
+            '#..######...##...#..#####..#'
+            '#................#......#..#'
+            '#..#####..#....#####...#...#'
             '#..#......#...........##...#'
             '#..#..##########......##...#'
             '#..#.................###...#'
@@ -355,67 +375,57 @@
             '############################'
         )
         Gems = @(
-            '4,11'
+            '5,12'
             '6,12'
-            '8,10'
+            '7,12'
+            '8,12'
+            '9,12'
             '10,10'
-            '5,10'
-            '8,9'
-            '12,8'
-            '15,8'
-            '18,10'
-            '20,9'
-            '22,8'
-            '24,8'
-            '9,6'
-            '16,6'
-            '20,6'
-            '24,6'
-            '12,4'
-            '15,4'
-            '20,4'
-            '24,4'
-            '12,2'
-            '15,2'
-            '18,2'
-            '20,2'
+            '10,11'
+            '8,10'
+            '12,9'
+            '14,8'
+            '16,8'
+            '18,8'
+            '14,6'
+            '16,5'
+            '17,4'
+            '19,4'
+            '21,4'
+            '24,5'
+            '24,7'
+            '23,8'
+            '22,9'
+            '21,3'
+            '23,3'
+            '25,2'
         )
         Switches = @(
             '10,12'
         )
         Hazards = @(
-            '14,6'
-            '15,6'
-            '19,8'
+            '21,6'
+            '22,6'
         )
         Enemies = @(
             @{ X = 8; Y = 12; Kind = 'RUSHER' }
-            @{ X = 13; Y = 8; Kind = 'RUSHER' }
-            @{ X = 21; Y = 11; Kind = 'RUSHER' }
-            @{ X = 24; Y = 7; Kind = 'RUSHER' }
-            @{ X = 20; Y = 5; Kind = 'FLANKER' }
-            @{ X = 23; Y = 8; Kind = 'FLANKER' }
-            @{ X = 20; Y = 3; Kind = 'WARDEN' }
+            @{ X = 15; Y = 9; Kind = 'RUSHER' }
+            @{ X = 22; Y = 10; Kind = 'RUSHER' }
+            @{ X = 19; Y = 6; Kind = 'FLANKER' }
+            @{ X = 22; Y = 3; Kind = 'WARDEN' }
         )
         Props = @(
-            @{ X = 3; Y = 12; Mesh = 'tree_round'; YawDegrees = 16.0 }
-            @{ X = 6; Y = 12; Mesh = 'tree_round'; YawDegrees = 228.0 }
-            @{ X = 9; Y = 12; Mesh = 'stone_stack'; YawDegrees = 34.0 }
-            @{ X = 12; Y = 11; Mesh = 'bridge_span'; YawDegrees = 0.0 }
-            @{ X = 4; Y = 9; Mesh = 'tree_round'; YawDegrees = 84.0 }
-            @{ X = 8; Y = 8; Mesh = 'stone_stack'; YawDegrees = 312.0 }
-            @{ X = 12; Y = 6; Mesh = 'bridge_span'; YawDegrees = 0.0 }
-            @{ X = 17; Y = 6; Mesh = 'stone_stack'; YawDegrees = 124.0 }
-            @{ X = 20; Y = 5; Mesh = 'tree_round'; YawDegrees = 188.0 }
-            @{ X = 23; Y = 5; Mesh = 'tree_round'; YawDegrees = 32.0 }
+            @{ X = 3; Y = 12; Mesh = 'tree_round'; YawDegrees = 22.0 }
+            @{ X = 7; Y = 13; Mesh = 'tree_round'; YawDegrees = 214.0 }
+            @{ X = 11; Y = 12; Mesh = 'stone_stack'; YawDegrees = 30.0 }
+            @{ X = 12; Y = 10; Mesh = 'bridge_span'; YawDegrees = 0.0 }
+            @{ X = 17; Y = 8; Mesh = 'bridge_span'; YawDegrees = 0.0 }
+            @{ X = 19; Y = 4; Mesh = 'stone_stack'; YawDegrees = 96.0 }
             @{ X = 10; Y = 12; Mesh = 'switch_pedestal'; YawDegrees = 0.0 }
             @{ X = 23; Y = 2; Mesh = 'portal_arch'; YawDegrees = 0.0 }
             @{ X = 24; Y = 2; Mesh = 'tower_toy'; YawDegrees = 0.0 }
             @{ X = 21; Y = 2; Mesh = 'stone_stack'; YawDegrees = 0.0 }
-            @{ X = 4; Y = 2; Mesh = 'tree_round'; YawDegrees = 160.0 }
-            @{ X = 8; Y = 2; Mesh = 'tower_toy'; YawDegrees = 12.0 }
-            @{ X = 14; Y = 2; Mesh = 'bridge_span'; YawDegrees = 0.0 }
-            @{ X = 18; Y = 3; Mesh = 'stone_stack'; YawDegrees = 90.0 }
+            @{ X = 5; Y = 3; Mesh = 'tree_round'; YawDegrees = 148.0 }
         )
     }
 }

@@ -20,15 +20,33 @@ draw_splash_scene_3d:
     mov al, PAL_CYAN
     call fill_rect
 
+IF DEBUG_RENDER_SENTINELS
+    mov bx, 0
+    mov dx, 8
+    mov al, PAL_WHITE
+    call draw_debug_render_sentinel_vga
+ENDIF
     mov al, [splash_ticks]
     mov [scene3d_tick], al
     mov al, SCENE3D_SPLASH_INDEX
     call scene3d_render_scene
+IF DEBUG_RENDER_SENTINELS
+    mov bx, 8
+    mov dx, 8
+    mov al, PAL_AMBER
+    call draw_debug_render_sentinel_vga
+ENDIF
     call draw_splash_brand_stack
     cmp byte ptr [splash_ticks], SPLASH_REVEAL_UI
     jb draw_splash_scene_3d_done
     call draw_splash_ui
 draw_splash_scene_3d_done:
+IF DEBUG_RENDER_SENTINELS
+    mov bx, 16
+    mov dx, 8
+    mov al, PAL_CYAN2
+    call draw_debug_render_sentinel_vga
+ENDIF
     ret
 
 draw_title_scene_3d:
@@ -46,11 +64,29 @@ draw_title_scene_3d:
     mov al, PAL_BG0
     call fill_rect
 
+IF DEBUG_RENDER_SENTINELS
+    mov bx, 0
+    mov dx, 12
+    mov al, PAL_WHITE
+    call draw_debug_render_sentinel_vga
+ENDIF
     mov al, [anim_phase]
     mov [scene3d_tick], al
     mov al, SCENE3D_TITLE_INDEX
     call scene3d_render_scene
+IF DEBUG_RENDER_SENTINELS
+    mov bx, 8
+    mov dx, 12
+    mov al, PAL_AMBER
+    call draw_debug_render_sentinel_vga
+ENDIF
     call draw_title_scene_overlay
+IF DEBUG_RENDER_SENTINELS
+    mov bx, 16
+    mov dx, 12
+    mov al, PAL_CYAN2
+    call draw_debug_render_sentinel_vga
+ENDIF
     ret
 
 draw_win_scene_3d:
@@ -121,6 +157,8 @@ scene3d_render_scene:
     push si
     push di
     push bp
+    push ds
+    push es
 
     mov [scene3d_index], al
     mov byte ptr [scene3d_active], 1
@@ -133,6 +171,8 @@ scene3d_render_scene:
     call scene3d_draw_face_order
     mov byte ptr [scene3d_active], 0
 
+    pop es
+    pop ds
     pop bp
     pop di
     pop si
@@ -328,6 +368,7 @@ scene3d_group_motion_tick_ready:
     ja scene3d_append_group_overflow
 
     mov ax, [scene3d_vertex_count]
+    mov [scene3d_temp_depth], ax
     mov [scene3d_temp_s], ax
     push ax
 
@@ -472,6 +513,8 @@ scene3d_group_face_loop:
     stosb
     mov al, ds:[si + 5]
     stosb
+    mov al, ds:[si + 6]
+    stosb
     add si, SCENE3D_FACE_BYTES
     dec bp
     jmp scene3d_group_face_loop
@@ -515,22 +558,50 @@ scene3d_project_vertices:
     push di
     push bp
 
+IF DEBUG_RENDER_SENTINELS
+    mov bx, 48
+    mov dx, 20
+    mov al, PAL_WHITE
+    call draw_debug_render_sentinel_vga
+ENDIF
     mov al, [scene3d_yaw_angle]
     call scene3d_get_sin_cos
     mov [scene3d_temp_x], bx
     mov [scene3d_temp_y], dx
 
+IF DEBUG_RENDER_SENTINELS
+    mov bx, 56
+    mov dx, 20
+    mov al, PAL_CYAN
+    call draw_debug_render_sentinel_vga
+ENDIF
     mov al, [scene3d_pitch_angle]
     call scene3d_get_sin_cos
     mov [scene3d_temp_z], bx
     mov [scene3d_temp_u], dx
 
+IF DEBUG_RENDER_SENTINELS
+    mov bx, 64
+    mov dx, 20
+    mov al, PAL_AMBER
+    call draw_debug_render_sentinel_vga
+ENDIF
     xor bp, bp
 
 scene3d_project_vertex_loop:
     mov ax, [scene3d_vertex_count]
     cmp bp, ax
     jae scene3d_project_vertices_done
+
+IF DEBUG_RENDER_SENTINELS
+    cmp bp, 0
+    jne scene3d_project_vertex_loop_marker_1
+    mov bx, 72
+    mov dx, 20
+    mov al, PAL_WHITE
+    call draw_debug_render_sentinel_vga
+scene3d_project_vertex_loop_marker_1:
+ENDIF
 
     mov si, [scene3d_vertex_source]
     mov ax, bp
@@ -605,7 +676,7 @@ scene3d_project_vertex_loop:
 scene3d_project_vertex_visible:
     mov cx, [scene3d_temp_l]
     mov bx, cx
-    cmp bx, 128
+    cmp bx, 256
     jae scene3d_project_vertex_project
     shl bx, 1
     shl bx, 1
@@ -672,9 +743,24 @@ scene3d_project_vertex_extreme_up:
 
 scene3d_project_vertex_next:
     inc bp
+IF DEBUG_RENDER_SENTINELS
+    cmp bp, 1
+    jne scene3d_project_vertex_next_done
+    mov bx, 80
+    mov dx, 20
+    mov al, PAL_CYAN2
+    call draw_debug_render_sentinel_vga
+scene3d_project_vertex_next_done:
+ENDIF
     jmp scene3d_project_vertex_loop
 
 scene3d_project_vertices_done:
+IF DEBUG_RENDER_SENTINELS
+    mov bx, 88
+    mov dx, 20
+    mov al, PAL_AMBER
+    call draw_debug_render_sentinel_vga
+ENDIF
     pop bp
     pop di
     pop si
@@ -845,6 +931,8 @@ scene3d_draw_face_index_ready:
     mov ax, [scene3d_vertex_z + di]
     cmp ax, SCENE3D_NEAR_Z
     jle scene3d_draw_face_by_index_done
+    mov [scene3d_temp_depth], ax
+    mov [scene3d_temp_s], ax
     mov ax, [scene3d_vertex_x + di]
     mov [scene3d_tri_x0], ax
     mov ax, [scene3d_vertex_y + di]
@@ -857,6 +945,7 @@ scene3d_draw_face_index_ready:
     mov ax, [scene3d_vertex_z + di]
     cmp ax, SCENE3D_NEAR_Z
     jle scene3d_draw_face_by_index_done
+    add [scene3d_temp_depth], ax
     mov ax, [scene3d_vertex_x + di]
     mov [scene3d_tri_x1], ax
     mov ax, [scene3d_vertex_y + di]
@@ -869,6 +958,7 @@ scene3d_draw_face_index_ready:
     mov ax, [scene3d_vertex_z + di]
     cmp ax, SCENE3D_NEAR_Z
     jle scene3d_draw_face_by_index_done
+    add [scene3d_temp_depth], ax
     mov ax, [scene3d_vertex_x + di]
     mov [scene3d_tri_x2], ax
     mov ax, [scene3d_vertex_y + di]
@@ -878,8 +968,15 @@ scene3d_draw_face_index_ready:
     mov [scene3d_temp_color], al
     mov al, [si + 4]
     mov [scene3d_temp_dither], al
+    mov al, [si + 6]
+    mov [scene3d_temp_texture], al
     cmp byte ptr [game3d_rendering_active], 0
     je scene3d_draw_face_scene_fx
+    cmp byte ptr [gameplay_render_mode], GAMEPLAY_RENDER_MODE_3D_REFERENCE
+    jne scene3d_draw_face_room_fx
+    mov byte ptr [scene3d_temp_texture], SCENE3D_TEXTURE_NONE
+
+scene3d_draw_face_room_fx:
     call game3d_apply_room_face_palette
     jmp scene3d_draw_face_fx_done
 

@@ -228,8 +228,12 @@ load_adventure_realm:
     mov byte ptr [adventure_player_grounded], 1
     mov byte ptr [adventure_player_yaw], GAME3D_YAW_EAST
     call adventure_update_active_chunk
+IF DEBUG_START_IN_GAME
+    mov byte ptr [adventure_intro_timer], 0
+ELSE
     mov byte ptr [adventure_intro_timer], ADVENTURE_INTRO_TICKS
     call game3d_start_sector_entry_shot
+ENDIF
     ret
 
 copy_adventure_realm_layout:

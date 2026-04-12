@@ -505,14 +505,64 @@ ENDIF
     ret
 
 render_gameplay_adventure_3d:
+    push cs
+    pop ds
+IF DEBUG_RENDER_SENTINELS
+    mov bx, 0
+    mov dx, 20
+    mov al, PAL_WHITE
+    call draw_debug_render_sentinel_vga
+ENDIF
     call game3d_update_adventure_camera_target
+IF DEBUG_RENDER_SENTINELS
+    mov bx, 8
+    mov dx, 20
+    mov al, PAL_CYAN
+    call draw_debug_render_sentinel_vga
+ENDIF
 IF DEBUG_RENDER_STAGE GE 0
     call game3d_draw_view_backdrop
+IF DEBUG_RENDER_SENTINELS
+    mov bx, 16
+    mov dx, 20
+    mov al, PAL_AMBER
+    call draw_debug_render_sentinel_vga
+ENDIF
 ENDIF
 IF DEBUG_RENDER_STAGE GE 1
     call game3d_build_room_if_dirty
+IF DEBUG_RENDER_SENTINELS
+    mov bx, 24
+    mov dx, 20
+    mov al, PAL_CYAN2
+    call draw_debug_render_sentinel_vga
+    mov bx, 246
+    mov dx, 178
+    mov al, PAL_CYAN2
+    call draw_debug_render_sentinel_backbuffer
+ENDIF
     call game3d_setup_adventure_camera
+IF DEBUG_RENDER_SENTINELS
+    mov bx, 32
+    mov dx, 20
+    mov al, PAL_WHITE
+    call draw_debug_render_sentinel_vga
+    mov bx, 254
+    mov dx, 178
+    mov al, PAL_WHITE
+    call draw_debug_render_sentinel_backbuffer
+ENDIF
     call game3d_render_room
+IF DEBUG_RENDER_SENTINELS
+    mov bx, 40
+    mov dx, 20
+    mov al, PAL_AMBER
+    call draw_debug_render_sentinel_vga
+    mov bx, 262
+    mov dx, 178
+    mov al, PAL_AMBER
+    call draw_debug_render_sentinel_backbuffer
+ENDIF
 ENDIF
 IF DEBUG_RENDER_STAGE GE 2
     call render_gameplay_landmark_3d
@@ -528,6 +578,24 @@ IF DEBUG_RENDER_STAGE GE 3
 ENDIF
 IF DEBUG_RENDER_STAGE GE 5
     call render_gameplay_overlay_effects_3d
+ENDIF
+    ret
+
+draw_debug_render_sentinel_backbuffer:
+IF DEBUG_RENDER_SENTINELS
+    push ax
+    push bx
+    push cx
+    push dx
+    push bp
+    mov cx, 6
+    mov bp, 3
+    call fill_rect
+    pop bp
+    pop dx
+    pop cx
+    pop bx
+    pop ax
 ENDIF
     ret
 
@@ -1096,22 +1164,76 @@ game3d_setup_camera_done:
     ret
 
 game3d_render_room:
+    push ds
+    push cs
+    pop ds
     mov byte ptr [game3d_rendering_active], 1
     mov word ptr [scene3d_vertex_source], offset game3d_room_vertex_raw
     mov word ptr [scene3d_face_source], offset game3d_room_face_raw
     mov ax, [game3d_room_vertex_count]
+    cmp ax, SCENE3D_MAX_VERTICES
+    jbe game3d_render_room_vertex_count_ready
+    mov ax, SCENE3D_MAX_VERTICES
+    mov byte ptr [game3d_room_overflow], 1
+
+game3d_render_room_vertex_count_ready:
     mov [scene3d_vertex_count], ax
     mov al, [game3d_room_face_count]
+    cmp al, SCENE3D_MAX_FACES
+    jbe game3d_render_room_face_count_ready
+    mov al, SCENE3D_MAX_FACES
+    mov byte ptr [game3d_room_overflow], 1
+
+game3d_render_room_face_count_ready:
     mov [scene3d_face_count], al
     cmp byte ptr [scene3d_face_count], 0
     je game3d_render_room_done
+IF DEBUG_RENDER_SENTINELS
+    mov bx, 270
+    mov dx, 178
+    mov al, PAL_WHITE
+    call draw_debug_render_sentinel_backbuffer
+ENDIF
+IF DEBUG_RENDER_ROOM_STAGE GE 1
     call scene3d_project_vertices
+IF DEBUG_RENDER_SENTINELS
+    mov bx, 278
+    mov dx, 178
+    mov al, PAL_CYAN
+    call draw_debug_render_sentinel_backbuffer
+ENDIF
+ENDIF
+IF DEBUG_RENDER_ROOM_STAGE GE 2
     call game3d_apply_room_instability
+IF DEBUG_RENDER_SENTINELS
+    mov bx, 286
+    mov dx, 178
+    mov al, PAL_CYAN2
+    call draw_debug_render_sentinel_backbuffer
+ENDIF
+ENDIF
+IF DEBUG_RENDER_ROOM_STAGE GE 3
     call scene3d_build_face_order
+IF DEBUG_RENDER_SENTINELS
+    mov bx, 294
+    mov dx, 178
+    mov al, PAL_WHITE
+    call draw_debug_render_sentinel_backbuffer
+ENDIF
+ENDIF
+IF DEBUG_RENDER_ROOM_STAGE GE 4
     call scene3d_draw_face_order
+IF DEBUG_RENDER_SENTINELS
+    mov bx, 302
+    mov dx, 178
+    mov al, PAL_AMBER
+    call draw_debug_render_sentinel_backbuffer
+ENDIF
+ENDIF
 
 game3d_render_room_done:
     mov byte ptr [game3d_rendering_active], 0
+    pop ds
     ret
 
 game3d_compile_room_mesh:
@@ -1119,15 +1241,63 @@ game3d_compile_room_mesh:
     mov byte ptr [game3d_room_face_count], 0
     mov byte ptr [game3d_room_overflow], 0
     mov byte ptr [game3d_optional_faces_remaining], GAME3D_OPTIONAL_FACE_BUDGET
+IF DEBUG_RENDER_SENTINELS
+    mov bx, 0
+    mov dx, 24
+    mov al, PAL_WHITE
+    call draw_debug_render_sentinel_vga
+ENDIF
     call game3d_compile_floor_strips
+IF DEBUG_RENDER_SENTINELS
+    mov bx, 8
+    mov dx, 24
+    mov al, PAL_CYAN
+    call draw_debug_render_sentinel_vga
+ENDIF
     mov byte ptr [game3d_wall_emit_mode], 0
     call game3d_compile_active_wall_families
+IF DEBUG_RENDER_SENTINELS
+    mov bx, 16
+    mov dx, 24
+    mov al, PAL_AMBER
+    call draw_debug_render_sentinel_vga
+ENDIF
     call game3d_compile_near_occluders
+IF DEBUG_RENDER_SENTINELS
+    mov bx, 24
+    mov dx, 24
+    mov al, PAL_CYAN2
+    call draw_debug_render_sentinel_vga
+ENDIF
     call game3d_compile_shot_framing
+IF DEBUG_RENDER_SENTINELS
+    mov bx, 32
+    mov dx, 24
+    mov al, PAL_WHITE
+    call draw_debug_render_sentinel_vga
+ENDIF
     call game3d_compile_gate_frame
+IF DEBUG_RENDER_SENTINELS
+    mov bx, 40
+    mov dx, 24
+    mov al, PAL_CYAN
+    call draw_debug_render_sentinel_vga
+ENDIF
     call game3d_compile_gate_lane_strips
     call game3d_compile_interactable_frames
+IF DEBUG_RENDER_SENTINELS
+    mov bx, 48
+    mov dx, 24
+    mov al, PAL_AMBER
+    call draw_debug_render_sentinel_vga
+ENDIF
     call game3d_compile_shot_far_mass
+IF DEBUG_RENDER_SENTINELS
+    mov bx, 56
+    mov dx, 24
+    mov al, PAL_CYAN2
+    call draw_debug_render_sentinel_vga
+ENDIF
     cmp byte ptr [game3d_shot_mode], GAME3D_SHOT_BASE_CHASE
     jne game3d_compile_room_skip_classic_far
     call game3d_compile_far_silhouette
@@ -2739,6 +2909,8 @@ game3d_emit_quad_from_temps:
     stosb
     mov al, [game3d_emit_flags]
     stosb
+    mov al, [scene3d_temp_texture]
+    stosb
 
     mov al, bl
     stosb
@@ -2753,6 +2925,8 @@ game3d_emit_quad_from_temps:
     mov al, [scene3d_temp_dither]
     stosb
     mov al, [game3d_emit_flags]
+    stosb
+    mov al, [scene3d_temp_texture]
     stosb
 
     mov ax, [game3d_room_vertex_count]
@@ -2806,6 +2980,8 @@ game3d_get_floor_base_material:
     mov bx, ax
     mov al, cs:[game3d_kit_floor_base_color_table + bx]
     mov ah, cs:[game3d_kit_floor_base_dither_table + bx]
+    mov dl, cs:[game3d_kit_floor_base_texture_table + bx]
+    mov [scene3d_temp_texture], dl
     pop bx
     ret
 
@@ -2816,6 +2992,8 @@ game3d_get_floor_trim_material:
     mov bx, ax
     mov al, cs:[game3d_kit_floor_trim_color_table + bx]
     mov ah, cs:[game3d_kit_floor_trim_dither_table + bx]
+    mov dl, cs:[game3d_kit_floor_trim_texture_table + bx]
+    mov [scene3d_temp_texture], dl
     pop bx
     ret
 
@@ -2826,6 +3004,7 @@ game3d_get_floor_far_material:
     mov bx, ax
     mov al, cs:[game3d_kit_backdrop_near_color_table + bx]
     mov ah, cs:[game3d_kit_backdrop_mid_color_table + bx]
+    mov byte ptr [scene3d_temp_texture], SCENE3D_TEXTURE_NONE
     pop bx
     ret
 
@@ -2836,6 +3015,7 @@ game3d_get_wall_far_material:
     mov bx, ax
     mov al, cs:[game3d_kit_backdrop_mid_color_table + bx]
     mov ah, cs:[game3d_kit_backdrop_far_color_table + bx]
+    mov byte ptr [scene3d_temp_texture], SCENE3D_TEXTURE_NONE
     pop bx
     ret
 
@@ -2846,6 +3026,8 @@ game3d_get_wall_base_material:
     mov bx, ax
     mov al, cs:[game3d_kit_wall_base_color_table + bx]
     mov ah, cs:[game3d_kit_wall_base_dither_table + bx]
+    mov dl, cs:[game3d_kit_wall_base_texture_table + bx]
+    mov [scene3d_temp_texture], dl
     pop bx
     ret
 
@@ -2856,6 +3038,8 @@ game3d_get_wall_trim_material:
     mov bx, ax
     mov al, cs:[game3d_kit_wall_trim_color_table + bx]
     mov ah, cs:[game3d_kit_wall_trim_dither_table + bx]
+    mov dl, cs:[game3d_kit_wall_trim_texture_table + bx]
+    mov [scene3d_temp_texture], dl
     pop bx
     ret
 
@@ -2866,6 +3050,8 @@ game3d_get_wall_cap_material:
     mov bx, ax
     mov al, cs:[game3d_kit_wall_cap_color_table + bx]
     mov ah, cs:[game3d_kit_wall_cap_dither_table + bx]
+    mov dl, cs:[game3d_kit_wall_cap_texture_table + bx]
+    mov [scene3d_temp_texture], dl
     pop bx
     ret
 
@@ -2876,6 +3062,8 @@ game3d_get_lane_material:
     mov bx, ax
     mov al, cs:[game3d_kit_lane_color_table + bx]
     mov ah, cs:[game3d_kit_lane_dither_table + bx]
+    mov dl, cs:[game3d_kit_lane_texture_table + bx]
+    mov [scene3d_temp_texture], dl
     pop bx
     ret
 
@@ -3720,6 +3908,8 @@ game3d_mesh_face_loop:
 
 game3d_mesh_face_flags_ready:
     mov [di + 5], al
+    mov al, es:[si + 6]
+    mov [di + 6], al
     add si, SCENE3D_FACE_BYTES
     add di, SCENE3D_FACE_BYTES
     inc bp

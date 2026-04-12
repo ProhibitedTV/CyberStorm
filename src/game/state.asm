@@ -53,6 +53,7 @@ last_tick    dw 0
 pit_frame_due_low dw 0
 pit_frame_due_high dw 0
 frame_skip_render db 0
+render_skip_streak db 0
 anim_phase   db 0
 splash_ticks db 0
 state_ticks  db 0
@@ -221,15 +222,35 @@ scene3d_temp_w      dw 0
 scene3d_temp_l      dw 0
 scene3d_temp_r      dw 0
 scene3d_temp_s      dw 0
+scene3d_temp_depth  dw 0
 scene3d_tri_x0      dw 0
 scene3d_tri_y0      dw 0
+scene3d_tri_u0      dw 0
+scene3d_tri_v0      dw 0
 scene3d_tri_x1      dw 0
 scene3d_tri_y1      dw 0
+scene3d_tri_u1      dw 0
+scene3d_tri_v1      dw 0
 scene3d_tri_x2      dw 0
 scene3d_tri_y2      dw 0
+scene3d_tri_u2      dw 0
+scene3d_tri_v2      dw 0
+scene3d_text_left_x dw 0
+scene3d_text_left_u dw 0
+scene3d_text_left_v dw 0
+scene3d_text_right_x dw 0
+scene3d_text_right_u dw 0
+scene3d_text_right_v dw 0
+scene3d_text_step_long_x dw 0
+scene3d_text_step_long_u dw 0
+scene3d_text_step_long_v dw 0
+scene3d_text_step_short_x dw 0
+scene3d_text_step_short_u dw 0
+scene3d_text_step_short_v dw 0
 scene3d_temp_color  db 0
 scene3d_temp_dither db 0
 scene3d_temp_face   db 0
+scene3d_temp_texture db SCENE3D_TEXTURE_NONE
 scene3d_vertex_x    dw SCENE3D_MAX_VERTICES dup (0)
 scene3d_vertex_y    dw SCENE3D_MAX_VERTICES dup (0)
 scene3d_vertex_z    dw SCENE3D_MAX_VERTICES dup (0)

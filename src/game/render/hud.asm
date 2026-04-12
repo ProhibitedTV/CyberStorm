@@ -1,4 +1,10 @@
 render_game_screen:
+IF DEBUG_RENDER_SENTINELS
+    mov bx, 0
+    mov dx, 16
+    mov al, PAL_WHITE
+    call draw_debug_render_sentinel_vga
+ENDIF
     call draw_game_panels
     call render_game_status
 IF DEBUG_GAMEPLAY_RENDER_MODE EQ GAMEPLAY_RENDER_MODE_2D
@@ -13,8 +19,20 @@ IF DEBUG_GAMEPLAY_RENDER_MODE EQ GAMEPLAY_RENDER_MODE_2D
 ELSE
     call render_gameplay_3d
 ENDIF
+IF DEBUG_RENDER_SENTINELS
+    mov bx, 8
+    mov dx, 16
+    mov al, PAL_AMBER
+    call draw_debug_render_sentinel_vga
+ENDIF
 IF DEBUG_OVERLAY
     call render_debug_overlay
+ENDIF
+IF DEBUG_RENDER_SENTINELS
+    mov bx, 16
+    mov dx, 16
+    mov al, PAL_CYAN2
+    call draw_debug_render_sentinel_vga
 ENDIF
     ret
 

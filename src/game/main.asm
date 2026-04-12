@@ -46,7 +46,8 @@ IF DEBUG_DEMO_BOOT
 ELSEIF DEBUG_FRONTEND_VERIFY
     call start_frontend_verify_scenario
 ELSEIF DEBUG_START_IN_GAME
-    call start_new_run
+    mov byte ptr [game_state], STATE_TITLE
+    mov byte ptr [message_id], MSG_SECTOR
 ELSE
     mov byte ptr [game_state], STATE_SPLASH
     mov byte ptr [message_id], MSG_SECTOR
@@ -56,6 +57,13 @@ main_loop:
     ; One BIOS timer tick drives animation, rendering, and then one round of
     ; state/input handling.
     call wait_frame_tick
+IF DEBUG_START_IN_GAME
+    cmp byte ptr [last_game_state], 0FFh
+    jne debug_start_ready
+    call start_new_run
+
+debug_start_ready:
+ENDIF
 IF DEBUG_LEGACY_GAMEPLAY EQ 0
     call poll_runtime_keyboard
 ELSE
@@ -213,6 +221,20 @@ wait_frame_tick_skip:
 wait_frame_tick_store:
     mov [pit_frame_due_low], bx
     mov [pit_frame_due_high], cx
+    cmp byte ptr [frame_skip_render], 0
+    je wait_frame_tick_render_ready
+    cmp byte ptr [render_skip_streak], MAX_RENDER_SKIP_STREAK - 1
+    jb wait_frame_tick_keep_skip
+    mov byte ptr [frame_skip_render], 0
+    mov byte ptr [render_skip_streak], 0
+    ret
+
+wait_frame_tick_keep_skip:
+    inc byte ptr [render_skip_streak]
+    ret
+
+wait_frame_tick_render_ready:
+    mov byte ptr [render_skip_streak], 0
     ret
 
 init_frame_clock:
@@ -315,6 +337,9 @@ frontend_state_done:
     ret
 
 frontend_start_key_pending:
+    call frontend_input_armed
+    cmp al, 0
+    je frontend_start_key_no
     cmp byte ptr [frontend_action], FRONTEND_ACTION_START
     jne frontend_start_key_no
     mov al, 1
@@ -348,13 +373,39 @@ frontend_takeover_key_pending:
     ret
 
 frontend_activity_pending:
+    call frontend_input_armed
+    cmp al, 0
+    je frontend_activity_no
     cmp byte ptr [frontend_action], FRONTEND_ACTION_NONE
     jne frontend_takeover_yes
+frontend_activity_no:
     xor al, al
     ret
 
 frontend_takeover_yes:
     mov al, 1
+    ret
+
+frontend_input_armed:
+    cmp byte ptr [game_state], STATE_SPLASH
+    jne frontend_input_check_title
+    cmp byte ptr [splash_ticks], SPLASH_INPUT_ARM_TICKS
+    jb frontend_input_not_armed
+    mov al, 1
+    ret
+
+frontend_input_check_title:
+    cmp byte ptr [game_state], STATE_TITLE
+    jne frontend_input_armed_yes
+    cmp byte ptr [title_idle_ticks], TITLE_INPUT_ARM_TICKS
+    jb frontend_input_not_armed
+
+frontend_input_armed_yes:
+    mov al, 1
+    ret
+
+frontend_input_not_armed:
+    xor al, al
     ret
 
 enter_title_screen:

@@ -6,7 +6,19 @@ render_screen:
     call update_machine_kernel_frame_mode
     call update_palette_animation
     call clear_backbuffer
+IF DEBUG_RENDER_SENTINELS
+    mov bx, 0
+    mov dx, 0
+    mov al, PAL_WHITE
+    call draw_debug_render_sentinel_vga
+ENDIF
     call draw_starfield
+IF DEBUG_RENDER_SENTINELS
+    mov bx, 8
+    mov dx, 0
+    mov al, PAL_CYAN
+    call draw_debug_render_sentinel_vga
+ENDIF
 
     cmp byte ptr [game_state], STATE_SPLASH
     je render_splash_screen
@@ -24,30 +36,105 @@ render_screen:
     jmp render_present
 
 render_splash_screen:
+IF DEBUG_RENDER_SENTINELS
+    mov bx, 0
+    mov dx, 8
+    mov al, PAL_CYAN
+    call draw_debug_render_sentinel_vga
+ENDIF
     call draw_splash_scene
     jmp render_present
 
 render_title_screen:
+IF DEBUG_RENDER_SENTINELS
+    mov bx, 8
+    mov dx, 8
+    mov al, PAL_CYAN2
+    call draw_debug_render_sentinel_vga
+ENDIF
     call draw_title_scene
     jmp render_present
 
 render_win_screen:
+IF DEBUG_RENDER_SENTINELS
+    mov bx, 16
+    mov dx, 8
+    mov al, PAL_AMBER
+    call draw_debug_render_sentinel_vga
+ENDIF
     call draw_win_scene
     jmp render_present
 
 render_lose_screen:
+IF DEBUG_RENDER_SENTINELS
+    mov bx, 24
+    mov dx, 8
+    mov al, PAL_AMBER
+    call draw_debug_render_sentinel_vga
+ENDIF
     call draw_lose_scene
     jmp render_present
 
 render_verify_pass_screen:
+IF DEBUG_RENDER_SENTINELS
+    mov bx, 0
+    mov dx, 12
+    mov al, PAL_CYAN2
+    call draw_debug_render_sentinel_vga
+ENDIF
     call draw_verify_pass_scene
     jmp render_present
 
 render_verify_fail_screen:
+IF DEBUG_RENDER_SENTINELS
+    mov bx, 8
+    mov dx, 12
+    mov al, PAL_AMBER
+    call draw_debug_render_sentinel_vga
+ENDIF
     call draw_verify_fail_scene
 
 render_present:
+IF DEBUG_RENDER_SENTINELS
+    mov bx, 24
+    mov dx, 0
+    mov al, PAL_AMBER
+    call draw_debug_render_sentinel_vga
+ENDIF
     call present_frame
+    ret
+
+draw_debug_render_sentinel_vga:
+IF DEBUG_RENDER_SENTINELS
+    push ax
+    push bx
+    push cx
+    push dx
+    push di
+    push es
+
+    mov ah, al
+    mov ax, VGA_SEG
+    mov es, ax
+    mov cx, 3
+
+draw_debug_render_sentinel_vga_row:
+    push cx
+    call compute_offset
+    mov al, ah
+    mov cx, 6
+    rep stosb
+    inc dx
+    pop cx
+    loop draw_debug_render_sentinel_vga_row
+
+    pop es
+    pop di
+    pop dx
+    pop cx
+    pop bx
+    pop ax
+ENDIF
     ret
 
 draw_splash_scene:
@@ -440,9 +527,10 @@ draw_splash_brand_stack:
     mov ax, bx
 
 splash_brand_lockup_ready:
+    mov [scene3d_temp_s], ax
     mov bx, 82
     mov dx, 58
-    add dx, ax
+    add dx, [scene3d_temp_s]
     mov cx, 156
     mov bp, 30
     mov al, PAL_PANEL
@@ -450,7 +538,7 @@ splash_brand_lockup_ready:
 
     mov bx, 80
     mov dx, 56
-    add dx, ax
+    add dx, [scene3d_temp_s]
     mov cx, 160
     mov bp, 34
     test byte ptr [anim_phase], 1
@@ -466,14 +554,14 @@ splash_brand_frame_ready:
 
     mov bx, 95
     mov dx, 64
-    add dx, ax
+    add dx, [scene3d_temp_s]
     mov si, offset splash_brand
     mov ah, PAL_PANEL2
     call draw_text_big
 
     mov bx, 94
     mov dx, 63
-    add dx, ax
+    add dx, [scene3d_temp_s]
     mov si, offset splash_brand
     mov ah, PAL_WHITE
     call draw_text_big
@@ -483,7 +571,7 @@ splash_brand_frame_ready:
 
     mov bx, 116
     mov dx, 86
-    add dx, ax
+    add dx, [scene3d_temp_s]
     mov cx, 88
     mov bp, 8
     mov al, PAL_PANEL2
@@ -491,7 +579,7 @@ splash_brand_frame_ready:
 
     mov bx, 114
     mov dx, 84
-    add dx, ax
+    add dx, [scene3d_temp_s]
     mov cx, 92
     mov bp, 12
     mov al, PAL_AMBER
@@ -499,14 +587,14 @@ splash_brand_frame_ready:
 
     mov bx, 128
     mov dx, 88
-    add dx, ax
+    add dx, [scene3d_temp_s]
     mov si, offset splash_subtitle
     mov ah, PAL_WHITE
     call draw_text_small
 
     mov bx, 94
     mov dx, 54
-    add dx, ax
+    add dx, [scene3d_temp_s]
     mov cx, 132
     mov bp, 1
     mov al, PAL_WHITE
@@ -514,7 +602,7 @@ splash_brand_frame_ready:
 
     mov bx, 110
     mov dx, 97
-    add dx, ax
+    add dx, [scene3d_temp_s]
     mov cx, 100
     mov bp, 1
     mov al, PAL_AMBER

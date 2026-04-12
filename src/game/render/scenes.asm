@@ -3,6 +3,7 @@ render_screen:
     ; backbuffer for the duration of the frame.
     mov ax, BACKBUFFER_SEG
     mov es, ax
+    call update_machine_kernel_frame_mode
     call update_palette_animation
     call clear_backbuffer
     call draw_starfield

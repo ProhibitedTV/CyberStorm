@@ -561,7 +561,7 @@ function Invoke-DirectGameplayCapture {
     Stop-VmIfRunning -Name $VmName
     Invoke-ChildBuild -ExtraArguments @(
         '-DebugBuild',
-        '-DebugRender3D',
+        '-DebugRenderMachine',
         '-DebugRenderStage',
         '5',
         '-DebugStartInGame',
@@ -629,7 +629,7 @@ try {
     $runtimeVerifyReport = Join-Path $buildDir 'cyberstorm-runtime-verify-report.txt'
     $runtimeVerifyArgs = @(
         '-Assembler', $Assembler,
-        '-RenderMode', '3D',
+        '-RenderMode', '3DMachine',
         '-ReportPath', $runtimeVerifyReport
     )
     if (-not [string]::IsNullOrWhiteSpace($AssemblerPath)) {

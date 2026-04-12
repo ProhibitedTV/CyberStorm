@@ -10,6 +10,7 @@ include game\constants.inc
 include debug_config.inc
 include audio_config.inc
 include generated_bank_layout.inc
+include generated_machine_code.inc
 include generated_presentation_content.inc
 include game\audio.asm
 include game\feedback.asm
@@ -18,6 +19,7 @@ include game\banks.asm
 include game\main.asm
 include game\gameplay.asm
 include game\render\framebuffer.asm
+include game\render\machine_kernels.asm
 include game\render\primitives.asm
 include game\render\3d_math.asm
 include game\render\3d_raster.asm

@@ -120,6 +120,9 @@ music_note   db MUSIC_NOTE_REST
 music_ptr    dw 0
 scene_render_mode db SCENE_RENDER_MODE_3D
 gameplay_render_mode db GAMEPLAY_RENDER_MODE_3D
+machine_kernel_active db 0
+machine_kernel_far_ptr dw 0, 0
+machine_kernel_param_block db 16 dup (0)
 scene3d_active db 0
 scene3d_index  db 0
 scene3d_face_count db 0
@@ -262,7 +265,7 @@ shield_text   db 'SHIELD', 0
 pulse_text    db 'PULSE', 0
 gate_text     db 'GATE', 0
 controls_text db 'MOVE WASD OR ARROWS  C EMP  R RESET', 0
-adventure_controls_text db 'WS MOVE  AD TURN  SPACE GLIDE  SHIFT CHARGE  C FLAME  ENT PORTAL', 0
+adventure_controls_text db 'WS RUN  AD TURN  SPC GLIDE  SHF CHARGE  C FLAME  ENT PORTAL', 0
 realm_text db 'REALM', 0
 gems_text db 'GEMS', 0
 goals_text db 'GOALS', 0

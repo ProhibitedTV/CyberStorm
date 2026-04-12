@@ -350,6 +350,28 @@
             @{ Zone = 'glide-return'; Sequence = 5; Summary = 'A return lane with one hazard lesson and a late combat beat.' }
             @{ Zone = 'portal-plaza'; Sequence = 6; Summary = 'The unlocked arch, the sparse warden set-piece, and the finish.' }
         )
+        Chunks = @(
+            @{ Id = 'glade-west'; Zone = 'start-glade'; Bounds = '2,10,7,13'; Role = 'start-lane' }
+            @{ Id = 'glade-east'; Zone = 'start-glade'; Bounds = '8,10,12,13'; Role = 'intro-turn' }
+            @{ Id = 'loop-bend'; Zone = 'first-loop'; Bounds = '10,8,16,11'; Role = 'route-read' }
+            @{ Id = 'charge-teach'; Zone = 'charge-lane'; Bounds = '6,11,12,13'; Role = 'charge-lesson' }
+            @{ Id = 'terrace-climb'; Zone = 'high-key-terrace'; Bounds = '14,5,18,8'; Role = 'climb' }
+            @{ Id = 'terrace-key'; Zone = 'high-key-terrace'; Bounds = '18,3,22,5'; Role = 'key-reveal' }
+            @{ Id = 'glide-ramp'; Zone = 'glide-return'; Bounds = '18,7,22,10'; Role = 'glide-setup' }
+            @{ Id = 'return-lane'; Zone = 'glide-return'; Bounds = '22,7,25,10'; Role = 'return-pressure' }
+            @{ Id = 'portal-front'; Zone = 'portal-plaza'; Bounds = '21,1,23,4'; Role = 'portal-read' }
+            @{ Id = 'portal-arch'; Zone = 'portal-plaza'; Bounds = '23,1,25,3'; Role = 'finish' }
+        )
+        EncounterLanes = @(
+            @{ Id = 'charge-lane-rusher'; Zone = 'charge-lane'; Enemy = 'RUSHER'; Summary = 'Open frontal lane that teaches the charge counter clearly.' }
+            @{ Id = 'switch-flanker'; Zone = 'first-loop'; Enemy = 'FLANKER'; Summary = 'Side pressure near the pedestal without crowding the route read.' }
+            @{ Id = 'portal-warden'; Zone = 'portal-plaza'; Enemy = 'WARDEN'; Summary = 'Late sparse set-piece that only activates near the finish.' }
+        )
+        LandmarkSightlines = @(
+            @{ From = 'start-glade'; To = 'portal-plaza'; Subject = 'portal-arch'; Summary = 'The tower and arch peek over the upper cliff from the opening lane.' }
+            @{ From = 'first-loop'; To = 'high-key-terrace'; Subject = 'sun-key'; Summary = 'The key terrace stays visible while the player rounds the first bend.' }
+            @{ From = 'glide-return'; To = 'portal-plaza'; Subject = 'portal-arch'; Summary = 'The final glide points directly back into the portal silhouette.' }
+        )
         CaptureAnchors = @{
             Beauty = 'glade-attract-a'
             Action = 'glade-attract-b'

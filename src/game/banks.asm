@@ -8,6 +8,18 @@ load_required_asset_banks:
     push dx
     push es
 
+    mov ax, CODE_BANK_LBA
+    mov cx, CODE_BANK_SECTORS
+    mov dx, CODE_BANK_SEG
+    mov si, offset text_code_bank_error
+    call load_asset_bank_or_fail
+
+    mov ax, TEXTURE_BANK_LBA
+    mov cx, TEXTURE_BANK_SECTORS
+    mov dx, TEXTURE_BANK_SEG
+    mov si, offset text_texture_bank_error
+    call load_asset_bank_or_fail
+
     mov ax, MAP_BANK_LBA
     mov cx, MAP_BANK_SECTORS
     mov dx, MAP_BANK_SEG
@@ -128,6 +140,8 @@ fatal_asset_bank_spin:
     hlt
     jmp fatal_asset_bank_spin
 
+text_code_bank_error db 'CYBERSTORM CODE BANK ERROR', 0
+text_texture_bank_error db 'CYBERSTORM TEXTURE BANK ERROR', 0
 text_map_bank_error db 'CYBERSTORM MAP BANK ERROR', 0
 text_presentation_bank_error db 'CYBERSTORM PRESENTATION BANK ERROR', 0
 text_geometry_bank_error db 'CYBERSTORM GEOMETRY BANK ERROR', 0

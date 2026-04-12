@@ -19,53 +19,53 @@ ENDIF
     ret
 
 draw_game_panels:
-    mov bx, 12
-    mov dx, 10
-    mov cx, 296
-    mov bp, 18
+    mov bx, 8
+    mov dx, 6
+    mov cx, 304
+    mov bp, 14
     mov al, PAL_PANEL
     call fill_rect
 
-    mov bx, 12
-    mov dx, 30
-    mov cx, 296
-    mov bp, 140
+    mov bx, 8
+    mov dx, 24
+    mov cx, 304
+    mov bp, 152
     mov al, PAL_PANEL
     call fill_rect
 
-    mov bx, 12
-    mov dx, 172
-    mov cx, 296
-    mov bp, 18
+    mov bx, 8
+    mov dx, 176
+    mov cx, 304
+    mov bp, 16
     mov al, PAL_PANEL
     call fill_rect
 
     call get_sector_accent_color
-    mov bx, 10
-    mov dx, 8
-    mov cx, 300
-    mov bp, 22
+    mov bx, 6
+    mov dx, 4
+    mov cx, 308
+    mov bp, 18
     call draw_rect_outline
 
-    mov bx, 10
-    mov dx, 28
-    mov cx, 300
-    mov bp, 144
+    mov bx, 6
+    mov dx, 22
+    mov cx, 308
+    mov bp, 156
     call draw_rect_outline
 
-    mov bx, 10
-    mov dx, 170
-    mov cx, 300
-    mov bp, 22
+    mov bx, 6
+    mov dx, 174
+    mov cx, 308
+    mov bp, 20
     call draw_rect_outline
 
-    mov bx, 14
-    mov dx, 29
-    mov cx, 292
+    mov bx, 8
+    mov dx, 23
+    mov cx, 304
     mov bp, 1
     call fill_rect
 
-    mov dx, 171
+    mov dx, 175
     call fill_rect
     ret
 

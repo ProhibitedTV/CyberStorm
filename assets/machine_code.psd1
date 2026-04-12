@@ -1,0 +1,140 @@
+@{
+    Kernels = @(
+        @{
+            Id = 'world_transform_project'
+            Stage = 'transform'
+            ParamBlockSize = 24
+            Clobbers = @('AX', 'BX', 'CX', 'DX', 'SI', 'DI', 'FLAGS')
+            FallbackSymbol = 'scene3d_project_vertices'
+            Bytes = @(0xCB)
+        }
+        @{
+            Id = 'affine_textured_triangle'
+            Stage = 'raster'
+            ParamBlockSize = 40
+            Clobbers = @('AX', 'BX', 'CX', 'DX', 'SI', 'DI', 'FLAGS')
+            FallbackSymbol = 'scene3d_draw_triangle'
+            Bytes = @(0xCB)
+        }
+        @{
+            Id = 'flat_shaded_triangle_fallback'
+            Stage = 'raster'
+            ParamBlockSize = 32
+            Clobbers = @('AX', 'BX', 'CX', 'DX', 'SI', 'DI', 'FLAGS')
+            FallbackSymbol = 'scene3d_draw_triangle'
+            Bytes = @(0xCB)
+        }
+        @{
+            Id = 'shadow_decal_blit'
+            Stage = 'effects'
+            ParamBlockSize = 9
+            Clobbers = @('AX', 'BX', 'CX', 'DX', 'DI', 'FLAGS')
+            FallbackSymbol = 'fill_rect_reference'
+            Bytes = @(
+                0x55,
+                0x8B, 0x1C,
+                0x8B, 0x54, 0x02,
+                0x8B, 0x4C, 0x04,
+                0x8B, 0x6C, 0x06,
+                0x8A, 0x44, 0x08,
+                0x8B, 0xFA,
+                0xD1, 0xE7,
+                0xD1, 0xE7,
+                0xD1, 0xE7,
+                0xD1, 0xE7,
+                0xD1, 0xE7,
+                0xD1, 0xE7,
+                0x8B, 0xC2,
+                0xD1, 0xE0,
+                0xD1, 0xE0,
+                0xD1, 0xE0,
+                0xD1, 0xE0,
+                0xD1, 0xE0,
+                0xD1, 0xE0,
+                0xD1, 0xE0,
+                0xD1, 0xE0,
+                0x01, 0xC7,
+                0x01, 0xDF,
+                0x09, 0xED,
+                0x74, 0x0F,
+                0x57,
+                0x51,
+                0xF3, 0xAA,
+                0x59,
+                0x5F,
+                0x81, 0xC7, 0x40, 0x01,
+                0x29, 0xCF,
+                0x4D,
+                0xEB, 0xED,
+                0x5D,
+                0xCB
+            )
+        }
+        @{
+            Id = 'actor_pose_step_interpolation'
+            Stage = 'animation'
+            ParamBlockSize = 8
+            Clobbers = @('AX', 'DX', 'FLAGS')
+            FallbackSymbol = 'machine_pose_step_reference'
+            Bytes = @(
+                0x8B, 0x04,
+                0x8B, 0x54, 0x02,
+                0x39, 0xD0,
+                0x74, 0x16,
+                0x7C, 0x0B,
+                0x2B, 0x44, 0x04,
+                0x39, 0xD0,
+                0x7D, 0x0D,
+                0x8B, 0xC2,
+                0xEB, 0x09,
+                0x03, 0x44, 0x04,
+                0x39, 0xD0,
+                0x7E, 0x02,
+                0x8B, 0xC2,
+                0x89, 0x44, 0x06,
+                0xCB
+            )
+        }
+    )
+    Tables = @(
+        @{
+            Id = 'sin_table_88'
+            ElementSize = 2
+            Signed = $true
+            Values = @(
+                0, 6, 13, 19, 25, 31, 38, 44,
+                50, 56, 62, 68, 74, 80, 86, 92,
+                98, 104, 109, 115, 121, 126, 132, 137,
+                142, 147, 152, 157, 162, 167, 172, 177,
+                181, 185, 190, 194, 198, 202, 206, 209,
+                213, 216, 220, 223, 226, 229, 231, 234,
+                237, 239, 241, 243, 245, 247, 248, 250,
+                251, 252, 253, 254, 255, 255, 256, 256,
+                256, 256, 256, 255, 255, 254, 253, 252,
+                251, 250, 248, 247, 245, 243, 241, 239,
+                237, 234, 231, 229, 226, 223, 220, 216,
+                213, 209, 206, 202, 198, 194, 190, 185,
+                181, 177, 172, 167, 162, 157, 152, 147,
+                142, 137, 132, 126, 121, 115, 109, 104,
+                98, 92, 86, 80, 74, 68, 62, 56,
+                50, 44, 38, 31, 25, 19, 13, 6,
+                0, -6, -13, -19, -25, -31, -38, -44,
+                -50, -56, -62, -68, -74, -80, -86, -92,
+                -98, -104, -109, -115, -121, -126, -132, -137,
+                -142, -147, -152, -157, -162, -167, -172, -177,
+                -181, -185, -190, -194, -198, -202, -206, -209,
+                -213, -216, -220, -223, -226, -229, -231, -234,
+                -237, -239, -241, -243, -245, -247, -248, -250,
+                -251, -252, -253, -254, -255, -255, -256, -256,
+                -256, -256, -256, -255, -255, -254, -253, -252,
+                -251, -250, -248, -247, -245, -243, -241, -239,
+                -237, -234, -231, -229, -226, -223, -220, -216,
+                -213, -209, -206, -202, -198, -194, -190, -185,
+                -181, -177, -172, -167, -162, -157, -152, -147,
+                -142, -137, -132, -126, -121, -115, -109, -104,
+                -98, -92, -86, -80, -74, -68, -62, -56,
+                -50, -44, -38, -31, -25, -19, -13, -6
+            )
+        }
+    )
+}

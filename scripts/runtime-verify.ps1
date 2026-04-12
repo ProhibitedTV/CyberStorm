@@ -5,8 +5,8 @@ param(
     [string]$MasmPath,
     [switch]$ExperimentalMusic,
     [switch]$SfxOnly,
-    [ValidateSet('2D', '3D')]
-    [string]$RenderMode = '3D',
+    [ValidateSet('2D', '3DReference', '3DMachine')]
+    [string]$RenderMode = '3DMachine',
     [ValidateRange(0, 5)]
     [Nullable[int]]$RenderStage,
     [string]$DemoFilter,
@@ -26,7 +26,7 @@ if ($ExperimentalMusic.IsPresent -and $SfxOnly.IsPresent) {
 }
 
 if (($RenderMode -eq '2D') -and ($null -ne $RenderStage)) {
-    throw '-RenderStage only applies to -RenderMode 3D.'
+    throw '-RenderStage only applies to -RenderMode 3DReference or 3DMachine.'
 }
 
 Add-Type -AssemblyName System.Drawing
@@ -430,11 +430,19 @@ function Get-RenderLabel {
         return '2d'
     }
 
-    if ($null -ne $Stage) {
-        return ("3d-stage{0}" -f ([int]$Stage))
+    if ($Mode -eq '3DReference') {
+        if ($null -ne $Stage) {
+            return ("3dref-stage{0}" -f ([int]$Stage))
+        }
+
+        return '3dref'
     }
 
-    return '3d'
+    if ($null -ne $Stage) {
+        return ("3dmc-stage{0}" -f ([int]$Stage))
+    }
+
+    return '3dmc'
 }
 
 function Get-HostReplayBlock {
@@ -541,8 +549,10 @@ function Invoke-RuntimeVerifyRun {
     )
     if ($RenderMode -eq '2D') {
         $buildArgs += '-DebugRender2D'
+    } elseif ($RenderMode -eq '3DReference') {
+        $buildArgs += '-DebugRenderReference'
     } else {
-        $buildArgs += '-DebugRender3D'
+        $buildArgs += '-DebugRenderMachine'
         if ($null -ne $RenderStage) {
             $buildArgs += @('-DebugRenderStage', $RenderStage.ToString())
         }

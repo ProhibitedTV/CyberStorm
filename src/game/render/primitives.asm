@@ -46,6 +46,33 @@ draw_rect_outline:
     ret
 
 fill_rect:
+    cmp byte ptr [machine_kernel_active], 0
+    je fill_rect_reference
+    push ax
+    push bx
+    push cx
+    push dx
+    push si
+    push di
+    push bp
+    mov word ptr [machine_kernel_param_block + 0], bx
+    mov word ptr [machine_kernel_param_block + 2], dx
+    mov word ptr [machine_kernel_param_block + 4], cx
+    mov word ptr [machine_kernel_param_block + 6], bp
+    mov [machine_kernel_param_block + 8], al
+    lea si, machine_kernel_param_block
+    mov ax, MC_KERNEL_SHADOW_DECAL_BLIT_OFFSET
+    call machine_call_far_kernel
+    pop bp
+    pop di
+    pop si
+    pop dx
+    pop cx
+    pop bx
+    pop ax
+    ret
+
+fill_rect_reference:
     push ax
     push bx
     push cx

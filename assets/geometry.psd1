@@ -30,13 +30,19 @@ function Face {
     param(
         [int[]]$Indices,
         [string]$Material,
-        [string]$Fx = ''
+        [string]$Fx = '',
+        [string]$TextureKey = '',
+        [string]$ShadeMode = '',
+        [object[]]$UV = @()
     )
 
     return @{
         Indices = $Indices
         Material = $Material
         Fx = $Fx
+        TextureKey = $TextureKey
+        ShadeMode = $ShadeMode
+        UV = $UV
     }
 }
 
@@ -71,14 +77,14 @@ function Face {
         @{ Key = 'console_cyan'; Base = 5; Dither = 7 }
         @{ Key = 'console_amber'; Base = 8; Dither = 7 }
         @{ Key = 'console_red'; Base = 10; Dither = 7 }
-        @{ Key = 'sky_stone'; Base = 7; Dither = 6 }
-        @{ Key = 'sun_warm'; Base = 8; Dither = 7 }
-        @{ Key = 'meadow_ground'; Base = 13; Dither = 8 }
-        @{ Key = 'tree_canopy'; Base = 5; Dither = 7 }
-        @{ Key = 'tree_trunk'; Base = 8; Dither = 9 }
-        @{ Key = 'stone_soft'; Base = 7; Dither = 4 }
-        @{ Key = 'lava_hot'; Base = 9; Dither = 8 }
-        @{ Key = 'gem_blue'; Base = 6; Dither = 7 }
+        @{ Key = 'sky_stone'; Base = 7; Dither = 6; TextureKey = 'soft-stone'; ShadeMode = 'affine' }
+        @{ Key = 'sun_warm'; Base = 8; Dither = 7; TextureKey = 'banner-warm'; ShadeMode = 'affine' }
+        @{ Key = 'meadow_ground'; Base = 13; Dither = 8; TextureKey = 'grass'; ShadeMode = 'affine' }
+        @{ Key = 'tree_canopy'; Base = 5; Dither = 7; TextureKey = 'leaf-canopy'; ShadeMode = 'affine' }
+        @{ Key = 'tree_trunk'; Base = 8; Dither = 9; TextureKey = 'tree-bark'; ShadeMode = 'affine' }
+        @{ Key = 'stone_soft'; Base = 7; Dither = 4; TextureKey = 'soft-stone'; ShadeMode = 'affine' }
+        @{ Key = 'lava_hot'; Base = 9; Dither = 8; TextureKey = 'lava-hot'; ShadeMode = 'affine' }
+        @{ Key = 'gem_blue'; Base = 6; Dither = 7; TextureKey = 'gem-blue'; ShadeMode = 'flat' }
     )
     Scenes = @(
         @{

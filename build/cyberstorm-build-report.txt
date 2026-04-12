@@ -1,5 +1,5 @@
 CyberStorm Build Report
-Generated: 2026-04-12 13:39:15 -06:00
+Generated: 2026-04-12 14:24:46 -06:00
 
 Toolchain
   Assembler: MASM
@@ -7,7 +7,7 @@ Toolchain
   Discovered via: vswhere
 
 Build Profile
-  Mode: debug
+  Mode: release
   Deterministic seed: off
   Debug overlay: off
   Startup mode: normal splash/title flow
@@ -20,8 +20,8 @@ Audio Policy
   Policy: looping themes are the supported release baseline; one-shot SFX still preempt the channel and music resumes underneath.
 
 Render Path
-  Scene renderer: SCENES_3D_REFERENCE
-  Gameplay renderer: GAMEPLAY_3D_REFERENCE
+  Scene renderer: SCENES_3D_MACHINE
+  Gameplay renderer: GAMEPLAY_3D_MACHINE
   3D render stage: 5
   Debug switches: -DebugRender2D uses the oracle path, -DebugRenderReference forces stage-two MASM kernels, and -DebugRenderMachine (or legacy -DebugRender3D) enables the banked raw machine-code rail.
 
@@ -142,7 +142,7 @@ Balance Harness
 Regression Harness
   Report: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-regression-report.txt
   Boot sector: 512 bytes, signature 0x55AA, LBA 0 matches both image files
-  Stage two: 63440 bytes, 124 sectors, GAME_SECTORS matches, entry near jmp to 0x1424
+  Stage two: 63283 bytes, 124 sectors, GAME_SECTORS matches, entry near jmp to 0x1424
   Code bank: 676 bytes (1024 padded), 2 sectors, LBA 125..126
   Texture bank: 20480 bytes (20480 padded), 40 sectors, LBA 127..166
   Map bank: 3780 bytes (4096 padded), 8 sectors, LBA 167..174
@@ -181,12 +181,12 @@ Screenshots
 Layout
   Boot code bytes: 132 / 510
   Boot code free bytes: 378
-  Stage2 bytes: 63440
-  Stage2 free bytes before 64 KiB limit: 2096
+  Stage2 bytes: 63283
+  Stage2 free bytes before 64 KiB limit: 2253
   Stage2 padded bytes: 63488
   Stage2 sectors: 124
-  Image bytes used: 115582 / 1474560
-  Image free bytes: 1358978
+  Image bytes used: 115425 / 1474560
+  Image free bytes: 1359135
   Disk footprint bytes: 116736 / 1474560
   Disk footprint free bytes: 1357824
   Boot load address: 0000:7C00 (phys 0x00007C00)
@@ -194,7 +194,7 @@ Layout
   Boot signature: 0x55AA @ byte 510
   Stage2 LBA range: 1..124
   Boot section: .text$mn (relocations applied: 3)
-  Stage2 section: .text$mn (relocations applied: 3283)
+  Stage2 section: .text$mn (relocations applied: 3274)
   Assembler warnings: boot=1, stage2=1
   Boot 'start' symbol offset: 0x0000
   Stage2 'start' symbol offset: 0x1424
@@ -235,5 +235,5 @@ Artifacts
   C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm.vfd
 
 Warnings
-  Stage two is within 2096 bytes of the 64 KiB load limit.
+  Stage two is within 2253 bytes of the 64 KiB load limit.
   Stage two uses 124 sectors; that is close to the 128-sector single-segment load limit.

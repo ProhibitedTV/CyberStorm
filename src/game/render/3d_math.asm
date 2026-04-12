@@ -3,25 +3,28 @@ scene3d_get_sin_cos:
     ; Output: BX = sin(angle) in signed 8.8 fixed
     ;         DX = cos(angle) in signed 8.8 fixed
     push ax
+    push cx
     push es
     push si
+    mov cl, al
     mov ax, CODE_BANK_SEG
     mov es, ax
+    mov al, cl
     xor ah, ah
     shl ax, 1
     mov si, ax
     mov bx, es:[MC_TABLE_SIN_TABLE_88_OFFSET + si]
 
-    pop si
-    pop ax
+    mov al, cl
     add al, 64
-    push si
     xor ah, ah
     shl ax, 1
     mov si, ax
     mov dx, es:[MC_TABLE_SIN_TABLE_88_OFFSET + si]
     pop si
     pop es
+    pop cx
+    pop ax
     ret
 
 scene3d_mul_ax_bx_fixed:

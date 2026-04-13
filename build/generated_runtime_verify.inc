@@ -6,8 +6,8 @@ VERIFY_DEMO_COUNT EQU 11
 
 verify_demo_checkpoint_count_table db 0, 0, 0, 0, 0, 0, 0, 0
                                    db 0, 0, 0
-verify_demo_final_signature_table dw 0DF47h, 7A37h, 5B0Ah, 5A8Ah, 0C856h, 3B06h
-                                  dw 8EA7h, 8EA7h, 1FA4h, 0D8C4h, 0D8C4h
+verify_demo_final_signature_table dw 0F687h, 7A77h, 59CAh, 5B4Ah, 0CA96h, 39C6h
+                                  dw 8DE7h, 8DE7h, 0BAD7h, 4158h, 4158h
 verify_demo_checkpoint_table dw 0, 0, 0, 0
                              dw 0, 0, 0, 0
                              dw 0, 0, 0

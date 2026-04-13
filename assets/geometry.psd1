@@ -536,26 +536,33 @@ function Face {
             SurgeMesh = 'lava_vent'
             ShardMesh = 'gem_cluster'
             Camera = @{
-                Height = 5.25
-                Distance = 7.85
-                LookAhead = 0.90
+                Height = 4.90
+                Distance = 8.40
+                LookAhead = 1.00
                 HeadingNorthYawDegrees = 135.0
                 HeadingEastYawDegrees = 45.0
                 HeadingSouthYawDegrees = 315.0
                 HeadingWestYawDegrees = 225.0
             }
             Projection = @{
-                PitchDegrees = -15.0
-                ProjectScale = 94
+                PitchDegrees = -13.0
+                ProjectScale = 88
+            }
+            TerrainProfile = @{
+                CliffMaterial = 'sky_stone'
+                ShelfMaterial = 'meadow_ground'
+                BridgeMaterial = 'panel_white'
+                LandmarkLift = 0.60
+                PropDensity = 1
             }
             ShotRigs = @{
                 BaseChase = @{
-                    Height = 5.25
-                    Distance = 7.85
-                    LookAhead = 0.90
-                    PitchDegrees = -15.0
-                    ProjectScale = 94
-                    Horizon = 40
+                    Height = 4.90
+                    Distance = 8.40
+                    LookAhead = 1.00
+                    PitchDegrees = -13.0
+                    ProjectScale = 88
+                    Horizon = 42
                     FocusBiasX = 0.00
                     FocusBiasZ = 0.00
                 }
@@ -649,7 +656,7 @@ function Face {
                 BackdropNear = 'PAL_BG1'
                 HorizonA = 'PAL_WHITE'
                 HorizonB = 'PAL_AMBER'
-                HorizonY = 40
+                HorizonY = 42
                 WobbleStrength = 0
             }
         }
@@ -677,6 +684,13 @@ function Face {
             Projection = @{
                 PitchDegrees = -16.0
                 ProjectScale = 96
+            }
+            TerrainProfile = @{
+                CliffMaterial = 'furnace_wall'
+                ShelfMaterial = 'floor_dark'
+                BridgeMaterial = 'panel_amber'
+                LandmarkLift = 0.72
+                PropDensity = 2
             }
             ShotRigs = @{
                 BaseChase = @{
@@ -807,6 +821,13 @@ function Face {
             Projection = @{
                 PitchDegrees = -14.0
                 ProjectScale = 100
+            }
+            TerrainProfile = @{
+                CliffMaterial = 'lock_wall'
+                ShelfMaterial = 'floor_dark'
+                BridgeMaterial = 'gate_glow'
+                LandmarkLift = 0.76
+                PropDensity = 2
             }
             ShotRigs = @{
                 BaseChase = @{

@@ -1376,7 +1376,482 @@ game3d_view_backdrop_done:
     pop ax
     ret
 
+game3d_chunk_intersects_active_range:
+    mov al, [adventure_realm_chunk_max_x_table + si]
+    cmp al, [adventure_chunk_min_x]
+    jb game3d_chunk_range_no
+    mov al, [adventure_realm_chunk_min_x_table + si]
+    cmp al, [adventure_chunk_max_x]
+    ja game3d_chunk_range_no
+    mov al, [adventure_realm_chunk_max_y_table + si]
+    cmp al, [adventure_chunk_min_y]
+    jb game3d_chunk_range_no
+    mov al, [adventure_realm_chunk_min_y_table + si]
+    cmp al, [adventure_chunk_max_y]
+    ja game3d_chunk_range_no
+    mov al, 1
+    ret
+
+game3d_chunk_range_no:
+    xor al, al
+    ret
+
+game3d_emit_chunk_base_floor:
+    push ax
+    push bx
+    push dx
+    mov al, [adventure_realm_chunk_min_x_table + si]
+    call game3d_world_x_edge_from_al
+    mov [scene3d_temp_x], ax
+    mov al, [adventure_realm_chunk_max_x_table + si]
+    inc al
+    call game3d_world_x_edge_from_al
+    mov [scene3d_temp_y], ax
+    mov bx, si
+    shl bx, 1
+    mov ax, [adventure_realm_chunk_base_height_table + bx]
+    add ax, GAME3D_FLOOR_Y
+    mov [scene3d_temp_z], ax
+    mov [scene3d_temp_u], ax
+    mov al, [adventure_realm_chunk_min_y_table + si]
+    call game3d_world_z_edge_from_al
+    mov [scene3d_temp_v], ax
+    mov al, [adventure_realm_chunk_max_y_table + si]
+    inc al
+    call game3d_world_z_edge_from_al
+    mov [scene3d_temp_w], ax
+    call game3d_get_floor_base_material
+    mov byte ptr [scene3d_temp_face], GAME3D_FACE_FLAG_NONE
+    call game3d_emit_quad_from_temps
+    pop dx
+    pop bx
+    pop ax
+    ret
+
+game3d_emit_chunk_step_face:
+    push ax
+    push bx
+    push cx
+    push dx
+    mov bx, si
+    shl bx, 1
+    mov dx, [adventure_realm_chunk_base_height_table + bx]
+    mov cx, [adventure_realm_chunk_shelf_height_table + bx]
+    cmp cx, dx
+    jbe game3d_chunk_step_done
+    mov al, [adventure_realm_chunk_bridge_span_table + si]
+    cmp al, ADVENTURE_BRIDGE_NONE
+    jne game3d_chunk_step_done
+    mov al, [adventure_realm_chunk_ramp_dir_table + si]
+    cmp al, ADVENTURE_DIR_NONE
+    je game3d_chunk_step_done
+    add dx, GAME3D_FLOOR_Y
+    add cx, GAME3D_FLOOR_Y
+    mov [scene3d_temp_z], dx
+    mov [scene3d_temp_u], cx
+    cmp al, ADVENTURE_DIR_EAST
+    je game3d_chunk_step_east
+    cmp al, ADVENTURE_DIR_WEST
+    je game3d_chunk_step_west
+    cmp al, ADVENTURE_DIR_NORTH
+    je game3d_chunk_step_north
+    mov al, [adventure_realm_chunk_min_y_table + si]
+    add al, [adventure_realm_chunk_max_y_table + si]
+    shr al, 1
+    call game3d_world_z_edge_from_al
+    mov [scene3d_temp_v], ax
+    mov [scene3d_temp_w], ax
+    mov al, [adventure_realm_chunk_min_x_table + si]
+    call game3d_world_x_edge_from_al
+    mov [scene3d_temp_x], ax
+    mov al, [adventure_realm_chunk_max_x_table + si]
+    inc al
+    call game3d_world_x_edge_from_al
+    mov [scene3d_temp_y], ax
+    jmp game3d_chunk_step_emit
+
+game3d_chunk_step_north:
+    mov al, [adventure_realm_chunk_min_y_table + si]
+    add al, [adventure_realm_chunk_max_y_table + si]
+    inc al
+    shr al, 1
+    call game3d_world_z_edge_from_al
+    mov [scene3d_temp_v], ax
+    mov [scene3d_temp_w], ax
+    mov al, [adventure_realm_chunk_min_x_table + si]
+    call game3d_world_x_edge_from_al
+    mov [scene3d_temp_x], ax
+    mov al, [adventure_realm_chunk_max_x_table + si]
+    inc al
+    call game3d_world_x_edge_from_al
+    mov [scene3d_temp_y], ax
+    jmp game3d_chunk_step_emit
+
+game3d_chunk_step_east:
+    mov al, [adventure_realm_chunk_min_x_table + si]
+    add al, [adventure_realm_chunk_max_x_table + si]
+    shr al, 1
+    call game3d_world_x_edge_from_al
+    mov [scene3d_temp_x], ax
+    mov [scene3d_temp_y], ax
+    mov al, [adventure_realm_chunk_min_y_table + si]
+    call game3d_world_z_edge_from_al
+    mov [scene3d_temp_v], ax
+    mov al, [adventure_realm_chunk_max_y_table + si]
+    inc al
+    call game3d_world_z_edge_from_al
+    mov [scene3d_temp_w], ax
+    jmp game3d_chunk_step_emit
+
+game3d_chunk_step_west:
+    mov al, [adventure_realm_chunk_min_x_table + si]
+    add al, [adventure_realm_chunk_max_x_table + si]
+    inc al
+    shr al, 1
+    call game3d_world_x_edge_from_al
+    mov [scene3d_temp_x], ax
+    mov [scene3d_temp_y], ax
+    mov al, [adventure_realm_chunk_min_y_table + si]
+    call game3d_world_z_edge_from_al
+    mov [scene3d_temp_v], ax
+    mov al, [adventure_realm_chunk_max_y_table + si]
+    inc al
+    call game3d_world_z_edge_from_al
+    mov [scene3d_temp_w], ax
+
+game3d_chunk_step_emit:
+    call game3d_get_cliff_material
+    mov byte ptr [scene3d_temp_face], GAME3D_FACE_FLAG_WALL
+    call game3d_emit_quad_from_temps
+
+game3d_chunk_step_done:
+    pop dx
+    pop cx
+    pop bx
+    pop ax
+    ret
+
+game3d_emit_chunk_shelf_floor:
+    push ax
+    push bx
+    push cx
+    push dx
+    mov bx, si
+    shl bx, 1
+    mov dx, [adventure_realm_chunk_base_height_table + bx]
+    mov ax, [adventure_realm_chunk_shelf_height_table + bx]
+    cmp ax, dx
+    jbe game3d_chunk_shelf_done
+    add ax, GAME3D_FLOOR_Y
+    mov [scene3d_temp_z], ax
+    mov [scene3d_temp_u], ax
+    mov al, [adventure_realm_chunk_bridge_span_table + si]
+    cmp al, ADVENTURE_BRIDGE_EAST_WEST
+    je game3d_chunk_bridge_east_west
+    cmp al, ADVENTURE_BRIDGE_NORTH_SOUTH
+    je game3d_chunk_bridge_north_south
+    mov al, [adventure_realm_chunk_ramp_dir_table + si]
+    cmp al, ADVENTURE_DIR_EAST
+    je game3d_chunk_shelf_east
+    cmp al, ADVENTURE_DIR_WEST
+    je game3d_chunk_shelf_west
+    cmp al, ADVENTURE_DIR_NORTH
+    je game3d_chunk_shelf_north
+    cmp al, ADVENTURE_DIR_SOUTH
+    je game3d_chunk_shelf_south
+    mov al, [adventure_realm_chunk_min_x_table + si]
+    call game3d_world_x_edge_from_al
+    mov [scene3d_temp_x], ax
+    mov al, [adventure_realm_chunk_max_x_table + si]
+    inc al
+    call game3d_world_x_edge_from_al
+    mov [scene3d_temp_y], ax
+    mov al, [adventure_realm_chunk_min_y_table + si]
+    call game3d_world_z_edge_from_al
+    mov [scene3d_temp_v], ax
+    mov al, [adventure_realm_chunk_max_y_table + si]
+    inc al
+    call game3d_world_z_edge_from_al
+    mov [scene3d_temp_w], ax
+    jmp game3d_chunk_shelf_emit
+
+game3d_chunk_shelf_east:
+    mov al, [adventure_realm_chunk_min_x_table + si]
+    add al, [adventure_realm_chunk_max_x_table + si]
+    shr al, 1
+    call game3d_world_x_edge_from_al
+    mov [scene3d_temp_x], ax
+    mov al, [adventure_realm_chunk_max_x_table + si]
+    inc al
+    call game3d_world_x_edge_from_al
+    mov [scene3d_temp_y], ax
+    mov al, [adventure_realm_chunk_min_y_table + si]
+    call game3d_world_z_edge_from_al
+    mov [scene3d_temp_v], ax
+    mov al, [adventure_realm_chunk_max_y_table + si]
+    inc al
+    call game3d_world_z_edge_from_al
+    mov [scene3d_temp_w], ax
+    jmp game3d_chunk_shelf_emit
+
+game3d_chunk_shelf_west:
+    mov al, [adventure_realm_chunk_min_x_table + si]
+    call game3d_world_x_edge_from_al
+    mov [scene3d_temp_x], ax
+    mov al, [adventure_realm_chunk_min_x_table + si]
+    add al, [adventure_realm_chunk_max_x_table + si]
+    inc al
+    shr al, 1
+    call game3d_world_x_edge_from_al
+    mov [scene3d_temp_y], ax
+    mov al, [adventure_realm_chunk_min_y_table + si]
+    call game3d_world_z_edge_from_al
+    mov [scene3d_temp_v], ax
+    mov al, [adventure_realm_chunk_max_y_table + si]
+    inc al
+    call game3d_world_z_edge_from_al
+    mov [scene3d_temp_w], ax
+    jmp game3d_chunk_shelf_emit
+
+game3d_chunk_shelf_north:
+    mov al, [adventure_realm_chunk_min_x_table + si]
+    call game3d_world_x_edge_from_al
+    mov [scene3d_temp_x], ax
+    mov al, [adventure_realm_chunk_max_x_table + si]
+    inc al
+    call game3d_world_x_edge_from_al
+    mov [scene3d_temp_y], ax
+    mov al, [adventure_realm_chunk_min_y_table + si]
+    call game3d_world_z_edge_from_al
+    mov [scene3d_temp_v], ax
+    mov al, [adventure_realm_chunk_min_y_table + si]
+    add al, [adventure_realm_chunk_max_y_table + si]
+    inc al
+    shr al, 1
+    call game3d_world_z_edge_from_al
+    mov [scene3d_temp_w], ax
+    jmp game3d_chunk_shelf_emit
+
+game3d_chunk_shelf_south:
+    mov al, [adventure_realm_chunk_min_x_table + si]
+    call game3d_world_x_edge_from_al
+    mov [scene3d_temp_x], ax
+    mov al, [adventure_realm_chunk_max_x_table + si]
+    inc al
+    call game3d_world_x_edge_from_al
+    mov [scene3d_temp_y], ax
+    mov al, [adventure_realm_chunk_min_y_table + si]
+    add al, [adventure_realm_chunk_max_y_table + si]
+    shr al, 1
+    call game3d_world_z_edge_from_al
+    mov [scene3d_temp_v], ax
+    mov al, [adventure_realm_chunk_max_y_table + si]
+    inc al
+    call game3d_world_z_edge_from_al
+    mov [scene3d_temp_w], ax
+    jmp game3d_chunk_shelf_emit
+
+game3d_chunk_bridge_east_west:
+    mov al, [adventure_realm_chunk_min_x_table + si]
+    call game3d_world_x_edge_from_al
+    mov [scene3d_temp_x], ax
+    mov al, [adventure_realm_chunk_max_x_table + si]
+    inc al
+    call game3d_world_x_edge_from_al
+    mov [scene3d_temp_y], ax
+    mov al, [adventure_realm_chunk_min_y_table + si]
+    add al, [adventure_realm_chunk_max_y_table + si]
+    shr al, 1
+    mov dl, al
+    call game3d_world_z_edge_from_al
+    mov [scene3d_temp_v], ax
+    mov al, dl
+    inc al
+    call game3d_world_z_edge_from_al
+    mov [scene3d_temp_w], ax
+    jmp game3d_chunk_bridge_emit
+
+game3d_chunk_bridge_north_south:
+    mov al, [adventure_realm_chunk_min_x_table + si]
+    add al, [adventure_realm_chunk_max_x_table + si]
+    shr al, 1
+    mov dl, al
+    call game3d_world_x_edge_from_al
+    mov [scene3d_temp_x], ax
+    mov al, dl
+    inc al
+    call game3d_world_x_edge_from_al
+    mov [scene3d_temp_y], ax
+    mov al, [adventure_realm_chunk_min_y_table + si]
+    call game3d_world_z_edge_from_al
+    mov [scene3d_temp_v], ax
+    mov al, [adventure_realm_chunk_max_y_table + si]
+    inc al
+    call game3d_world_z_edge_from_al
+    mov [scene3d_temp_w], ax
+
+game3d_chunk_bridge_emit:
+    call game3d_get_bridge_material
+    mov byte ptr [scene3d_temp_face], GAME3D_FACE_FLAG_FRAME
+    call game3d_emit_quad_from_temps
+    jmp game3d_chunk_shelf_done
+
+game3d_chunk_shelf_emit:
+    call game3d_get_shelf_material
+    mov byte ptr [scene3d_temp_face], GAME3D_FACE_FLAG_TRIM
+    call game3d_emit_quad_from_temps
+    call game3d_emit_chunk_step_face
+
+game3d_chunk_shelf_done:
+    pop dx
+    pop cx
+    pop bx
+    pop ax
+    ret
+
+game3d_emit_chunk_cliff_face:
+    push ax
+    push bx
+    push dx
+    mov al, [adventure_realm_chunk_cliff_side_table + si]
+    cmp al, ADVENTURE_DIR_NONE
+    je game3d_chunk_cliff_done
+    mov bx, si
+    shl bx, 1
+    mov dx, [adventure_realm_chunk_base_height_table + bx]
+    mov ax, [adventure_realm_chunk_shelf_height_table + bx]
+    cmp ax, dx
+    jbe game3d_chunk_cliff_height_ready
+    mov dx, ax
+
+game3d_chunk_cliff_height_ready:
+    add dx, GAME3D_FLOOR_Y
+    cmp dx, GAME3D_FLOOR_Y
+    jle game3d_chunk_cliff_done
+    mov word ptr [scene3d_temp_z], GAME3D_FLOOR_Y
+    mov [scene3d_temp_u], dx
+    cmp al, ADVENTURE_DIR_EAST
+    je game3d_chunk_cliff_east
+    cmp al, ADVENTURE_DIR_WEST
+    je game3d_chunk_cliff_west
+    cmp al, ADVENTURE_DIR_NORTH
+    je game3d_chunk_cliff_north
+    mov al, [adventure_realm_chunk_max_y_table + si]
+    inc al
+    call game3d_world_z_edge_from_al
+    mov [scene3d_temp_v], ax
+    mov [scene3d_temp_w], ax
+    mov al, [adventure_realm_chunk_min_x_table + si]
+    call game3d_world_x_edge_from_al
+    mov [scene3d_temp_x], ax
+    mov al, [adventure_realm_chunk_max_x_table + si]
+    inc al
+    call game3d_world_x_edge_from_al
+    mov [scene3d_temp_y], ax
+    jmp game3d_chunk_cliff_emit
+
+game3d_chunk_cliff_north:
+    mov al, [adventure_realm_chunk_min_y_table + si]
+    call game3d_world_z_edge_from_al
+    mov [scene3d_temp_v], ax
+    mov [scene3d_temp_w], ax
+    mov al, [adventure_realm_chunk_min_x_table + si]
+    call game3d_world_x_edge_from_al
+    mov [scene3d_temp_x], ax
+    mov al, [adventure_realm_chunk_max_x_table + si]
+    inc al
+    call game3d_world_x_edge_from_al
+    mov [scene3d_temp_y], ax
+    jmp game3d_chunk_cliff_emit
+
+game3d_chunk_cliff_east:
+    mov al, [adventure_realm_chunk_max_x_table + si]
+    inc al
+    call game3d_world_x_edge_from_al
+    mov [scene3d_temp_x], ax
+    mov [scene3d_temp_y], ax
+    mov al, [adventure_realm_chunk_min_y_table + si]
+    call game3d_world_z_edge_from_al
+    mov [scene3d_temp_v], ax
+    mov al, [adventure_realm_chunk_max_y_table + si]
+    inc al
+    call game3d_world_z_edge_from_al
+    mov [scene3d_temp_w], ax
+    jmp game3d_chunk_cliff_emit
+
+game3d_chunk_cliff_west:
+    mov al, [adventure_realm_chunk_min_x_table + si]
+    call game3d_world_x_edge_from_al
+    mov [scene3d_temp_x], ax
+    mov [scene3d_temp_y], ax
+    mov al, [adventure_realm_chunk_min_y_table + si]
+    call game3d_world_z_edge_from_al
+    mov [scene3d_temp_v], ax
+    mov al, [adventure_realm_chunk_max_y_table + si]
+    inc al
+    call game3d_world_z_edge_from_al
+    mov [scene3d_temp_w], ax
+
+game3d_chunk_cliff_emit:
+    call game3d_get_cliff_material
+    mov byte ptr [scene3d_temp_face], GAME3D_FACE_FLAG_WALL
+    call game3d_emit_quad_from_temps
+
+game3d_chunk_cliff_done:
+    pop dx
+    pop bx
+    pop ax
+    ret
+
+game3d_compile_adventure_terrain:
+    push cx
+    push si
+    mov al, 0
+    call game3d_world_x_edge_from_al
+    mov [scene3d_temp_x], ax
+    mov al, MAP_W
+    call game3d_world_x_edge_from_al
+    mov [scene3d_temp_y], ax
+    mov word ptr [scene3d_temp_z], GAME3D_FLOOR_Y
+    mov word ptr [scene3d_temp_u], GAME3D_FLOOR_Y
+    mov al, 0
+    call game3d_world_z_edge_from_al
+    mov [scene3d_temp_v], ax
+    mov al, MAP_H
+    call game3d_world_z_edge_from_al
+    mov [scene3d_temp_w], ax
+    call game3d_get_floor_far_material
+    mov byte ptr [scene3d_temp_face], GAME3D_FACE_FLAG_NONE
+    call game3d_emit_quad_from_temps
+    xor si, si
+    xor cx, cx
+    mov cl, [adventure_realm_chunk_count]
+    jcxz game3d_compile_adventure_terrain_done
+
+game3d_compile_adventure_chunk_loop:
+    push cx
+    call game3d_chunk_intersects_active_range
+    cmp al, 0
+    je game3d_compile_adventure_chunk_next
+    call game3d_emit_chunk_base_floor
+    call game3d_emit_chunk_shelf_floor
+    call game3d_emit_chunk_cliff_face
+
+game3d_compile_adventure_chunk_next:
+    inc si
+    pop cx
+    loop game3d_compile_adventure_chunk_loop
+
+game3d_compile_adventure_terrain_done:
+    pop si
+    pop cx
+    ret
+
 game3d_compile_floor_strips:
+IF DEBUG_LEGACY_GAMEPLAY EQ 0
+    call game3d_compile_adventure_terrain
+    ret
+ENDIF
     mov al, 0
     call game3d_world_x_edge_from_al
     mov [scene3d_temp_x], ax
@@ -1413,6 +1888,9 @@ game3d_compile_floor_done:
     ret
 
 game3d_compile_floor_trim_strips:
+IF DEBUG_LEGACY_GAMEPLAY EQ 0
+    ret
+ENDIF
     mov dh, PLAY_MIN_Y
 
 game3d_floor_trim_row_loop:
@@ -3067,6 +3545,58 @@ game3d_get_lane_material:
     pop bx
     ret
 
+game3d_get_cliff_material:
+    push bx
+    call game3d_get_kit_index
+    xor ah, ah
+    mov bx, ax
+    mov al, cs:[game3d_kit_cliff_color_table + bx]
+    mov ah, cs:[game3d_kit_cliff_dither_table + bx]
+    mov dl, cs:[game3d_kit_cliff_texture_table + bx]
+    mov [scene3d_temp_texture], dl
+    pop bx
+    ret
+
+game3d_get_shelf_material:
+    push bx
+    call game3d_get_kit_index
+    xor ah, ah
+    mov bx, ax
+    mov al, cs:[game3d_kit_shelf_color_table + bx]
+    mov ah, cs:[game3d_kit_shelf_dither_table + bx]
+    mov dl, cs:[game3d_kit_shelf_texture_table + bx]
+    mov [scene3d_temp_texture], dl
+    pop bx
+    ret
+
+game3d_get_bridge_material:
+    push bx
+    call game3d_get_kit_index
+    xor ah, ah
+    mov bx, ax
+    mov al, cs:[game3d_kit_bridge_color_table + bx]
+    mov ah, cs:[game3d_kit_bridge_dither_table + bx]
+    mov dl, cs:[game3d_kit_bridge_texture_table + bx]
+    mov [scene3d_temp_texture], dl
+    pop bx
+    ret
+
+game3d_get_landmark_lift:
+    push bx
+    call game3d_get_kit_index
+    xor ah, ah
+    mov bx, ax
+    shl bx, 1
+    mov ax, cs:[game3d_kit_landmark_lift_table + bx]
+    pop bx
+    ret
+
+IF DEBUG_LEGACY_GAMEPLAY
+game3d_get_tile_ground_y:
+    mov ax, GAME3D_FLOOR_Y
+    ret
+ENDIF
+
 game3d_get_shot_table_index:
     push bx
     mov bl, al
@@ -3712,7 +4242,16 @@ game3d_project_done:
 
 game3d_project_tile_center:
     call game3d_get_tile_center_world
-    mov bx, GAME3D_FLOOR_Y
+    push ax
+    push dx
+IF DEBUG_LEGACY_GAMEPLAY
+    call game3d_get_tile_ground_y
+ELSE
+    call adventure_get_tile_ground_y
+ENDIF
+    mov bx, ax
+    pop dx
+    pop ax
     call game3d_project_world_point
     ret
 
@@ -4291,7 +4830,12 @@ game3d_prepare_mesh_at_tile:
     call game3d_get_tile_center_world
     mov [game3d_mesh_world_x], ax
     mov [game3d_mesh_world_z], dx
-    mov word ptr [game3d_mesh_world_y], GAME3D_FLOOR_Y
+IF DEBUG_LEGACY_GAMEPLAY
+    call game3d_get_tile_ground_y
+ELSE
+    call adventure_get_tile_ground_y
+ENDIF
+    mov [game3d_mesh_world_y], ax
     ret
 
 game3d_draw_world_floor_quad:
@@ -4382,7 +4926,6 @@ game3d_draw_tile_glow_3d:
     call game3d_world_x_edge_from_al
     sub ax, GAME3D_FLOOR_TRIM_INSET
     mov [scene3d_temp_y], ax
-    mov word ptr [scene3d_temp_z], GAME3D_FLOOR_TRIM_Y
     mov al, bh
     call game3d_world_z_edge_from_al
     add ax, GAME3D_FLOOR_TRIM_INSET
@@ -4392,6 +4935,13 @@ game3d_draw_tile_glow_3d:
     call game3d_world_z_edge_from_al
     sub ax, GAME3D_FLOOR_TRIM_INSET
     mov [scene3d_temp_w], ax
+IF DEBUG_LEGACY_GAMEPLAY
+    call game3d_get_tile_ground_y
+ELSE
+    call adventure_get_tile_ground_y
+ENDIF
+    add ax, GAME3D_TERRAIN_TRIM_OFFSET
+    mov [scene3d_temp_z], ax
     call game3d_draw_world_floor_quad
 
 game3d_draw_tile_glow_done:
@@ -4520,7 +5070,48 @@ game3d_warden_yaw_done:
     pop bx
     ret
 
+game3d_find_active_landmark_anchor:
+IF DEBUG_LEGACY_GAMEPLAY
+    clc
+    ret
+ELSE
+    xor si, si
+    xor cx, cx
+    mov cl, [adventure_realm_chunk_count]
+    jcxz game3d_landmark_anchor_none
+
+game3d_landmark_anchor_loop:
+    mov bl, [adventure_realm_chunk_landmark_x_table + si]
+    mov bh, [adventure_realm_chunk_landmark_y_table + si]
+    call game3d_tile_in_active_chunk_range
+    cmp al, 0
+    jne game3d_landmark_anchor_found
+    inc si
+    loop game3d_landmark_anchor_loop
+
+game3d_landmark_anchor_none:
+    clc
+    ret
+
+game3d_landmark_anchor_found:
+    mov bl, [adventure_realm_chunk_landmark_x_table + si]
+    mov bh, [adventure_realm_chunk_landmark_y_table + si]
+    stc
+    ret
+ENDIF
+
 render_gameplay_landmark_3d:
+IF DEBUG_LEGACY_GAMEPLAY EQ 0
+    call game3d_find_active_landmark_anchor
+    jnc render_gameplay_landmark_done
+    mov dl, [scene3d_yaw_angle]
+    call game3d_get_landmark_mesh_index
+    call game3d_prepare_mesh_at_tile
+    call game3d_get_landmark_lift
+    add [game3d_mesh_world_y], ax
+    call game3d_draw_mesh_instance
+    ret
+ENDIF
     cmp byte ptr [game3d_shot_frame_variant], GAME3D_FRAME_VARIANT_LANDMARK
     jne render_gameplay_landmark_done
     mov bl, (PLAY_MIN_X + PLAY_MAX_X) / 2
@@ -4809,7 +5400,14 @@ render_adventure_static_props_done:
 
 render_adventure_player_3d:
     mov ax, [adventure_player_world_x]
-    mov bx, GAME3D_FLOOR_Y
+    mov bl, [player_x]
+    mov bh, [player_y]
+IF DEBUG_LEGACY_GAMEPLAY
+    call game3d_get_tile_ground_y
+ELSE
+    call adventure_get_tile_ground_y
+ENDIF
+    mov bx, ax
     mov dx, [adventure_player_world_z]
     call game3d_project_world_point
     jnc render_adventure_player_done
@@ -4849,24 +5447,24 @@ game3d_get_adventure_player_mesh_done:
     ret
 
 render_adventure_world_effects_3d:
-    call game3d_draw_exit_marker_3d
+    call game3d_draw_exit_marker_adventure_3d
     cmp byte ptr [feedback_timer], 0
     je render_adventure_world_effects_done
     mov al, [message_id]
     cmp al, MSG_SHARD
-    je game3d_draw_focus_marker_3d
+    je game3d_draw_focus_marker_adventure_3d
     cmp al, MSG_GATE
-    je game3d_draw_focus_marker_3d
+    je game3d_draw_focus_marker_adventure_3d
     cmp al, MSG_HIT
-    je game3d_draw_focus_marker_3d
+    je game3d_draw_focus_marker_adventure_3d
     cmp al, MSG_SURGE
-    je game3d_draw_focus_marker_3d
+    je game3d_draw_focus_marker_adventure_3d
     cmp al, MSG_KILL
-    je game3d_draw_focus_marker_3d
+    je game3d_draw_focus_marker_adventure_3d
     cmp al, MSG_SPOOF
-    je game3d_draw_focus_marker_3d
+    je game3d_draw_focus_marker_adventure_3d
     cmp al, MSG_KEY
-    je game3d_draw_focus_marker_3d
+    je game3d_draw_focus_marker_adventure_3d
 
 render_adventure_world_effects_done:
     ret
@@ -4894,6 +5492,44 @@ render_gameplay_world_effects_3d:
     je game3d_draw_focus_marker_3d
 
 render_gameplay_world_effects_done:
+    ret
+
+game3d_draw_cue_fallback_only:
+    push ax
+    push bx
+    push cx
+    push dx
+    mov [text_color], cl
+    call game3d_draw_tile_glow_3d
+    call game3d_project_tile_center
+    jnc game3d_draw_cue_fallback_done
+    call game3d_is_projected_point_cue_ready
+    jc game3d_draw_cue_fallback_done
+    call game3d_clamp_projected_point_to_view
+    mov bl, [text_color]
+    call game3d_draw_marker_at_projected_point
+
+game3d_draw_cue_fallback_done:
+    pop dx
+    pop cx
+    pop bx
+    pop ax
+    ret
+
+game3d_draw_focus_marker_adventure_3d:
+    mov bl, [effect_x]
+    mov bh, [effect_y]
+    call game3d_get_effect_colors
+    mov cl, al
+    call game3d_draw_cue_fallback_only
+    ret
+
+game3d_draw_exit_marker_adventure_3d:
+    mov bl, [exit_x]
+    mov bh, [exit_y]
+    call game3d_get_lane_material
+    mov cl, al
+    call game3d_draw_cue_fallback_only
     ret
 
 game3d_draw_focus_marker_3d:

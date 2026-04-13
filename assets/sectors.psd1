@@ -351,16 +351,16 @@
             @{ Zone = 'portal-plaza'; Sequence = 6; Summary = 'The unlocked arch, the sparse warden set-piece, and the finish.' }
         )
         Chunks = @(
-            @{ Id = 'glade-west'; Zone = 'start-glade'; Bounds = '2,10,7,13'; Role = 'start-lane' }
-            @{ Id = 'glade-east'; Zone = 'start-glade'; Bounds = '8,10,12,13'; Role = 'intro-turn' }
-            @{ Id = 'loop-bend'; Zone = 'first-loop'; Bounds = '10,8,16,11'; Role = 'route-read' }
-            @{ Id = 'charge-teach'; Zone = 'charge-lane'; Bounds = '6,11,12,13'; Role = 'charge-lesson' }
-            @{ Id = 'terrace-climb'; Zone = 'high-key-terrace'; Bounds = '14,5,18,8'; Role = 'climb' }
-            @{ Id = 'terrace-key'; Zone = 'high-key-terrace'; Bounds = '18,3,22,5'; Role = 'key-reveal' }
-            @{ Id = 'glide-ramp'; Zone = 'glide-return'; Bounds = '18,7,22,10'; Role = 'glide-setup' }
-            @{ Id = 'return-lane'; Zone = 'glide-return'; Bounds = '22,7,25,10'; Role = 'return-pressure' }
-            @{ Id = 'portal-front'; Zone = 'portal-plaza'; Bounds = '21,1,23,4'; Role = 'portal-read' }
-            @{ Id = 'portal-arch'; Zone = 'portal-plaza'; Bounds = '23,1,25,3'; Role = 'finish' }
+            @{ Id = 'glade-west'; Zone = 'start-glade'; Bounds = '2,10,7,13'; Role = 'start-lane'; BaseHeight = 0; ShelfHeight = 0; RampDir = 'none'; CliffSide = 'north'; BridgeSpan = 'none'; LandmarkAnchor = '24,2'; PropBudget = 1 }
+            @{ Id = 'glade-east'; Zone = 'start-glade'; Bounds = '8,10,12,13'; Role = 'intro-turn'; BaseHeight = 0; ShelfHeight = 64; RampDir = 'east'; CliffSide = 'north'; BridgeSpan = 'none'; LandmarkAnchor = '18,6'; PropBudget = 1 }
+            @{ Id = 'loop-bend'; Zone = 'first-loop'; Bounds = '10,8,16,11'; Role = 'route-read'; BaseHeight = 64; ShelfHeight = 96; RampDir = 'north'; CliffSide = 'east'; BridgeSpan = 'none'; LandmarkAnchor = '18,4'; PropBudget = 1 }
+            @{ Id = 'charge-teach'; Zone = 'charge-lane'; Bounds = '6,11,12,13'; Role = 'charge-lesson'; BaseHeight = 64; ShelfHeight = 112; RampDir = 'north'; CliffSide = 'south'; BridgeSpan = 'east-west'; LandmarkAnchor = '10,12'; PropBudget = 1 }
+            @{ Id = 'terrace-climb'; Zone = 'high-key-terrace'; Bounds = '14,5,18,8'; Role = 'climb'; BaseHeight = 112; ShelfHeight = 176; RampDir = 'east'; CliffSide = 'north'; BridgeSpan = 'none'; LandmarkAnchor = '18,5'; PropBudget = 1 }
+            @{ Id = 'terrace-key'; Zone = 'high-key-terrace'; Bounds = '18,3,22,5'; Role = 'key-reveal'; BaseHeight = 176; ShelfHeight = 208; RampDir = 'north'; CliffSide = 'west'; BridgeSpan = 'none'; LandmarkAnchor = '18,4'; PropBudget = 1 }
+            @{ Id = 'glide-ramp'; Zone = 'glide-return'; Bounds = '18,7,22,10'; Role = 'glide-setup'; BaseHeight = 128; ShelfHeight = 176; RampDir = 'west'; CliffSide = 'south'; BridgeSpan = 'none'; LandmarkAnchor = '23,3'; PropBudget = 1 }
+            @{ Id = 'return-lane'; Zone = 'glide-return'; Bounds = '22,7,25,10'; Role = 'return-pressure'; BaseHeight = 96; ShelfHeight = 128; RampDir = 'east'; CliffSide = 'south'; BridgeSpan = 'none'; LandmarkAnchor = '23,2'; PropBudget = 1 }
+            @{ Id = 'portal-front'; Zone = 'portal-plaza'; Bounds = '21,1,23,4'; Role = 'portal-read'; BaseHeight = 96; ShelfHeight = 144; RampDir = 'north'; CliffSide = 'west'; BridgeSpan = 'none'; LandmarkAnchor = '23,2'; PropBudget = 2 }
+            @{ Id = 'portal-arch'; Zone = 'portal-plaza'; Bounds = '23,1,25,3'; Role = 'finish'; BaseHeight = 144; ShelfHeight = 176; RampDir = 'none'; CliffSide = 'south'; BridgeSpan = 'none'; LandmarkAnchor = '24,2'; PropBudget = 2 }
         )
         EncounterLanes = @(
             @{ Id = 'charge-lane-rusher'; Zone = 'charge-lane'; Enemy = 'RUSHER'; Summary = 'Open frontal lane that teaches the charge counter clearly.' }
@@ -427,22 +427,18 @@
         )
         Hazards = @(
             '21,6'
-            '22,6'
         )
         Enemies = @(
             @{ X = 8; Y = 12; Kind = 'RUSHER' }
-            @{ X = 15; Y = 9; Kind = 'RUSHER' }
-            @{ X = 22; Y = 10; Kind = 'RUSHER' }
-            @{ X = 19; Y = 6; Kind = 'FLANKER' }
+            @{ X = 13; Y = 9; Kind = 'FLANKER' }
             @{ X = 22; Y = 3; Kind = 'WARDEN' }
         )
         Props = @(
             @{ X = 3; Y = 12; Mesh = 'tree_round'; YawDegrees = 22.0 }
             @{ X = 7; Y = 13; Mesh = 'tree_round'; YawDegrees = 214.0 }
-            @{ X = 11; Y = 12; Mesh = 'stone_stack'; YawDegrees = 30.0 }
             @{ X = 12; Y = 10; Mesh = 'bridge_span'; YawDegrees = 0.0 }
             @{ X = 17; Y = 8; Mesh = 'bridge_span'; YawDegrees = 0.0 }
-            @{ X = 19; Y = 4; Mesh = 'stone_stack'; YawDegrees = 96.0 }
+            @{ X = 18; Y = 4; Mesh = 'stone_stack'; YawDegrees = 96.0 }
             @{ X = 10; Y = 12; Mesh = 'switch_pedestal'; YawDegrees = 0.0 }
             @{ X = 23; Y = 2; Mesh = 'portal_arch'; YawDegrees = 0.0 }
             @{ X = 24; Y = 2; Mesh = 'tower_toy'; YawDegrees = 0.0 }

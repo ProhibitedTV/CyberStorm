@@ -95,23 +95,37 @@ adventure_realm_required_gems db 20
 adventure_realm_gem_count db 24
 adventure_realm_switch_count db 1
 adventure_realm_key_count db 1
-adventure_realm_hazard_count db 2
-adventure_realm_enemy_count db 5
-adventure_realm_prop_count db 11
+adventure_realm_hazard_count db 1
+adventure_realm_enemy_count db 3
+adventure_realm_prop_count db 10
+adventure_realm_chunk_count db 10
 adventure_realm_gem_table db 5, 12, 6, 12, 7, 12, 8, 12, 9, 12, 10, 10
                           db 10, 11, 8, 10, 12, 9, 14, 8, 16, 8, 18, 8
                           db 14, 6, 16, 5, 17, 4, 19, 4, 21, 4, 24, 5
                           db 24, 7, 23, 8, 22, 9, 21, 3, 23, 3, 25, 2
 adventure_realm_switch_table db 10, 12
 adventure_realm_key_table db 18, 4
-adventure_realm_hazard_table db 21, 6, 22, 6
-adventure_realm_enemy_table db 8, 12, 0, 15, 9, 0, 22, 10, 0, 19, 6, 1
-                            db 22, 3, 2
-adventure_realm_prop_x_table db 3, 7, 11, 12, 17, 19, 10, 23, 24, 21, 5
-adventure_realm_prop_y_table db 12, 13, 12, 10, 8, 4, 12, 2, 2, 2, 3
-adventure_realm_prop_mesh_table db GAME3D_MESH_TREE_ROUND_INDEX, GAME3D_MESH_TREE_ROUND_INDEX, GAME3D_MESH_STONE_STACK_INDEX, GAME3D_MESH_BRIDGE_SPAN_INDEX, GAME3D_MESH_BRIDGE_SPAN_INDEX, GAME3D_MESH_STONE_STACK_INDEX, GAME3D_MESH_SWITCH_PEDESTAL_INDEX, GAME3D_MESH_PORTAL_ARCH_INDEX
-                                db GAME3D_MESH_TOWER_TOY_INDEX, GAME3D_MESH_STONE_STACK_INDEX, GAME3D_MESH_TREE_ROUND_INDEX
-adventure_realm_prop_yaw_table db 16, 152, 21, 0, 0, 68, 0, 0, 0, 0, 105
+adventure_realm_hazard_table db 21, 6
+adventure_realm_enemy_table db 8, 12, 0, 13, 9, 1, 22, 3, 2
+adventure_realm_chunk_min_x_table db 2, 8, 10, 6, 14, 18, 18, 22, 21, 23
+adventure_realm_chunk_max_x_table db 7, 12, 16, 12, 18, 22, 22, 25, 23, 25
+adventure_realm_chunk_min_y_table db 10, 10, 8, 11, 5, 3, 7, 7, 1, 1
+adventure_realm_chunk_max_y_table db 13, 13, 11, 13, 8, 5, 10, 10, 4, 3
+adventure_realm_chunk_base_height_table dw 0000h, 0000h, 0040h, 0040h, 0070h, 00B0h
+                                        dw 0080h, 0060h, 0060h, 0090h
+adventure_realm_chunk_shelf_height_table dw 0000h, 0040h, 0060h, 0070h, 00B0h, 00D0h
+                                         dw 00B0h, 0080h, 0090h, 00B0h
+adventure_realm_chunk_ramp_dir_table db 0, 2, 1, 1, 2, 1, 4, 2, 1, 0
+adventure_realm_chunk_cliff_side_table db 1, 1, 2, 3, 1, 4, 3, 3, 4, 3
+adventure_realm_chunk_bridge_span_table db 0, 0, 0, 1, 0, 0, 0, 0, 0, 0
+adventure_realm_chunk_landmark_x_table db 24, 18, 18, 10, 18, 18, 23, 23, 23, 24
+adventure_realm_chunk_landmark_y_table db 2, 6, 4, 12, 5, 4, 3, 2, 2, 2
+adventure_realm_chunk_prop_budget_table db 1, 1, 1, 1, 1, 1, 1, 1, 2, 2
+adventure_realm_prop_x_table db 3, 7, 12, 17, 18, 10, 23, 24, 21, 5
+adventure_realm_prop_y_table db 12, 13, 10, 8, 4, 12, 2, 2, 2, 3
+adventure_realm_prop_mesh_table db GAME3D_MESH_TREE_ROUND_INDEX, GAME3D_MESH_TREE_ROUND_INDEX, GAME3D_MESH_BRIDGE_SPAN_INDEX, GAME3D_MESH_BRIDGE_SPAN_INDEX, GAME3D_MESH_STONE_STACK_INDEX, GAME3D_MESH_SWITCH_PEDESTAL_INDEX, GAME3D_MESH_PORTAL_ARCH_INDEX, GAME3D_MESH_TOWER_TOY_INDEX
+                                db GAME3D_MESH_STONE_STACK_INDEX, GAME3D_MESH_TREE_ROUND_INDEX
+adventure_realm_prop_yaw_table db 16, 152, 0, 0, 68, 0, 0, 0, 0, 105
 adventure_realm_map db "############################"
                     db "#..........................#"
                     db "#..######.............##...#"

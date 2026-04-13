@@ -918,6 +918,38 @@ function ConvertTo-AnchorPoint {
     }
 }
 
+function ConvertTo-BoundsRect {
+    param(
+        [string]$Token,
+        [string]$Context,
+        [int]$MapWidth,
+        [int]$MapHeight
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Token) -or $Token -notmatch '^\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*$') {
+        throw ("{0} must use 'x0,y0,x1,y1' bounds inside the playable map. Received: '{1}'." -f $Context, $Token)
+    }
+
+    $minX = [int]$Matches[1]
+    $minY = [int]$Matches[2]
+    $maxX = [int]$Matches[3]
+    $maxY = [int]$Matches[4]
+    if ($minX -lt 1 -or $maxX -gt ($MapWidth - 2) -or $minY -lt 1 -or $maxY -gt ($MapHeight - 2)) {
+        throw ("{0} bounds ({1},{2},{3},{4}) exceed the playable map 1..{5}, 1..{6}." -f $Context, $minX, $minY, $maxX, $maxY, ($MapWidth - 2), ($MapHeight - 2))
+    }
+
+    if ($maxX -lt $minX -or $maxY -lt $minY) {
+        throw ("{0} bounds ({1},{2},{3},{4}) must use max values greater than or equal to min values." -f $Context, $minX, $minY, $maxX, $maxY)
+    }
+
+    return [pscustomobject]@{
+        MinX = $minX
+        MinY = $minY
+        MaxX = $maxX
+        MaxY = $maxY
+    }
+}
+
 function Write-GeneratedSectorIncludes {
     param(
         [string]$SourcePath,
@@ -1407,7 +1439,7 @@ function Write-GeneratedSectorIncludes {
             throw ("AdventureRealm in {0} must be a hashtable." -f $SourcePath)
         }
 
-        foreach ($requiredAdventureKey in @('Title', 'Intro', 'Start', 'Portal', 'RequiredGems', 'Key', 'Rows', 'MacroZones', 'RouteBeats', 'CaptureAnchors')) {
+        foreach ($requiredAdventureKey in @('Title', 'Intro', 'Start', 'Portal', 'RequiredGems', 'Key', 'Rows', 'MacroZones', 'RouteBeats', 'Chunks', 'CaptureAnchors')) {
             if (-not $adventureRealm.ContainsKey($requiredAdventureKey)) {
                 throw ("AdventureRealm in {0} is missing '{1}'." -f $SourcePath, $requiredAdventureKey)
             }
@@ -1419,6 +1451,7 @@ function Write-GeneratedSectorIncludes {
         $adventureRows = @($adventureRealm['Rows'] | ForEach-Object { [string]$_ })
         $adventureMacroZones = @($adventureRealm['MacroZones'])
         $adventureRouteBeats = @($adventureRealm['RouteBeats'])
+        $adventureChunks = @($adventureRealm['Chunks'])
         $adventureCaptureAnchors = $adventureRealm['CaptureAnchors']
         if ($adventureRows.Count -ne $ExpectedMapHeight) {
             throw ("AdventureRealm in {0} must define exactly {1} rows." -f $SourcePath, $ExpectedMapHeight)
@@ -1431,6 +1464,9 @@ function Write-GeneratedSectorIncludes {
         }
         if ($adventureRouteBeats.Count -eq 0) {
             throw ("AdventureRealm in {0} must define at least one RouteBeats entry." -f $SourcePath)
+        }
+        if ($adventureChunks.Count -eq 0) {
+            throw ("AdventureRealm in {0} must define at least one Chunks entry." -f $SourcePath)
         }
         if (-not ($adventureCaptureAnchors -is [System.Collections.IDictionary])) {
             throw ("AdventureRealm.CaptureAnchors in {0} must be a hashtable." -f $SourcePath)
@@ -1496,6 +1532,104 @@ function Write-GeneratedSectorIncludes {
             }
         }
         $adventureCaptureSummary = ("beauty={0}, action={1}" -f ([string]$adventureCaptureAnchors['Beauty']).Trim(), ([string]$adventureCaptureAnchors['Action']).Trim())
+
+        $adventureChunkIds = New-Object 'System.Collections.Generic.HashSet[string]' ([System.StringComparer]::OrdinalIgnoreCase)
+        $adventureChunkSummary = New-Object 'System.Collections.Generic.List[string]'
+        $adventureChunkMinXs = New-Object 'System.Collections.Generic.List[string]'
+        $adventureChunkMaxXs = New-Object 'System.Collections.Generic.List[string]'
+        $adventureChunkMinYs = New-Object 'System.Collections.Generic.List[string]'
+        $adventureChunkMaxYs = New-Object 'System.Collections.Generic.List[string]'
+        $adventureChunkBaseHeights = New-Object 'System.Collections.Generic.List[string]'
+        $adventureChunkShelfHeights = New-Object 'System.Collections.Generic.List[string]'
+        $adventureChunkRampDirs = New-Object 'System.Collections.Generic.List[string]'
+        $adventureChunkCliffSides = New-Object 'System.Collections.Generic.List[string]'
+        $adventureChunkBridgeSpans = New-Object 'System.Collections.Generic.List[string]'
+        $adventureChunkLandmarkXs = New-Object 'System.Collections.Generic.List[string]'
+        $adventureChunkLandmarkYs = New-Object 'System.Collections.Generic.List[string]'
+        $adventureChunkPropBudgets = New-Object 'System.Collections.Generic.List[string]'
+        $directionTokenMap = @{
+            'none' = 0
+            'north' = 1
+            'east' = 2
+            'south' = 3
+            'west' = 4
+        }
+        $bridgeTokenMap = @{
+            'none' = 0
+            'east-west' = 1
+            'north-south' = 2
+        }
+
+        foreach ($chunkEntry in $adventureChunks) {
+            if (-not ($chunkEntry -is [System.Collections.IDictionary])) {
+                throw ("AdventureRealm.Chunks in {0} must be hashtables with authored terrain fields." -f $SourcePath)
+            }
+
+            foreach ($requiredChunkKey in @('Id', 'Zone', 'Bounds', 'Role', 'BaseHeight', 'ShelfHeight', 'RampDir', 'CliffSide', 'BridgeSpan', 'LandmarkAnchor', 'PropBudget')) {
+                if (-not $chunkEntry.ContainsKey($requiredChunkKey)) {
+                    throw ("AdventureRealm chunk in {0} is missing '{1}'." -f $SourcePath, $requiredChunkKey)
+                }
+            }
+
+            $chunkId = ([string]$chunkEntry['Id']).Trim()
+            $chunkZone = ([string]$chunkEntry['Zone']).Trim()
+            $chunkRole = ([string]$chunkEntry['Role']).Trim()
+            if ([string]::IsNullOrWhiteSpace($chunkId) -or $chunkId -notmatch '^[a-z0-9]+(?:-[a-z0-9]+)*$') {
+                throw ("AdventureRealm chunk Id in {0} must use lowercase slug values. Found '{1}'." -f $SourcePath, $chunkEntry['Id'])
+            }
+            if (-not $adventureZoneIds.Contains($chunkZone)) {
+                throw ("AdventureRealm chunk '{0}' in {1} referenced unknown zone '{2}'." -f $chunkId, $SourcePath, $chunkZone)
+            }
+            if (-not $adventureChunkIds.Add($chunkId)) {
+                throw ("AdventureRealm in {0} reused chunk Id '{1}'." -f $SourcePath, $chunkId)
+            }
+            if ([string]::IsNullOrWhiteSpace($chunkRole)) {
+                throw ("AdventureRealm chunk '{0}' in {1} is missing Role." -f $chunkId, $SourcePath)
+            }
+
+            $chunkBounds = ConvertTo-BoundsRect -Token ([string]$chunkEntry['Bounds']) -Context ("AdventureRealm.Chunks[{0}].Bounds" -f $chunkId) -MapWidth $ExpectedMapWidth -MapHeight $ExpectedMapHeight
+            $chunkBaseHeight = [int]$chunkEntry['BaseHeight']
+            $chunkShelfHeight = [int]$chunkEntry['ShelfHeight']
+            if ($chunkBaseHeight -lt 0 -or $chunkBaseHeight -gt 384) {
+                throw ("AdventureRealm chunk '{0}' in {1} must keep BaseHeight in the 0..384 range. Found {2}." -f $chunkId, $SourcePath, $chunkBaseHeight)
+            }
+            if ($chunkShelfHeight -lt $chunkBaseHeight -or $chunkShelfHeight -gt 448) {
+                throw ("AdventureRealm chunk '{0}' in {1} must keep ShelfHeight in the {2}..448 range. Found {3}." -f $chunkId, $SourcePath, $chunkBaseHeight, $chunkShelfHeight)
+            }
+
+            $rampDirToken = ([string]$chunkEntry['RampDir']).Trim().ToLowerInvariant()
+            $cliffSideToken = ([string]$chunkEntry['CliffSide']).Trim().ToLowerInvariant()
+            $bridgeSpanToken = ([string]$chunkEntry['BridgeSpan']).Trim().ToLowerInvariant()
+            if (-not $directionTokenMap.ContainsKey($rampDirToken)) {
+                throw ("AdventureRealm chunk '{0}' in {1} used unsupported RampDir '{2}'." -f $chunkId, $SourcePath, $chunkEntry['RampDir'])
+            }
+            if (-not $directionTokenMap.ContainsKey($cliffSideToken)) {
+                throw ("AdventureRealm chunk '{0}' in {1} used unsupported CliffSide '{2}'." -f $chunkId, $SourcePath, $chunkEntry['CliffSide'])
+            }
+            if (-not $bridgeTokenMap.ContainsKey($bridgeSpanToken)) {
+                throw ("AdventureRealm chunk '{0}' in {1} used unsupported BridgeSpan '{2}'." -f $chunkId, $SourcePath, $chunkEntry['BridgeSpan'])
+            }
+
+            $landmarkPoint = ConvertTo-AnchorPoint -Token ([string]$chunkEntry['LandmarkAnchor']) -Context ("AdventureRealm.Chunks[{0}].LandmarkAnchor" -f $chunkId) -MapWidth $ExpectedMapWidth -MapHeight $ExpectedMapHeight
+            $propBudget = [int]$chunkEntry['PropBudget']
+            if ($propBudget -lt 0 -or $propBudget -gt 8) {
+                throw ("AdventureRealm chunk '{0}' in {1} must keep PropBudget in the 0..8 range. Found {2}." -f $chunkId, $SourcePath, $propBudget)
+            }
+
+            $adventureChunkMinXs.Add($chunkBounds.MinX.ToString())
+            $adventureChunkMaxXs.Add($chunkBounds.MaxX.ToString())
+            $adventureChunkMinYs.Add($chunkBounds.MinY.ToString())
+            $adventureChunkMaxYs.Add($chunkBounds.MaxY.ToString())
+            $adventureChunkBaseHeights.Add((Format-Hex16Literal $chunkBaseHeight))
+            $adventureChunkShelfHeights.Add((Format-Hex16Literal $chunkShelfHeight))
+            $adventureChunkRampDirs.Add(([int]$directionTokenMap[$rampDirToken]).ToString())
+            $adventureChunkCliffSides.Add(([int]$directionTokenMap[$cliffSideToken]).ToString())
+            $adventureChunkBridgeSpans.Add(([int]$bridgeTokenMap[$bridgeSpanToken]).ToString())
+            $adventureChunkLandmarkXs.Add($landmarkPoint.X.ToString())
+            $adventureChunkLandmarkYs.Add($landmarkPoint.Y.ToString())
+            $adventureChunkPropBudgets.Add($propBudget.ToString())
+            $adventureChunkSummary.Add(("{0}:{1} {2},{3}->{4},{5} h{6}/{7} ramp={8} cliff={9} bridge={10} prop={11}" -f $chunkId, $chunkRole, $chunkBounds.MinX, $chunkBounds.MinY, $chunkBounds.MaxX, $chunkBounds.MaxY, $chunkBaseHeight, $chunkShelfHeight, $rampDirToken, $cliffSideToken, $bridgeSpanToken, $propBudget))
+        }
 
         $adventureStart = ConvertTo-AnchorPoint -Token ([string]$adventureRealm['Start']) -Context 'AdventureRealm.Start' -MapWidth $ExpectedMapWidth -MapHeight $ExpectedMapHeight
         $adventurePortal = ConvertTo-AnchorPoint -Token ([string]$adventureRealm['Portal']) -Context 'AdventureRealm.Portal' -MapWidth $ExpectedMapWidth -MapHeight $ExpectedMapHeight
@@ -1590,11 +1724,24 @@ function Write-GeneratedSectorIncludes {
         $sectorLines.Add(("adventure_realm_hazard_count db {0}" -f ($adventureHazardBytes.Count / 2)))
         $sectorLines.Add(("adventure_realm_enemy_count db {0}" -f ($adventureEnemyBytes.Count / 3)))
         $sectorLines.Add(("adventure_realm_prop_count db {0}" -f $adventurePropXs.Count))
+        $sectorLines.Add(("adventure_realm_chunk_count db {0}" -f $adventureChunkMinXs.Count))
         Add-AsmDataLines -Lines $sectorLines -Label 'adventure_realm_gem_table' -Directive 'db' -Values $(if ($adventureGemBytes.Count -gt 0) { $adventureGemBytes.ToArray() } else { @('0') }) -ValuesPerLine 12
         Add-AsmDataLines -Lines $sectorLines -Label 'adventure_realm_switch_table' -Directive 'db' -Values $(if ($adventureSwitchBytes.Count -gt 0) { $adventureSwitchBytes.ToArray() } else { @('0') }) -ValuesPerLine 12
         Add-AsmDataLines -Lines $sectorLines -Label 'adventure_realm_key_table' -Directive 'db' -Values $(if ($adventureKeyBytes.Count -gt 0) { $adventureKeyBytes.ToArray() } else { @('0') }) -ValuesPerLine 12
         Add-AsmDataLines -Lines $sectorLines -Label 'adventure_realm_hazard_table' -Directive 'db' -Values $(if ($adventureHazardBytes.Count -gt 0) { $adventureHazardBytes.ToArray() } else { @('0') }) -ValuesPerLine 12
         Add-AsmDataLines -Lines $sectorLines -Label 'adventure_realm_enemy_table' -Directive 'db' -Values $(if ($adventureEnemyBytes.Count -gt 0) { $adventureEnemyBytes.ToArray() } else { @('0') }) -ValuesPerLine 12
+        Add-AsmDataLines -Lines $sectorLines -Label 'adventure_realm_chunk_min_x_table' -Directive 'db' -Values $(if ($adventureChunkMinXs.Count -gt 0) { $adventureChunkMinXs.ToArray() } else { @('0') }) -ValuesPerLine 12
+        Add-AsmDataLines -Lines $sectorLines -Label 'adventure_realm_chunk_max_x_table' -Directive 'db' -Values $(if ($adventureChunkMaxXs.Count -gt 0) { $adventureChunkMaxXs.ToArray() } else { @('0') }) -ValuesPerLine 12
+        Add-AsmDataLines -Lines $sectorLines -Label 'adventure_realm_chunk_min_y_table' -Directive 'db' -Values $(if ($adventureChunkMinYs.Count -gt 0) { $adventureChunkMinYs.ToArray() } else { @('0') }) -ValuesPerLine 12
+        Add-AsmDataLines -Lines $sectorLines -Label 'adventure_realm_chunk_max_y_table' -Directive 'db' -Values $(if ($adventureChunkMaxYs.Count -gt 0) { $adventureChunkMaxYs.ToArray() } else { @('0') }) -ValuesPerLine 12
+        Add-AsmDataLines -Lines $sectorLines -Label 'adventure_realm_chunk_base_height_table' -Directive 'dw' -Values $(if ($adventureChunkBaseHeights.Count -gt 0) { $adventureChunkBaseHeights.ToArray() } else { @('0') }) -ValuesPerLine 6
+        Add-AsmDataLines -Lines $sectorLines -Label 'adventure_realm_chunk_shelf_height_table' -Directive 'dw' -Values $(if ($adventureChunkShelfHeights.Count -gt 0) { $adventureChunkShelfHeights.ToArray() } else { @('0') }) -ValuesPerLine 6
+        Add-AsmDataLines -Lines $sectorLines -Label 'adventure_realm_chunk_ramp_dir_table' -Directive 'db' -Values $(if ($adventureChunkRampDirs.Count -gt 0) { $adventureChunkRampDirs.ToArray() } else { @('0') }) -ValuesPerLine 12
+        Add-AsmDataLines -Lines $sectorLines -Label 'adventure_realm_chunk_cliff_side_table' -Directive 'db' -Values $(if ($adventureChunkCliffSides.Count -gt 0) { $adventureChunkCliffSides.ToArray() } else { @('0') }) -ValuesPerLine 12
+        Add-AsmDataLines -Lines $sectorLines -Label 'adventure_realm_chunk_bridge_span_table' -Directive 'db' -Values $(if ($adventureChunkBridgeSpans.Count -gt 0) { $adventureChunkBridgeSpans.ToArray() } else { @('0') }) -ValuesPerLine 12
+        Add-AsmDataLines -Lines $sectorLines -Label 'adventure_realm_chunk_landmark_x_table' -Directive 'db' -Values $(if ($adventureChunkLandmarkXs.Count -gt 0) { $adventureChunkLandmarkXs.ToArray() } else { @('0') }) -ValuesPerLine 12
+        Add-AsmDataLines -Lines $sectorLines -Label 'adventure_realm_chunk_landmark_y_table' -Directive 'db' -Values $(if ($adventureChunkLandmarkYs.Count -gt 0) { $adventureChunkLandmarkYs.ToArray() } else { @('0') }) -ValuesPerLine 12
+        Add-AsmDataLines -Lines $sectorLines -Label 'adventure_realm_chunk_prop_budget_table' -Directive 'db' -Values $(if ($adventureChunkPropBudgets.Count -gt 0) { $adventureChunkPropBudgets.ToArray() } else { @('0') }) -ValuesPerLine 12
         Add-AsmDataLines -Lines $sectorLines -Label 'adventure_realm_prop_x_table' -Directive 'db' -Values $(if ($adventurePropXs.Count -gt 0) { $adventurePropXs.ToArray() } else { @('0') }) -ValuesPerLine 12
         Add-AsmDataLines -Lines $sectorLines -Label 'adventure_realm_prop_y_table' -Directive 'db' -Values $(if ($adventurePropYs.Count -gt 0) { $adventurePropYs.ToArray() } else { @('0') }) -ValuesPerLine 12
         Add-AsmDataLines -Lines $sectorLines -Label 'adventure_realm_prop_mesh_table' -Directive 'db' -Values $(if ($adventurePropMeshes.Count -gt 0) { $adventurePropMeshes.ToArray() } else { @('0') }) -ValuesPerLine 8
@@ -1636,6 +1783,7 @@ function Write-GeneratedSectorIncludes {
         AdventureRealmSummary = if ($contentData.ContainsKey('AdventureRealm')) { ("{0} start {1},{2} -> portal {3},{4}, gems {5}/{6}" -f $adventureTitle, $adventureStart.X, $adventureStart.Y, $adventurePortal.X, $adventurePortal.Y, ($adventureGemBytes.Count / 2), $adventureRequiredGems) } else { 'none' }
         AdventureZoneSummary = if ($contentData.ContainsKey('AdventureRealm')) { ($adventureMacroZoneSummary -join ' | ') } else { 'none' }
         AdventureRouteSummary = if ($contentData.ContainsKey('AdventureRealm')) { ($adventureRouteBeatSummary -join ' | ') } else { 'none' }
+        AdventureChunkSummary = if ($contentData.ContainsKey('AdventureRealm')) { ($adventureChunkSummary -join ' | ') } else { 'none' }
         AdventureCaptureSummary = if ($contentData.ContainsKey('AdventureRealm')) { $adventureCaptureSummary } else { 'none' }
         AdventureRealmPresent = $contentData.ContainsKey('AdventureRealm')
     }
@@ -2798,6 +2946,15 @@ function Write-GeneratedGeometryInclude {
     $kitLaneColor = New-Object 'System.Collections.Generic.List[string]'
     $kitLaneDither = New-Object 'System.Collections.Generic.List[string]'
     $kitLaneTexture = New-Object 'System.Collections.Generic.List[string]'
+    $kitCliffColor = New-Object 'System.Collections.Generic.List[string]'
+    $kitCliffDither = New-Object 'System.Collections.Generic.List[string]'
+    $kitCliffTexture = New-Object 'System.Collections.Generic.List[string]'
+    $kitShelfColor = New-Object 'System.Collections.Generic.List[string]'
+    $kitShelfDither = New-Object 'System.Collections.Generic.List[string]'
+    $kitShelfTexture = New-Object 'System.Collections.Generic.List[string]'
+    $kitBridgeColor = New-Object 'System.Collections.Generic.List[string]'
+    $kitBridgeDither = New-Object 'System.Collections.Generic.List[string]'
+    $kitBridgeTexture = New-Object 'System.Collections.Generic.List[string]'
     $kitGateMesh = New-Object 'System.Collections.Generic.List[string]'
     $kitTerminalMesh = New-Object 'System.Collections.Generic.List[string]'
     $kitSurgeMesh = New-Object 'System.Collections.Generic.List[string]'
@@ -2844,6 +3001,7 @@ function Write-GeneratedGeometryInclude {
     $kitFrameFarMassWidth = New-Object 'System.Collections.Generic.List[string]'
     $kitFrameFarMassHeight = New-Object 'System.Collections.Generic.List[string]'
     $kitLandmarkMesh = New-Object 'System.Collections.Generic.List[string]'
+    $kitLandmarkLift = New-Object 'System.Collections.Generic.List[string]'
 
     $sceneCount = 0
     $sceneGroupCount = 0
@@ -3238,6 +3396,24 @@ function Write-GeneratedGeometryInclude {
             $meshRefs[$field] = $meshMap[$meshKey]
         }
 
+        $terrainProfile = $kit['TerrainProfile']
+        if (-not ($terrainProfile -is [System.Collections.IDictionary])) {
+            throw ("Gameplay kit '{0}' in {1} must define a TerrainProfile block." -f $kitKey, $SourcePath)
+        }
+        foreach ($terrainField in @('CliffMaterial', 'ShelfMaterial', 'BridgeMaterial', 'LandmarkLift')) {
+            if (-not $terrainProfile.ContainsKey($terrainField)) {
+                throw ("Gameplay kit '{0}' in {1} terrain profile is missing '{2}'." -f $kitKey, $SourcePath, $terrainField)
+            }
+        }
+        $terrainMaterialRefs = @{}
+        foreach ($terrainField in @('CliffMaterial', 'ShelfMaterial', 'BridgeMaterial')) {
+            $terrainMaterialKey = ([string]$terrainProfile[$terrainField]).ToLowerInvariant()
+            if ([string]::IsNullOrWhiteSpace($terrainMaterialKey) -or -not $materialMap.ContainsKey($terrainMaterialKey)) {
+                throw ("Gameplay kit '{0}' in {1} must reference a known material for TerrainProfile.{2}." -f $kitKey, $SourcePath, $terrainField)
+            }
+            $terrainMaterialRefs[$terrainField] = $materialMap[$terrainMaterialKey]
+        }
+
         $camera = $kit['Camera']
         if (-not ($camera -is [System.Collections.IDictionary])) {
             throw ("Gameplay kit '{0}' in {1} must define a Camera block." -f $kitKey, $SourcePath)
@@ -3350,6 +3526,7 @@ function Write-GeneratedGeometryInclude {
         if ([string]::IsNullOrWhiteSpace($landmarkMeshKey) -or -not $meshMap.ContainsKey($landmarkMeshKey)) {
             throw ("Gameplay kit '{0}' in {1} must reference a known mesh for Landmark.Mesh." -f $kitKey, $SourcePath)
         }
+        $landmarkLift = ConvertTo-GeometryFixed88 -Value $terrainProfile['LandmarkLift'] -Context ("Gameplay kit '{0}' terrain LandmarkLift" -f $kitKey)
 
         $horizonY = [int]$atmosphere['HorizonY']
         if ($horizonY -lt 12 -or $horizonY -gt 84) {
@@ -3389,6 +3566,15 @@ function Write-GeneratedGeometryInclude {
         $kitLaneColor.Add($materialRefs['Lane'].Base.ToString())
         $kitLaneDither.Add($materialRefs['Lane'].Dither.ToString())
         $kitLaneTexture.Add((& $resolveTextureIndex -TextureKey $materialRefs['Lane'].TextureKey -ShadeMode $materialRefs['Lane'].ShadeMode).ToString())
+        $kitCliffColor.Add($terrainMaterialRefs['CliffMaterial'].Base.ToString())
+        $kitCliffDither.Add($terrainMaterialRefs['CliffMaterial'].Dither.ToString())
+        $kitCliffTexture.Add((& $resolveTextureIndex -TextureKey $terrainMaterialRefs['CliffMaterial'].TextureKey -ShadeMode $terrainMaterialRefs['CliffMaterial'].ShadeMode).ToString())
+        $kitShelfColor.Add($terrainMaterialRefs['ShelfMaterial'].Base.ToString())
+        $kitShelfDither.Add($terrainMaterialRefs['ShelfMaterial'].Dither.ToString())
+        $kitShelfTexture.Add((& $resolveTextureIndex -TextureKey $terrainMaterialRefs['ShelfMaterial'].TextureKey -ShadeMode $terrainMaterialRefs['ShelfMaterial'].ShadeMode).ToString())
+        $kitBridgeColor.Add($terrainMaterialRefs['BridgeMaterial'].Base.ToString())
+        $kitBridgeDither.Add($terrainMaterialRefs['BridgeMaterial'].Dither.ToString())
+        $kitBridgeTexture.Add((& $resolveTextureIndex -TextureKey $terrainMaterialRefs['BridgeMaterial'].TextureKey -ShadeMode $terrainMaterialRefs['BridgeMaterial'].ShadeMode).ToString())
         $kitGateMesh.Add($meshRefs['GateMesh'].Index.ToString())
         $kitTerminalMesh.Add($meshRefs['TerminalMesh'].Index.ToString())
         $kitSurgeMesh.Add($meshRefs['SurgeMesh'].Index.ToString())
@@ -3449,8 +3635,9 @@ function Write-GeneratedGeometryInclude {
         $kitFrameFarMassWidth.Add((Format-Hex16Literal $farMassWidth))
         $kitFrameFarMassHeight.Add((Format-Hex16Literal $farMassHeight))
         $kitLandmarkMesh.Add($meshMap[$landmarkMeshKey].Index.ToString())
+        $kitLandmarkLift.Add((Format-Hex16Literal $landmarkLift))
 
-        $kitSummary.Add(("{0}: cam h={1} d={2} look={3}, proj p={4} s={5}, horizon={6}, landmark={7}, wobble={8}, props {9}|{10}|{11}|{12}" -f $kitKey, $camera['Height'], $camera['Distance'], $camera['LookAhead'], $projection['PitchDegrees'], $projectionScale, $horizonY, $landmark['Mesh'], $wobbleStrength, $kit['GateMesh'], $kit['TerminalMesh'], $kit['SurgeMesh'], $kit['ShardMesh']))
+        $kitSummary.Add(("{0}: cam h={1} d={2} look={3}, proj p={4} s={5}, horizon={6}, terrain cliff={7} shelf={8} bridge={9}, landmark={10}, wobble={11}, props {12}|{13}|{14}|{15}" -f $kitKey, $camera['Height'], $camera['Distance'], $camera['LookAhead'], $projection['PitchDegrees'], $projectionScale, $horizonY, $terrainProfile['CliffMaterial'], $terrainProfile['ShelfMaterial'], $terrainProfile['BridgeMaterial'], $landmark['Mesh'], $wobbleStrength, $kit['GateMesh'], $kit['TerminalMesh'], $kit['SurgeMesh'], $kit['ShardMesh']))
     }
 
     $lines.Add(("SCENE3D_COUNT EQU {0}" -f $sceneCount))
@@ -3549,6 +3736,15 @@ function Write-GeneratedGeometryInclude {
     Add-AsmDataLines -Lines $lines -Label 'game3d_kit_lane_color_table' -Directive 'db' -Values $kitLaneColor.ToArray() -ValuesPerLine 8
     Add-AsmDataLines -Lines $lines -Label 'game3d_kit_lane_dither_table' -Directive 'db' -Values $kitLaneDither.ToArray() -ValuesPerLine 8
     Add-AsmDataLines -Lines $lines -Label 'game3d_kit_lane_texture_table' -Directive 'db' -Values $kitLaneTexture.ToArray() -ValuesPerLine 8
+    Add-AsmDataLines -Lines $lines -Label 'game3d_kit_cliff_color_table' -Directive 'db' -Values $kitCliffColor.ToArray() -ValuesPerLine 8
+    Add-AsmDataLines -Lines $lines -Label 'game3d_kit_cliff_dither_table' -Directive 'db' -Values $kitCliffDither.ToArray() -ValuesPerLine 8
+    Add-AsmDataLines -Lines $lines -Label 'game3d_kit_cliff_texture_table' -Directive 'db' -Values $kitCliffTexture.ToArray() -ValuesPerLine 8
+    Add-AsmDataLines -Lines $lines -Label 'game3d_kit_shelf_color_table' -Directive 'db' -Values $kitShelfColor.ToArray() -ValuesPerLine 8
+    Add-AsmDataLines -Lines $lines -Label 'game3d_kit_shelf_dither_table' -Directive 'db' -Values $kitShelfDither.ToArray() -ValuesPerLine 8
+    Add-AsmDataLines -Lines $lines -Label 'game3d_kit_shelf_texture_table' -Directive 'db' -Values $kitShelfTexture.ToArray() -ValuesPerLine 8
+    Add-AsmDataLines -Lines $lines -Label 'game3d_kit_bridge_color_table' -Directive 'db' -Values $kitBridgeColor.ToArray() -ValuesPerLine 8
+    Add-AsmDataLines -Lines $lines -Label 'game3d_kit_bridge_dither_table' -Directive 'db' -Values $kitBridgeDither.ToArray() -ValuesPerLine 8
+    Add-AsmDataLines -Lines $lines -Label 'game3d_kit_bridge_texture_table' -Directive 'db' -Values $kitBridgeTexture.ToArray() -ValuesPerLine 8
     Add-AsmDataLines -Lines $lines -Label 'game3d_kit_gate_mesh_table' -Directive 'db' -Values $kitGateMesh.ToArray() -ValuesPerLine 8
     Add-AsmDataLines -Lines $lines -Label 'game3d_kit_terminal_mesh_table' -Directive 'db' -Values $kitTerminalMesh.ToArray() -ValuesPerLine 8
     Add-AsmDataLines -Lines $lines -Label 'game3d_kit_surge_mesh_table' -Directive 'db' -Values $kitSurgeMesh.ToArray() -ValuesPerLine 8
@@ -3594,6 +3790,7 @@ function Write-GeneratedGeometryInclude {
     Add-AsmDataLines -Lines $lines -Label 'game3d_kit_frame_far_mass_width_table' -Directive 'dw' -Values $kitFrameFarMassWidth.ToArray() -ValuesPerLine 4
     Add-AsmDataLines -Lines $lines -Label 'game3d_kit_frame_far_mass_height_table' -Directive 'dw' -Values $kitFrameFarMassHeight.ToArray() -ValuesPerLine 4
     Add-AsmDataLines -Lines $lines -Label 'game3d_kit_landmark_mesh_table' -Directive 'db' -Values $kitLandmarkMesh.ToArray() -ValuesPerLine 8
+    Add-AsmDataLines -Lines $lines -Label 'game3d_kit_landmark_lift_table' -Directive 'dw' -Values $kitLandmarkLift.ToArray() -ValuesPerLine 4
 
     Set-Content -LiteralPath $OutputPath -Encoding ascii -Value $lines
     Assert-PathExists -Path $OutputPath -Label 'generated geometry include'
@@ -4643,10 +4840,10 @@ if ($render2DOverride) {
     $gameplayRenderModeValue = 1
     $gameplayRenderModeName = 'GAMEPLAY_3D_REFERENCE'
 } else {
-    $sceneRenderModeValue = 2
-    $sceneRenderModeName = 'SCENES_3D_MACHINE'
-    $gameplayRenderModeValue = 2
-    $gameplayRenderModeName = 'GAMEPLAY_3D_MACHINE'
+    $sceneRenderModeValue = 1
+    $sceneRenderModeName = 'SCENES_3D_REFERENCE'
+    $gameplayRenderModeValue = 1
+    $gameplayRenderModeName = 'GAMEPLAY_3D_REFERENCE'
 }
 $debugConfigLines = @(
     '; generated by scripts/build.ps1'
@@ -4883,6 +5080,7 @@ $generatedContentLines = @(
     ("Adventure realm: {0}" -f $generatedSectors.AdventureRealmSummary)
     ("Adventure zones: {0}" -f $generatedSectors.AdventureZoneSummary)
     ("Adventure beats: {0}" -f $generatedSectors.AdventureRouteSummary)
+    ("Adventure chunks: {0}" -f $generatedSectors.AdventureChunkSummary)
     ("Adventure capture: {0}" -f $generatedSectors.AdventureCaptureSummary)
     ("Demo source: {0}" -f $generatedDemos.SourcePath)
     ("Demo include: {0}" -f $generatedDemos.OutputPath)

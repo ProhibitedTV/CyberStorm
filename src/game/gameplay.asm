@@ -223,7 +223,10 @@ load_adventure_realm:
     call game3d_get_tile_center_world
     mov [adventure_player_world_x], ax
     mov [adventure_player_world_z], dx
-    mov word ptr [adventure_player_world_y], GAME3D_FLOOR_Y
+    mov bl, [player_x]
+    mov bh, [player_y]
+    call adventure_get_tile_ground_y
+    mov [adventure_player_world_y], ax
     mov word ptr [adventure_player_vel_y], 0
     mov byte ptr [adventure_player_grounded], 1
     mov byte ptr [adventure_player_yaw], GAME3D_YAW_EAST
@@ -477,6 +480,10 @@ adventure_world_to_tile:
     ret
 
 adventure_apply_vertical_motion:
+    mov ax, [adventure_player_world_x]
+    mov dx, [adventure_player_world_z]
+    call adventure_get_ground_height_for_world
+    mov [scene3d_temp_s], ax
     cmp byte ptr [adventure_player_grounded], 0
     jne adventure_grounded_motion
     mov ax, [adventure_player_vel_y]
@@ -491,9 +498,10 @@ adventure_glide_ready:
     add [adventure_player_world_y], ax
     sub word ptr [adventure_player_vel_y], ADVENTURE_GRAVITY
     mov ax, [adventure_player_world_y]
-    cmp ax, GAME3D_FLOOR_Y
+    cmp ax, [scene3d_temp_s]
     jg adventure_airborne_done
-    mov word ptr [adventure_player_world_y], GAME3D_FLOOR_Y
+    mov ax, [scene3d_temp_s]
+    mov [adventure_player_world_y], ax
     mov word ptr [adventure_player_vel_y], 0
     mov byte ptr [adventure_player_grounded], 1
     ret
@@ -502,7 +510,8 @@ adventure_airborne_done:
     ret
 
 adventure_grounded_motion:
-    mov word ptr [adventure_player_world_y], GAME3D_FLOOR_Y
+    mov ax, [scene3d_temp_s]
+    mov [adventure_player_world_y], ax
     mov word ptr [adventure_player_vel_y], 0
     ret
 
@@ -774,6 +783,136 @@ adventure_get_chunk_max_y:
 adventure_chunk_max_y_low:
     mov al, 9
     ret
+
+adventure_get_chunk_index_for_tile:
+    push bx
+    push cx
+    push si
+    xor si, si
+    xor cx, cx
+    mov cl, [adventure_realm_chunk_count]
+    jcxz adventure_chunk_index_not_found
+
+adventure_chunk_index_loop:
+    mov al, [adventure_realm_chunk_min_x_table + si]
+    cmp bl, al
+    jb adventure_chunk_index_next
+    mov al, [adventure_realm_chunk_max_x_table + si]
+    cmp bl, al
+    ja adventure_chunk_index_next
+    mov al, [adventure_realm_chunk_min_y_table + si]
+    cmp bh, al
+    jb adventure_chunk_index_next
+    mov al, [adventure_realm_chunk_max_y_table + si]
+    cmp bh, al
+    ja adventure_chunk_index_next
+    mov ax, si
+    jmp adventure_chunk_index_done
+
+adventure_chunk_index_next:
+    inc si
+    loop adventure_chunk_index_loop
+
+adventure_chunk_index_not_found:
+    mov al, 0FFh
+
+adventure_chunk_index_done:
+    pop si
+    pop cx
+    pop bx
+    ret
+
+adventure_get_tile_ground_y:
+    call adventure_get_chunk_index_for_tile
+    cmp al, 0FFh
+    jne adventure_tile_ground_chunk_found
+    mov ax, GAME3D_FLOOR_Y
+    jmp adventure_tile_ground_done
+
+adventure_tile_ground_chunk_found:
+    xor ah, ah
+    mov si, ax
+    mov di, ax
+    shl di, 1
+    mov dx, [adventure_realm_chunk_base_height_table + di]
+    mov ax, [adventure_realm_chunk_shelf_height_table + di]
+    cmp ax, dx
+    jbe adventure_tile_ground_base_ready
+    mov cx, ax
+    mov al, [adventure_realm_chunk_bridge_span_table + si]
+    cmp al, ADVENTURE_BRIDGE_EAST_WEST
+    je adventure_tile_ground_bridge_east_west
+    cmp al, ADVENTURE_BRIDGE_NORTH_SOUTH
+    je adventure_tile_ground_bridge_north_south
+    mov al, [adventure_realm_chunk_ramp_dir_table + si]
+    cmp al, ADVENTURE_DIR_NONE
+    je adventure_tile_ground_use_shelf
+    cmp al, ADVENTURE_DIR_EAST
+    je adventure_tile_ground_ramp_east
+    cmp al, ADVENTURE_DIR_WEST
+    je adventure_tile_ground_ramp_west
+    cmp al, ADVENTURE_DIR_NORTH
+    je adventure_tile_ground_ramp_north
+    mov al, [adventure_realm_chunk_min_y_table + si]
+    add al, [adventure_realm_chunk_max_y_table + si]
+    shr al, 1
+    cmp bh, al
+    jae adventure_tile_ground_use_shelf
+    jmp adventure_tile_ground_base_ready
+
+adventure_tile_ground_ramp_north:
+    mov al, [adventure_realm_chunk_min_y_table + si]
+    add al, [adventure_realm_chunk_max_y_table + si]
+    shr al, 1
+    cmp bh, al
+    jbe adventure_tile_ground_use_shelf
+    jmp adventure_tile_ground_base_ready
+
+adventure_tile_ground_ramp_east:
+    mov al, [adventure_realm_chunk_min_x_table + si]
+    add al, [adventure_realm_chunk_max_x_table + si]
+    shr al, 1
+    cmp bl, al
+    jae adventure_tile_ground_use_shelf
+    jmp adventure_tile_ground_base_ready
+
+adventure_tile_ground_ramp_west:
+    mov al, [adventure_realm_chunk_min_x_table + si]
+    add al, [adventure_realm_chunk_max_x_table + si]
+    shr al, 1
+    cmp bl, al
+    jbe adventure_tile_ground_use_shelf
+    jmp adventure_tile_ground_base_ready
+
+adventure_tile_ground_bridge_east_west:
+    mov al, [adventure_realm_chunk_min_y_table + si]
+    add al, [adventure_realm_chunk_max_y_table + si]
+    shr al, 1
+    cmp bh, al
+    je adventure_tile_ground_use_shelf
+    jmp adventure_tile_ground_base_ready
+
+adventure_tile_ground_bridge_north_south:
+    mov al, [adventure_realm_chunk_min_x_table + si]
+    add al, [adventure_realm_chunk_max_x_table + si]
+    shr al, 1
+    cmp bl, al
+    je adventure_tile_ground_use_shelf
+    jmp adventure_tile_ground_base_ready
+
+adventure_tile_ground_use_shelf:
+    mov dx, cx
+
+adventure_tile_ground_base_ready:
+    mov ax, dx
+    add ax, GAME3D_FLOOR_Y
+
+adventure_tile_ground_done:
+    ret
+
+adventure_get_ground_height_for_world:
+    call adventure_world_to_tile
+    jmp adventure_get_tile_ground_y
 
 adventure_maybe_step_enemies:
     cmp byte ptr [adventure_intro_timer], 0

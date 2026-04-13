@@ -1,5 +1,5 @@
 CyberStorm Build Report
-Generated: 2026-04-12 14:24:46 -06:00
+Generated: 2026-04-12 18:47:50 -06:00
 
 Toolchain
   Assembler: MASM
@@ -20,8 +20,8 @@ Audio Policy
   Policy: looping themes are the supported release baseline; one-shot SFX still preempt the channel and music resumes underneath.
 
 Render Path
-  Scene renderer: SCENES_3D_MACHINE
-  Gameplay renderer: GAMEPLAY_3D_MACHINE
+  Scene renderer: SCENES_3D_REFERENCE
+  Gameplay renderer: GAMEPLAY_3D_REFERENCE
   3D render stage: 5
   Debug switches: -DebugRender2D uses the oracle path, -DebugRenderReference forces stage-two MASM kernels, and -DebugRenderMachine (or legacy -DebugRender3D) enables the banked raw machine-code rail.
 
@@ -43,7 +43,7 @@ Generated Geometry
   Triangle count: 510
   Scene summary: splash: 3 groups, 60 ticks, 36 verts, 18 tris, view 320x200+0,0, title: 3 groups, 48 ticks/loop 48, 24 verts, 12 tris, view 320x200+0,0, sector1: 3 groups, 8 ticks, 16 verts, 8 tris, view 152x64+56,42, sector2: 3 groups, 8 ticks, 16 verts, 8 tris, view 152x64+56,42, sector3: 3 groups, 8 ticks, 16 verts, 8 tris, view 152x64+56,42, win: 3 groups, 24 ticks, 16 verts, 8 tris, view 320x200+0,0, lose: 3 groups, 24 ticks, 16 verts, 8 tris, view 320x200+0,0
   Mesh summary: gate_vault:8 tris, gate_furnace:8 tris, gate_lock:8 tris, terminal_vault:12 tris, terminal_furnace:12 tris, terminal_lock:12 tris, surge_vault:12 tris, surge_furnace:12 tris, surge_lock:12 tris, shard_vault:14 tris, shard_furnace:14 tris, shard_lock:14 tris, beacon_exit:12 tris, beacon_focus:12 tris, beacon_spoof:12 tris, beacon_threat:12 tris, landmark_vault:14 tris, landmark_furnace:16 tris, landmark_lock:14 tris, portal_arch:8 tris, switch_pedestal:14 tris, lava_vent:12 tris, gem_cluster:12 tris, tree_round:12 tris, stone_stack:16 tris, bridge_span:12 tris, tower_toy:20 tris, enemy_rusher:12 tris, enemy_rusher_alt:12 tris, enemy_flanker:12 tris, enemy_flanker_alt:12 tris, player_runner:14 tris, player_runner_lean:14 tris, warden:14 tris, warden_pressure:14 tris
-  Gameplay kit summary: sector1: cam h=5.25 d=7.85 look=0.9, proj p=-15 s=94, horizon=40, landmark=tower_toy, wobble=0, props portal_arch|switch_pedestal|lava_vent|gem_cluster | sector2: cam h=5.55 d=6.75 look=0.95, proj p=-16 s=96, horizon=36, landmark=landmark_furnace, wobble=2, props gate_furnace|terminal_furnace|surge_furnace|shard_furnace | sector3: cam h=5.85 d=6.5 look=0.8, proj p=-14 s=100, horizon=32, landmark=landmark_lock, wobble=2, props gate_lock|terminal_lock|surge_lock|shard_lock
+  Gameplay kit summary: sector1: cam h=4.9 d=8.4 look=1, proj p=-13 s=88, horizon=42, terrain cliff=sky_stone shelf=meadow_ground bridge=panel_white, landmark=tower_toy, wobble=0, props portal_arch|switch_pedestal|lava_vent|gem_cluster | sector2: cam h=5.55 d=6.75 look=0.95, proj p=-16 s=96, horizon=36, terrain cliff=furnace_wall shelf=floor_dark bridge=panel_amber, landmark=landmark_furnace, wobble=2, props gate_furnace|terminal_furnace|surge_furnace|shard_furnace | sector3: cam h=5.85 d=6.5 look=0.8, proj p=-14 s=100, horizon=32, terrain cliff=lock_wall shelf=floor_dark bridge=gate_glow, landmark=landmark_lock, wobble=2, props gate_lock|terminal_lock|surge_lock|shard_lock
   Face summary: splash=18t/3g, title=12t/3g, sector1=8t/3g, sector2=8t/3g, sector3=8t/3g, win=8t/3g, lose=8t/3g
 
 Generated Content
@@ -74,7 +74,7 @@ Generated Content
   Geometry triangles: 510
   Geometry summary: splash: 3 groups, 60 ticks, 36 verts, 18 tris, view 320x200+0,0, title: 3 groups, 48 ticks/loop 48, 24 verts, 12 tris, view 320x200+0,0, sector1: 3 groups, 8 ticks, 16 verts, 8 tris, view 152x64+56,42, sector2: 3 groups, 8 ticks, 16 verts, 8 tris, view 152x64+56,42, sector3: 3 groups, 8 ticks, 16 verts, 8 tris, view 152x64+56,42, win: 3 groups, 24 ticks, 16 verts, 8 tris, view 320x200+0,0, lose: 3 groups, 24 ticks, 16 verts, 8 tris, view 320x200+0,0
   Geometry mesh summary: gate_vault:8 tris, gate_furnace:8 tris, gate_lock:8 tris, terminal_vault:12 tris, terminal_furnace:12 tris, terminal_lock:12 tris, surge_vault:12 tris, surge_furnace:12 tris, surge_lock:12 tris, shard_vault:14 tris, shard_furnace:14 tris, shard_lock:14 tris, beacon_exit:12 tris, beacon_focus:12 tris, beacon_spoof:12 tris, beacon_threat:12 tris, landmark_vault:14 tris, landmark_furnace:16 tris, landmark_lock:14 tris, portal_arch:8 tris, switch_pedestal:14 tris, lava_vent:12 tris, gem_cluster:12 tris, tree_round:12 tris, stone_stack:16 tris, bridge_span:12 tris, tower_toy:20 tris, enemy_rusher:12 tris, enemy_rusher_alt:12 tris, enemy_flanker:12 tris, enemy_flanker_alt:12 tris, player_runner:14 tris, player_runner_lean:14 tris, warden:14 tris, warden_pressure:14 tris
-  Geometry gameplay kit summary: sector1: cam h=5.25 d=7.85 look=0.9, proj p=-15 s=94, horizon=40, landmark=tower_toy, wobble=0, props portal_arch|switch_pedestal|lava_vent|gem_cluster | sector2: cam h=5.55 d=6.75 look=0.95, proj p=-16 s=96, horizon=36, landmark=landmark_furnace, wobble=2, props gate_furnace|terminal_furnace|surge_furnace|shard_furnace | sector3: cam h=5.85 d=6.5 look=0.8, proj p=-14 s=100, horizon=32, landmark=landmark_lock, wobble=2, props gate_lock|terminal_lock|surge_lock|shard_lock
+  Geometry gameplay kit summary: sector1: cam h=4.9 d=8.4 look=1, proj p=-13 s=88, horizon=42, terrain cliff=sky_stone shelf=meadow_ground bridge=panel_white, landmark=tower_toy, wobble=0, props portal_arch|switch_pedestal|lava_vent|gem_cluster | sector2: cam h=5.55 d=6.75 look=0.95, proj p=-16 s=96, horizon=36, terrain cliff=furnace_wall shelf=floor_dark bridge=panel_amber, landmark=landmark_furnace, wobble=2, props gate_furnace|terminal_furnace|surge_furnace|shard_furnace | sector3: cam h=5.85 d=6.5 look=0.8, proj p=-14 s=100, horizon=32, terrain cliff=lock_wall shelf=floor_dark bridge=gate_glow, landmark=landmark_lock, wobble=2, props gate_lock|terminal_lock|surge_lock|shard_lock
   Geometry textured materials: 8
   Geometry texture summary: sun_warm:banner-warm/affine, gem_blue:gem-blue/flat, meadow_ground:grass/affine, lava_hot:lava-hot/affine, tree_canopy:leaf-canopy/affine, sky_stone:soft-stone/affine, stone_soft:soft-stone/affine, tree_trunk:tree-bark/affine
   Textured realm showcase path: active
@@ -94,6 +94,7 @@ Generated Content
   Adventure realm: SUNSPARK GLADE start 4,12 -> portal 24,2, gems 24/20
   Adventure zones: start-glade (Start Glade, 2,10,10,13) | first-loop (First Loop, 8,8,16,11) | charge-lane (Charge Lane, 6,11,12,13) | high-key-terrace (High Key Terrace, 14,3,22,6) | glide-return (Glide Return, 18,7,25,10) | portal-plaza (Portal Plaza, 21,1,25,4)
   Adventure beats: #1 start-glade: Opening gem ribbon and a clean first read of the portal tower. | #2 first-loop: A broad first bend that teaches the realm without crowding the player. | #3 charge-lane: One obvious rusher and the flame pedestal in an open teaching lane. | #4 high-key-terrace: The visible hilltop key route framed against the skyline. | #5 glide-return: A return lane with one hazard lesson and a late combat beat. | #6 portal-plaza: The unlocked arch, the sparse warden set-piece, and the finish.
+  Adventure chunks: glade-west:start-lane 2,10->7,13 h0/0 ramp=none cliff=north bridge=none prop=1 | glade-east:intro-turn 8,10->12,13 h0/64 ramp=east cliff=north bridge=none prop=1 | loop-bend:route-read 10,8->16,11 h64/96 ramp=north cliff=east bridge=none prop=1 | charge-teach:charge-lesson 6,11->12,13 h64/112 ramp=north cliff=south bridge=east-west prop=1 | terrace-climb:climb 14,5->18,8 h112/176 ramp=east cliff=north bridge=none prop=1 | terrace-key:key-reveal 18,3->22,5 h176/208 ramp=north cliff=west bridge=none prop=1 | glide-ramp:glide-setup 18,7->22,10 h128/176 ramp=west cliff=south bridge=none prop=1 | return-lane:return-pressure 22,7->25,10 h96/128 ramp=east cliff=south bridge=none prop=1 | portal-front:portal-read 21,1->23,4 h96/144 ramp=north cliff=west bridge=none prop=2 | portal-arch:finish 23,1->25,3 h144/176 ramp=none cliff=south bridge=none prop=2
   Adventure capture: beauty=glade-attract-a, action=glade-attract-b
   Demo source: C:\Users\RhythmicCarnage\Desktop\CyberStorm\assets\demos.psd1
   Demo include: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\generated_demos.inc
@@ -110,17 +111,17 @@ Generated Content
 Replay Harness
   Report: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-replay-report.txt
   Scenarios: 11
-  SUNSPARK BEAUTY PASS: final 0xDF47
-  SUNSPARK ACTION PASS: final 0x7A37
-  ADVENTURE IDLE VERIFY: final 0x5B0A
-  ADVENTURE TURN VERIFY: final 0x5A8A
-  ADVENTURE RUN VERIFY: final 0xC856
-  ADVENTURE JUMP GLIDE VERIFY: final 0x3B06
-  ADVENTURE CHARGE HIT VERIFY: final 0x8EA7
-  ADVENTURE SWITCH VERIFY: final 0x8EA7
-  ADVENTURE KEY VERIFY: final 0x1FA4
-  ADVENTURE PORTAL UNLOCK VERIFY: final 0xD8C4
-  ADVENTURE PORTAL COMPLETE VERIFY: final 0xD8C4
+  SUNSPARK BEAUTY PASS: final 0xF687
+  SUNSPARK ACTION PASS: final 0x7A77
+  ADVENTURE IDLE VERIFY: final 0x59CA
+  ADVENTURE TURN VERIFY: final 0x5B4A
+  ADVENTURE RUN VERIFY: final 0xCA96
+  ADVENTURE JUMP GLIDE VERIFY: final 0x39C6
+  ADVENTURE CHARGE HIT VERIFY: final 0x8DE7
+  ADVENTURE SWITCH VERIFY: final 0x8DE7
+  ADVENTURE KEY VERIFY: final 0xBAD7
+  ADVENTURE PORTAL UNLOCK VERIFY: final 0x4158
+  ADVENTURE PORTAL COMPLETE VERIFY: final 0x4158
 
 Balance Harness
   Report: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-balance-report.txt
@@ -142,13 +143,13 @@ Balance Harness
 Regression Harness
   Report: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-regression-report.txt
   Boot sector: 512 bytes, signature 0x55AA, LBA 0 matches both image files
-  Stage two: 63283 bytes, 124 sectors, GAME_SECTORS matches, entry near jmp to 0x1424
-  Code bank: 676 bytes (1024 padded), 2 sectors, LBA 125..126
-  Texture bank: 20480 bytes (20480 padded), 40 sectors, LBA 127..166
-  Map bank: 3780 bytes (4096 padded), 8 sectors, LBA 167..174
-  Presentation bank: 19968 bytes (19968 padded), 39 sectors, LBA 175..213
-  Geometry bank: 6726 bytes (7168 padded), 14 sectors, LBA 214..227
-  Images: .img and .vfd match exactly, unused tail zero-filled from byte 116736
+  Stage two: 65364 bytes, 128 sectors, GAME_SECTORS matches, entry near jmp to 0x1424
+  Code bank: 676 bytes (1024 padded), 2 sectors, LBA 129..130
+  Texture bank: 20480 bytes (20480 padded), 40 sectors, LBA 131..170
+  Map bank: 3780 bytes (4096 padded), 8 sectors, LBA 171..178
+  Presentation bank: 19968 bytes (19968 padded), 39 sectors, LBA 179..217
+  Geometry bank: 6726 bytes (7168 padded), 14 sectors, LBA 218..231
+  Images: .img and .vfd match exactly, unused tail zero-filled from byte 118784
   Diagnostics: boot.lst and game.lst are present for post-failure inspection
 
 Frontend Verify
@@ -166,11 +167,11 @@ Showcase Capture
 
 Asset Banks
   Layout include: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\generated_bank_layout.inc
-  Code bank: 676 bytes (1024 padded), 2 sectors, LBA 125..126, load 0x6000:0000, payload C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-code-bank.bin
-  Texture bank: 20480 bytes (20480 padded), 40 sectors, LBA 127..166, load 0x6800:0000, payload C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-texture-bank.bin
-  Map bank: 3780 bytes (4096 padded), 8 sectors, LBA 167..174, load 0x7000:0000, payload C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-map-bank.bin
-  Presentation bank: 19968 bytes (19968 padded), 39 sectors, LBA 175..213, load 0x7800:0000, payload C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-presentation-bank.bin
-  Geometry bank: 6726 bytes (7168 padded), 14 sectors, LBA 214..227, load 0x8000:0000, payload C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-geometry-bank.bin
+  Code bank: 676 bytes (1024 padded), 2 sectors, LBA 129..130, load 0x6000:0000, payload C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-code-bank.bin
+  Texture bank: 20480 bytes (20480 padded), 40 sectors, LBA 131..170, load 0x6800:0000, payload C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-texture-bank.bin
+  Map bank: 3780 bytes (4096 padded), 8 sectors, LBA 171..178, load 0x7000:0000, payload C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-map-bank.bin
+  Presentation bank: 19968 bytes (19968 padded), 39 sectors, LBA 179..217, load 0x7800:0000, payload C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-presentation-bank.bin
+  Geometry bank: 6726 bytes (7168 padded), 14 sectors, LBA 218..231, load 0x8000:0000, payload C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-geometry-bank.bin
 
 Screenshots
   Housekeeping: kept 6 source screenshots, removed 0, README slots now follow the verified showcase-only policy
@@ -181,20 +182,20 @@ Screenshots
 Layout
   Boot code bytes: 132 / 510
   Boot code free bytes: 378
-  Stage2 bytes: 63283
-  Stage2 free bytes before 64 KiB limit: 2253
-  Stage2 padded bytes: 63488
-  Stage2 sectors: 124
-  Image bytes used: 115425 / 1474560
-  Image free bytes: 1359135
-  Disk footprint bytes: 116736 / 1474560
-  Disk footprint free bytes: 1357824
+  Stage2 bytes: 65364
+  Stage2 free bytes before 64 KiB limit: 172
+  Stage2 padded bytes: 65536
+  Stage2 sectors: 128
+  Image bytes used: 117506 / 1474560
+  Image free bytes: 1357054
+  Disk footprint bytes: 118784 / 1474560
+  Disk footprint free bytes: 1355776
   Boot load address: 0000:7C00 (phys 0x00007C00)
   Stage2 load address: 0x1000:0x0000 (phys 0x00010000)
   Boot signature: 0x55AA @ byte 510
-  Stage2 LBA range: 1..124
+  Stage2 LBA range: 1..128
   Boot section: .text$mn (relocations applied: 3)
-  Stage2 section: .text$mn (relocations applied: 3274)
+  Stage2 section: .text$mn (relocations applied: 3500)
   Assembler warnings: boot=1, stage2=1
   Boot 'start' symbol offset: 0x0000
   Stage2 'start' symbol offset: 0x1424
@@ -235,5 +236,5 @@ Artifacts
   C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm.vfd
 
 Warnings
-  Stage two is within 2253 bytes of the 64 KiB load limit.
-  Stage two uses 124 sectors; that is close to the 128-sector single-segment load limit.
+  Stage two is within 172 bytes of the 64 KiB load limit.
+  Stage two uses 128 sectors; that is close to the 128-sector single-segment load limit.

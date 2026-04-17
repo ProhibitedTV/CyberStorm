@@ -3,6 +3,12 @@ start:
     ; handler all expect DS = CS. SS:SP still points at the boot stack.
     push cs
     pop ds
+    ; Banked payloads are only supported from the floppy target in the current
+    ; VirtualBox workflow, so normalize any exotic BIOS boot-drive aliases.
+    cmp dl, 1
+    jbe boot_drive_ready
+    xor dl, dl
+boot_drive_ready:
     mov [boot_drive], dl
     call load_required_asset_banks
 
@@ -97,40 +103,164 @@ main_loop_skip_render:
 handle_splash_input:
     call frontend_start_key_pending
     cmp al, 0
-    je splash_check_skip
-    call clear_pressed_latches
-    call start_new_run
-    jmp main_loop
+    jne splash_enter_menu
 
 splash_check_skip:
     call frontend_activity_pending
     cmp al, 0
     je main_loop
+splash_enter_menu:
     call clear_pressed_latches
-
-skip_splash:
     call reset_keyboard_state
-    mov byte ptr [game_state], STATE_TITLE
+    call enter_title_screen
     jmp main_loop
 
 handle_frontend_start_input:
-    call frontend_start_key_pending
-    cmp al, 0
-    jne frontend_start_now
+IF DEBUG_FRONTEND_VERIFY
+    cmp byte ptr [verify_mode], VERIFY_MODE_FRONTEND
+    jne frontend_verify_start_inject_done
+    cmp byte ptr [verify_frontend_scenario], FRONTEND_VERIFY_TITLE_TO_START
+    jne frontend_verify_start_inject_done
+    cmp byte ptr [verify_frontend_event_fired], 0
+    jne frontend_verify_start_inject_done
+    cmp byte ptr [title_idle_ticks], TITLE_INPUT_ARM_TICKS
+    jb frontend_verify_start_inject_done
+    mov al, FRONTEND_ACTION_START
+    call inject_frontend_verify_action
+frontend_verify_start_inject_done:
+ENDIF
     call frontend_activity_pending
     cmp al, 0
     je main_loop
+    mov byte ptr [menu_idle_ticks], 0
+    mov al, [frontend_action]
+    cmp al, FRONTEND_ACTION_ACTIVITY
+    je title_input_done
+    cmp byte ptr [title_panel_mode], TITLE_PANEL_MENU
+    jne title_panel_input
+
+    cmp al, FRONTEND_ACTION_NAV_UP
+    jne title_menu_check_down
+    cmp byte ptr [title_menu_index], 0
+    jne title_menu_move_up
+    mov byte ptr [title_menu_index], TITLE_MENU_COUNT - 1
+    jmp title_input_done
+
+title_menu_move_up:
+    dec byte ptr [title_menu_index]
+    jmp title_input_done
+
+title_menu_check_down:
+    cmp al, FRONTEND_ACTION_NAV_DOWN
+    jne title_menu_check_confirm
+    inc byte ptr [title_menu_index]
+    cmp byte ptr [title_menu_index], TITLE_MENU_COUNT
+    jb title_input_done
+    mov byte ptr [title_menu_index], 0
+    jmp title_input_done
+
+title_menu_check_confirm:
+    cmp al, FRONTEND_ACTION_CONFIRM
+    jne title_input_done
+    mov al, [title_menu_index]
+    cmp al, TITLE_MENU_NEW_GAME
+    je frontend_start_now
+    cmp al, TITLE_MENU_ATTRACT
+    je title_start_attract
+    cmp al, TITLE_MENU_CREDITS
+    je title_open_credits
+    mov byte ptr [title_panel_mode], TITLE_PANEL_OPTIONS
+    jmp title_input_done
+
+title_start_attract:
+    call start_demo_run
+    jmp main_loop
+
+title_open_credits:
+    mov byte ptr [title_panel_mode], TITLE_PANEL_CREDITS
+    jmp title_input_done
+
+title_panel_input:
+    cmp byte ptr [title_panel_mode], TITLE_PANEL_CREDITS
+    jne title_options_input
+    cmp al, FRONTEND_ACTION_CONFIRM
+    je title_return_menu
+    cmp al, FRONTEND_ACTION_NAV_LEFT
+    jne title_input_done
+
+title_return_menu:
+    mov byte ptr [title_panel_mode], TITLE_PANEL_MENU
+    jmp title_input_done
+
+title_options_input:
+    cmp al, FRONTEND_ACTION_NAV_UP
+    jne title_options_check_down
+    cmp byte ptr [title_options_index], 0
+    jne title_options_move_up
+    mov byte ptr [title_options_index], TITLE_OPTIONS_COUNT - 1
+    jmp title_input_done
+
+title_options_move_up:
+    dec byte ptr [title_options_index]
+    jmp title_input_done
+
+title_options_check_down:
+    cmp al, FRONTEND_ACTION_NAV_DOWN
+    jne title_options_check_adjust
+    inc byte ptr [title_options_index]
+    cmp byte ptr [title_options_index], TITLE_OPTIONS_COUNT
+    jb title_input_done
+    mov byte ptr [title_options_index], 0
+    jmp title_input_done
+
+title_options_check_adjust:
+    cmp al, FRONTEND_ACTION_NAV_LEFT
+    je title_options_apply
+    cmp al, FRONTEND_ACTION_NAV_RIGHT
+    je title_options_apply
+    cmp al, FRONTEND_ACTION_CONFIRM
+    jne title_input_done
+
+title_options_apply:
+    mov al, [title_options_index]
+    cmp al, TITLE_OPTIONS_MUSIC
+    jne title_options_check_idle
+    xor byte ptr [session_music_enabled], 1
+    jmp title_input_done
+
+title_options_check_idle:
+    cmp al, TITLE_OPTIONS_IDLE_DEMO
+    jne title_options_back_to_menu
+    xor byte ptr [session_idle_demo_enabled], 1
+    mov byte ptr [menu_idle_ticks], 0
+    jmp title_input_done
+
+title_options_back_to_menu:
+    mov byte ptr [title_panel_mode], TITLE_PANEL_MENU
+
+title_input_done:
     call clear_pressed_latches
     jmp main_loop
 
 handle_frontend_continue_input:
     call frontend_continue_key_pending
     cmp al, 0
-    jne frontend_start_now
+    jne frontend_continue_now
     call frontend_activity_pending
     cmp al, 0
     je main_loop
     call clear_pressed_latches
+    jmp main_loop
+
+frontend_continue_now:
+    cmp byte ptr [game_state], STATE_LOSE
+    je frontend_restart_checkpoint
+    call return_to_title
+    jmp main_loop
+
+frontend_restart_checkpoint:
+    call reset_keyboard_state
+    call restart_campaign_checkpoint
     jmp main_loop
 
 handle_verify_continue_input:
@@ -166,7 +296,13 @@ ELSE
 ENDIF
 
 demo_takeover_now:
+    cmp byte ptr [frontend_action], FRONTEND_ACTION_CONTINUE
+    je demo_exit_now
     call start_new_run
+    jmp main_loop
+
+demo_exit_now:
+    call return_to_title
     jmp main_loop
 
 handle_live_play_input:
@@ -314,24 +450,34 @@ frontend_update_splash:
     jmp frontend_state_done
 
 frontend_update_title:
-    call frontend_start_key_pending
-    cmp al, 0
-    jne frontend_state_done
+    cmp byte ptr [title_idle_ticks], 255
+    je frontend_title_age_ready
+    inc byte ptr [title_idle_ticks]
+
+frontend_title_age_ready:
     call frontend_activity_pending
     cmp al, 0
     jne frontend_title_has_input
-    cmp byte ptr [title_idle_ticks], 255
+    cmp byte ptr [title_panel_mode], TITLE_PANEL_MENU
+    jne frontend_title_idle_clear
+    cmp byte ptr [session_idle_demo_enabled], 0
+    je frontend_title_idle_clear
+    cmp byte ptr [menu_idle_ticks], 255
     je frontend_title_idle_ready
-    inc byte ptr [title_idle_ticks]
+    inc byte ptr [menu_idle_ticks]
 
 frontend_title_idle_ready:
-    cmp byte ptr [title_idle_ticks], TITLE_ATTRACT_DELAY
+    cmp byte ptr [menu_idle_ticks], TITLE_ATTRACT_DELAY
     jb frontend_state_done
     call start_demo_run
     jmp frontend_state_done
 
 frontend_title_has_input:
-    mov byte ptr [title_idle_ticks], 0
+    mov byte ptr [menu_idle_ticks], 0
+    jmp frontend_state_done
+
+frontend_title_idle_clear:
+    mov byte ptr [menu_idle_ticks], 0
 
 frontend_state_done:
     ret
@@ -342,6 +488,7 @@ frontend_start_key_pending:
     je frontend_start_key_no
     cmp byte ptr [frontend_action], FRONTEND_ACTION_START
     jne frontend_start_key_no
+frontend_start_key_yes:
     mov al, 1
     ret
 
@@ -412,10 +559,25 @@ enter_title_screen:
     call clear_demo_playback_state
     mov byte ptr [game_state], STATE_TITLE
     mov byte ptr [title_idle_ticks], 0
+    mov byte ptr [menu_idle_ticks], 0
+    mov byte ptr [title_menu_index], TITLE_MENU_NEW_GAME
+    mov byte ptr [title_panel_mode], TITLE_PANEL_MENU
+    mov byte ptr [title_options_index], TITLE_OPTIONS_MUSIC
     ret
 
 return_to_title:
     call reset_keyboard_state
+    cmp byte ptr [verify_mode], VERIFY_MODE_FRONTEND
+    jne return_to_title_ready
+    cmp byte ptr [game_state], STATE_VERIFY_PASS
+    je return_to_title_clear_frontend_verify
+    cmp byte ptr [game_state], STATE_VERIFY_FAIL
+    jne return_to_title_ready
+
+return_to_title_clear_frontend_verify:
+    call clear_frontend_verify_session_state
+
+return_to_title_ready:
     call enter_title_screen
     ret
 
@@ -427,33 +589,46 @@ clear_demo_playback_state:
     mov word ptr [demo_script_ptr], 0
     ret
 
+clear_runtime_verify_replay_state:
+    xor ax, ax
+    mov word ptr [verify_action_pending], ax
+    mov byte ptr [verify_result_demo_index], al
+    mov word ptr [verify_snapshot_heading], ax
+    mov word ptr [verify_snapshot_cue_flags], ax
+    mov word ptr [verify_snapshot_enemy_tick], ax
+    mov word ptr [verify_snapshot_threat_x], START_X + (START_Y shl 8)
+    mov word ptr [verify_snapshot_enemy0], ax
+    mov word ptr [verify_snapshot_enemy1], ax
+    mov word ptr [verify_snapshot_enemy2], ax
+    ret
+
+clear_frontend_verify_session_state:
+    xor ax, ax
+    mov word ptr [verify_expected_signature], ax
+    mov word ptr [verify_observed_signature], ax
+    mov word ptr [verify_mode], ax
+    mov word ptr [verify_frontend_ticks], ax
+    ret
+
 clear_runtime_verify_state:
-    mov byte ptr [verify_action_pending], 0
-    mov byte ptr [verify_action_index], 0
-    mov byte ptr [verify_result_demo_index], 0
-    mov word ptr [verify_expected_signature], 0
-    mov word ptr [verify_observed_signature], 0
-    mov byte ptr [verify_snapshot_heading], 0
-    mov byte ptr [verify_snapshot_variant], 0
-    mov byte ptr [verify_snapshot_cue_flags], 0
-    mov byte ptr [verify_snapshot_intro_timer], 0
-    mov byte ptr [verify_snapshot_enemy_tick], 0
-    mov byte ptr [verify_snapshot_threat_level], THREAT_NONE
-    mov byte ptr [verify_snapshot_threat_x], START_X
-    mov byte ptr [verify_snapshot_threat_y], START_Y
-    mov word ptr [verify_snapshot_enemy0], 0
-    mov word ptr [verify_snapshot_enemy1], 0
-    mov word ptr [verify_snapshot_enemy2], 0
-    mov byte ptr [verify_mode], VERIFY_MODE_REPLAY
-    mov byte ptr [verify_frontend_scenario], FRONTEND_VERIFY_NONE
-    mov byte ptr [verify_frontend_ticks], 0
-    mov byte ptr [verify_frontend_event_fired], 0
+    call clear_runtime_verify_replay_state
+    jmp clear_frontend_verify_session_state
+
+prepare_verify_transition_state:
+    call reset_keyboard_state
+    call clear_demo_playback_state
+    cmp byte ptr [verify_mode], VERIFY_MODE_FRONTEND
+    jne prepare_verify_transition_clear_all
+    call clear_runtime_verify_replay_state
+    ret
+
+prepare_verify_transition_clear_all:
+    call clear_runtime_verify_state
     ret
 
 start_new_run:
-    call reset_keyboard_state
-    call clear_demo_playback_state
-    call clear_runtime_verify_state
+    call prepare_verify_transition_state
+
 IF DEBUG_FORCE_SEED
     mov word ptr [rng_state], DEBUG_SEED_VALUE
 ENDIF
@@ -466,9 +641,7 @@ ENDIF
     ret
 
 start_demo_run:
-    call reset_keyboard_state
-    call clear_demo_playback_state
-    call clear_runtime_verify_state
+    call prepare_verify_transition_state
     mov bl, [next_demo_index]
     cmp bl, DEMO_COUNT
     jb demo_index_ready
@@ -495,9 +668,7 @@ demo_next_index_ready:
     ret
 
 start_selected_demo_run:
-    call reset_keyboard_state
-    call clear_demo_playback_state
-    call clear_runtime_verify_state
+    call prepare_verify_transition_state
     mov bl, DEBUG_DEMO_INDEX
     call start_demo_by_index
     ret
@@ -520,7 +691,11 @@ frontend_verify_scenario_ready:
     mov byte ptr [verify_frontend_scenario], al
     mov byte ptr [game_state], STATE_TITLE
     mov byte ptr [title_idle_ticks], 0
+    mov byte ptr [menu_idle_ticks], 0
     mov byte ptr [splash_ticks], 0
+    mov byte ptr [title_menu_index], TITLE_MENU_NEW_GAME
+    mov byte ptr [title_panel_mode], TITLE_PANEL_MENU
+    mov byte ptr [title_options_index], TITLE_OPTIONS_MUSIC
     cmp al, FRONTEND_VERIFY_SPLASH_TO_TITLE
     jne frontend_verify_check_attract
     mov byte ptr [game_state], STATE_SPLASH
@@ -528,9 +703,12 @@ frontend_verify_scenario_ready:
 
 frontend_verify_check_attract:
     cmp al, FRONTEND_VERIFY_TITLE_TO_ATTRACT
-    jne frontend_verify_start_ready
-    mov byte ptr [title_idle_ticks], TITLE_ATTRACT_DELAY - 4
+    jne frontend_verify_check_start
+    mov byte ptr [title_idle_ticks], TITLE_INPUT_ARM_TICKS
+    mov byte ptr [menu_idle_ticks], TITLE_ATTRACT_DELAY - 4
+    ret
 
+frontend_verify_check_start:
 frontend_verify_start_ready:
     ret
 
@@ -563,9 +741,17 @@ set_run_start_sector_and_pulses:
     mov al, 1
 
 run_start_sector_min_ready:
+IF DEBUG_LEGACY_GAMEPLAY EQ 0
+    cmp al, CAMPAIGN_DISTRICT_COUNT
+ELSE
     cmp al, TOTAL_SECTORS
+ENDIF
     jbe run_start_sector_max_ready
+IF DEBUG_LEGACY_GAMEPLAY EQ 0
+    mov al, CAMPAIGN_DISTRICT_COUNT
+ELSE
     mov al, TOTAL_SECTORS
+ENDIF
 
 run_start_sector_max_ready:
     mov byte ptr [sector_num], al
@@ -827,19 +1013,15 @@ maybe_fire_frontend_verify_event:
     cmp byte ptr [verify_frontend_event_fired], 0
     jne frontend_verify_event_done
     mov al, [verify_frontend_scenario]
-    cmp al, FRONTEND_VERIFY_TITLE_TO_ATTRACT
-    je frontend_verify_event_done
+    cmp al, FRONTEND_VERIFY_SPLASH_TO_TITLE
+    jne frontend_verify_event_done
+
+frontend_verify_event_splash:
     cmp byte ptr [verify_frontend_ticks], 2
     jb frontend_verify_event_done
-    cmp al, FRONTEND_VERIFY_SPLASH_TO_TITLE
-    jne frontend_verify_event_start
     mov al, FRONTEND_ACTION_ACTIVITY
     call inject_frontend_verify_action
     ret
-
-frontend_verify_event_start:
-    mov al, FRONTEND_ACTION_START
-    call inject_frontend_verify_action
 
 frontend_verify_event_done:
     ret
@@ -851,7 +1033,6 @@ inject_frontend_verify_action:
     cmp byte ptr [frontend_event_count], 99
     jae frontend_verify_action_done
     inc byte ptr [frontend_event_count]
-
 frontend_verify_action_done:
     ret
 
@@ -916,6 +1097,7 @@ get_frontend_verify_expected_signature:
     cmp bl, FRONTEND_VERIFY_TITLE_TO_ATTRACT
     jne frontend_verify_expected_start
     or ax, 0100h
+    or ax, 0200h
     or ax, 2000h
     jmp frontend_verify_expected_ready
 

@@ -95,46 +95,13 @@ ENDIF
     call draw_verify_fail_scene
 
 render_present:
-IF DEBUG_RENDER_SENTINELS
-    mov bx, 24
-    mov dx, 0
-    mov al, PAL_AMBER
-    call draw_debug_render_sentinel_vga
+IF DEBUG_SMOKE_SENTINEL
+    mov bx, SMOKE_SENTINEL_X
+    xor dx, dx
+    mov al, SMOKE_SENTINEL_COLOR
+    call put_pixel
 ENDIF
     call present_frame
-    ret
-
-draw_debug_render_sentinel_vga:
-IF DEBUG_RENDER_SENTINELS
-    push ax
-    push bx
-    push cx
-    push dx
-    push di
-    push es
-
-    mov ah, al
-    mov ax, VGA_SEG
-    mov es, ax
-    mov cx, 3
-
-draw_debug_render_sentinel_vga_row:
-    push cx
-    call compute_offset
-    mov al, ah
-    mov cx, 6
-    rep stosb
-    inc dx
-    pop cx
-    loop draw_debug_render_sentinel_vga_row
-
-    pop es
-    pop di
-    pop dx
-    pop cx
-    pop bx
-    pop ax
-ENDIF
     ret
 
 draw_splash_scene:
@@ -699,21 +666,22 @@ IF DEBUG_SCENE_RENDER_MODE EQ SCENE_RENDER_MODE_2D
     call draw_title_scene_overlay
 ELSE
     call draw_title_scene_3d
+    call draw_title_scene_overlay
 ENDIF
     ret
 
 draw_title_scene_overlay:
     mov bx, 24
-    mov dx, 26
+    mov dx, 20
     mov cx, 272
-    mov bp, 132
+    mov bp, 160
     mov al, PAL_PANEL
     call fill_rect
 
     mov bx, 20
-    mov dx, 22
+    mov dx, 16
     mov cx, 280
-    mov bp, 140
+    mov bp, 168
     test byte ptr [anim_phase], 1
     jz title_frame_dim
     mov al, PAL_CYAN2
@@ -725,122 +693,230 @@ title_frame_dim:
 title_frame_ready:
     call draw_rect_outline
 
-    ; Keep the title screen typography-led so the first boot reads as a clean
-    ; invitation instead of a noisy presentation collage.
     mov bx, 74
-    mov dx, 56
+    mov dx, 40
     mov si, offset title_logo
     mov ah, PAL_CYAN2
     call draw_text_big
 
-    mov bx, 80
-    mov dx, 84
-    mov cx, 160
+    mov bx, 70
+    mov dx, 66
+    mov cx, 180
     mov bp, 1
     mov al, PAL_CYAN
     call fill_rect
 
-    mov bx, 100
-    mov dx, 88
-    mov cx, 120
+    mov bx, 92
+    mov dx, 70
+    mov cx, 136
     mov bp, 1
     mov al, PAL_AMBER
     call fill_rect
 
-    mov bx, 48
-    mov dx, 102
+    mov bx, 42
+    mov dx, 78
     mov si, offset title_line_1
     mov ah, PAL_WHITE
     call draw_text_small
 
-    mov bx, 48
-    mov dx, 114
+    mov bx, 80
+    mov dx, 90
     mov si, offset title_line_2
     mov ah, PAL_WHITE
     call draw_text_small
 
-    mov bx, 74
-    mov dx, 138
+    mov bx, 76
+    mov dx, 102
     mov si, offset title_line_4
-    test byte ptr [anim_phase], 2
-    jz title_prompt_amber
-    mov ah, PAL_WHITE
-    jmp title_line_ready
-
-title_prompt_amber:
     mov ah, PAL_AMBER
+    call draw_text_small
 
-title_line_ready:
+    cmp byte ptr [title_panel_mode], TITLE_PANEL_CREDITS
+    je title_draw_credits_panel
+    cmp byte ptr [title_panel_mode], TITLE_PANEL_OPTIONS
+    je title_draw_options_panel
+
+    mov bx, 90
+    mov dx, 122
+    mov si, offset title_menu_new_game_text
+    cmp byte ptr [title_menu_index], TITLE_MENU_NEW_GAME
+    jne title_new_game_dim
+    mov ah, PAL_WHITE
+    jmp title_new_game_ready
+
+title_new_game_dim:
+    mov ah, PAL_CYAN2
+
+title_new_game_ready:
+    call draw_text_small
+
+    mov bx, 82
+    mov dx, 134
+    mov si, offset title_menu_attract_text
+    cmp byte ptr [title_menu_index], TITLE_MENU_ATTRACT
+    jne title_attract_dim
+    mov ah, PAL_WHITE
+    jmp title_attract_ready
+
+title_attract_dim:
+    mov ah, PAL_CYAN2
+
+title_attract_ready:
+    call draw_text_small
+
+    mov bx, 102
+    mov dx, 146
+    mov si, offset title_menu_credits_text
+    cmp byte ptr [title_menu_index], TITLE_MENU_CREDITS
+    jne title_credits_dim
+    mov ah, PAL_WHITE
+    jmp title_credits_ready
+
+title_credits_dim:
+    mov ah, PAL_CYAN2
+
+title_credits_ready:
+    call draw_text_small
+
+    mov bx, 102
+    mov dx, 158
+    mov si, offset title_menu_options_text
+    cmp byte ptr [title_menu_index], TITLE_MENU_OPTIONS
+    jne title_options_dim
+    mov ah, PAL_WHITE
+    jmp title_options_ready
+
+title_options_dim:
+    mov ah, PAL_CYAN2
+
+title_options_ready:
     call draw_text_small
 
     mov bx, 58
-    mov dx, 150
+    mov dx, 172
+    mov si, offset title_menu_hint_text
+    mov ah, PAL_WHITE
+    call draw_text_small
+
+    mov bx, 110
+    mov dx, 182
     mov si, offset title_prompt
     mov ah, PAL_CYAN
     call draw_text_small
     call draw_title_demo_arm_badge
+    ret
 
-IF DEBUG_BUILD
-    mov bx, 42
-    mov dx, 166
-    mov si, offset debug_keys_text
+title_draw_credits_panel:
+    mov bx, 116
+    mov dx, 124
+    mov si, offset title_panel_credits_text
+    mov ah, PAL_WHITE
+    call draw_text_small
+
+    mov bx, 84
+    mov dx, 136
+    mov si, offset credits_line_1
+    mov ah, PAL_CYAN2
+    call draw_text_small
+
+    mov bx, 70
+    mov dx, 148
+    mov si, offset credits_line_2
+    mov ah, PAL_WHITE
+    call draw_text_small
+
+    mov bx, 56
+    mov dx, 160
+    mov si, offset credits_line_3
+    mov ah, PAL_WHITE
+    call draw_text_small
+
+    mov bx, 94
+    mov dx, 172
+    mov si, offset credits_line_4
     mov ah, PAL_AMBER
     call draw_text_small
 
-    mov al, [input_event_count]
-    mov ah, PAL_WHITE
-    mov bx, 68
-    mov dx, 166
-    call draw_two_digit_small
+    mov bx, 86
+    mov dx, 184
+    mov si, offset title_panel_return_text
+    mov ah, PAL_CYAN
+    call draw_text_small
+    ret
 
-    mov bx, 92
-    mov dx, 166
-    mov si, offset debug_enter_text
-    mov ah, PAL_AMBER
+title_draw_options_panel:
+    mov bx, 116
+    mov dx, 122
+    mov si, offset title_panel_options_text
+    mov ah, PAL_WHITE
     call draw_text_small
 
-    xor al, al
-    mov al, [pressed_enter]
+    mov bx, 82
+    mov dx, 136
+    mov si, offset title_option_music_text
+    cmp byte ptr [title_options_index], TITLE_OPTIONS_MUSIC
+    jne title_opt_music_dim
     mov ah, PAL_WHITE
-    mov bx, 118
-    mov dx, 166
-    call draw_digit_small
+    jmp title_opt_music_ready
 
-    mov bx, 142
-    mov dx, 166
-    mov si, offset debug_check_text
-    mov ah, PAL_AMBER
+title_opt_music_dim:
+    mov ah, PAL_CYAN2
+
+title_opt_music_ready:
+    call draw_text_small
+    mov bx, 196
+    mov si, offset title_toggle_off_text
+    cmp byte ptr [session_music_enabled], 0
+    je title_opt_music_value
+    mov si, offset title_toggle_on_text
+
+title_opt_music_value:
+    mov ah, PAL_WHITE
     call draw_text_small
 
-    mov al, [input_check_count]
+    mov bx, 82
+    mov dx, 148
+    mov si, offset title_option_idle_demo_text
+    cmp byte ptr [title_options_index], TITLE_OPTIONS_IDLE_DEMO
+    jne title_opt_idle_dim
     mov ah, PAL_WHITE
-    mov bx, 168
-    mov dx, 166
-    call draw_two_digit_small
+    jmp title_opt_idle_ready
 
-    mov bx, 186
-    mov dx, 166
-    mov si, offset debug_poll_text
-    mov ah, PAL_AMBER
+title_opt_idle_dim:
+    mov ah, PAL_CYAN2
+
+title_opt_idle_ready:
+    call draw_text_small
+    mov bx, 196
+    mov si, offset title_toggle_off_text
+    cmp byte ptr [session_idle_demo_enabled], 0
+    je title_opt_idle_value
+    mov si, offset title_toggle_on_text
+
+title_opt_idle_value:
+    mov ah, PAL_WHITE
     call draw_text_small
 
-    mov al, [input_poll_count]
+    mov bx, 82
+    mov dx, 160
+    mov si, offset title_option_back_text
+    cmp byte ptr [title_options_index], TITLE_OPTIONS_BACK
+    jne title_opt_back_dim
     mov ah, PAL_WHITE
-    mov bx, 212
-    mov dx, 166
-    call draw_two_digit_small
+    jmp title_opt_back_ready
 
-    test byte ptr [anim_phase], 1
-    jz title_cursor_off
-    mov bx, 216
-    mov dx, 157
-    mov cx, 10
-    mov bp, 2
-    mov al, PAL_AMBER
-    call fill_rect
-ENDIF
+title_opt_back_dim:
+    mov ah, PAL_CYAN2
 
-title_cursor_off:
+title_opt_back_ready:
+    call draw_text_small
+
+    mov bx, 86
+    mov dx, 184
+    mov si, offset title_panel_return_text
+    mov ah, PAL_CYAN
+    call draw_text_small
+
     ret
 
 draw_win_scene:
@@ -1292,17 +1368,17 @@ draw_verify_fail_scene:
     ret
 
 draw_verify_scene_common:
-    mov bx, 28
-    mov dx, 28
-    mov cx, 264
-    mov bp, 144
+    mov bx, 36
+    mov dx, 34
+    mov cx, 248
+    mov bp, 132
     mov al, PAL_PANEL
     call fill_rect
 
-    mov bx, 24
-    mov dx, 24
-    mov cx, 272
-    mov bp, 152
+    mov bx, 32
+    mov dx, 30
+    mov cx, 256
+    mov bp, 140
     call get_verify_scene_accent_color
     call draw_rect_outline
 
@@ -1313,529 +1389,169 @@ draw_verify_scene_common:
     call get_verify_scene_accent_color
     call fill_rect
 
-    mov bx, 68
-    mov dx, 42
+    mov bx, 66
+    mov dx, 46
     cmp byte ptr [verify_mode], VERIFY_MODE_FRONTEND
-    je verify_headline_frontend
+    jne verify_scene_runtime_headline
     cmp byte ptr [game_state], STATE_VERIFY_PASS
-    jne verify_headline_fail
-    mov si, offset verify_pass_headline
-    mov ah, PAL_CYAN2
-    jmp verify_headline_ready
-
-verify_headline_frontend:
-    cmp byte ptr [game_state], STATE_VERIFY_PASS
-    jne verify_headline_frontend_fail
+    jne verify_scene_frontend_fail
     mov si, offset frontend_verify_pass_headline
     mov ah, PAL_CYAN2
-    jmp verify_headline_ready
+    jmp verify_scene_headline_ready
 
-verify_headline_frontend_fail:
+verify_scene_frontend_fail:
     mov si, offset frontend_verify_fail_headline
     mov ah, PAL_RED2
-    jmp verify_headline_ready
+    jmp verify_scene_headline_ready
 
-verify_headline_fail:
+verify_scene_runtime_headline:
+    cmp byte ptr [game_state], STATE_VERIFY_PASS
+    jne verify_scene_runtime_fail
+    mov si, offset verify_pass_headline
+    mov ah, PAL_CYAN2
+    jmp verify_scene_headline_ready
+
+verify_scene_runtime_fail:
     mov si, offset verify_fail_headline
     mov ah, PAL_RED2
 
-verify_headline_ready:
+verify_scene_headline_ready:
     call draw_text_big
 
-    mov bx, 68
-    mov dx, 60
+    mov bx, 66
+    mov dx, 70
     cmp byte ptr [verify_mode], VERIFY_MODE_FRONTEND
-    je verify_subject_frontend
+    je verify_scene_subject_frontend
     mov si, offset verify_demo_label
     mov ah, PAL_WHITE
     call draw_text_small
 
-    mov bx, 98
-    mov dx, 60
+    mov bx, 96
+    mov dx, 70
     call get_demo_name_ptr
     call get_verify_scene_accent_color
     mov ah, al
     call draw_text_small
-    jmp verify_subject_done
+    jmp verify_scene_subject_done
 
-verify_subject_frontend:
+verify_scene_subject_frontend:
     mov si, offset verify_scenario_label
     mov ah, PAL_WHITE
     call draw_text_small
 
-    mov bx, 98
-    mov dx, 60
+    mov bx, 96
+    mov dx, 70
     call get_frontend_verify_scenario_name_ptr
     call get_verify_scene_accent_color
     mov ah, al
     call draw_text_small
 
-verify_subject_done:
-
-    mov bx, 68
-    mov dx, 72
+verify_scene_subject_done:
+    mov bx, 66
+    mov dx, 82
     cmp byte ptr [verify_mode], VERIFY_MODE_FRONTEND
-    je verify_detail_frontend
+    je verify_scene_detail_frontend
     call get_current_template_scenario_name_ptr
-    jmp verify_detail_ready
+    jmp verify_scene_detail_ready
 
-verify_detail_frontend:
+verify_scene_detail_frontend:
     call get_frontend_verify_detail_ptr
 
-verify_detail_ready:
+verify_scene_detail_ready:
     mov ah, PAL_WHITE
     call draw_text_small
 
-    mov bx, 68
-    mov dx, 86
+    mov bx, 66
+    mov dx, 98
+    mov si, offset verify_expect_label
+    mov ah, PAL_WHITE
+    call draw_text_small
+
+    mov ax, [verify_expected_signature]
+    mov bx, 114
+    mov dx, 98
+    call get_verify_scene_accent_color
+    mov cl, al
+    call draw_word_hex_small
+
+    mov bx, 178
+    mov dx, 98
+    mov si, offset verify_observe_label
+    mov ah, PAL_WHITE
+    call draw_text_small
+
+    mov ax, [verify_observed_signature]
+    mov bx, 208
+    mov dx, 98
+    call get_verify_scene_accent_color
+    mov cl, al
+    call draw_word_hex_small
+
+    mov bx, 66
+    mov dx, 114
     cmp byte ptr [verify_mode], VERIFY_MODE_FRONTEND
-    je verify_body_frontend
+    je verify_scene_body_frontend
     cmp byte ptr [game_state], STATE_VERIFY_PASS
-    jne verify_body_fail
+    jne verify_scene_body_fail
     mov si, offset verify_line_1
     mov ah, PAL_WHITE
-    jmp verify_body_ready
+    jmp verify_scene_body_ready
 
-verify_body_fail:
+verify_scene_body_fail:
     mov si, offset verify_line_2
     mov ah, PAL_WHITE
 
-verify_body_ready:
+verify_scene_body_ready:
     call draw_text_small
+    jmp verify_scene_prompt
 
-    cmp byte ptr [verify_mode], VERIFY_MODE_FRONTEND
-    je verify_state_line_done
-
-    mov bx, 68
-    mov dx, 94
-    mov si, offset verify_state_px_label
-    mov ah, PAL_WHITE
-    call draw_text_small
-    mov al, [player_x]
-    mov ah, PAL_WHITE
-    mov bx, 84
-    mov dx, 94
-    call draw_two_digit_small
-
-    mov bx, 102
-    mov dx, 94
-    mov si, offset verify_state_py_label
-    mov ah, PAL_WHITE
-    call draw_text_small
-    mov al, [player_y]
-    mov ah, PAL_WHITE
-    mov bx, 118
-    mov dx, 94
-    call draw_two_digit_small
-
-    mov bx, 136
-    mov dx, 94
-    mov si, offset verify_state_action_label
-    mov ah, PAL_WHITE
-    call draw_text_small
-    mov al, [sector_actions]
-    mov ah, PAL_WHITE
-    mov bx, 152
-    mov dx, 94
-    call draw_two_digit_small
-
-    mov bx, 170
-    mov dx, 94
-    mov si, offset verify_state_heading_label
-    mov ah, PAL_WHITE
-    call draw_text_small
-    mov al, [verify_snapshot_heading]
-    mov ah, PAL_WHITE
-    mov bx, 186
-    mov dx, 94
-    call draw_two_digit_small
-
-    mov bx, 204
-    mov dx, 94
-    mov si, offset verify_state_variant_label
-    mov ah, PAL_WHITE
-    call draw_text_small
-    mov al, [verify_snapshot_variant]
-    mov ah, PAL_WHITE
-    mov bx, 220
-    mov dx, 94
-    call draw_two_digit_small
-
-verify_state_line_done:
-    cmp byte ptr [verify_mode], VERIFY_MODE_FRONTEND
-    je verify_state_detail_done
-
-    mov bx, 68
-    mov dx, 102
-    mov si, offset verify_state_shield_label
-    mov ah, PAL_WHITE
-    call draw_text_small
-    mov al, [shield_count]
-    mov ah, PAL_WHITE
-    mov bx, 84
-    mov dx, 102
-    call draw_two_digit_small
-
-    mov bx, 102
-    mov dx, 102
-    mov si, offset verify_state_pulse_label
-    mov ah, PAL_WHITE
-    call draw_text_small
-    mov al, [pulse_count]
-    mov ah, PAL_WHITE
-    mov bx, 118
-    mov dx, 102
-    call draw_two_digit_small
-
-    mov bx, 136
-    mov dx, 102
-    mov si, offset verify_state_data_label
-    mov ah, PAL_WHITE
-    call draw_text_small
-    mov al, [data_count]
-    mov ah, PAL_WHITE
-    mov bx, 152
-    mov dx, 102
-    call draw_two_digit_small
-
-    mov bx, 170
-    mov dx, 102
-    mov si, offset verify_state_kill_label
-    mov ah, PAL_WHITE
-    call draw_text_small
-    mov al, [kill_count]
-    mov ah, PAL_WHITE
-    mov bx, 186
-    mov dx, 102
-    call draw_two_digit_small
-
-    mov bx, 204
-    mov dx, 102
-    mov si, offset verify_state_subject_x_label
-    mov ah, PAL_WHITE
-    call draw_text_small
-    mov al, [game3d_shot_subject_x]
-    mov ah, PAL_WHITE
-    mov bx, 220
-    mov dx, 102
-    call draw_two_digit_small
-
-    mov bx, 238
-    mov dx, 102
-    mov si, offset verify_state_subject_y_label
-    mov ah, PAL_WHITE
-    call draw_text_small
-    mov al, [game3d_shot_subject_y]
-    mov ah, PAL_WHITE
-    mov bx, 254
-    mov dx, 102
-    call draw_two_digit_small
-
-verify_state_detail_done:
-    cmp byte ptr [verify_mode], VERIFY_MODE_FRONTEND
-    je verify_state_hidden_done
-
-    mov bx, 68
-    mov dx, 110
-    mov si, offset verify_state_rng_label
-    mov ah, PAL_WHITE
-    call draw_text_small
-    mov bx, 84
-    mov dx, 110
-    mov ax, [rng_state]
-    mov cl, PAL_WHITE
-    call draw_word_hex_small
-
-    mov bx, 136
-    mov dx, 110
-    mov si, offset verify_state_cue_label
-    mov ah, PAL_WHITE
-    call draw_text_small
-    mov al, [verify_snapshot_cue_flags]
-    mov ah, PAL_WHITE
-    mov bx, 152
-    mov dx, 110
-    call draw_two_digit_small
-
-    mov bx, 170
-    mov dx, 110
-    mov si, offset verify_state_tick_label
-    mov ah, PAL_WHITE
-    call draw_text_small
-    mov al, [game3d_shot_tick]
-    mov ah, PAL_WHITE
-    mov bx, 186
-    mov dx, 110
-    call draw_two_digit_small
-
-    mov bx, 204
-    mov dx, 110
-    mov si, offset verify_state_shot_label
-    mov ah, PAL_WHITE
-    call draw_text_small
-    mov al, [game3d_shot_mode]
-    mov ah, PAL_WHITE
-    mov bx, 220
-    mov dx, 110
-    call draw_two_digit_small
-
-    mov bx, 238
-    mov dx, 110
-    mov si, offset verify_state_reason_label
-    mov ah, PAL_WHITE
-    call draw_text_small
-    mov al, [game3d_shot_reason]
-    mov ah, PAL_WHITE
-    mov bx, 254
-    mov dx, 110
-    call draw_two_digit_small
-
-    mov bx, 272
-    mov dx, 110
-    mov si, offset verify_state_frame_label
-    mov ah, PAL_WHITE
-    call draw_text_small
-    mov al, [game3d_shot_frame_variant]
-    mov ah, PAL_WHITE
-    mov bx, 288
-    mov dx, 110
-    call draw_two_digit_small
-
-verify_state_hidden_done:
-    jmp verify_step_label_gate
-
-verify_body_frontend:
+verify_scene_body_frontend:
     cmp byte ptr [game_state], STATE_VERIFY_PASS
-    jne verify_body_frontend_fail
+    jne verify_scene_body_frontend_fail
     mov si, offset frontend_verify_line_1
     mov ah, PAL_WHITE
-    jmp verify_body_ready
+    jmp verify_scene_body_ready
 
-verify_body_frontend_fail:
+verify_scene_body_frontend_fail:
     mov si, offset frontend_verify_line_2
     mov ah, PAL_WHITE
-    jmp verify_body_ready
+    jmp verify_scene_body_ready
 
-verify_step_label_gate:
-    mov bx, 68
-    mov dx, 120
-    cmp byte ptr [verify_mode], VERIFY_MODE_FRONTEND
-    je verify_step_frontend
-    mov si, offset verify_step_label
-    jmp verify_step_label_ready
-
-verify_step_frontend:
-    mov si, offset verify_event_label
-
-verify_step_label_ready:
-    mov ah, PAL_WHITE
-    call draw_text_small
-
-    mov al, [verify_action_index]
-    mov ah, PAL_WHITE
-    mov bx, 92
-    mov dx, 120
-    call draw_two_digit_small
-
-    mov bx, 126
-    mov dx, 120
-    mov si, offset verify_expect_label
-    mov ah, PAL_WHITE
-    call draw_text_small
-
-    mov ax, [verify_expected_signature]
-    push ax
-    mov bx, 150
-    mov dx, 120
-    call get_verify_scene_accent_color
-    mov cl, al
-    pop ax
-    call draw_word_hex_small
-
-    mov bx, 204
-    mov dx, 120
-    mov si, offset verify_observe_label
-    mov ah, PAL_WHITE
-    call draw_text_small
-
-    mov ax, [verify_observed_signature]
-    push ax
-    mov bx, 228
-    mov dx, 120
-    call get_verify_scene_accent_color
-    mov cl, al
-    pop ax
-    call draw_word_hex_small
-
-    mov bx, 68
-    mov dx, VERIFY_EXPECT_BITS_Y - 2
-    mov si, offset verify_expect_label
-    mov ah, PAL_WHITE
-    call draw_text_small
-    mov ax, [verify_expected_signature]
-    mov bx, VERIFY_BITS_X
-    mov dx, VERIFY_EXPECT_BITS_Y
-    call draw_verify_signature_bits
-
-    mov bx, 68
-    mov dx, VERIFY_OBS_BITS_Y - 2
-    mov si, offset verify_observe_label
-    mov ah, PAL_WHITE
-    call draw_text_small
-    mov ax, [verify_observed_signature]
-    mov bx, VERIFY_BITS_X
-    mov dx, VERIFY_OBS_BITS_Y
-    call draw_verify_signature_bits
-
-    cmp byte ptr [verify_mode], VERIFY_MODE_FRONTEND
-    je verify_draw_prompt_box
-
-    mov bx, 56
-    mov dx, 168
-    mov cx, 246
-    mov bp, 22
+verify_scene_prompt:
+    mov bx, 78
+    mov dx, 146
+    mov cx, 168
+    mov bp, 12
     mov al, PAL_PANEL2
     call fill_rect
 
-    mov bx, 54
-    mov dx, 166
-    mov cx, 250
-    mov bp, 26
-    test byte ptr [anim_phase], 1
-    jz verify_prompt_frame_base
-    mov al, PAL_WHITE
-    jmp verify_prompt_frame_ready
-
-verify_prompt_frame_base:
-    call get_verify_scene_accent_color
-
-verify_prompt_frame_ready:
-    call draw_rect_outline
-
-    mov bx, 64
-    mov dx, 172
-    mov si, offset verify_state_intro_label
-    mov ah, PAL_WHITE
-    call draw_text_small
-    mov al, [verify_snapshot_intro_timer]
-    mov ah, PAL_WHITE
-    mov bx, 80
-    mov dx, 172
-    call draw_two_digit_small
-
-    mov bx, 98
-    mov dx, 172
-    mov si, offset verify_state_enemy_tick_label
-    mov ah, PAL_WHITE
-    call draw_text_small
-    mov al, [verify_snapshot_enemy_tick]
-    mov ah, PAL_WHITE
-    mov bx, 114
-    mov dx, 172
-    call draw_two_digit_small
-
-    mov bx, 132
-    mov dx, 172
-    mov si, offset verify_state_threat_label
-    mov ah, PAL_WHITE
-    call draw_text_small
-    mov al, [verify_snapshot_threat_level]
-    mov ah, PAL_WHITE
-    mov bx, 148
-    mov dx, 172
-    call draw_two_digit_small
-
-    mov bx, 166
-    mov dx, 172
-    mov si, offset verify_state_threat_x_label
-    mov ah, PAL_WHITE
-    call draw_text_small
-    mov al, [verify_snapshot_threat_x]
-    mov ah, PAL_WHITE
-    mov bx, 182
-    mov dx, 172
-    call draw_two_digit_small
-
-    mov bx, 200
-    mov dx, 172
-    mov si, offset verify_state_threat_y_label
-    mov ah, PAL_WHITE
-    call draw_text_small
-    mov al, [verify_snapshot_threat_y]
-    mov ah, PAL_WHITE
-    mov bx, 216
-    mov dx, 172
-    call draw_two_digit_small
-
-    mov bx, 64
-    mov dx, 180
-    mov si, offset verify_state_enemy0_label
-    mov ah, PAL_WHITE
-    call draw_text_small
-    mov ax, [verify_snapshot_enemy0]
-    mov bx, 80
-    mov dx, 180
-    mov cl, PAL_WHITE
-    call draw_word_hex_small
-
-    mov bx, 138
-    mov dx, 180
-    mov si, offset verify_state_enemy1_label
-    mov ah, PAL_WHITE
-    call draw_text_small
-    mov ax, [verify_snapshot_enemy1]
-    mov bx, 154
-    mov dx, 180
-    mov cl, PAL_WHITE
-    call draw_word_hex_small
-
-    mov bx, 212
-    mov dx, 180
-    mov si, offset verify_state_enemy2_label
-    mov ah, PAL_WHITE
-    call draw_text_small
-    mov ax, [verify_snapshot_enemy2]
-    mov bx, 228
-    mov dx, 180
-    mov cl, PAL_WHITE
-    call draw_word_hex_small
-    ret
-
-verify_draw_prompt_box:
-    mov bx, 74
-    mov dx, 170
-    mov cx, 172
-    mov bp, 10
-    mov al, PAL_PANEL2
-    call fill_rect
-
-    mov bx, 72
-    mov dx, 168
+    mov bx, 76
+    mov dx, 144
     mov cx, 176
-    mov bp, 14
+    mov bp, 16
     test byte ptr [anim_phase], 1
-    jz verify_prompt_frontend_base
+    jz verify_scene_prompt_base
     mov al, PAL_WHITE
-    jmp verify_prompt_frontend_ready
+    jmp verify_scene_prompt_ready
 
-verify_prompt_frontend_base:
+verify_scene_prompt_base:
     call get_verify_scene_accent_color
 
-verify_prompt_frontend_ready:
+verify_scene_prompt_ready:
     call draw_rect_outline
 
-    mov bx, 86
-    mov dx, 174
+    mov bx, 88
+    mov dx, 150
     mov si, offset verify_prompt
     test byte ptr [anim_phase], 1
-    jz verify_prompt_dim
+    jz verify_scene_prompt_dim
     mov ah, PAL_WHITE
-    jmp verify_prompt_ready
+    jmp verify_scene_prompt_text_ready
 
-verify_prompt_dim:
+verify_scene_prompt_dim:
     mov ah, PAL_AMBER
 
-verify_prompt_ready:
+verify_scene_prompt_text_ready:
     call draw_text_small
     ret
 
@@ -1849,50 +1565,10 @@ verify_scene_color_fail:
     mov al, PAL_RED2
     ret
 
-draw_verify_signature_bits:
-    push ax
-    push bx
-    push cx
-    push dx
-    push si
-    mov si, 8000h
-    mov cx, 16
-
-verify_bits_loop:
-    push ax
-    push bx
-    push cx
-    push dx
-    test ax, si
-    jz verify_bit_zero
-    mov al, PAL_WHITE
-    jmp verify_bit_color_ready
-
-verify_bit_zero:
-    mov al, PAL_PANEL2
-
-verify_bit_color_ready:
-    mov bp, VERIFY_BIT_SIZE
-    mov cx, VERIFY_BIT_SIZE
-    call fill_rect
-    pop dx
-    pop cx
-    pop bx
-    pop ax
-    add bx, VERIFY_BIT_PITCH
-    shr si, 1
-    loop verify_bits_loop
-    pop si
-    pop dx
-    pop cx
-    pop bx
-    pop ax
-    ret
-
 draw_title_demo_arm_badge:
     ; Once the title has been idle for a while, arm the attract demo visually
     ; before the handoff so the player can read the coming transition.
-    cmp byte ptr [title_idle_ticks], TITLE_BADGE_DELAY
+    cmp byte ptr [menu_idle_ticks], TITLE_BADGE_DELAY
     jb title_demo_badge_done
     mov bx, 222
     mov dx, 54

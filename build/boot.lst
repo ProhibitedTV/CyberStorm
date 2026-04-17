@@ -1,4 +1,4 @@
-Microsoft (R) Macro Assembler Version 14.40.33812.0	    04/12/26 18:47:49
+Microsoft (R) Macro Assembler Version 14.40.33812.0	    04/17/26 13:47:55
 C:\Users\RhythmicCarnage\Desktop\CyberStorm\src\boot.asm     Page 1 - 1
 
 
@@ -30,7 +30,7 @@ C:\Users\RhythmicCarnage\Desktop\CyberStorm\src\boot.asm     Page 1 - 1
 				    ; Stage two inherits the boot stack and the cleared direction flag.
  000E  FC			    cld
 				
- 000F  2E: 88 16 006D R		    mov [boot_drive], dl
+ 000F  2E: 88 16 0072 R		    mov [boot_drive], dl
 				
 				    ; The flattened stage-two payload is written immediately after the boot
 				    ; sector and must fit in one segment; scripts/build.ps1 validates both.
@@ -45,9 +45,9 @@ C:\Users\RhythmicCarnage\Desktop\CyberStorm\src\boot.asm     Page 1 - 1
  0024				load_loop:
  0024  B4 02			    mov ah, 02h
  0026  B0 01			    mov al, 01h
- 0028  2E: 8A 16 006D R		    mov dl, [boot_drive]
+ 0028  2E: 8A 16 0072 R		    mov dl, [boot_drive]
  002D  CD 13			    int 13h
- 002F  72 21			    jc disk_error
+ 002F  72 26			    jc disk_error
 				
  0031  81 C3 0200		    add bx, FLOPPY_SECTOR_SIZE
  0035  FE C1			    inc cl
@@ -66,40 +66,41 @@ C:\Users\RhythmicCarnage\Desktop\CyberStorm\src\boot.asm     Page 1 - 1
 				
 				    ; The boot contract is a far return to stage two offset 0000, so the first
 				    ; byte of src\game.asm must stay executable.
- 004C  68 1000			    push GAME_SEGMENT
- 004F  6A 00			    push 0000h
- 0051  CB			    retf
+ 004C  2E: 8A 16 0072 R		    mov dl, [boot_drive]
+ 0051  68 1000			    push GAME_SEGMENT
+ 0054  6A 00			    push 0000h
+ 0056  CB			    retf
 				
- 0052				disk_error:
- 0052  B8 0003			    mov ax, TEXT_MODE_80X25
- 0055  CD 10			    int 10h
- 0057  BE 006E R		    mov si, offset disk_error_text
+ 0057				disk_error:
+ 0057  B8 0003			    mov ax, TEXT_MODE_80X25
+ 005A  CD 10			    int 10h
+ 005C  BE 0073 R		    mov si, offset disk_error_text
 				
- 005A				print_error:
- 005A  AC			    lodsb
- 005B  0A C0			    or al, al
- 005D  74 0A			    jz halt
- 005F  B4 0E			    mov ah, 0Eh
- 0061  B7 00			    mov bh, 00h
- 0063  B3 0C			    mov bl, 0Ch
- 0065  CD 10			    int 10h
- 0067  EB F1			    jmp print_error
+ 005F				print_error:
+ 005F  AC			    lodsb
+ 0060  0A C0			    or al, al
+ 0062  74 0A			    jz halt
+ 0064  B4 0E			    mov ah, 0Eh
+ 0066  B7 00			    mov bh, 00h
+ 0068  B3 0C			    mov bl, 0Ch
+ 006A  CD 10			    int 10h
+ 006C  EB F1			    jmp print_error
 				
- 0069				halt:
- 0069  FA			    cli
- 006A				hang:
- 006A  F4			    hlt
- 006B  EB FD			    jmp hang
+ 006E				halt:
+ 006E  FA			    cli
+ 006F				hang:
+ 006F  F4			    hlt
+ 0070  EB FD			    jmp hang
 				
- 006D 00			boot_drive db 0
- 006E 43 59 42 45 52 53		disk_error_text db 'CYBERSTORM BOOT ERROR', 0
+ 0072 00			boot_drive db 0
+ 0073 43 59 42 45 52 53		disk_error_text db 'CYBERSTORM BOOT ERROR', 0
        54 4F 52 4D 20 42
        4F 4F 54 20 45 52
        52 4F 52 00
 				
 				end start
-C:\Users\RhythmicCarnage\Desktop\CyberStorm\src\boot.asm(91) : warning A4023:with /coff switch, leading underscore required for start address : start
-Microsoft (R) Macro Assembler Version 14.40.33812.0	    04/12/26 18:47:49
+C:\Users\RhythmicCarnage\Desktop\CyberStorm\src\boot.asm(92) : warning A4023:with /coff switch, leading underscore required for start address : start
+Microsoft (R) Macro Assembler Version 14.40.33812.0	    04/17/26 13:47:55
 C:\Users\RhythmicCarnage\Desktop\CyberStorm\src\boot.asm     Symbols 2 - 1
 
 
@@ -110,7 +111,7 @@ Segments and Groups:
                 N a m e                 Size     Length   Align   Combine Class
 
 _DATA  . . . . . . . . . . . . .	16 Bit	 0000	  Word	  Public  'DATA'	
-_TEXT  . . . . . . . . . . . . .	16 Bit	 0084	  Word	  Public  'CODE'	
+_TEXT  . . . . . . . . . . . . .	16 Bit	 0089	  Word	  Public  'CODE'	
 
 
 Symbols:
@@ -135,14 +136,14 @@ GAME_SECTORS . . . . . . . . . .	Number	 0080h
 GAME_SEGMENT . . . . . . . . . .	Number	 1000h	 
 STAGE2_START_SECTOR  . . . . . .	Number	 0002h	 
 TEXT_MODE_80X25  . . . . . . . .	Number	 0003h	 
-boot_drive . . . . . . . . . . .	Byte	 006D	  _TEXT	
-disk_error_text  . . . . . . . .	Byte	 006E	  _TEXT	
-disk_error . . . . . . . . . . .	L Near	 0052	  _TEXT	
-halt . . . . . . . . . . . . . .	L Near	 0069	  _TEXT	
-hang . . . . . . . . . . . . . .	L Near	 006A	  _TEXT	
+boot_drive . . . . . . . . . . .	Byte	 0072	  _TEXT	
+disk_error_text  . . . . . . . .	Byte	 0073	  _TEXT	
+disk_error . . . . . . . . . . .	L Near	 0057	  _TEXT	
+halt . . . . . . . . . . . . . .	L Near	 006E	  _TEXT	
+hang . . . . . . . . . . . . . .	L Near	 006F	  _TEXT	
 load_loop  . . . . . . . . . . .	L Near	 0024	  _TEXT	
 next_sector  . . . . . . . . . .	L Near	 0049	  _TEXT	
-print_error  . . . . . . . . . .	L Near	 005A	  _TEXT	
+print_error  . . . . . . . . . .	L Near	 005F	  _TEXT	
 start  . . . . . . . . . . . . .	L Near	 0000	  _TEXT	Public
 
 	   1 Warnings

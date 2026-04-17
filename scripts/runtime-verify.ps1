@@ -6,7 +6,7 @@ param(
     [switch]$ExperimentalMusic,
     [switch]$SfxOnly,
     [ValidateSet('2D', '3DReference', '3DMachine')]
-    [string]$RenderMode = '3DMachine',
+    [string]$RenderMode = '3DReference',
     [ValidateRange(0, 5)]
     [Nullable[int]]$RenderStage,
     [string]$DemoFilter,
@@ -541,7 +541,6 @@ function Invoke-RuntimeVerifyRun {
 
     $buildArgs = @(
         '-DebugBuild',
-        '-DebugOverlay',
         '-DebugDemoBoot',
         '-DebugRuntimeVerify',
         '-DebugDemoIndex',

@@ -2,142 +2,48 @@
 ; source: C:\Users\RhythmicCarnage\Desktop\CyberStorm\assets\sectors.psd1
 ; edit the sector source file instead of this generated include
 
-sector_rule_surge_count db 0, 3, 4
-sector_rule_terminal_count db 1, 2, 2
-sector_rule_enemy_bonus db 0, 0, 1
-sector_rule_flanker_threshold db 48, 112, 176
-sector_rule_warden_threshold db 0, 0, 80
-sector_rule_warden_engage_distance db 6, 6, 10
 
-sector_template_start db 0, 3, 6
-sector_template_count db 3, 3, 3
-template_offset_table dw 0, 420, 840, 1260, 1680, 2100
-                      dw 2520, 2940, 3360
-template_terminal_anchor_offset dw 0, 2, 4, 6, 10, 14
-                                dw 18, 22, 26
-template_terminal_anchor_count db 1, 1, 1, 2, 2, 2, 2, 2
-                               db 2
-template_surge_anchor_offset dw 0, 0, 0, 0, 4, 8
-                             dw 12, 18, 24
-template_surge_anchor_count db 0, 0, 0, 2, 2, 2, 3, 3
-                            db 3
-template_enemy_anchor_offset dw 0, 0, 3, 6, 9, 12
-                             dw 15, 18, 21
-template_enemy_anchor_count db 0, 1, 1, 1, 1, 1, 1, 1
-                            db 1
-template_scenario_name_table dw offset sector1_map_a_scenario_name, offset sector1_map_b_scenario_name, offset sector1_map_c_scenario_name, offset sector2_map_a_scenario_name
-                             dw offset sector2_map_b_scenario_name, offset sector2_map_c_scenario_name, offset sector3_map_a_scenario_name, offset sector3_map_b_scenario_name
-                             dw offset sector3_map_c_scenario_name
-template_scenario_entry_table dw offset sector1_map_a_scenario_entry, offset sector1_map_b_scenario_entry, offset sector1_map_c_scenario_entry, offset sector2_map_a_scenario_entry
-                              dw offset sector2_map_b_scenario_entry, offset sector2_map_c_scenario_entry, offset sector3_map_a_scenario_entry, offset sector3_map_b_scenario_entry
-                              dw offset sector3_map_c_scenario_entry
-template_shard_pool_offset dw 0, 12, 24, 36, 48, 60
-                           dw 72, 84, 96
-template_shard_pool_count db 6, 6, 6, 6, 6, 6, 6, 6
-                          db 6
-sector_name_table dw offset sector1_name, offset sector2_name, offset sector3_name
-sector_intro_table dw offset sector1_intro, offset sector2_intro, offset sector3_intro
+; Campaign district tables
+campaign_district_title_table dw 3780, 4551, 5254, 5963
+campaign_district_intro_table dw 3796, 4568, 5270, 5974
+campaign_district_map_ptr_table dw 3898, 4678, 5387, 6085
+campaign_district_start_x_table db 4, 2, 2, 2
+campaign_district_start_y_table db 12, 13, 13, 13
+campaign_district_exit_x_table db 24, 24, 24, 23
+campaign_district_exit_y_table db 2, 1, 1, 1
+campaign_district_next_table db 2, 3, 4, 0
+campaign_district_required_gems_table db 20, 12, 14, 14
+campaign_district_gem_count_table db 24, 16, 16, 16
+campaign_district_switch_count_table db 1, 2, 2, 2
+campaign_district_key_count_table db 1, 1, 1, 1
+campaign_district_hazard_count_table db 1, 2, 2, 3
+campaign_district_enemy_count_table db 3, 3, 3, 3
+campaign_district_prop_count_table db 10, 7, 7, 7
+campaign_district_chunk_count_table db 10, 6, 6, 6
+campaign_district_gem_ptr_table dw 4318, 5098, 5807, 6505
+campaign_district_switch_ptr_table dw 4366, 5130, 5839, 6537
+campaign_district_key_ptr_table dw 4368, 5134, 5843, 6541
+campaign_district_hazard_ptr_table dw 4370, 5136, 5845, 6543
+campaign_district_enemy_ptr_table dw 4372, 5140, 5849, 6549
+campaign_district_chunk_min_x_ptr_table dw 4381, 5149, 5858, 6558
+campaign_district_chunk_max_x_ptr_table dw 4391, 5155, 5864, 6564
+campaign_district_chunk_min_y_ptr_table dw 4401, 5161, 5870, 6570
+campaign_district_chunk_max_y_ptr_table dw 4411, 5167, 5876, 6576
+campaign_district_chunk_base_height_ptr_table dw 4421, 5173, 5882, 6582
+campaign_district_chunk_shelf_height_ptr_table dw 4441, 5185, 5894, 6594
+campaign_district_chunk_ramp_dir_ptr_table dw 4461, 5197, 5906, 6606
+campaign_district_chunk_cliff_side_ptr_table dw 4471, 5203, 5912, 6612
+campaign_district_chunk_bridge_span_ptr_table dw 4481, 5209, 5918, 6618
+campaign_district_chunk_landmark_x_ptr_table dw 4491, 5215, 5924, 6624
+campaign_district_chunk_landmark_y_ptr_table dw 4501, 5221, 5930, 6630
+campaign_district_chunk_prop_budget_ptr_table dw 4511, 5227, 5936, 6636
+campaign_district_prop_x_ptr_table dw 4521, 5233, 5942, 6642
+campaign_district_prop_y_ptr_table dw 4531, 5240, 5949, 6649
+campaign_district_prop_mesh_ptr_table dw offset campaign_district_0_prop_mesh_table, offset campaign_district_1_prop_mesh_table, offset campaign_district_2_prop_mesh_table, offset campaign_district_3_prop_mesh_table
+campaign_district_prop_yaw_ptr_table dw 4541, 5247, 5956, 6656
 
-terminal_anchor_table db 10, 7, 8, 7, 10, 7, 10, 7, 20, 9
-                      db 7, 7, 18, 7, 8, 7, 18, 11, 10, 9
-                      db 20, 11, 9, 7, 18, 9, 10, 7, 19, 11
-surge_anchor_table db 14, 5, 22, 7, 11, 9, 20, 11, 14, 5
-                   db 22, 9, 13, 5, 22, 5, 22, 11, 14, 5
-                   db 21, 7, 20, 11, 13, 5, 21, 7, 22, 11
-enemy_anchor_table db 18, 7, 1, 20, 7, 1, 20, 11, 1, 18, 11, 1
-                   db 22, 11, 1, 21, 3, 2, 21, 3, 2, 21, 3, 2
-shard_pool_table db 5, 13, 8, 9, 13, 7, 18, 9, 19, 5
-                 db 23, 3, 4, 13, 8, 11, 11, 9, 16, 7
-                 db 20, 11, 23, 3, 4, 13, 9, 11, 15, 13
-                 db 15, 9, 19, 11, 24, 3, 5, 13, 11, 11
-                 db 14, 7, 17, 5, 20, 3, 24, 1, 4, 13
-                 db 10, 11, 12, 9, 15, 7, 20, 5, 24, 3
-                 db 6, 13, 10, 11, 14, 7, 16, 3, 21, 5
-                 db 24, 11, 6, 13, 10, 7, 15, 9, 16, 3
-                 db 19, 7, 24, 3, 4, 13, 9, 11, 15, 7
-                 db 18, 5, 20, 1, 23, 3, 4, 13, 9, 11
-                 db 15, 9, 19, 5, 19, 3, 23, 1
-
-sector1_map_a_scenario_name db "FORK SPIKE", 0
-sector1_map_a_scenario_entry db "LEFT FORK FIRST. CUT CENTER BEFORE THE PINCH.", 0
-sector1_map_b_scenario_name db "CROSSLANE LURE", 0
-sector1_map_b_scenario_entry db "THE FIRST FLANK CROSSES MID. DO NOT CHASE BLIND.", 0
-sector1_map_c_scenario_name db "SPINE THREAD", 0
-sector1_map_c_scenario_entry db "CROSS EARLY. THE RIGHT LANE TIGHTENS FAST.", 0
-sector2_map_a_scenario_name db "FURNACE FORK", 0
-sector2_map_a_scenario_entry db "HOT MIDLINE SHARDS PAY OFF IF YOU SELL THE CHASE.", 0
-sector2_map_b_scenario_name db "HINGE BAIT", 0
-sector2_map_b_scenario_entry db "THE SAFE LOOP IS SLOW. THE HOT HINGE PAYS FASTER.", 0
-sector2_map_c_scenario_name db "ARC WEAVE", 0
-sector2_map_c_scenario_entry db "PULL HUNTERS THROUGH CENTER SURGES, THEN SLIP OUT.", 0
-sector3_map_a_scenario_name db "LOCKSTEP BREACH", 0
-sector3_map_a_scenario_entry db "THE GATE LANE IS LIVE EARLY. DO NOT ARRIVE LATE.", 0
-sector3_map_b_scenario_name db "UPLINK CHOKE", 0
-sector3_map_b_scenario_entry db "THE UPPER GRID IS RICH, BUT THE WARDEN OWNS IT.", 0
-sector3_map_c_scenario_name db "FINAL CORRIDOR", 0
-sector3_map_c_scenario_entry db "THE LAST SHARD LINE RUNS STRAIGHT INTO THE EXIT.", 0
-
-sector1_name db "SCOUT", 0
-sector1_intro db "SCOUT GRID LIVE. OPEN LANES FAVOR CLEAN CHASES.", 0
-sector2_name db "SURGE", 0
-sector2_intro db "SURGE FURNACE LIVE. ARC NODES BITE BOTH SIDES.", 0
-sector3_name db "WARDEN", 0
-sector3_intro db "WARDEN LOCK LIVE. EXTRA HUNTERS CROWD THE EXIT.", 0
-
-; Adventure vertical-slice realm
-adventure_realm_title db "SUNSPARK GLADE", 0
-adventure_realm_intro db "FOLLOW THE GEM TRAIL, SPARK THE PEDESTAL, CLAIM THE HILLTOP KEY, AND WAKE THE PORTAL.", 0
-adventure_realm_start_x db 4
-adventure_realm_start_y db 12
-adventure_realm_portal_x db 24
-adventure_realm_portal_y db 2
-adventure_realm_required_gems db 20
-adventure_realm_gem_count db 24
-adventure_realm_switch_count db 1
-adventure_realm_key_count db 1
-adventure_realm_hazard_count db 1
-adventure_realm_enemy_count db 3
-adventure_realm_prop_count db 10
-adventure_realm_chunk_count db 10
-adventure_realm_gem_table db 5, 12, 6, 12, 7, 12, 8, 12, 9, 12, 10, 10
-                          db 10, 11, 8, 10, 12, 9, 14, 8, 16, 8, 18, 8
-                          db 14, 6, 16, 5, 17, 4, 19, 4, 21, 4, 24, 5
-                          db 24, 7, 23, 8, 22, 9, 21, 3, 23, 3, 25, 2
-adventure_realm_switch_table db 10, 12
-adventure_realm_key_table db 18, 4
-adventure_realm_hazard_table db 21, 6
-adventure_realm_enemy_table db 8, 12, 0, 13, 9, 1, 22, 3, 2
-adventure_realm_chunk_min_x_table db 2, 8, 10, 6, 14, 18, 18, 22, 21, 23
-adventure_realm_chunk_max_x_table db 7, 12, 16, 12, 18, 22, 22, 25, 23, 25
-adventure_realm_chunk_min_y_table db 10, 10, 8, 11, 5, 3, 7, 7, 1, 1
-adventure_realm_chunk_max_y_table db 13, 13, 11, 13, 8, 5, 10, 10, 4, 3
-adventure_realm_chunk_base_height_table dw 0000h, 0000h, 0040h, 0040h, 0070h, 00B0h
-                                        dw 0080h, 0060h, 0060h, 0090h
-adventure_realm_chunk_shelf_height_table dw 0000h, 0040h, 0060h, 0070h, 00B0h, 00D0h
-                                         dw 00B0h, 0080h, 0090h, 00B0h
-adventure_realm_chunk_ramp_dir_table db 0, 2, 1, 1, 2, 1, 4, 2, 1, 0
-adventure_realm_chunk_cliff_side_table db 1, 1, 2, 3, 1, 4, 3, 3, 4, 3
-adventure_realm_chunk_bridge_span_table db 0, 0, 0, 1, 0, 0, 0, 0, 0, 0
-adventure_realm_chunk_landmark_x_table db 24, 18, 18, 10, 18, 18, 23, 23, 23, 24
-adventure_realm_chunk_landmark_y_table db 2, 6, 4, 12, 5, 4, 3, 2, 2, 2
-adventure_realm_chunk_prop_budget_table db 1, 1, 1, 1, 1, 1, 1, 1, 2, 2
-adventure_realm_prop_x_table db 3, 7, 12, 17, 18, 10, 23, 24, 21, 5
-adventure_realm_prop_y_table db 12, 13, 10, 8, 4, 12, 2, 2, 2, 3
-adventure_realm_prop_mesh_table db GAME3D_MESH_TREE_ROUND_INDEX, GAME3D_MESH_TREE_ROUND_INDEX, GAME3D_MESH_BRIDGE_SPAN_INDEX, GAME3D_MESH_BRIDGE_SPAN_INDEX, GAME3D_MESH_STONE_STACK_INDEX, GAME3D_MESH_SWITCH_PEDESTAL_INDEX, GAME3D_MESH_PORTAL_ARCH_INDEX, GAME3D_MESH_TOWER_TOY_INDEX
-                                db GAME3D_MESH_STONE_STACK_INDEX, GAME3D_MESH_TREE_ROUND_INDEX
-adventure_realm_prop_yaw_table db 16, 152, 0, 0, 68, 0, 0, 0, 0, 105
-adventure_realm_map db "############################"
-                    db "#..........................#"
-                    db "#..######.............##...#"
-                    db "#..#....#.............##...#"
-                    db "#..#....#.............##...#"
-                    db "#..#....#####....####......#"
-                    db "#..#.............#.........#"
-                    db "#..######...##...#..#####..#"
-                    db "#................#......#..#"
-                    db "#..#####..#....#####...#...#"
-                    db "#..#......#...........##...#"
-                    db "#..#..##########......##...#"
-                    db "#..#.................###...#"
-                    db "#..........................#"
-                    db "############################"
+campaign_district_0_prop_mesh_table db GAME3D_MESH_STONE_STACK_INDEX, GAME3D_MESH_TOWER_TOY_INDEX, GAME3D_MESH_BRIDGE_SPAN_INDEX, GAME3D_MESH_BRIDGE_SPAN_INDEX, GAME3D_MESH_STONE_STACK_INDEX, GAME3D_MESH_SWITCH_PEDESTAL_INDEX, GAME3D_MESH_PORTAL_ARCH_INDEX, GAME3D_MESH_TOWER_TOY_INDEX
+                                    db GAME3D_MESH_STONE_STACK_INDEX, GAME3D_MESH_TOWER_TOY_INDEX
+campaign_district_1_prop_mesh_table db GAME3D_MESH_STONE_STACK_INDEX, GAME3D_MESH_SWITCH_PEDESTAL_INDEX, GAME3D_MESH_SWITCH_PEDESTAL_INDEX, GAME3D_MESH_BRIDGE_SPAN_INDEX, GAME3D_MESH_TOWER_TOY_INDEX, GAME3D_MESH_PORTAL_ARCH_INDEX, GAME3D_MESH_STONE_STACK_INDEX
+campaign_district_2_prop_mesh_table db GAME3D_MESH_STONE_STACK_INDEX, GAME3D_MESH_SWITCH_PEDESTAL_INDEX, GAME3D_MESH_SWITCH_PEDESTAL_INDEX, GAME3D_MESH_TOWER_TOY_INDEX, GAME3D_MESH_STONE_STACK_INDEX, GAME3D_MESH_PORTAL_ARCH_INDEX, GAME3D_MESH_BRIDGE_SPAN_INDEX
+campaign_district_3_prop_mesh_table db GAME3D_MESH_STONE_STACK_INDEX, GAME3D_MESH_SWITCH_PEDESTAL_INDEX, GAME3D_MESH_SWITCH_PEDESTAL_INDEX, GAME3D_MESH_TOWER_TOY_INDEX, GAME3D_MESH_PORTAL_ARCH_INDEX, GAME3D_MESH_BRIDGE_SPAN_INDEX, GAME3D_MESH_STONE_STACK_INDEX

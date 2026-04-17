@@ -156,15 +156,29 @@ classify_semantic_action_from_bios_key:
     jmp classify_semantic_gameplay
 
 classify_semantic_frontend:
+    cmp byte ptr [game_state], STATE_SPLASH
+    jne classify_semantic_title
     call is_bios_continue_key
-    jc classify_semantic_start_ready
-    call is_bios_move_key
-    jc classify_semantic_start_ready
+    jc classify_semantic_confirm_ready
     mov al, FRONTEND_ACTION_ACTIVITY
     ret
 
-classify_semantic_start_ready:
-    mov al, FRONTEND_ACTION_START
+classify_semantic_title:
+    call is_bios_continue_key
+    jc classify_semantic_confirm_ready
+    call is_bios_nav_up_key
+    jc classify_semantic_nav_up_ready
+    call is_bios_nav_down_key
+    jc classify_semantic_nav_down_ready
+    call is_bios_nav_left_key
+    jc classify_semantic_nav_left_ready
+    call is_bios_nav_right_key
+    jc classify_semantic_nav_right_ready
+    mov al, FRONTEND_ACTION_ACTIVITY
+    ret
+
+classify_semantic_confirm_ready:
+    mov al, FRONTEND_ACTION_CONFIRM
     ret
 
 classify_semantic_continue:
@@ -211,6 +225,22 @@ classify_semantic_reset_ready:
     mov al, FRONTEND_ACTION_RESET
     ret
 
+classify_semantic_nav_up_ready:
+    mov al, FRONTEND_ACTION_NAV_UP
+    ret
+
+classify_semantic_nav_down_ready:
+    mov al, FRONTEND_ACTION_NAV_DOWN
+    ret
+
+classify_semantic_nav_left_ready:
+    mov al, FRONTEND_ACTION_NAV_LEFT
+    ret
+
+classify_semantic_nav_right_ready:
+    mov al, FRONTEND_ACTION_NAV_RIGHT
+    ret
+
 is_bios_continue_key:
     cmp ah, SCAN_ENTER
     je bios_continue_true
@@ -224,6 +254,58 @@ is_bios_continue_key:
     ret
 
 bios_continue_true:
+    stc
+    ret
+
+is_bios_nav_up_key:
+    cmp ah, SCAN_W
+    je bios_nav_true
+    cmp al, 'w'
+    je bios_nav_true
+    cmp al, 'W'
+    je bios_nav_true
+    cmp ah, BIOS_SCAN_UP
+    je bios_nav_true
+    clc
+    ret
+
+is_bios_nav_down_key:
+    cmp ah, SCAN_S
+    je bios_nav_true
+    cmp al, 's'
+    je bios_nav_true
+    cmp al, 'S'
+    je bios_nav_true
+    cmp ah, BIOS_SCAN_DOWN
+    je bios_nav_true
+    clc
+    ret
+
+is_bios_nav_left_key:
+    cmp ah, SCAN_A
+    je bios_nav_true
+    cmp al, 'a'
+    je bios_nav_true
+    cmp al, 'A'
+    je bios_nav_true
+    cmp ah, BIOS_SCAN_LEFT
+    je bios_nav_true
+    clc
+    ret
+
+is_bios_nav_right_key:
+    cmp ah, SCAN_D
+    je bios_nav_true
+    cmp al, 'd'
+    je bios_nav_true
+    cmp al, 'D'
+    je bios_nav_true
+    cmp ah, BIOS_SCAN_RIGHT
+    je bios_nav_true
+    clc
+    ret
+
+bios_nav_true:
     stc
     ret
 
@@ -813,9 +895,9 @@ runtime_frontend_action_done:
 poll_runtime_keyboard:
     mov byte ptr [frontend_action], FRONTEND_ACTION_NONE
     cmp byte ptr [game_state], STATE_SPLASH
-    je runtime_keyboard_frontend
+    je runtime_keyboard_splash
     cmp byte ptr [game_state], STATE_TITLE
-    je runtime_keyboard_frontend
+    je runtime_keyboard_title
     cmp byte ptr [game_state], STATE_WIN
     je runtime_keyboard_continue
     cmp byte ptr [game_state], STATE_LOSE
@@ -828,35 +910,66 @@ poll_runtime_keyboard:
     jne runtime_keyboard_takeover
     jmp runtime_keyboard_gameplay
 
-runtime_keyboard_frontend:
+runtime_keyboard_splash:
     cmp byte ptr [pressed_enter], 0
-    jne runtime_keyboard_start
+    jne runtime_keyboard_confirm
     cmp byte ptr [pressed_space], 0
-    jne runtime_keyboard_start
-    cmp byte ptr [pressed_w], 0
-    jne runtime_keyboard_start
-    cmp byte ptr [pressed_a], 0
-    jne runtime_keyboard_start
-    cmp byte ptr [pressed_s], 0
-    jne runtime_keyboard_start
-    cmp byte ptr [pressed_d], 0
-    jne runtime_keyboard_start
-    cmp byte ptr [pressed_up], 0
-    jne runtime_keyboard_start
-    cmp byte ptr [pressed_left], 0
-    jne runtime_keyboard_start
-    cmp byte ptr [pressed_right], 0
-    jne runtime_keyboard_start
-    cmp byte ptr [pressed_down], 0
-    jne runtime_keyboard_start
+    jne runtime_keyboard_confirm
     cmp byte ptr [any_key_pending], 0
     je runtime_keyboard_done
     mov al, FRONTEND_ACTION_ACTIVITY
     call record_runtime_frontend_action
     jmp runtime_keyboard_done
 
-runtime_keyboard_start:
-    mov al, FRONTEND_ACTION_START
+runtime_keyboard_title:
+    cmp byte ptr [pressed_enter], 0
+    jne runtime_keyboard_confirm
+    cmp byte ptr [pressed_space], 0
+    jne runtime_keyboard_confirm
+    cmp byte ptr [pressed_w], 0
+    jne runtime_keyboard_nav_up
+    cmp byte ptr [pressed_up], 0
+    jne runtime_keyboard_nav_up
+    cmp byte ptr [pressed_a], 0
+    jne runtime_keyboard_nav_left
+    cmp byte ptr [pressed_left], 0
+    jne runtime_keyboard_nav_left
+    cmp byte ptr [pressed_s], 0
+    jne runtime_keyboard_nav_down
+    cmp byte ptr [pressed_down], 0
+    jne runtime_keyboard_nav_down
+    cmp byte ptr [pressed_d], 0
+    jne runtime_keyboard_nav_right
+    cmp byte ptr [pressed_right], 0
+    jne runtime_keyboard_nav_right
+    cmp byte ptr [any_key_pending], 0
+    je runtime_keyboard_done
+    mov al, FRONTEND_ACTION_ACTIVITY
+    call record_runtime_frontend_action
+    jmp runtime_keyboard_done
+
+runtime_keyboard_confirm:
+    mov al, FRONTEND_ACTION_CONFIRM
+    call record_runtime_frontend_action
+    jmp runtime_keyboard_done
+
+runtime_keyboard_nav_up:
+    mov al, FRONTEND_ACTION_NAV_UP
+    call record_runtime_frontend_action
+    jmp runtime_keyboard_done
+
+runtime_keyboard_nav_down:
+    mov al, FRONTEND_ACTION_NAV_DOWN
+    call record_runtime_frontend_action
+    jmp runtime_keyboard_done
+
+runtime_keyboard_nav_left:
+    mov al, FRONTEND_ACTION_NAV_LEFT
+    call record_runtime_frontend_action
+    jmp runtime_keyboard_done
+
+runtime_keyboard_nav_right:
+    mov al, FRONTEND_ACTION_NAV_RIGHT
     call record_runtime_frontend_action
     jmp runtime_keyboard_done
 

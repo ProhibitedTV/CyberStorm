@@ -340,6 +340,10 @@ demo_status_done:
     ret
 
 get_sector_name_ptr:
+IF DEBUG_LEGACY_GAMEPLAY EQ 0
+    mov si, offset adventure_realm_title
+    ret
+ELSE
     xor ax, ax
     mov al, [sector_num]
     dec al
@@ -348,8 +352,13 @@ get_sector_name_ptr:
     mov bx, ax
     mov si, word ptr [sector_name_table + bx]
     ret
+ENDIF
 
 get_sector_intro_ptr:
+IF DEBUG_LEGACY_GAMEPLAY EQ 0
+    mov si, offset adventure_realm_intro
+    ret
+ELSE
     xor ax, ax
     mov al, [sector_num]
     dec al
@@ -358,20 +367,31 @@ get_sector_intro_ptr:
     mov bx, ax
     mov si, word ptr [sector_intro_table + bx]
     ret
+ENDIF
 
 get_current_template_scenario_name_ptr:
+IF DEBUG_LEGACY_GAMEPLAY EQ 0
+    mov si, offset adventure_realm_title
+    ret
+ELSE
     xor bx, bx
     mov bl, [current_template_index]
     shl bx, 1
     mov si, word ptr [template_scenario_name_table + bx]
     ret
+ENDIF
 
 get_current_template_scenario_entry_ptr:
+IF DEBUG_LEGACY_GAMEPLAY EQ 0
+    mov si, offset adventure_realm_intro
+    ret
+ELSE
     xor bx, bx
     mov bl, [current_template_index]
     shl bx, 1
     mov si, word ptr [template_scenario_entry_table + bx]
     ret
+ENDIF
 
 get_message_text_ptr:
     mov al, [message_id]
@@ -384,6 +404,10 @@ get_message_text_ptr:
     ret
 
 message_text_ptr_sector:
+IF DEBUG_LEGACY_GAMEPLAY EQ 0
+    mov si, offset adventure_realm_intro
+    ret
+ENDIF
     call get_current_template_scenario_entry_ptr
     ret
 
@@ -393,6 +417,8 @@ get_sector_accent_color:
     je sector_accent_furnace
     cmp al, 3
     je sector_accent_lock
+    cmp al, 4
+    je sector_accent_vault
     mov al, PAL_CYAN
     ret
 
@@ -404,12 +430,18 @@ sector_accent_lock:
     mov al, PAL_RED2
     ret
 
+sector_accent_vault:
+    mov al, PAL_GATE
+    ret
+
 get_sector_title_color:
     mov al, [sector_num]
     cmp al, 2
     je sector_title_furnace
     cmp al, 3
     je sector_title_lock
+    cmp al, 4
+    je sector_title_vault
     mov al, PAL_CYAN2
     ret
 
@@ -418,6 +450,10 @@ sector_title_furnace:
     ret
 
 sector_title_lock:
+    mov al, PAL_WHITE
+    ret
+
+sector_title_vault:
     mov al, PAL_WHITE
     ret
 

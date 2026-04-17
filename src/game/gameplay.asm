@@ -134,14 +134,20 @@ adventure_input_done:
 
 initialize_adventure_run_state:
     mov byte ptr [game_state], STATE_PLAYING
-    mov byte ptr [sector_num], 1
     mov byte ptr [current_template_index], 0
     mov byte ptr [title_idle_ticks], 0
     mov byte ptr [run_start_enter_guard], RUN_START_ENTER_GUARD_TICKS
+    mov al, [sector_num]
+    mov [current_district], al
+    mov [checkpoint_district], al
     mov byte ptr [shield_count], START_SHIELDS
-    mov byte ptr [pulse_count], 0
     mov byte ptr [data_count], 0
     mov byte ptr [kill_count], 0
+    mov byte ptr [checkpoint_kill_count], 0
+    mov word ptr [checkpoint_score_total], 0
+    mov byte ptr [checkpoint_loadout], START_SHIELDS
+    mov al, [pulse_count]
+    mov byte ptr [checkpoint_loadout + 1], al
     mov byte ptr [action_taken], 0
     mov byte ptr [last_player_dx], 0
     mov byte ptr [last_player_dy], 0
@@ -166,10 +172,27 @@ initialize_adventure_run_state:
     ret
 
 load_adventure_realm:
+    call load_current_campaign_district
     call game3d_reset_room_state
+    call reset_sector_mastery
     call clear_enemy_pressure
     call clear_enemy_table
     call copy_adventure_realm_layout
+    mov byte ptr [data_count], 0
+    mov byte ptr [action_taken], 0
+    mov byte ptr [last_player_dx], 0
+    mov byte ptr [last_player_dy], 0
+    mov byte ptr [spoof_timer], 0
+    mov byte ptr [threat_level], THREAT_NONE
+    mov byte ptr [adventure_charge_timer], 0
+    mov byte ptr [adventure_flame_timer], 0
+    mov byte ptr [adventure_enemy_tick], 0
+    mov byte ptr [adventure_hazard_timer], 0
+    mov byte ptr [adventure_objectives_done], 0
+    mov byte ptr [adventure_objectives_total], 0
+    mov byte ptr [adventure_key_collected], 0
+    mov byte ptr [adventure_chunk_x], 0FFh
+    mov byte ptr [adventure_chunk_y], 0FFh
 
     mov al, [adventure_realm_start_x]
     mov [player_x], al
@@ -237,6 +260,308 @@ ELSE
     mov byte ptr [adventure_intro_timer], ADVENTURE_INTRO_TICKS
     call game3d_start_sector_entry_shot
 ENDIF
+    ret
+
+load_current_campaign_district:
+    push ax
+    push bx
+    push cx
+    push dx
+    push si
+    push di
+    call clear_active_campaign_buffers
+    mov al, [current_district]
+    cmp al, 1
+    jae campaign_district_min_ready
+    mov al, 1
+
+campaign_district_min_ready:
+    cmp al, CAMPAIGN_DISTRICT_COUNT
+    jbe campaign_district_max_ready
+    mov al, CAMPAIGN_DISTRICT_COUNT
+
+campaign_district_max_ready:
+    mov [current_district], al
+    mov [sector_num], al
+    dec al
+    mov dl, al
+
+    mov bl, dl
+    mov si, offset campaign_district_title_table
+    mov di, offset adventure_realm_title
+    call copy_campaign_string_from_table
+
+    mov bl, dl
+    mov si, offset campaign_district_intro_table
+    mov di, offset adventure_realm_intro
+    call copy_campaign_string_from_table
+
+    xor bx, bx
+    mov bl, dl
+    mov al, [campaign_district_start_x_table + bx]
+    mov [adventure_realm_start_x], al
+    mov al, [campaign_district_start_y_table + bx]
+    mov [adventure_realm_start_y], al
+    mov al, [campaign_district_exit_x_table + bx]
+    mov [adventure_realm_portal_x], al
+    mov al, [campaign_district_exit_y_table + bx]
+    mov [adventure_realm_portal_y], al
+    mov al, [campaign_district_required_gems_table + bx]
+    mov [adventure_realm_required_gems], al
+    mov al, [campaign_district_gem_count_table + bx]
+    mov [adventure_realm_gem_count], al
+    mov al, [campaign_district_switch_count_table + bx]
+    mov [adventure_realm_switch_count], al
+    mov al, [campaign_district_key_count_table + bx]
+    mov [adventure_realm_key_count], al
+    mov al, [campaign_district_hazard_count_table + bx]
+    mov [adventure_realm_hazard_count], al
+    mov al, [campaign_district_enemy_count_table + bx]
+    mov [adventure_realm_enemy_count], al
+    mov al, [campaign_district_prop_count_table + bx]
+    mov [adventure_realm_prop_count], al
+    mov al, [campaign_district_chunk_count_table + bx]
+    mov [adventure_realm_chunk_count], al
+
+    mov bl, dl
+    xor cx, cx
+    mov cl, [adventure_realm_gem_count]
+    shl cx, 1
+    mov si, offset campaign_district_gem_ptr_table
+    mov di, offset adventure_realm_gem_table
+    call copy_campaign_bytes_from_table
+
+    mov bl, dl
+    xor cx, cx
+    mov cl, [adventure_realm_switch_count]
+    shl cx, 1
+    mov si, offset campaign_district_switch_ptr_table
+    mov di, offset adventure_realm_switch_table
+    call copy_campaign_bytes_from_table
+
+    mov bl, dl
+    xor cx, cx
+    mov cl, [adventure_realm_key_count]
+    shl cx, 1
+    mov si, offset campaign_district_key_ptr_table
+    mov di, offset adventure_realm_key_table
+    call copy_campaign_bytes_from_table
+
+    mov bl, dl
+    xor cx, cx
+    mov cl, [adventure_realm_hazard_count]
+    shl cx, 1
+    mov si, offset campaign_district_hazard_ptr_table
+    mov di, offset adventure_realm_hazard_table
+    call copy_campaign_bytes_from_table
+
+    mov bl, dl
+    xor cx, cx
+    mov cl, [adventure_realm_enemy_count]
+    mov ax, cx
+    shl cx, 1
+    add cx, ax
+    mov si, offset campaign_district_enemy_ptr_table
+    mov di, offset adventure_realm_enemy_table
+    call copy_campaign_bytes_from_table
+
+    mov bl, dl
+    xor cx, cx
+    mov cl, [adventure_realm_chunk_count]
+    mov si, offset campaign_district_chunk_min_x_ptr_table
+    mov di, offset adventure_realm_chunk_min_x_table
+    call copy_campaign_bytes_from_table
+
+    mov bl, dl
+    xor cx, cx
+    mov cl, [adventure_realm_chunk_count]
+    mov si, offset campaign_district_chunk_max_x_ptr_table
+    mov di, offset adventure_realm_chunk_max_x_table
+    call copy_campaign_bytes_from_table
+
+    mov bl, dl
+    xor cx, cx
+    mov cl, [adventure_realm_chunk_count]
+    mov si, offset campaign_district_chunk_min_y_ptr_table
+    mov di, offset adventure_realm_chunk_min_y_table
+    call copy_campaign_bytes_from_table
+
+    mov bl, dl
+    xor cx, cx
+    mov cl, [adventure_realm_chunk_count]
+    mov si, offset campaign_district_chunk_max_y_ptr_table
+    mov di, offset adventure_realm_chunk_max_y_table
+    call copy_campaign_bytes_from_table
+
+    mov bl, dl
+    xor cx, cx
+    mov cl, [adventure_realm_chunk_count]
+    shl cx, 1
+    mov si, offset campaign_district_chunk_base_height_ptr_table
+    mov di, offset adventure_realm_chunk_base_height_table
+    call copy_campaign_bytes_from_table
+
+    mov bl, dl
+    xor cx, cx
+    mov cl, [adventure_realm_chunk_count]
+    shl cx, 1
+    mov si, offset campaign_district_chunk_shelf_height_ptr_table
+    mov di, offset adventure_realm_chunk_shelf_height_table
+    call copy_campaign_bytes_from_table
+
+    mov bl, dl
+    xor cx, cx
+    mov cl, [adventure_realm_chunk_count]
+    mov si, offset campaign_district_chunk_ramp_dir_ptr_table
+    mov di, offset adventure_realm_chunk_ramp_dir_table
+    call copy_campaign_bytes_from_table
+
+    mov bl, dl
+    xor cx, cx
+    mov cl, [adventure_realm_chunk_count]
+    mov si, offset campaign_district_chunk_cliff_side_ptr_table
+    mov di, offset adventure_realm_chunk_cliff_side_table
+    call copy_campaign_bytes_from_table
+
+    mov bl, dl
+    xor cx, cx
+    mov cl, [adventure_realm_chunk_count]
+    mov si, offset campaign_district_chunk_bridge_span_ptr_table
+    mov di, offset adventure_realm_chunk_bridge_span_table
+    call copy_campaign_bytes_from_table
+
+    mov bl, dl
+    xor cx, cx
+    mov cl, [adventure_realm_chunk_count]
+    mov si, offset campaign_district_chunk_landmark_x_ptr_table
+    mov di, offset adventure_realm_chunk_landmark_x_table
+    call copy_campaign_bytes_from_table
+
+    mov bl, dl
+    xor cx, cx
+    mov cl, [adventure_realm_chunk_count]
+    mov si, offset campaign_district_chunk_landmark_y_ptr_table
+    mov di, offset adventure_realm_chunk_landmark_y_table
+    call copy_campaign_bytes_from_table
+
+    mov bl, dl
+    xor cx, cx
+    mov cl, [adventure_realm_chunk_count]
+    mov si, offset campaign_district_chunk_prop_budget_ptr_table
+    mov di, offset adventure_realm_chunk_prop_budget_table
+    call copy_campaign_bytes_from_table
+
+    mov bl, dl
+    xor cx, cx
+    mov cl, [adventure_realm_prop_count]
+    mov si, offset campaign_district_prop_x_ptr_table
+    mov di, offset adventure_realm_prop_x_table
+    call copy_campaign_bytes_from_table
+
+    mov bl, dl
+    xor cx, cx
+    mov cl, [adventure_realm_prop_count]
+    mov si, offset campaign_district_prop_y_ptr_table
+    mov di, offset adventure_realm_prop_y_table
+    call copy_campaign_bytes_from_table
+
+    mov bl, dl
+    xor cx, cx
+    mov cl, [adventure_realm_prop_count]
+    mov si, offset campaign_district_prop_mesh_ptr_table
+    mov di, offset adventure_realm_prop_mesh_table
+    call copy_campaign_stage2_bytes_from_table
+
+    mov bl, dl
+    xor cx, cx
+    mov cl, [adventure_realm_prop_count]
+    mov si, offset campaign_district_prop_yaw_ptr_table
+    mov di, offset adventure_realm_prop_yaw_table
+    call copy_campaign_bytes_from_table
+
+    mov bl, dl
+    mov cx, MAP_SIZE
+    mov si, offset campaign_district_map_ptr_table
+    mov di, offset adventure_realm_map
+    call copy_campaign_bytes_from_table
+
+    pop di
+    pop si
+    pop dx
+    pop cx
+    pop bx
+    pop ax
+    ret
+
+clear_active_campaign_buffers:
+    push ax
+    push cx
+    push di
+    push es
+    push ds
+    pop es
+    mov di, offset adventure_realm_title
+    mov cx, offset text_msg_sector - offset adventure_realm_title
+    xor ax, ax
+    rep stosb
+    pop es
+    pop di
+    pop cx
+    pop ax
+    ret
+
+copy_campaign_string_from_table:
+    push es
+    mov ax, MAP_BANK_SEG
+    mov es, ax
+    xor bh, bh
+    shl bx, 1
+    mov si, [si + bx]
+
+copy_campaign_string_loop:
+    mov al, es:[si]
+    mov [di], al
+    inc si
+    inc di
+    cmp al, 0
+    jne copy_campaign_string_loop
+    pop es
+    ret
+
+copy_campaign_bytes_from_table:
+    push es
+    jcxz copy_campaign_bytes_done
+    mov ax, MAP_BANK_SEG
+    mov es, ax
+    xor bh, bh
+    shl bx, 1
+    mov si, [si + bx]
+
+copy_campaign_bytes_loop:
+    mov al, es:[si]
+    mov [di], al
+    inc si
+    inc di
+    loop copy_campaign_bytes_loop
+
+copy_campaign_bytes_done:
+    pop es
+    ret
+
+copy_campaign_stage2_bytes_from_table:
+    jcxz copy_campaign_stage2_bytes_done
+    xor bh, bh
+    shl bx, 1
+    mov si, [si + bx]
+
+copy_campaign_stage2_bytes_loop:
+    mov al, [si]
+    mov [di], al
+    inc si
+    inc di
+    loop copy_campaign_stage2_bytes_loop
+
+copy_campaign_stage2_bytes_done:
     ret
 
 copy_adventure_realm_layout:
@@ -651,10 +976,58 @@ adventure_try_enter_portal:
     call get_tile
     cmp al, TILE_EXIT_OPEN
     jne adventure_portal_enter_done
-    mov al, STATE_WIN
-    call game3d_start_endbeat_shot
+    call advance_campaign_district
 
 adventure_portal_enter_done:
+    ret
+
+advance_campaign_district:
+    push bx
+    xor bx, bx
+    mov bl, [current_district]
+    dec bl
+    mov al, [campaign_district_next_table + bx]
+    or al, al
+    jne campaign_advance_continue
+    mov al, STATE_WIN
+    call game3d_start_endbeat_shot
+    pop bx
+    ret
+
+campaign_advance_continue:
+    mov [current_district], al
+    mov [checkpoint_district], al
+    mov [sector_num], al
+    mov byte ptr [shield_count], START_SHIELDS
+    mov byte ptr [pulse_count], START_PULSES
+    mov byte ptr [checkpoint_loadout], START_SHIELDS
+    mov byte ptr [checkpoint_loadout + 1], START_PULSES
+    mov al, [kill_count]
+    mov [checkpoint_kill_count], al
+    mov ax, [score_total]
+    mov [checkpoint_score_total], ax
+    call load_adventure_realm
+    mov al, MSG_SECTOR
+    call set_message_event
+    pop bx
+    ret
+
+restart_campaign_checkpoint:
+    mov al, [checkpoint_district]
+    mov [current_district], al
+    mov [sector_num], al
+    mov al, [checkpoint_loadout]
+    mov [shield_count], al
+    mov al, [checkpoint_loadout + 1]
+    mov [pulse_count], al
+    mov al, [checkpoint_kill_count]
+    mov [kill_count], al
+    mov ax, [checkpoint_score_total]
+    mov [score_total], ax
+    mov byte ptr [game_state], STATE_PLAYING
+    call load_adventure_realm
+    mov al, MSG_SECTOR
+    call set_message_event
     ret
 
 adventure_update_active_chunk:
@@ -1352,7 +1725,7 @@ move_enemy_warden:
     jmp enemy_target_horizontal_first
 
 move_enemy_warden_hunt:
-    cmp byte ptr [sector_num], 3
+    cmp byte ptr [sector_num], 4
     jne move_enemy_warden_direct
     call get_projected_player_target
     call get_enemy_target_delta
@@ -1582,6 +1955,9 @@ step_fail:
     ret
 
 load_sector:
+IF DEBUG_LEGACY_GAMEPLAY EQ 0
+    ret
+ELSE
     cmp byte ptr [sector_num], 1
     je keep_pulse_count
     cmp byte ptr [pulse_count], MAX_PULSES
@@ -1615,6 +1991,7 @@ keep_pulse_count:
     call place_enemies
     call game3d_start_sector_entry_shot
     ret
+ENDIF
 
 clear_enemy_table:
     mov di, offset enemies
@@ -1627,6 +2004,7 @@ clear_enemy_loop:
     loop clear_enemy_loop
     ret
 
+IF DEBUG_LEGACY_GAMEPLAY EQ 1
 copy_sector_layout:
     ; Sector templates are raw ASCII bytes inside the read-only map bank loaded
     ; to MAP_BANK_SEG. Only '#' survives as a wall; everything else becomes
@@ -1688,6 +2066,8 @@ get_sector_rule_index:
     mov bx, ax
     ret
 
+ENDIF
+
 set_exit_locked:
     mov bl, [exit_x]
     mov bh, [exit_y]
@@ -1706,6 +2086,7 @@ IF DEBUG_LEGACY_GAMEPLAY EQ 1
 ENDIF
     ret
 
+IF DEBUG_LEGACY_GAMEPLAY EQ 1
 place_template_shards:
     mov byte ptr [shard_pool_pick_mask], 0
     mov cx, SHARD_COUNT
@@ -1742,11 +2123,6 @@ get_sector_enemy_count:
     mov al, dl
     add al, [sector_rule_enemy_bonus + bx]
     mov cl, al
-    ret
-
-get_sector_warden_engage_distance:
-    call get_sector_rule_index
-    mov al, [sector_rule_warden_engage_distance + bx]
     ret
 
 get_current_template_terminal_anchor_count:
@@ -1851,6 +2227,8 @@ place_anchored_surges_loop:
 place_anchored_surges_done:
     ret
 
+ENDIF
+
 find_free_enemy_slot:
     mov si, offset enemies
 
@@ -1863,6 +2241,7 @@ find_free_enemy_slot_loop:
 find_free_enemy_slot_done:
     ret
 
+IF DEBUG_LEGACY_GAMEPLAY EQ 1
 place_anchored_enemies:
     call load_current_template_enemy_anchor_data
     jcxz place_anchored_enemies_done
@@ -2084,6 +2463,30 @@ random_y:
     mov al, ah
     inc al
     ret
+ENDIF
+
+get_sector_warden_engage_distance:
+IF DEBUG_LEGACY_GAMEPLAY EQ 0
+    mov al, [sector_num]
+    cmp al, 4
+    je sector_warden_vault
+    cmp al, 3
+    je sector_warden_foundry
+    mov al, 6
+    ret
+
+sector_warden_foundry:
+    mov al, 8
+    ret
+
+sector_warden_vault:
+    mov al, 10
+    ret
+ELSE
+    call get_sector_rule_index
+    mov al, [sector_rule_warden_engage_distance + bx]
+    ret
+ENDIF
 
 random_word:
     mov ax, [rng_state]
@@ -2161,7 +2564,7 @@ evaluate_enemy_threat:
     jbe threat_is_near
     cmp byte ptr [si + ENEMY_KIND], ENEMY_WARDEN
     jne enemy_threat_none
-    cmp byte ptr [sector_num], 3
+    cmp byte ptr [sector_num], 4
     jne enemy_threat_none
     cmp al, ELITE_THREAT_DISTANCE
     ja enemy_threat_none
@@ -2172,7 +2575,7 @@ threat_is_near:
     mov al, THREAT_NEAR
     cmp byte ptr [si + ENEMY_KIND], ENEMY_WARDEN
     jne threat_ready
-    cmp byte ptr [sector_num], 3
+    cmp byte ptr [sector_num], 4
     jne threat_ready
     mov al, THREAT_ELITE
     ret
@@ -2197,7 +2600,7 @@ reset_run_mastery:
     push ds
     pop es
     mov di, offset sector_score_table
-    mov cx, TOTAL_SECTORS
+    mov cx, CAMPAIGN_DISTRICT_COUNT
     xor ax, ax
     rep stosw
     pop es

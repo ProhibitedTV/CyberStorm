@@ -175,19 +175,57 @@ function Get-BitmapPixel {
     return $Bitmap.GetPixel($X, $Y)
 }
 
+function Get-LogicalBitmapPixel {
+    param(
+        [System.Drawing.Bitmap]$Bitmap,
+        [double]$LogicalX,
+        [double]$LogicalY,
+        [int]$ScreenW,
+        [int]$ScreenH
+    )
+
+    $scaledX = [int][Math]::Floor(((($LogicalX + 0.5) * $Bitmap.Width) / $ScreenW))
+    $scaledY = [int][Math]::Floor(((($LogicalY + 0.5) * $Bitmap.Height) / $ScreenH))
+    $scaledX = [Math]::Max(0, [Math]::Min($Bitmap.Width - 1, $scaledX))
+    $scaledY = [Math]::Max(0, [Math]::Min($Bitmap.Height - 1, $scaledY))
+    return (Get-BitmapPixel -Bitmap $Bitmap -X $scaledX -Y $scaledY)
+}
+
 function Get-StatusFromBitmap {
     param(
         [System.Drawing.Bitmap]$Bitmap,
         [int]$MarkerX,
         [int]$MarkerY,
         [int]$MarkerW,
-        [int]$MarkerH
+        [int]$MarkerH,
+        [int]$ScreenW,
+        [int]$ScreenH
     )
 
-    $sample = Get-BitmapPixel -Bitmap $Bitmap -X ($MarkerX + [int]($MarkerW / 2)) -Y ($MarkerY + [int]($MarkerH / 2))
     $passRef = New-RgbRef 12 52 58
     $failRef = New-RgbRef 63 18 18
-    if ((Get-ColorDistance -Color $sample -Reference $passRef) -le (Get-ColorDistance -Color $sample -Reference $failRef)) {
+    $passDistance = [double]::PositiveInfinity
+    $failDistance = [double]::PositiveInfinity
+
+    for ($logicalY = $MarkerY; $logicalY -lt ($MarkerY + $MarkerH); $logicalY++) {
+        for ($logicalX = $MarkerX; $logicalX -lt ($MarkerX + $MarkerW); $logicalX++) {
+            $sample = Get-LogicalBitmapPixel `
+                -Bitmap $Bitmap `
+                -LogicalX $logicalX `
+                -LogicalY $logicalY `
+                -ScreenW $ScreenW `
+                -ScreenH $ScreenH
+            $passDistance = [Math]::Min($passDistance, (Get-ColorDistance -Color $sample -Reference $passRef))
+            $failDistance = [Math]::Min($failDistance, (Get-ColorDistance -Color $sample -Reference $failRef))
+        }
+    }
+
+    $closestDistance = [Math]::Min($passDistance, $failDistance)
+    if ($closestDistance -gt 20000) {
+        return 'UNKNOWN'
+    }
+
+    if ($passDistance -le $failDistance) {
         return 'PASS'
     }
 
@@ -200,17 +238,21 @@ function Get-SignatureFromBitmap {
         [int]$StartX,
         [int]$StartY,
         [int]$BitSize,
-        [int]$BitPitch
+        [int]$BitPitch,
+        [int]$ScreenW,
+        [int]$ScreenH
     )
 
     $onRef = New-RgbRef 63 63 63
     $offRef = New-RgbRef 8 14 22
     $value = 0
     for ($bitIndex = 0; $bitIndex -lt 16; $bitIndex++) {
-        $sample = Get-BitmapPixel `
+        $sample = Get-LogicalBitmapPixel `
             -Bitmap $Bitmap `
-            -X ($StartX + ($bitIndex * $BitPitch) + [int]($BitSize / 2)) `
-            -Y ($StartY + [int]($BitSize / 2))
+            -LogicalX ($StartX + ($bitIndex * $BitPitch) + ($BitSize / 2.0)) `
+            -LogicalY ($StartY + ($BitSize / 2.0)) `
+            -ScreenW $ScreenW `
+            -ScreenH $ScreenH
         $isSet = (Get-ColorDistance -Color $sample -Reference $onRef) -lt (Get-ColorDistance -Color $sample -Reference $offRef)
         if ($isSet) {
             $value = $value -bor (0x8000 -shr $bitIndex)
@@ -308,41 +350,70 @@ function Invoke-FrontendVerifyRun {
         $buildArgs += @('-DebugFrontendCorruptScenario', $Scenario.Number.ToString())
     }
 
-    Invoke-ChildBuild -ExtraArguments $buildArgs
-
     Stop-VmIfRunning -Name $VmName
     Ensure-VmRegistered -Name $VmName
     Stop-VmIfRunning -Name $VmName
+    Invoke-ChildBuild -ExtraArguments $buildArgs
     Start-HeadlessVm -Name $VmName
+    $maxCaptureAttempts = 4
+    $retryDelaySeconds = 2
+    $totalWaitSeconds = $Scenario.WaitSeconds
+    $status = 'UNKNOWN'
+    $expectedSignature = 0
+    $observedSignature = 0
+
     Start-Sleep -Seconds $Scenario.WaitSeconds
-    Invoke-VBoxManage -Arguments @('controlvm', $VmName, 'screenshotpng', $shotPath) | Out-Null
-    if (-not (Test-Path -LiteralPath $vboxLogPath)) {
-        throw ("VBox log was not found after frontend verification boot: {0}" -f $vboxLogPath)
+    for ($attempt = 1; $attempt -le $maxCaptureAttempts; $attempt++) {
+        if ($attempt -gt 1) {
+            Start-Sleep -Seconds $retryDelaySeconds
+            $totalWaitSeconds += $retryDelaySeconds
+        }
+
+        Invoke-VBoxManage -Arguments @('controlvm', $VmName, 'screenshotpng', $shotPath) | Out-Null
+        if (-not (Test-Path -LiteralPath $vboxLogPath)) {
+            throw ("VBox log was not found after frontend verification boot: {0}" -f $vboxLogPath)
+        }
+
+        Copy-Item -LiteralPath $vboxLogPath -Destination $logPath -Force
+        $bitmap = [System.Drawing.Bitmap]::FromFile($shotPath)
+        try {
+            $status = Get-StatusFromBitmap `
+                -Bitmap $bitmap `
+                -MarkerX $Geometry.MarkerX `
+                -MarkerY $Geometry.MarkerY `
+                -MarkerW $Geometry.MarkerW `
+                -MarkerH $Geometry.MarkerH `
+                -ScreenW $Geometry.ScreenW `
+                -ScreenH $Geometry.ScreenH
+            if ($status -ne 'UNKNOWN') {
+                $expectedSignature = Get-SignatureFromBitmap `
+                    -Bitmap $bitmap `
+                    -StartX $Geometry.BitsX `
+                    -StartY $Geometry.ExpectBitsY `
+                    -BitSize $Geometry.BitSize `
+                    -BitPitch $Geometry.BitPitch `
+                    -ScreenW $Geometry.ScreenW `
+                    -ScreenH $Geometry.ScreenH
+                $observedSignature = Get-SignatureFromBitmap `
+                    -Bitmap $bitmap `
+                    -StartX $Geometry.BitsX `
+                    -StartY $Geometry.ObsBitsY `
+                    -BitSize $Geometry.BitSize `
+                    -BitPitch $Geometry.BitPitch `
+                    -ScreenW $Geometry.ScreenW `
+                    -ScreenH $Geometry.ScreenH
+            }
+        } finally {
+            $bitmap.Dispose()
+        }
+
+        if ($status -ne 'UNKNOWN') {
+            break
+        }
     }
 
-    Copy-Item -LiteralPath $vboxLogPath -Destination $logPath -Force
-    $bitmap = [System.Drawing.Bitmap]::FromFile($shotPath)
-    try {
-        $status = Get-StatusFromBitmap `
-            -Bitmap $bitmap `
-            -MarkerX $Geometry.MarkerX `
-            -MarkerY $Geometry.MarkerY `
-            -MarkerW $Geometry.MarkerW `
-            -MarkerH $Geometry.MarkerH
-        $expectedSignature = Get-SignatureFromBitmap `
-            -Bitmap $bitmap `
-            -StartX $Geometry.BitsX `
-            -StartY $Geometry.ExpectBitsY `
-            -BitSize $Geometry.BitSize `
-            -BitPitch $Geometry.BitPitch
-        $observedSignature = Get-SignatureFromBitmap `
-            -Bitmap $bitmap `
-            -StartX $Geometry.BitsX `
-            -StartY $Geometry.ObsBitsY `
-            -BitSize $Geometry.BitSize `
-            -BitPitch $Geometry.BitPitch
-    } finally {
-        $bitmap.Dispose()
+    if ($status -eq 'UNKNOWN') {
+        throw ("Frontend verify scenario '{0}' never reached a verify scene after {1}s." -f $Scenario.Name, $totalWaitSeconds)
     }
 
     $expectedStatus = if ($CorruptExpectation.IsPresent) { 'FAIL' } else { 'PASS' }
@@ -361,7 +432,7 @@ function Invoke-FrontendVerifyRun {
         ObservedTerminal = (Format-FrontendTerminalState -Signature $observedSignature -StateNames $StateNames)
         ScreenshotPath = $shotPath
         LogPath = $logPath
-        WaitSeconds = $Scenario.WaitSeconds
+        WaitSeconds = $totalWaitSeconds
     }
 }
 
@@ -372,6 +443,8 @@ Assert-PathExists -Path $ConstantsSourcePath -Label 'constants source'
 New-Item -ItemType Directory -Force -Path $artifactDir | Out-Null
 
 $geometry = @{
+    ScreenW = Get-AsmEquValue -SourcePath $ConstantsSourcePath -Name 'SCREEN_W'
+    ScreenH = Get-AsmEquValue -SourcePath $ConstantsSourcePath -Name 'SCREEN_H'
     MarkerX = Get-AsmEquValue -SourcePath $ConstantsSourcePath -Name 'VERIFY_MARKER_X'
     MarkerY = Get-AsmEquValue -SourcePath $ConstantsSourcePath -Name 'VERIFY_MARKER_Y'
     MarkerW = Get-AsmEquValue -SourcePath $ConstantsSourcePath -Name 'VERIFY_MARKER_W'

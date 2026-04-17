@@ -1,33 +1,84 @@
 param(
+    [ValidateSet('masm', 'uasm', 'jwasm')]
+    [string]$Assembler = 'masm',
+    [string]$AssemblerPath,
+    [string]$MasmPath,
+    [switch]$ExperimentalMusic,
+    [switch]$SfxOnly,
     [string]$VmName = 'CyberStorm',
     [int]$WaitSeconds = 14,
     [string]$AudioConfigPath,
-    [string]$ReportPath
+    [string]$ConstantsSourcePath = (Join-Path (Join-Path $PSScriptRoot '..') 'src\game\constants.inc'),
+    [string]$BuildScriptPath = (Join-Path $PSScriptRoot 'build.ps1'),
+    [string]$DeployScriptPath = (Join-Path $PSScriptRoot 'deploy-vm.ps1'),
+    [string]$ReportPath = (Join-Path (Join-Path $PSScriptRoot '..') 'build\cyberstorm-vm-smoke-report.txt')
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+if ($ExperimentalMusic.IsPresent -and $SfxOnly.IsPresent) {
+    throw 'Use either -ExperimentalMusic (legacy alias) or -SfxOnly, not both.'
+}
+
+Add-Type -AssemblyName System.Drawing
+
 $root = Split-Path -Parent $PSScriptRoot
 $buildDir = Join-Path $root 'build'
 $artifactDir = Join-Path $buildDir 'vm-smoke'
-$deployScript = Join-Path $PSScriptRoot 'deploy-vm.ps1'
 $vbox = 'C:\Program Files\Oracle\VirtualBox\VBoxManage.exe'
 $floppy = Join-Path $buildDir 'cyberstorm.vfd'
-
-if ([string]::IsNullOrWhiteSpace($AudioConfigPath)) {
-    $AudioConfigPath = Join-Path $buildDir 'audio_config.inc'
-}
-
-if ([string]::IsNullOrWhiteSpace($ReportPath)) {
-    $ReportPath = Join-Path $buildDir 'cyberstorm-vm-smoke-report.txt'
-}
-
 $startupScreenshotPath = Join-Path $artifactDir 'cyberstorm-vm-smoke-startup.png'
 $titleScreenshotPath = Join-Path $artifactDir 'cyberstorm-vm-smoke-title.png'
 $screenshotPath = Join-Path $artifactDir 'cyberstorm-vm-smoke.png'
 $logCopyPath = Join-Path $artifactDir 'cyberstorm-vm-smoke.log'
-$targetPath = Join-Path $root ("deploy\virtualbox\{0}\Logs\VBox.log" -f $VmName)
+$vboxLogPath = Join-Path $root ("deploy\virtualbox\{0}\Logs\VBox.log" -f $VmName)
+
+function Assert-PathExists {
+    param(
+        [string]$Path,
+        [string]$Label
+    )
+
+    if (-not (Test-Path -LiteralPath $Path)) {
+        throw ("Missing {0}: {1}" -f $Label, $Path)
+    }
+}
+
+function Invoke-ChildBuild {
+    param([string[]]$ExtraArguments)
+
+    $args = New-Object 'System.Collections.Generic.List[string]'
+    $args.Add('-ExecutionPolicy')
+    $args.Add('Bypass')
+    $args.Add('-File')
+    $args.Add($BuildScriptPath)
+    $args.Add('-AutomationChild')
+    $args.Add('-Assembler')
+    $args.Add($Assembler)
+    if (-not [string]::IsNullOrWhiteSpace($AssemblerPath)) {
+        $args.Add('-AssemblerPath')
+        $args.Add($AssemblerPath)
+    }
+
+    if (-not [string]::IsNullOrWhiteSpace($MasmPath)) {
+        $args.Add('-MasmPath')
+        $args.Add($MasmPath)
+    }
+
+    if ($SfxOnly.IsPresent) {
+        $args.Add('-SfxOnly')
+    }
+
+    foreach ($argument in @($ExtraArguments)) {
+        $args.Add($argument)
+    }
+
+    & powershell @args | Out-Null
+    if ($LASTEXITCODE -ne 0) {
+        throw ("Child build failed: powershell {0}" -f ($args -join ' '))
+    }
+}
 
 function Invoke-VBoxManage {
     param(
@@ -110,6 +161,7 @@ function Invoke-VmScreenshot {
 
     for ($attempt = 0; $attempt -lt 5; $attempt++) {
         try {
+            Ensure-VmReadyForCapture -Name $Name
             Invoke-VBoxManage -Arguments @('controlvm', $Name, 'screenshotpng', $OutputPath) -TimeoutSeconds 45 | Out-Null
         } catch {
             if ($attempt -ge 4) {
@@ -152,7 +204,7 @@ function Start-HeadlessVm {
 function Invoke-DeployVm {
     param([string]$Name)
 
-    & powershell -ExecutionPolicy Bypass -File $deployScript -VmName $Name | Out-Null
+    & powershell -ExecutionPolicy Bypass -File $DeployScriptPath -VmName $Name | Out-Null
     if ($LASTEXITCODE -ne 0) {
         throw ("Deploy script failed for VM '{0}'." -f $Name)
     }
@@ -188,14 +240,11 @@ function Get-AsmEquValue {
         [string]$Name
     )
 
-    if (-not (Test-Path -LiteralPath $SourcePath)) {
-        throw ("Missing assembly include: {0}" -f $SourcePath)
-    }
-
-    $pattern = "^\s*{0}\s+EQU\s+([0-9A-Fa-f]+h|\d+)\s*(?:;.*)?$" -f [regex]::Escape($Name)
+    Assert-PathExists -Path $SourcePath -Label 'assembly constants source'
+    $pattern = "^\s*{0}\s+equ\s+([0-9A-Fa-f]+h|\d+)\s*(?:;.*)?$" -f [regex]::Escape($Name)
     $match = Select-String -LiteralPath $SourcePath -Pattern $pattern | Select-Object -First 1
     if (-not $match) {
-        throw ("Could not find '{0} EQU <value>' in {1}" -f $Name, $SourcePath)
+        throw ("Could not find numeric '{0} equ <value>' in {1}" -f $Name, $SourcePath)
     }
 
     $token = $match.Matches[0].Groups[1].Value
@@ -206,25 +255,153 @@ function Get-AsmEquValue {
     return [int]$token
 }
 
+function Convert-VgaChannel {
+    param([int]$Value)
+    return [int][Math]::Round(($Value * 255.0) / 63.0)
+}
+
+function New-RgbRef {
+    param([int]$R, [int]$G, [int]$B)
+
+    return [pscustomobject]@{
+        R = (Convert-VgaChannel $R)
+        G = (Convert-VgaChannel $G)
+        B = (Convert-VgaChannel $B)
+    }
+}
+
+function Get-ColorDistance {
+    param(
+        $Color,
+        $Reference
+    )
+
+    $dr = [double]($Color.R - $Reference.R)
+    $dg = [double]($Color.G - $Reference.G)
+    $db = [double]($Color.B - $Reference.B)
+    return (($dr * $dr) + ($dg * $dg) + ($db * $db))
+}
+
+function Get-BitmapPixel {
+    param(
+        [System.Drawing.Bitmap]$Bitmap,
+        [int]$X,
+        [int]$Y
+    )
+
+    return $Bitmap.GetPixel($X, $Y)
+}
+
+function Get-LogicalBitmapPixel {
+    param(
+        [System.Drawing.Bitmap]$Bitmap,
+        [double]$LogicalX,
+        [double]$LogicalY,
+        [int]$ScreenW,
+        [int]$ScreenH
+    )
+
+    $scaledX = [int][Math]::Floor(((($LogicalX + 0.5) * $Bitmap.Width) / $ScreenW))
+    $scaledY = [int][Math]::Floor(((($LogicalY + 0.5) * $Bitmap.Height) / $ScreenH))
+    $scaledX = [Math]::Max(0, [Math]::Min($Bitmap.Width - 1, $scaledX))
+    $scaledY = [Math]::Max(0, [Math]::Min($Bitmap.Height - 1, $scaledY))
+    return (Get-BitmapPixel -Bitmap $Bitmap -X $scaledX -Y $scaledY)
+}
+
+function Get-SmokeSentinelStatus {
+    param(
+        [System.Drawing.Bitmap]$Bitmap,
+        [hashtable]$Geometry
+    )
+
+    $sentinelRef = New-RgbRef $Geometry.R $Geometry.G $Geometry.B
+    $matchThreshold = 12000
+    $matchingPixels = 0
+    $closestDistance = [double]::PositiveInfinity
+
+    for ($logicalY = $Geometry.Y; $logicalY -lt ($Geometry.Y + $Geometry.H); $logicalY++) {
+        for ($logicalX = $Geometry.X; $logicalX -lt ($Geometry.X + $Geometry.W); $logicalX++) {
+            $sample = Get-LogicalBitmapPixel `
+                -Bitmap $Bitmap `
+                -LogicalX $logicalX `
+                -LogicalY $logicalY `
+                -ScreenW $Geometry.ScreenW `
+                -ScreenH $Geometry.ScreenH
+            $distance = Get-ColorDistance -Color $sample -Reference $sentinelRef
+            if ($distance -lt $closestDistance) {
+                $closestDistance = $distance
+            }
+
+            if ($distance -le $matchThreshold) {
+                $matchingPixels++
+            }
+        }
+    }
+
+    $minimumMatches = [Math]::Max(1, [int][Math]::Floor(($Geometry.W * $Geometry.H) / 3))
+    return [pscustomobject]@{
+        Visible = ($matchingPixels -ge $minimumMatches)
+        MatchingPixels = $matchingPixels
+        ClosestDistance = [int][Math]::Round($closestDistance)
+        MinimumMatches = $minimumMatches
+    }
+}
+
+function Capture-SmokeWindow {
+    param(
+        [string]$Label,
+        [string]$OutputPath,
+        [hashtable]$Geometry
+    )
+
+    $lastSample = $null
+    $maxCaptureAttempts = 3
+    for ($attempt = 1; $attempt -le $maxCaptureAttempts; $attempt++) {
+        Invoke-VmScreenshot -Name $VmName -OutputPath $OutputPath
+        if (-not (Test-Path -LiteralPath $OutputPath)) {
+            throw ("{0} screenshot was not created: {1}" -f $Label, $OutputPath)
+        }
+
+        $bitmap = [System.Drawing.Bitmap]::FromFile($OutputPath)
+        try {
+            $lastSample = Get-SmokeSentinelStatus -Bitmap $bitmap -Geometry $Geometry
+        } finally {
+            $bitmap.Dispose()
+        }
+
+        if ($lastSample.Visible) {
+            return [pscustomobject]@{
+                Label = $Label
+                OutputPath = $OutputPath
+                Attempt = $attempt
+                MatchingPixels = $lastSample.MatchingPixels
+                MinimumMatches = $lastSample.MinimumMatches
+                ClosestDistance = $lastSample.ClosestDistance
+            }
+        }
+
+        if ($attempt -lt $maxCaptureAttempts) {
+            Start-Sleep -Seconds 1
+        }
+    }
+
+    throw ("{0} capture never showed the shared smoke sentinel (closest distance {1}, matching pixels {2}/{3})." -f $Label, $lastSample.ClosestDistance, $lastSample.MatchingPixels, $lastSample.MinimumMatches)
+}
+
 if ($WaitSeconds -lt 8) {
     throw 'WaitSeconds must be at least 8 so the smoke path can reach splash -> title -> attract timing.'
 }
 
-if (-not (Test-Path -LiteralPath $vbox)) {
-    throw 'VBoxManage.exe was not found in the default Oracle VirtualBox install path.'
+if ([string]::IsNullOrWhiteSpace($AudioConfigPath)) {
+    $AudioConfigPath = Join-Path $buildDir 'audio_config.inc'
 }
 
-if (-not (Test-Path -LiteralPath $floppy)) {
-    throw "Boot image not found: $floppy. Run scripts/build.ps1 first."
-}
-
-if (-not (Test-Path -LiteralPath $AudioConfigPath)) {
-    throw "Audio config not found: $AudioConfigPath. Run scripts/build.ps1 first."
-}
-
-if (-not (Test-Path -LiteralPath $deployScript)) {
-    throw "Deploy script not found: $deployScript"
-}
+Assert-PathExists -Path $vbox -Label 'VBoxManage'
+Assert-PathExists -Path $floppy -Label 'boot image'
+Assert-PathExists -Path $AudioConfigPath -Label 'audio config'
+Assert-PathExists -Path $ConstantsSourcePath -Label 'assembly constants source'
+Assert-PathExists -Path $BuildScriptPath -Label 'build script'
+Assert-PathExists -Path $DeployScriptPath -Label 'deploy script'
 
 New-Item -ItemType Directory -Force -Path $artifactDir | Out-Null
 
@@ -233,6 +410,17 @@ $summaryLines = @()
 $artifactPaths = @($ReportPath, $startupScreenshotPath, $titleScreenshotPath, $screenshotPath, $logCopyPath)
 $audioModeValue = Get-AsmEquValue -SourcePath $AudioConfigPath -Name 'AUDIO_MODE'
 $audioModeName = if ($audioModeValue -eq 1) { 'MUSIC' } else { 'SFX_ONLY' }
+$geometry = @{
+    ScreenW = Get-AsmEquValue -SourcePath $ConstantsSourcePath -Name 'SCREEN_W'
+    ScreenH = Get-AsmEquValue -SourcePath $ConstantsSourcePath -Name 'SCREEN_H'
+    X = Get-AsmEquValue -SourcePath $ConstantsSourcePath -Name 'SMOKE_SENTINEL_X'
+    Y = Get-AsmEquValue -SourcePath $ConstantsSourcePath -Name 'SMOKE_SENTINEL_Y'
+    W = Get-AsmEquValue -SourcePath $ConstantsSourcePath -Name 'SMOKE_SENTINEL_W'
+    H = Get-AsmEquValue -SourcePath $ConstantsSourcePath -Name 'SMOKE_SENTINEL_H'
+    R = Get-AsmEquValue -SourcePath $ConstantsSourcePath -Name 'SMOKE_SENTINEL_R'
+    G = Get-AsmEquValue -SourcePath $ConstantsSourcePath -Name 'SMOKE_SENTINEL_G'
+    B = Get-AsmEquValue -SourcePath $ConstantsSourcePath -Name 'SMOKE_SENTINEL_B'
+}
 $startupCaptureSeconds = 2
 $titleCaptureSeconds = [Math]::Min(($WaitSeconds - 2), 6)
 if ($titleCaptureSeconds -le $startupCaptureSeconds) {
@@ -240,37 +428,35 @@ if ($titleCaptureSeconds -le $startupCaptureSeconds) {
 }
 $titleSleepSeconds = $titleCaptureSeconds - $startupCaptureSeconds
 $attractCaptureSeconds = $WaitSeconds - $titleCaptureSeconds
+$restoreRelease = $false
+$caughtException = $null
 
 try {
     Stop-VmIfRunning -Name $VmName
     Ensure-VmRegistered -Name $VmName
     Stop-VmIfRunning -Name $VmName
 
+    Invoke-ChildBuild -ExtraArguments @('-DebugRenderSentinels')
+    $restoreRelease = $true
+
     Start-HeadlessVm -Name $VmName
     Start-Sleep -Seconds $startupCaptureSeconds
-    Invoke-VmScreenshot -Name $VmName -OutputPath $startupScreenshotPath
-    if (-not (Test-Path -LiteralPath $startupScreenshotPath)) {
-        throw ("VM smoke startup screenshot was not created: {0}" -f $startupScreenshotPath)
-    }
+    $startupCapture = Capture-SmokeWindow -Label 'Startup' -OutputPath $startupScreenshotPath -Geometry $geometry
 
     if ($titleSleepSeconds -gt 0) {
         Start-Sleep -Seconds $titleSleepSeconds
     }
-
-    Invoke-VmScreenshot -Name $VmName -OutputPath $titleScreenshotPath
-    if (-not (Test-Path -LiteralPath $titleScreenshotPath)) {
-        throw ("VM smoke title screenshot was not created: {0}" -f $titleScreenshotPath)
-    }
+    $titleCapture = Capture-SmokeWindow -Label 'Title' -OutputPath $titleScreenshotPath -Geometry $geometry
 
     if ($attractCaptureSeconds -gt 0) {
         Start-Sleep -Seconds $attractCaptureSeconds
     }
 
-    if (-not (Test-Path -LiteralPath $targetPath)) {
-        throw ("VBox log was not found after smoke boot: {0}" -f $targetPath)
+    if (-not (Test-Path -LiteralPath $vboxLogPath)) {
+        throw ("VBox log was not found after smoke boot: {0}" -f $vboxLogPath)
     }
 
-    $liveLogLines = Get-Content -LiteralPath $targetPath
+    $liveLogLines = Get-Content -LiteralPath $vboxLogPath
     if (@($liveLogLines | Where-Object { $_ -match "Machine state changed to 'Running'" }).Count -eq 0) {
         throw 'VBox log never reported the VM entering the Running state.'
     }
@@ -279,12 +465,9 @@ try {
         throw 'VBox log never reached the floppy boot path.'
     }
 
-    Invoke-VmScreenshot -Name $VmName -OutputPath $screenshotPath
-    if (-not (Test-Path -LiteralPath $screenshotPath)) {
-        throw ("VM smoke screenshot was not created: {0}" -f $screenshotPath)
-    }
+    $attractCapture = Capture-SmokeWindow -Label 'Attract' -OutputPath $screenshotPath -Geometry $geometry
 
-    Copy-Item -LiteralPath $targetPath -Destination $logCopyPath -Force
+    Copy-Item -LiteralPath $vboxLogPath -Destination $logCopyPath -Force
     $logLines = Get-Content -LiteralPath $logCopyPath
     $badLogPattern = '(?i)Guru Meditation|triple fault|triple-fault|unrecoverable'
     $badLogMatches = @($logLines | Where-Object { $_ -match $badLogPattern })
@@ -321,9 +504,10 @@ try {
         ("Wait: {0}s (targets splash -> title -> attract demo)" -f $WaitSeconds)
         ("Audio mode: {0}" -f $audioModeName)
         ("Audio controller: SB16 via {0} (host default {1})" -f $hostAudioDriver, $defaultAudioDriver)
-        ("Startup expectation: screenshotpng succeeded after {0}s inside the boot -> splash window." -f $startupCaptureSeconds)
-        ("Title expectation: screenshotpng succeeded after {0}s in the splash -> title window." -f $titleCaptureSeconds)
-        ("Attract expectation: screenshotpng succeeded after the full {0}s smoke window." -f $WaitSeconds)
+        ("Smoke sentinel: x={0} y={1} w={2} h={3} rgb=({4},{5},{6})" -f $geometry.X, $geometry.Y, $geometry.W, $geometry.H, $geometry.R, $geometry.G, $geometry.B)
+        ("Startup render proof: sentinel matched on attempt {0} with {1}/{2} pixels (closest distance {3})." -f $startupCapture.Attempt, $startupCapture.MatchingPixels, $startupCapture.MinimumMatches, $startupCapture.ClosestDistance)
+        ("Title render proof: sentinel matched on attempt {0} with {1}/{2} pixels (closest distance {3})." -f $titleCapture.Attempt, $titleCapture.MatchingPixels, $titleCapture.MinimumMatches, $titleCapture.ClosestDistance)
+        ("Attract render proof: sentinel matched on attempt {0} with {1}/{2} pixels (closest distance {3})." -f $attractCapture.Attempt, $attractCapture.MatchingPixels, $attractCapture.MinimumMatches, $attractCapture.ClosestDistance)
         ("Startup screenshot: {0}" -f $startupScreenshotPath)
         ("Title screenshot: {0}" -f $titleScreenshotPath)
         ("Screenshot: {0}" -f $screenshotPath)
@@ -336,21 +520,33 @@ try {
         ("VM: {0}" -f $VmName)
         ("Wait: {0}s (targets splash -> title -> attract demo)" -f $WaitSeconds)
         ("Audio mode: {0}" -f $audioModeName)
+        ("Smoke sentinel: x={0} y={1} w={2} h={3} rgb=({4},{5},{6})" -f $geometry.X, $geometry.Y, $geometry.W, $geometry.H, $geometry.R, $geometry.G, $geometry.B)
         ("Error: {0}" -f $_.Exception.Message)
     )
+    $caughtException = $_
+} finally {
+    Stop-VmIfRunning -Name $VmName
+    if ($restoreRelease) {
+        try {
+            Invoke-ChildBuild -ExtraArguments @()
+        } catch {
+            $status = 'FAIL'
+            $summaryLines += ("Release restore failed: {0}" -f $_.Exception.Message)
+            if ($null -eq $caughtException) {
+                $caughtException = $_
+            }
+        }
+    }
+
     Write-SmokeReport -Path $ReportPath -Lines (@(
         'CyberStorm VM Smoke Report'
         ("Generated: {0}" -f (Get-Date -Format 'yyyy-MM-dd HH:mm:ss K'))
     ) + $summaryLines)
-    throw
-} finally {
-    Stop-VmIfRunning -Name $VmName
 }
 
-Write-SmokeReport -Path $ReportPath -Lines (@(
-    'CyberStorm VM Smoke Report'
-    ("Generated: {0}" -f (Get-Date -Format 'yyyy-MM-dd HH:mm:ss K'))
-) + $summaryLines)
+if ($null -ne $caughtException) {
+    throw $caughtException
+}
 
 [pscustomobject]@{
     Status = $status

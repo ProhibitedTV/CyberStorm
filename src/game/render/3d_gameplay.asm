@@ -520,6 +520,26 @@ IF DEBUG_RENDER_SENTINELS
     mov al, PAL_CYAN
     call draw_debug_render_sentinel_vga
 ENDIF
+IF DEBUG_RUNTIME_VERIFY
+    ; Replay verification only cares about the deterministic gameplay result and
+    ; the final PASS/FAIL scene, so keep demo playback on a cheap backdrop pass.
+    cmp byte ptr [demo_active], 0
+    je render_gameplay_adventure_live
+    cmp byte ptr [verify_mode], VERIFY_MODE_REPLAY
+    jne render_gameplay_adventure_live
+IF DEBUG_RENDER_STAGE GE 0
+    call game3d_draw_view_backdrop
+IF DEBUG_RENDER_SENTINELS
+    mov bx, 16
+    mov dx, 20
+    mov al, PAL_AMBER
+    call draw_debug_render_sentinel_vga
+ENDIF
+ENDIF
+    ret
+
+render_gameplay_adventure_live:
+ENDIF
 IF DEBUG_RENDER_STAGE GE 0
     call game3d_draw_view_backdrop
 IF DEBUG_RENDER_SENTINELS
@@ -588,8 +608,8 @@ IF DEBUG_RENDER_SENTINELS
     push cx
     push dx
     push bp
-    mov cx, 6
-    mov bp, 3
+    mov cx, SMOKE_SENTINEL_W
+    mov bp, SMOKE_SENTINEL_H
     call fill_rect
     pop bp
     pop dx

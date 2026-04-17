@@ -955,6 +955,7 @@ function Write-GeneratedSectorIncludes {
         [string]$SourcePath,
         [string]$SectorOutputPath,
         [string]$MapsOutputPath,
+        [bool]$IncludeLegacySectorContent = $true,
         [int]$ExpectedSectorCount,
         [int]$ExpectedMapWidth,
         [int]$ExpectedMapHeight,
@@ -1035,6 +1036,12 @@ function Write-GeneratedSectorIncludes {
     $mapCount = 0
     $mapBytes = 0
     $templateBase = 0
+    $campaignDistrictSummary = New-Object 'System.Collections.Generic.List[string]'
+    $campaignZoneSummary = New-Object 'System.Collections.Generic.List[string]'
+    $campaignRouteSummary = New-Object 'System.Collections.Generic.List[string]'
+    $campaignChunkSummary = New-Object 'System.Collections.Generic.List[string]'
+    $campaignCaptureSummary = New-Object 'System.Collections.Generic.List[string]'
+    $campaignPayloadBytes = New-Object 'System.Collections.Generic.List[byte]'
 
     foreach ($sector in $sectors) {
         if (-not ($sector -is [System.Collections.IDictionary])) {
@@ -1388,165 +1395,134 @@ function Write-GeneratedSectorIncludes {
         $templateBase += $maps.Count
     }
 
-    Add-AsmDataLines -Lines $sectorLines -Label 'sector_rule_surge_count' -Directive 'db' -Values $surgeCounts.ToArray() -ValuesPerLine 8
-    Add-AsmDataLines -Lines $sectorLines -Label 'sector_rule_terminal_count' -Directive 'db' -Values $terminalCounts.ToArray() -ValuesPerLine 8
-    Add-AsmDataLines -Lines $sectorLines -Label 'sector_rule_enemy_bonus' -Directive 'db' -Values $enemyBonuses.ToArray() -ValuesPerLine 8
-    Add-AsmDataLines -Lines $sectorLines -Label 'sector_rule_flanker_threshold' -Directive 'db' -Values $flankerThresholds.ToArray() -ValuesPerLine 8
-    Add-AsmDataLines -Lines $sectorLines -Label 'sector_rule_warden_threshold' -Directive 'db' -Values $wardenThresholds.ToArray() -ValuesPerLine 8
-    Add-AsmDataLines -Lines $sectorLines -Label 'sector_rule_warden_engage_distance' -Directive 'db' -Values $wardenDistances.ToArray() -ValuesPerLine 8
-    $sectorLines.Add('')
-    Add-AsmDataLines -Lines $sectorLines -Label 'sector_template_start' -Directive 'db' -Values $templateStart.ToArray() -ValuesPerLine 8
-    Add-AsmDataLines -Lines $sectorLines -Label 'sector_template_count' -Directive 'db' -Values $templateCount.ToArray() -ValuesPerLine 8
-    Add-AsmDataLines -Lines $sectorLines -Label 'template_offset_table' -Directive 'dw' -Values $templateOffsets.ToArray() -ValuesPerLine 6
-    Add-AsmDataLines -Lines $sectorLines -Label 'template_terminal_anchor_offset' -Directive 'dw' -Values $templateTerminalOffsets.ToArray() -ValuesPerLine 6
-    Add-AsmDataLines -Lines $sectorLines -Label 'template_terminal_anchor_count' -Directive 'db' -Values $templateTerminalAnchorCounts.ToArray() -ValuesPerLine 8
-    Add-AsmDataLines -Lines $sectorLines -Label 'template_surge_anchor_offset' -Directive 'dw' -Values $templateSurgeOffsets.ToArray() -ValuesPerLine 6
-    Add-AsmDataLines -Lines $sectorLines -Label 'template_surge_anchor_count' -Directive 'db' -Values $templateSurgeAnchorCounts.ToArray() -ValuesPerLine 8
-    Add-AsmDataLines -Lines $sectorLines -Label 'template_enemy_anchor_offset' -Directive 'dw' -Values $templateEnemyOffsets.ToArray() -ValuesPerLine 6
-    Add-AsmDataLines -Lines $sectorLines -Label 'template_enemy_anchor_count' -Directive 'db' -Values $templateEnemyAnchorCounts.ToArray() -ValuesPerLine 8
-    Add-AsmDataLines -Lines $sectorLines -Label 'template_scenario_name_table' -Directive 'dw' -Values $scenarioNameRefs.ToArray() -ValuesPerLine 4
-    Add-AsmDataLines -Lines $sectorLines -Label 'template_scenario_entry_table' -Directive 'dw' -Values $scenarioEntryRefs.ToArray() -ValuesPerLine 4
-    Add-AsmDataLines -Lines $sectorLines -Label 'template_shard_pool_offset' -Directive 'dw' -Values $templateShardPoolOffsets.ToArray() -ValuesPerLine 6
-    Add-AsmDataLines -Lines $sectorLines -Label 'template_shard_pool_count' -Directive 'db' -Values $templateShardPoolCounts.ToArray() -ValuesPerLine 8
-    Add-AsmDataLines -Lines $sectorLines -Label 'sector_name_table' -Directive 'dw' -Values $nameRefs.ToArray() -ValuesPerLine 3
-    Add-AsmDataLines -Lines $sectorLines -Label 'sector_intro_table' -Directive 'dw' -Values $introRefs.ToArray() -ValuesPerLine 3
-    $sectorLines.Add('')
-    Add-AsmDataLines -Lines $sectorLines -Label 'terminal_anchor_table' -Directive 'db' -Values (@($terminalAnchorBytes | ForEach-Object { $_.ToString() })) -ValuesPerLine 10
-    Add-AsmDataLines -Lines $sectorLines -Label 'surge_anchor_table' -Directive 'db' -Values (@($surgeAnchorBytes | ForEach-Object { $_.ToString() })) -ValuesPerLine 10
-    Add-AsmDataLines -Lines $sectorLines -Label 'enemy_anchor_table' -Directive 'db' -Values (@($enemyAnchorBytes | ForEach-Object { $_.ToString() })) -ValuesPerLine 12
-    Add-AsmDataLines -Lines $sectorLines -Label 'shard_pool_table' -Directive 'db' -Values (@($shardPoolBytes | ForEach-Object { $_.ToString() })) -ValuesPerLine 10
-    $sectorLines.Add('')
-
-    foreach ($record in $mapScenarioRecords) {
-        $sectorLines.Add(("{0}_scenario_name db {1}, 0" -f $record.MapName, (ConvertTo-AsmStringLiteral -Value ([string]$record.ScenarioName) -Context ("scenario name for {0}" -f $record.MapName))))
-        $sectorLines.Add(("{0}_scenario_entry db {1}, 0" -f $record.MapName, (ConvertTo-AsmStringLiteral -Value ([string]$record.ScenarioEntry) -Context ("scenario entry for {0}" -f $record.MapName))))
-    }
-
-    if ($mapScenarioRecords.Count -gt 0) {
+    if ($IncludeLegacySectorContent) {
+        Add-AsmDataLines -Lines $sectorLines -Label 'sector_rule_surge_count' -Directive 'db' -Values $surgeCounts.ToArray() -ValuesPerLine 8
+        Add-AsmDataLines -Lines $sectorLines -Label 'sector_rule_terminal_count' -Directive 'db' -Values $terminalCounts.ToArray() -ValuesPerLine 8
+        Add-AsmDataLines -Lines $sectorLines -Label 'sector_rule_enemy_bonus' -Directive 'db' -Values $enemyBonuses.ToArray() -ValuesPerLine 8
+        Add-AsmDataLines -Lines $sectorLines -Label 'sector_rule_flanker_threshold' -Directive 'db' -Values $flankerThresholds.ToArray() -ValuesPerLine 8
+        Add-AsmDataLines -Lines $sectorLines -Label 'sector_rule_warden_threshold' -Directive 'db' -Values $wardenThresholds.ToArray() -ValuesPerLine 8
+        Add-AsmDataLines -Lines $sectorLines -Label 'sector_rule_warden_engage_distance' -Directive 'db' -Values $wardenDistances.ToArray() -ValuesPerLine 8
         $sectorLines.Add('')
+        Add-AsmDataLines -Lines $sectorLines -Label 'sector_template_start' -Directive 'db' -Values $templateStart.ToArray() -ValuesPerLine 8
+        Add-AsmDataLines -Lines $sectorLines -Label 'sector_template_count' -Directive 'db' -Values $templateCount.ToArray() -ValuesPerLine 8
+        Add-AsmDataLines -Lines $sectorLines -Label 'template_offset_table' -Directive 'dw' -Values $templateOffsets.ToArray() -ValuesPerLine 6
+        Add-AsmDataLines -Lines $sectorLines -Label 'template_terminal_anchor_offset' -Directive 'dw' -Values $templateTerminalOffsets.ToArray() -ValuesPerLine 6
+        Add-AsmDataLines -Lines $sectorLines -Label 'template_terminal_anchor_count' -Directive 'db' -Values $templateTerminalAnchorCounts.ToArray() -ValuesPerLine 8
+        Add-AsmDataLines -Lines $sectorLines -Label 'template_surge_anchor_offset' -Directive 'dw' -Values $templateSurgeOffsets.ToArray() -ValuesPerLine 6
+        Add-AsmDataLines -Lines $sectorLines -Label 'template_surge_anchor_count' -Directive 'db' -Values $templateSurgeAnchorCounts.ToArray() -ValuesPerLine 8
+        Add-AsmDataLines -Lines $sectorLines -Label 'template_enemy_anchor_offset' -Directive 'dw' -Values $templateEnemyOffsets.ToArray() -ValuesPerLine 6
+        Add-AsmDataLines -Lines $sectorLines -Label 'template_enemy_anchor_count' -Directive 'db' -Values $templateEnemyAnchorCounts.ToArray() -ValuesPerLine 8
+        Add-AsmDataLines -Lines $sectorLines -Label 'template_scenario_name_table' -Directive 'dw' -Values $scenarioNameRefs.ToArray() -ValuesPerLine 4
+        Add-AsmDataLines -Lines $sectorLines -Label 'template_scenario_entry_table' -Directive 'dw' -Values $scenarioEntryRefs.ToArray() -ValuesPerLine 4
+        Add-AsmDataLines -Lines $sectorLines -Label 'template_shard_pool_offset' -Directive 'dw' -Values $templateShardPoolOffsets.ToArray() -ValuesPerLine 6
+        Add-AsmDataLines -Lines $sectorLines -Label 'template_shard_pool_count' -Directive 'db' -Values $templateShardPoolCounts.ToArray() -ValuesPerLine 8
+        Add-AsmDataLines -Lines $sectorLines -Label 'sector_name_table' -Directive 'dw' -Values $nameRefs.ToArray() -ValuesPerLine 3
+        Add-AsmDataLines -Lines $sectorLines -Label 'sector_intro_table' -Directive 'dw' -Values $introRefs.ToArray() -ValuesPerLine 3
+        $sectorLines.Add('')
+        Add-AsmDataLines -Lines $sectorLines -Label 'terminal_anchor_table' -Directive 'db' -Values (@($terminalAnchorBytes | ForEach-Object { $_.ToString() })) -ValuesPerLine 10
+        Add-AsmDataLines -Lines $sectorLines -Label 'surge_anchor_table' -Directive 'db' -Values (@($surgeAnchorBytes | ForEach-Object { $_.ToString() })) -ValuesPerLine 10
+        Add-AsmDataLines -Lines $sectorLines -Label 'enemy_anchor_table' -Directive 'db' -Values (@($enemyAnchorBytes | ForEach-Object { $_.ToString() })) -ValuesPerLine 12
+        Add-AsmDataLines -Lines $sectorLines -Label 'shard_pool_table' -Directive 'db' -Values (@($shardPoolBytes | ForEach-Object { $_.ToString() })) -ValuesPerLine 10
+        $sectorLines.Add('')
+
+        foreach ($record in $mapScenarioRecords) {
+            $sectorLines.Add(("{0}_scenario_name db {1}, 0" -f $record.MapName, (ConvertTo-AsmStringLiteral -Value ([string]$record.ScenarioName) -Context ("scenario name for {0}" -f $record.MapName))))
+            $sectorLines.Add(("{0}_scenario_entry db {1}, 0" -f $record.MapName, (ConvertTo-AsmStringLiteral -Value ([string]$record.ScenarioEntry) -Context ("scenario entry for {0}" -f $record.MapName))))
+        }
+
+        if ($mapScenarioRecords.Count -gt 0) {
+            $sectorLines.Add('')
+        }
+
+        foreach ($sector in $sectors) {
+            $sectorId = [int]$sector['Id']
+            $sectorLabel = ("sector{0}" -f $sectorId)
+            $sectorLines.Add(("{0}_name db {1}, 0" -f $sectorLabel, (ConvertTo-AsmStringLiteral -Value ([string]$sector['Title']) -Context ("sector {0} title" -f $sectorId))))
+            $sectorLines.Add(("{0}_intro db {1}, 0" -f $sectorLabel, (ConvertTo-AsmStringLiteral -Value ([string]$sector['Intro']) -Context ("sector {0} intro" -f $sectorId))))
+        }
     }
 
-    foreach ($sector in $sectors) {
-        $sectorId = [int]$sector['Id']
-        $sectorLabel = ("sector{0}" -f $sectorId)
-        $sectorLines.Add(("{0}_name db {1}, 0" -f $sectorLabel, (ConvertTo-AsmStringLiteral -Value ([string]$sector['Title']) -Context ("sector {0} title" -f $sectorId))))
-        $sectorLines.Add(("{0}_intro db {1}, 0" -f $sectorLabel, (ConvertTo-AsmStringLiteral -Value ([string]$sector['Intro']) -Context ("sector {0} intro" -f $sectorId))))
-    }
-
-    if ($contentData.ContainsKey('AdventureRealm')) {
-        $adventureRealm = $contentData['AdventureRealm']
-        if (-not ($adventureRealm -is [System.Collections.IDictionary])) {
+    $campaignDistricts = @()
+    if ($contentData.ContainsKey('Campaign')) {
+        $campaignData = $contentData['Campaign']
+        if (-not ($campaignData -is [System.Collections.IDictionary])) {
+            throw ("Campaign in {0} must be a hashtable." -f $SourcePath)
+        }
+        if (-not $campaignData.ContainsKey('Districts')) {
+            throw ("Campaign in {0} must define a 'Districts' array." -f $SourcePath)
+        }
+        $campaignDistricts = @($campaignData['Districts'])
+    } elseif ($contentData.ContainsKey('AdventureRealm')) {
+        $legacyRealm = $contentData['AdventureRealm']
+        if (-not ($legacyRealm -is [System.Collections.IDictionary])) {
             throw ("AdventureRealm in {0} must be a hashtable." -f $SourcePath)
         }
+        $campaignDistricts = @([ordered]@{
+                Id = 'legacy-realm'
+                Title = [string]$legacyRealm['Title']
+                Intro = [string]$legacyRealm['Intro']
+                Start = [string]$legacyRealm['Start']
+                Exit = [string]$legacyRealm['Portal']
+                ObjectiveCounts = @{
+                    RequiredDataShards = [int]$legacyRealm['RequiredGems']
+                    RelayCount = @($legacyRealm['Switches']).Count
+                    KeycardCount = @($legacyRealm['Key']).Count
+                }
+                Rows = @($legacyRealm['Rows'])
+                MacroZones = @($legacyRealm['MacroZones'])
+                RouteBeats = @($legacyRealm['RouteBeats'])
+                Chunks = @($legacyRealm['Chunks'])
+                CaptureAnchors = $legacyRealm['CaptureAnchors']
+                NextDistrict = 0
+                Gems = @($legacyRealm['Gems'])
+                Switches = @($legacyRealm['Switches'])
+                Key = @($legacyRealm['Key'])
+                Hazards = @($legacyRealm['Hazards'])
+                Enemies = @($legacyRealm['Enemies'])
+                Props = @($legacyRealm['Props'])
+            })
+    }
 
-        foreach ($requiredAdventureKey in @('Title', 'Intro', 'Start', 'Portal', 'RequiredGems', 'Key', 'Rows', 'MacroZones', 'RouteBeats', 'Chunks', 'CaptureAnchors')) {
-            if (-not $adventureRealm.ContainsKey($requiredAdventureKey)) {
-                throw ("AdventureRealm in {0} is missing '{1}'." -f $SourcePath, $requiredAdventureKey)
-            }
-        }
-
-        $adventureTitle = [string]$adventureRealm['Title']
-        $adventureIntro = [string]$adventureRealm['Intro']
-        $adventureRequiredGems = [int]$adventureRealm['RequiredGems']
-        $adventureRows = @($adventureRealm['Rows'] | ForEach-Object { [string]$_ })
-        $adventureMacroZones = @($adventureRealm['MacroZones'])
-        $adventureRouteBeats = @($adventureRealm['RouteBeats'])
-        $adventureChunks = @($adventureRealm['Chunks'])
-        $adventureCaptureAnchors = $adventureRealm['CaptureAnchors']
-        if ($adventureRows.Count -ne $ExpectedMapHeight) {
-            throw ("AdventureRealm in {0} must define exactly {1} rows." -f $SourcePath, $ExpectedMapHeight)
-        }
-        if ($adventureRequiredGems -lt 0 -or $adventureRequiredGems -gt 255) {
-            throw ("AdventureRealm.RequiredGems in {0} must stay in the 0..255 range. Found {1}." -f $SourcePath, $adventureRequiredGems)
-        }
-        if ($adventureMacroZones.Count -eq 0) {
-            throw ("AdventureRealm in {0} must define at least one MacroZones entry." -f $SourcePath)
-        }
-        if ($adventureRouteBeats.Count -eq 0) {
-            throw ("AdventureRealm in {0} must define at least one RouteBeats entry." -f $SourcePath)
-        }
-        if ($adventureChunks.Count -eq 0) {
-            throw ("AdventureRealm in {0} must define at least one Chunks entry." -f $SourcePath)
-        }
-        if (-not ($adventureCaptureAnchors -is [System.Collections.IDictionary])) {
-            throw ("AdventureRealm.CaptureAnchors in {0} must be a hashtable." -f $SourcePath)
-        }
-
-        $adventureMacroZoneSummary = New-Object 'System.Collections.Generic.List[string]'
-        $adventureRouteBeatSummary = New-Object 'System.Collections.Generic.List[string]'
-        $adventureZoneIds = New-Object 'System.Collections.Generic.HashSet[string]' ([System.StringComparer]::OrdinalIgnoreCase)
-        foreach ($zoneEntry in $adventureMacroZones) {
-            if (-not ($zoneEntry -is [System.Collections.IDictionary])) {
-                throw ("AdventureRealm.MacroZones in {0} must be hashtables with Id and Label." -f $SourcePath)
-            }
-
-            $zoneId = ([string]$zoneEntry['Id']).Trim()
-            $zoneLabel = ([string]$zoneEntry['Label']).Trim()
-            $zoneBounds = if ($zoneEntry.ContainsKey('Bounds')) { ([string]$zoneEntry['Bounds']).Trim() } else { '' }
-            if ([string]::IsNullOrWhiteSpace($zoneId) -or $zoneId -notmatch '^[a-z0-9]+(?:-[a-z0-9]+)*$') {
-                throw ("AdventureRealm.MacroZones in {0} must use lowercase slug Id values. Found '{1}'." -f $SourcePath, $zoneEntry['Id'])
-            }
-            if ([string]::IsNullOrWhiteSpace($zoneLabel)) {
-                throw ("AdventureRealm.MacroZones entry '{0}' in {1} is missing Label." -f $zoneId, $SourcePath)
-            }
-            if (-not $adventureZoneIds.Add($zoneId)) {
-                throw ("AdventureRealm.MacroZones in {0} reused Id '{1}'." -f $SourcePath, $zoneId)
-            }
-
-            if ([string]::IsNullOrWhiteSpace($zoneBounds)) {
-                $adventureMacroZoneSummary.Add(("{0} ({1})" -f $zoneId, $zoneLabel))
-            } else {
-                $adventureMacroZoneSummary.Add(("{0} ({1}, {2})" -f $zoneId, $zoneLabel, $zoneBounds))
-            }
-        }
-
-        foreach ($beatEntry in @($adventureRouteBeats | Sort-Object -Property @{ Expression = { [int]$_.Sequence }; Ascending = $true })) {
-            if (-not ($beatEntry -is [System.Collections.IDictionary])) {
-                throw ("AdventureRealm.RouteBeats in {0} must be hashtables with Zone, Sequence, and Summary." -f $SourcePath)
-            }
-
-            $zoneId = ([string]$beatEntry['Zone']).Trim()
-            $sequence = [int]$beatEntry['Sequence']
-            $summary = ([string]$beatEntry['Summary']).Trim()
-            if (-not $adventureZoneIds.Contains($zoneId)) {
-                throw ("AdventureRealm.RouteBeats in {0} referenced unknown zone '{1}'." -f $SourcePath, $zoneId)
-            }
-            if ($sequence -lt 1 -or $sequence -gt 255) {
-                throw ("AdventureRealm.RouteBeats in {0} must use Sequence values in the 1..255 range. Found {1}." -f $SourcePath, $sequence)
-            }
-            if ([string]::IsNullOrWhiteSpace($summary)) {
-                throw ("AdventureRealm.RouteBeats in {0} is missing Summary for zone '{1}'." -f $SourcePath, $zoneId)
-            }
-
-            $adventureRouteBeatSummary.Add(("#{0} {1}: {2}" -f $sequence, $zoneId, $summary))
-        }
-
-        foreach ($captureKey in @('Beauty', 'Action')) {
-            if (-not $adventureCaptureAnchors.ContainsKey($captureKey)) {
-                throw ("AdventureRealm.CaptureAnchors in {0} is missing '{1}'." -f $SourcePath, $captureKey)
-            }
-
-            $captureId = ([string]$adventureCaptureAnchors[$captureKey]).Trim()
-            if ([string]::IsNullOrWhiteSpace($captureId) -or $captureId -notmatch '^[a-z0-9]+(?:-[a-z0-9]+)*$') {
-                throw ("AdventureRealm.CaptureAnchors.{0} in {1} must reference a lowercase demo Id. Found '{2}'." -f $captureKey, $SourcePath, $adventureCaptureAnchors[$captureKey])
-            }
-        }
-        $adventureCaptureSummary = ("beauty={0}, action={1}" -f ([string]$adventureCaptureAnchors['Beauty']).Trim(), ([string]$adventureCaptureAnchors['Action']).Trim())
-
-        $adventureChunkIds = New-Object 'System.Collections.Generic.HashSet[string]' ([System.StringComparer]::OrdinalIgnoreCase)
-        $adventureChunkSummary = New-Object 'System.Collections.Generic.List[string]'
-        $adventureChunkMinXs = New-Object 'System.Collections.Generic.List[string]'
-        $adventureChunkMaxXs = New-Object 'System.Collections.Generic.List[string]'
-        $adventureChunkMinYs = New-Object 'System.Collections.Generic.List[string]'
-        $adventureChunkMaxYs = New-Object 'System.Collections.Generic.List[string]'
-        $adventureChunkBaseHeights = New-Object 'System.Collections.Generic.List[string]'
-        $adventureChunkShelfHeights = New-Object 'System.Collections.Generic.List[string]'
-        $adventureChunkRampDirs = New-Object 'System.Collections.Generic.List[string]'
-        $adventureChunkCliffSides = New-Object 'System.Collections.Generic.List[string]'
-        $adventureChunkBridgeSpans = New-Object 'System.Collections.Generic.List[string]'
-        $adventureChunkLandmarkXs = New-Object 'System.Collections.Generic.List[string]'
-        $adventureChunkLandmarkYs = New-Object 'System.Collections.Generic.List[string]'
-        $adventureChunkPropBudgets = New-Object 'System.Collections.Generic.List[string]'
+    if ($campaignDistricts.Count -gt 0) {
+        $campaignPayloadBytes = New-Object 'System.Collections.Generic.List[byte]'
+        $campaignMeshLines = New-Object 'System.Collections.Generic.List[string]'
+        $campaignTitleRefs = New-Object 'System.Collections.Generic.List[string]'
+        $campaignIntroRefs = New-Object 'System.Collections.Generic.List[string]'
+        $campaignMapRefs = New-Object 'System.Collections.Generic.List[string]'
+        $campaignGemRefs = New-Object 'System.Collections.Generic.List[string]'
+        $campaignSwitchRefs = New-Object 'System.Collections.Generic.List[string]'
+        $campaignKeyRefs = New-Object 'System.Collections.Generic.List[string]'
+        $campaignHazardRefs = New-Object 'System.Collections.Generic.List[string]'
+        $campaignEnemyRefs = New-Object 'System.Collections.Generic.List[string]'
+        $campaignChunkMinXRefs = New-Object 'System.Collections.Generic.List[string]'
+        $campaignChunkMaxXRefs = New-Object 'System.Collections.Generic.List[string]'
+        $campaignChunkMinYRefs = New-Object 'System.Collections.Generic.List[string]'
+        $campaignChunkMaxYRefs = New-Object 'System.Collections.Generic.List[string]'
+        $campaignChunkBaseHeightRefs = New-Object 'System.Collections.Generic.List[string]'
+        $campaignChunkShelfHeightRefs = New-Object 'System.Collections.Generic.List[string]'
+        $campaignChunkRampDirRefs = New-Object 'System.Collections.Generic.List[string]'
+        $campaignChunkCliffSideRefs = New-Object 'System.Collections.Generic.List[string]'
+        $campaignChunkBridgeSpanRefs = New-Object 'System.Collections.Generic.List[string]'
+        $campaignChunkLandmarkXRefs = New-Object 'System.Collections.Generic.List[string]'
+        $campaignChunkLandmarkYRefs = New-Object 'System.Collections.Generic.List[string]'
+        $campaignChunkPropBudgetRefs = New-Object 'System.Collections.Generic.List[string]'
+        $campaignPropXRefs = New-Object 'System.Collections.Generic.List[string]'
+        $campaignPropYRefs = New-Object 'System.Collections.Generic.List[string]'
+        $campaignPropMeshRefs = New-Object 'System.Collections.Generic.List[string]'
+        $campaignPropYawRefs = New-Object 'System.Collections.Generic.List[string]'
+        $campaignStartXs = New-Object 'System.Collections.Generic.List[string]'
+        $campaignStartYs = New-Object 'System.Collections.Generic.List[string]'
+        $campaignExitXs = New-Object 'System.Collections.Generic.List[string]'
+        $campaignExitYs = New-Object 'System.Collections.Generic.List[string]'
+        $campaignNextDistricts = New-Object 'System.Collections.Generic.List[string]'
+        $campaignRequiredGems = New-Object 'System.Collections.Generic.List[string]'
+        $campaignGemCounts = New-Object 'System.Collections.Generic.List[string]'
+        $campaignSwitchCounts = New-Object 'System.Collections.Generic.List[string]'
+        $campaignKeyCounts = New-Object 'System.Collections.Generic.List[string]'
+        $campaignHazardCounts = New-Object 'System.Collections.Generic.List[string]'
+        $campaignEnemyCounts = New-Object 'System.Collections.Generic.List[string]'
+        $campaignPropCounts = New-Object 'System.Collections.Generic.List[string]'
+        $campaignChunkCounts = New-Object 'System.Collections.Generic.List[string]'
         $directionTokenMap = @{
             'none' = 0
             'north' = 1
@@ -1559,201 +1535,399 @@ function Write-GeneratedSectorIncludes {
             'east-west' = 1
             'north-south' = 2
         }
+        $appendCampaignPayload = {
+            param([byte[]]$Bytes)
+            $offset = $mapPayloadBytes.Count + $campaignPayloadBytes.Count
+            foreach ($payloadByte in @($Bytes)) {
+                $campaignPayloadBytes.Add([byte]$payloadByte)
+            }
+            return $offset
+        }
 
-        foreach ($chunkEntry in $adventureChunks) {
-            if (-not ($chunkEntry -is [System.Collections.IDictionary])) {
-                throw ("AdventureRealm.Chunks in {0} must be hashtables with authored terrain fields." -f $SourcePath)
+        for ($districtIndex = 0; $districtIndex -lt $campaignDistricts.Count; $districtIndex++) {
+            $district = $campaignDistricts[$districtIndex]
+            if (-not ($district -is [System.Collections.IDictionary])) {
+                throw ("Each Campaign district in {0} must be a hashtable." -f $SourcePath)
             }
 
-            foreach ($requiredChunkKey in @('Id', 'Zone', 'Bounds', 'Role', 'BaseHeight', 'ShelfHeight', 'RampDir', 'CliffSide', 'BridgeSpan', 'LandmarkAnchor', 'PropBudget')) {
-                if (-not $chunkEntry.ContainsKey($requiredChunkKey)) {
-                    throw ("AdventureRealm chunk in {0} is missing '{1}'." -f $SourcePath, $requiredChunkKey)
+            foreach ($requiredDistrictKey in @('Title', 'Intro', 'Start', 'Exit', 'ObjectiveCounts', 'Rows', 'MacroZones', 'RouteBeats', 'Chunks', 'CaptureAnchors', 'NextDistrict')) {
+                if (-not $district.ContainsKey($requiredDistrictKey)) {
+                    throw ("Campaign district {0} in {1} is missing '{2}'." -f ($districtIndex + 1), $SourcePath, $requiredDistrictKey)
                 }
             }
 
-            $chunkId = ([string]$chunkEntry['Id']).Trim()
-            $chunkZone = ([string]$chunkEntry['Zone']).Trim()
-            $chunkRole = ([string]$chunkEntry['Role']).Trim()
-            if ([string]::IsNullOrWhiteSpace($chunkId) -or $chunkId -notmatch '^[a-z0-9]+(?:-[a-z0-9]+)*$') {
-                throw ("AdventureRealm chunk Id in {0} must use lowercase slug values. Found '{1}'." -f $SourcePath, $chunkEntry['Id'])
-            }
-            if (-not $adventureZoneIds.Contains($chunkZone)) {
-                throw ("AdventureRealm chunk '{0}' in {1} referenced unknown zone '{2}'." -f $chunkId, $SourcePath, $chunkZone)
-            }
-            if (-not $adventureChunkIds.Add($chunkId)) {
-                throw ("AdventureRealm in {0} reused chunk Id '{1}'." -f $SourcePath, $chunkId)
-            }
-            if ([string]::IsNullOrWhiteSpace($chunkRole)) {
-                throw ("AdventureRealm chunk '{0}' in {1} is missing Role." -f $chunkId, $SourcePath)
+            $districtId = if ($district.ContainsKey('Id')) { ([string]$district['Id']).Trim() } else { ("district-{0}" -f ($districtIndex + 1)) }
+            if ([string]::IsNullOrWhiteSpace($districtId) -or $districtId -notmatch '^[a-z0-9]+(?:-[a-z0-9]+)*$') {
+                throw ("Campaign district Id in {0} must use lowercase slug values. Found '{1}'." -f $SourcePath, $district['Id'])
             }
 
-            $chunkBounds = ConvertTo-BoundsRect -Token ([string]$chunkEntry['Bounds']) -Context ("AdventureRealm.Chunks[{0}].Bounds" -f $chunkId) -MapWidth $ExpectedMapWidth -MapHeight $ExpectedMapHeight
-            $chunkBaseHeight = [int]$chunkEntry['BaseHeight']
-            $chunkShelfHeight = [int]$chunkEntry['ShelfHeight']
-            if ($chunkBaseHeight -lt 0 -or $chunkBaseHeight -gt 384) {
-                throw ("AdventureRealm chunk '{0}' in {1} must keep BaseHeight in the 0..384 range. Found {2}." -f $chunkId, $SourcePath, $chunkBaseHeight)
+            $districtTitle = [string]$district['Title']
+            $districtIntro = [string]$district['Intro']
+            $districtRows = @($district['Rows'] | ForEach-Object { [string]$_ })
+            $districtMacroZones = @($district['MacroZones'])
+            $districtRouteBeats = @($district['RouteBeats'])
+            $districtChunks = @($district['Chunks'])
+            $districtCaptureAnchors = $district['CaptureAnchors']
+            $districtObjectiveCounts = $district['ObjectiveCounts']
+            $districtNext = [int]$district['NextDistrict']
+            if (-not ($districtObjectiveCounts -is [System.Collections.IDictionary])) {
+                throw ("Campaign district '{0}' in {1} must define ObjectiveCounts as a hashtable." -f $districtId, $SourcePath)
             }
-            if ($chunkShelfHeight -lt $chunkBaseHeight -or $chunkShelfHeight -gt 448) {
-                throw ("AdventureRealm chunk '{0}' in {1} must keep ShelfHeight in the {2}..448 range. Found {3}." -f $chunkId, $SourcePath, $chunkBaseHeight, $chunkShelfHeight)
+            if (-not ($districtCaptureAnchors -is [System.Collections.IDictionary])) {
+                throw ("Campaign district '{0}' in {1} must define CaptureAnchors as a hashtable." -f $districtId, $SourcePath)
             }
-
-            $rampDirToken = ([string]$chunkEntry['RampDir']).Trim().ToLowerInvariant()
-            $cliffSideToken = ([string]$chunkEntry['CliffSide']).Trim().ToLowerInvariant()
-            $bridgeSpanToken = ([string]$chunkEntry['BridgeSpan']).Trim().ToLowerInvariant()
-            if (-not $directionTokenMap.ContainsKey($rampDirToken)) {
-                throw ("AdventureRealm chunk '{0}' in {1} used unsupported RampDir '{2}'." -f $chunkId, $SourcePath, $chunkEntry['RampDir'])
+            if ($districtRows.Count -ne $ExpectedMapHeight) {
+                throw ("Campaign district '{0}' in {1} must define exactly {2} rows." -f $districtId, $SourcePath, $ExpectedMapHeight)
             }
-            if (-not $directionTokenMap.ContainsKey($cliffSideToken)) {
-                throw ("AdventureRealm chunk '{0}' in {1} used unsupported CliffSide '{2}'." -f $chunkId, $SourcePath, $chunkEntry['CliffSide'])
+            if ($districtMacroZones.Count -eq 0) {
+                throw ("Campaign district '{0}' in {1} must define at least one MacroZones entry." -f $districtId, $SourcePath)
             }
-            if (-not $bridgeTokenMap.ContainsKey($bridgeSpanToken)) {
-                throw ("AdventureRealm chunk '{0}' in {1} used unsupported BridgeSpan '{2}'." -f $chunkId, $SourcePath, $chunkEntry['BridgeSpan'])
+            if ($districtRouteBeats.Count -eq 0) {
+                throw ("Campaign district '{0}' in {1} must define at least one RouteBeats entry." -f $districtId, $SourcePath)
             }
-
-            $landmarkPoint = ConvertTo-AnchorPoint -Token ([string]$chunkEntry['LandmarkAnchor']) -Context ("AdventureRealm.Chunks[{0}].LandmarkAnchor" -f $chunkId) -MapWidth $ExpectedMapWidth -MapHeight $ExpectedMapHeight
-            $propBudget = [int]$chunkEntry['PropBudget']
-            if ($propBudget -lt 0 -or $propBudget -gt 8) {
-                throw ("AdventureRealm chunk '{0}' in {1} must keep PropBudget in the 0..8 range. Found {2}." -f $chunkId, $SourcePath, $propBudget)
+            if ($districtChunks.Count -eq 0) {
+                throw ("Campaign district '{0}' in {1} must define at least one Chunks entry." -f $districtId, $SourcePath)
             }
-
-            $adventureChunkMinXs.Add($chunkBounds.MinX.ToString())
-            $adventureChunkMaxXs.Add($chunkBounds.MaxX.ToString())
-            $adventureChunkMinYs.Add($chunkBounds.MinY.ToString())
-            $adventureChunkMaxYs.Add($chunkBounds.MaxY.ToString())
-            $adventureChunkBaseHeights.Add((Format-Hex16Literal $chunkBaseHeight))
-            $adventureChunkShelfHeights.Add((Format-Hex16Literal $chunkShelfHeight))
-            $adventureChunkRampDirs.Add(([int]$directionTokenMap[$rampDirToken]).ToString())
-            $adventureChunkCliffSides.Add(([int]$directionTokenMap[$cliffSideToken]).ToString())
-            $adventureChunkBridgeSpans.Add(([int]$bridgeTokenMap[$bridgeSpanToken]).ToString())
-            $adventureChunkLandmarkXs.Add($landmarkPoint.X.ToString())
-            $adventureChunkLandmarkYs.Add($landmarkPoint.Y.ToString())
-            $adventureChunkPropBudgets.Add($propBudget.ToString())
-            $adventureChunkSummary.Add(("{0}:{1} {2},{3}->{4},{5} h{6}/{7} ramp={8} cliff={9} bridge={10} prop={11}" -f $chunkId, $chunkRole, $chunkBounds.MinX, $chunkBounds.MinY, $chunkBounds.MaxX, $chunkBounds.MaxY, $chunkBaseHeight, $chunkShelfHeight, $rampDirToken, $cliffSideToken, $bridgeSpanToken, $propBudget))
-        }
-
-        $adventureStart = ConvertTo-AnchorPoint -Token ([string]$adventureRealm['Start']) -Context 'AdventureRealm.Start' -MapWidth $ExpectedMapWidth -MapHeight $ExpectedMapHeight
-        $adventurePortal = ConvertTo-AnchorPoint -Token ([string]$adventureRealm['Portal']) -Context 'AdventureRealm.Portal' -MapWidth $ExpectedMapWidth -MapHeight $ExpectedMapHeight
-        if ((Get-MapRowChar -Rows $adventureRows -X $adventureStart.X -Y $adventureStart.Y) -eq '#') {
-            throw ("AdventureRealm.Start ({0},{1}) in {2} must sit on a floor tile." -f $adventureStart.X, $adventureStart.Y, $SourcePath)
-        }
-
-        if ((Get-MapRowChar -Rows $adventureRows -X $adventurePortal.X -Y $adventurePortal.Y) -eq '#') {
-            throw ("AdventureRealm.Portal ({0},{1}) in {2} must sit on a floor tile." -f $adventurePortal.X, $adventurePortal.Y, $SourcePath)
-        }
-
-        $adventureGemBytes = New-Object 'System.Collections.Generic.List[string]'
-        foreach ($token in @($adventureRealm['Gems'])) {
-            $point = ConvertTo-AnchorPoint -Token ([string]$token) -Context 'AdventureRealm.Gems' -MapWidth $ExpectedMapWidth -MapHeight $ExpectedMapHeight
-            $adventureGemBytes.Add($point.X.ToString())
-            $adventureGemBytes.Add($point.Y.ToString())
-        }
-
-        $adventureSwitchBytes = New-Object 'System.Collections.Generic.List[string]'
-        foreach ($token in @($adventureRealm['Switches'])) {
-            $point = ConvertTo-AnchorPoint -Token ([string]$token) -Context 'AdventureRealm.Switches' -MapWidth $ExpectedMapWidth -MapHeight $ExpectedMapHeight
-            $adventureSwitchBytes.Add($point.X.ToString())
-            $adventureSwitchBytes.Add($point.Y.ToString())
-        }
-
-        $adventureKeyBytes = New-Object 'System.Collections.Generic.List[string]'
-        foreach ($token in @($adventureRealm['Key'])) {
-            $point = ConvertTo-AnchorPoint -Token ([string]$token) -Context 'AdventureRealm.Key' -MapWidth $ExpectedMapWidth -MapHeight $ExpectedMapHeight
-            $adventureKeyBytes.Add($point.X.ToString())
-            $adventureKeyBytes.Add($point.Y.ToString())
-        }
-
-        $adventureHazardBytes = New-Object 'System.Collections.Generic.List[string]'
-        foreach ($token in @($adventureRealm['Hazards'])) {
-            $point = ConvertTo-AnchorPoint -Token ([string]$token) -Context 'AdventureRealm.Hazards' -MapWidth $ExpectedMapWidth -MapHeight $ExpectedMapHeight
-            $adventureHazardBytes.Add($point.X.ToString())
-            $adventureHazardBytes.Add($point.Y.ToString())
-        }
-
-        $adventureEnemyBytes = New-Object 'System.Collections.Generic.List[string]'
-        foreach ($enemyEntry in @($adventureRealm['Enemies'])) {
-            if (-not ($enemyEntry -is [System.Collections.IDictionary])) {
-                throw ("AdventureRealm enemies in {0} must be hashtables with X, Y, and Kind." -f $SourcePath)
+            if ($districtNext -lt 0 -or $districtNext -gt $campaignDistricts.Count) {
+                throw ("Campaign district '{0}' in {1} must keep NextDistrict in the 0..{2} range. Found {3}." -f $districtId, $SourcePath, $campaignDistricts.Count, $districtNext)
             }
 
-            $kindToken = ([string]$enemyEntry['Kind']).Trim().ToUpperInvariant()
-            if (-not $enemyKindLookup.ContainsKey($kindToken)) {
-                throw ("AdventureRealm enemy in {0} used unsupported Kind '{1}'." -f $SourcePath, $enemyEntry['Kind'])
+            $districtRequiredGems = if ($districtObjectiveCounts.ContainsKey('RequiredDataShards')) {
+                [int]$districtObjectiveCounts['RequiredDataShards']
+            } elseif ($districtObjectiveCounts.ContainsKey('DataShards')) {
+                [int]$districtObjectiveCounts['DataShards']
+            } elseif ($district.ContainsKey('RequiredGems')) {
+                [int]$district['RequiredGems']
+            } else {
+                0
+            }
+            if ($districtRequiredGems -lt 0 -or $districtRequiredGems -gt 255) {
+                throw ("Campaign district '{0}' in {1} must keep RequiredDataShards in the 0..255 range. Found {2}." -f $districtId, $SourcePath, $districtRequiredGems)
             }
 
-            $adventureEnemyBytes.Add(([int]$enemyEntry['X']).ToString())
-            $adventureEnemyBytes.Add(([int]$enemyEntry['Y']).ToString())
-            $adventureEnemyBytes.Add(([int]$enemyKindLookup[$kindToken]).ToString())
-        }
+            $districtZoneIds = New-Object 'System.Collections.Generic.HashSet[string]' ([System.StringComparer]::OrdinalIgnoreCase)
+            foreach ($zoneEntry in $districtMacroZones) {
+                if (-not ($zoneEntry -is [System.Collections.IDictionary])) {
+                    throw ("Campaign district '{0}' MacroZones in {1} must be hashtables with Id and Label." -f $districtId, $SourcePath)
+                }
 
-        $adventurePropXs = New-Object 'System.Collections.Generic.List[string]'
-        $adventurePropYs = New-Object 'System.Collections.Generic.List[string]'
-        $adventurePropMeshes = New-Object 'System.Collections.Generic.List[string]'
-        $adventurePropYaws = New-Object 'System.Collections.Generic.List[string]'
-        foreach ($propEntry in @($adventureRealm['Props'])) {
-            if (-not ($propEntry -is [System.Collections.IDictionary])) {
-                throw ("AdventureRealm props in {0} must be hashtables with X, Y, Mesh, and optional YawDegrees." -f $SourcePath)
+                $zoneId = ([string]$zoneEntry['Id']).Trim()
+                $zoneLabel = ([string]$zoneEntry['Label']).Trim()
+                $zoneBounds = if ($zoneEntry.ContainsKey('Bounds')) { ([string]$zoneEntry['Bounds']).Trim() } else { '' }
+                if ([string]::IsNullOrWhiteSpace($zoneId) -or $zoneId -notmatch '^[a-z0-9]+(?:-[a-z0-9]+)*$') {
+                    throw ("Campaign district '{0}' in {1} must use lowercase slug MacroZones Id values. Found '{2}'." -f $districtId, $SourcePath, $zoneEntry['Id'])
+                }
+                if ([string]::IsNullOrWhiteSpace($zoneLabel)) {
+                    throw ("Campaign district '{0}' zone '{1}' in {2} is missing Label." -f $districtId, $zoneId, $SourcePath)
+                }
+                if (-not $districtZoneIds.Add($zoneId)) {
+                    throw ("Campaign district '{0}' in {1} reused zone Id '{2}'." -f $districtId, $SourcePath, $zoneId)
+                }
+
+                if ([string]::IsNullOrWhiteSpace($zoneBounds)) {
+                    $campaignZoneSummary.Add(("{0}:{1} ({2})" -f $districtId, $zoneId, $zoneLabel))
+                } else {
+                    $campaignZoneSummary.Add(("{0}:{1} ({2}, {3})" -f $districtId, $zoneId, $zoneLabel, $zoneBounds))
+                }
             }
 
-            $meshToken = ([string]$propEntry['Mesh']).Trim()
-            if ([string]::IsNullOrWhiteSpace($meshToken)) {
-                throw ("AdventureRealm prop in {0} is missing Mesh." -f $SourcePath)
+            foreach ($beatEntry in @($districtRouteBeats | Sort-Object -Property @{ Expression = { [int]$_.Sequence }; Ascending = $true })) {
+                if (-not ($beatEntry -is [System.Collections.IDictionary])) {
+                    throw ("Campaign district '{0}' RouteBeats in {1} must be hashtables with Zone, Sequence, and Summary." -f $districtId, $SourcePath)
+                }
+
+                $zoneId = ([string]$beatEntry['Zone']).Trim()
+                $sequence = [int]$beatEntry['Sequence']
+                $summary = ([string]$beatEntry['Summary']).Trim()
+                if (-not $districtZoneIds.Contains($zoneId)) {
+                    throw ("Campaign district '{0}' in {1} referenced unknown route beat zone '{2}'." -f $districtId, $SourcePath, $zoneId)
+                }
+                if ($sequence -lt 1 -or $sequence -gt 255) {
+                    throw ("Campaign district '{0}' in {1} must keep RouteBeats.Sequence in the 1..255 range. Found {2}." -f $districtId, $SourcePath, $sequence)
+                }
+                if ([string]::IsNullOrWhiteSpace($summary)) {
+                    throw ("Campaign district '{0}' in {1} is missing RouteBeats.Summary for zone '{2}'." -f $districtId, $SourcePath, $zoneId)
+                }
+
+                $campaignRouteSummary.Add(("{0}: #{1} {2} - {3}" -f $districtId, $sequence, $zoneId, $summary))
             }
 
-            $meshAsmToken = ("GAME3D_MESH_{0}_INDEX" -f (($meshToken.ToUpperInvariant()) -replace '[^A-Z0-9]', '_'))
-            $yawDegrees = if ($propEntry.ContainsKey('YawDegrees')) { [double]$propEntry['YawDegrees'] } else { 0.0 }
-            $yawValue = [int][Math]::Round((($yawDegrees % 360.0 + 360.0) % 360.0) * 256.0 / 360.0) % 256
+            foreach ($captureKey in @('Beauty', 'Action')) {
+                if (-not $districtCaptureAnchors.ContainsKey($captureKey)) {
+                    throw ("Campaign district '{0}' in {1} is missing CaptureAnchors.{2}." -f $districtId, $SourcePath, $captureKey)
+                }
 
-            $adventurePropXs.Add(([int]$propEntry['X']).ToString())
-            $adventurePropYs.Add(([int]$propEntry['Y']).ToString())
-            $adventurePropMeshes.Add($meshAsmToken)
-            $adventurePropYaws.Add($yawValue.ToString())
+                $captureId = ([string]$districtCaptureAnchors[$captureKey]).Trim()
+                if ([string]::IsNullOrWhiteSpace($captureId) -or $captureId -notmatch '^[a-z0-9]+(?:-[a-z0-9]+)*$') {
+                    throw ("Campaign district '{0}' CaptureAnchors.{1} in {2} must reference a lowercase demo Id. Found '{3}'." -f $districtId, $captureKey, $SourcePath, $districtCaptureAnchors[$captureKey])
+                }
+            }
+            $campaignCaptureSummary.Add(("{0}: beauty={1}, action={2}" -f $districtId, ([string]$districtCaptureAnchors['Beauty']).Trim(), ([string]$districtCaptureAnchors['Action']).Trim()))
+
+            $districtChunkIds = New-Object 'System.Collections.Generic.HashSet[string]' ([System.StringComparer]::OrdinalIgnoreCase)
+            $districtChunkMinXs = New-Object 'System.Collections.Generic.List[string]'
+            $districtChunkMaxXs = New-Object 'System.Collections.Generic.List[string]'
+            $districtChunkMinYs = New-Object 'System.Collections.Generic.List[string]'
+            $districtChunkMaxYs = New-Object 'System.Collections.Generic.List[string]'
+            $districtChunkBaseHeights = New-Object 'System.Collections.Generic.List[int]'
+            $districtChunkShelfHeights = New-Object 'System.Collections.Generic.List[int]'
+            $districtChunkRampDirs = New-Object 'System.Collections.Generic.List[string]'
+            $districtChunkCliffSides = New-Object 'System.Collections.Generic.List[string]'
+            $districtChunkBridgeSpans = New-Object 'System.Collections.Generic.List[string]'
+            $districtChunkLandmarkXs = New-Object 'System.Collections.Generic.List[string]'
+            $districtChunkLandmarkYs = New-Object 'System.Collections.Generic.List[string]'
+            $districtChunkPropBudgets = New-Object 'System.Collections.Generic.List[string]'
+            foreach ($chunkEntry in $districtChunks) {
+                if (-not ($chunkEntry -is [System.Collections.IDictionary])) {
+                    throw ("Campaign district '{0}' Chunks in {1} must be hashtables with authored terrain fields." -f $districtId, $SourcePath)
+                }
+
+                foreach ($requiredChunkKey in @('Id', 'Zone', 'Bounds', 'Role', 'BaseHeight', 'ShelfHeight', 'RampDir', 'CliffSide', 'BridgeSpan', 'LandmarkAnchor', 'PropBudget')) {
+                    if (-not $chunkEntry.ContainsKey($requiredChunkKey)) {
+                        throw ("Campaign district '{0}' chunk in {1} is missing '{2}'." -f $districtId, $SourcePath, $requiredChunkKey)
+                    }
+                }
+
+                $chunkId = ([string]$chunkEntry['Id']).Trim()
+                $chunkZone = ([string]$chunkEntry['Zone']).Trim()
+                $chunkRole = ([string]$chunkEntry['Role']).Trim()
+                if ([string]::IsNullOrWhiteSpace($chunkId) -or $chunkId -notmatch '^[a-z0-9]+(?:-[a-z0-9]+)*$') {
+                    throw ("Campaign district '{0}' chunk Id in {1} must use lowercase slug values. Found '{2}'." -f $districtId, $SourcePath, $chunkEntry['Id'])
+                }
+                if (-not $districtZoneIds.Contains($chunkZone)) {
+                    throw ("Campaign district '{0}' chunk '{1}' in {2} referenced unknown zone '{3}'." -f $districtId, $chunkId, $SourcePath, $chunkZone)
+                }
+                if (-not $districtChunkIds.Add($chunkId)) {
+                    throw ("Campaign district '{0}' in {1} reused chunk Id '{2}'." -f $districtId, $SourcePath, $chunkId)
+                }
+                if ([string]::IsNullOrWhiteSpace($chunkRole)) {
+                    throw ("Campaign district '{0}' chunk '{1}' in {2} is missing Role." -f $districtId, $chunkId, $SourcePath)
+                }
+
+                $chunkBounds = ConvertTo-BoundsRect -Token ([string]$chunkEntry['Bounds']) -Context ("Campaign.Districts[{0}].Chunks[{1}].Bounds" -f $districtId, $chunkId) -MapWidth $ExpectedMapWidth -MapHeight $ExpectedMapHeight
+                $chunkBaseHeight = [int]$chunkEntry['BaseHeight']
+                $chunkShelfHeight = [int]$chunkEntry['ShelfHeight']
+                if ($chunkBaseHeight -lt 0 -or $chunkBaseHeight -gt 384) {
+                    throw ("Campaign district '{0}' chunk '{1}' in {2} must keep BaseHeight in the 0..384 range. Found {3}." -f $districtId, $chunkId, $SourcePath, $chunkBaseHeight)
+                }
+                if ($chunkShelfHeight -lt $chunkBaseHeight -or $chunkShelfHeight -gt 448) {
+                    throw ("Campaign district '{0}' chunk '{1}' in {2} must keep ShelfHeight in the {3}..448 range. Found {4}." -f $districtId, $chunkId, $SourcePath, $chunkBaseHeight, $chunkShelfHeight)
+                }
+
+                $rampDirToken = ([string]$chunkEntry['RampDir']).Trim().ToLowerInvariant()
+                $cliffSideToken = ([string]$chunkEntry['CliffSide']).Trim().ToLowerInvariant()
+                $bridgeSpanToken = ([string]$chunkEntry['BridgeSpan']).Trim().ToLowerInvariant()
+                if (-not $directionTokenMap.ContainsKey($rampDirToken)) {
+                    throw ("Campaign district '{0}' chunk '{1}' in {2} used unsupported RampDir '{3}'." -f $districtId, $chunkId, $SourcePath, $chunkEntry['RampDir'])
+                }
+                if (-not $directionTokenMap.ContainsKey($cliffSideToken)) {
+                    throw ("Campaign district '{0}' chunk '{1}' in {2} used unsupported CliffSide '{3}'." -f $districtId, $chunkId, $SourcePath, $chunkEntry['CliffSide'])
+                }
+                if (-not $bridgeTokenMap.ContainsKey($bridgeSpanToken)) {
+                    throw ("Campaign district '{0}' chunk '{1}' in {2} used unsupported BridgeSpan '{3}'." -f $districtId, $chunkId, $SourcePath, $chunkEntry['BridgeSpan'])
+                }
+
+                $landmarkPoint = ConvertTo-AnchorPoint -Token ([string]$chunkEntry['LandmarkAnchor']) -Context ("Campaign.Districts[{0}].Chunks[{1}].LandmarkAnchor" -f $districtId, $chunkId) -MapWidth $ExpectedMapWidth -MapHeight $ExpectedMapHeight
+                $propBudget = [int]$chunkEntry['PropBudget']
+                if ($propBudget -lt 0 -or $propBudget -gt 8) {
+                    throw ("Campaign district '{0}' chunk '{1}' in {2} must keep PropBudget in the 0..8 range. Found {3}." -f $districtId, $chunkId, $SourcePath, $propBudget)
+                }
+
+                $districtChunkMinXs.Add($chunkBounds.MinX.ToString())
+                $districtChunkMaxXs.Add($chunkBounds.MaxX.ToString())
+                $districtChunkMinYs.Add($chunkBounds.MinY.ToString())
+                $districtChunkMaxYs.Add($chunkBounds.MaxY.ToString())
+                $districtChunkBaseHeights.Add($chunkBaseHeight)
+                $districtChunkShelfHeights.Add($chunkShelfHeight)
+                $districtChunkRampDirs.Add(([int]$directionTokenMap[$rampDirToken]).ToString())
+                $districtChunkCliffSides.Add(([int]$directionTokenMap[$cliffSideToken]).ToString())
+                $districtChunkBridgeSpans.Add(([int]$bridgeTokenMap[$bridgeSpanToken]).ToString())
+                $districtChunkLandmarkXs.Add($landmarkPoint.X.ToString())
+                $districtChunkLandmarkYs.Add($landmarkPoint.Y.ToString())
+                $districtChunkPropBudgets.Add($propBudget.ToString())
+                $campaignChunkSummary.Add(("{0}:{1} {2},{3}->{4},{5} h{6}/{7} ramp={8} cliff={9} bridge={10} prop={11}" -f $districtId, $chunkId, $chunkBounds.MinX, $chunkBounds.MinY, $chunkBounds.MaxX, $chunkBounds.MaxY, $chunkBaseHeight, $chunkShelfHeight, $rampDirToken, $cliffSideToken, $bridgeSpanToken, $propBudget))
+            }
+
+            $districtStart = ConvertTo-AnchorPoint -Token ([string]$district['Start']) -Context ("Campaign.Districts[{0}].Start" -f $districtId) -MapWidth $ExpectedMapWidth -MapHeight $ExpectedMapHeight
+            $districtExit = ConvertTo-AnchorPoint -Token ([string]$district['Exit']) -Context ("Campaign.Districts[{0}].Exit" -f $districtId) -MapWidth $ExpectedMapWidth -MapHeight $ExpectedMapHeight
+            if ((Get-MapRowChar -Rows $districtRows -X $districtStart.X -Y $districtStart.Y) -eq '#') {
+                throw ("Campaign district '{0}' Start ({1},{2}) in {3} must sit on a floor tile." -f $districtId, $districtStart.X, $districtStart.Y, $SourcePath)
+            }
+            if ((Get-MapRowChar -Rows $districtRows -X $districtExit.X -Y $districtExit.Y) -eq '#') {
+                throw ("Campaign district '{0}' Exit ({1},{2}) in {3} must sit on a floor tile." -f $districtId, $districtExit.X, $districtExit.Y, $SourcePath)
+            }
+
+            $districtGemBytes = New-Object 'System.Collections.Generic.List[string]'
+            foreach ($token in @($district['Gems'])) {
+                $point = ConvertTo-AnchorPoint -Token ([string]$token) -Context ("Campaign.Districts[{0}].Gems" -f $districtId) -MapWidth $ExpectedMapWidth -MapHeight $ExpectedMapHeight
+                $districtGemBytes.Add($point.X.ToString())
+                $districtGemBytes.Add($point.Y.ToString())
+            }
+
+            $districtSwitchBytes = New-Object 'System.Collections.Generic.List[string]'
+            foreach ($token in @($district['Switches'])) {
+                $point = ConvertTo-AnchorPoint -Token ([string]$token) -Context ("Campaign.Districts[{0}].Switches" -f $districtId) -MapWidth $ExpectedMapWidth -MapHeight $ExpectedMapHeight
+                $districtSwitchBytes.Add($point.X.ToString())
+                $districtSwitchBytes.Add($point.Y.ToString())
+            }
+
+            $districtKeyBytes = New-Object 'System.Collections.Generic.List[string]'
+            foreach ($token in @($district['Key'])) {
+                $point = ConvertTo-AnchorPoint -Token ([string]$token) -Context ("Campaign.Districts[{0}].Key" -f $districtId) -MapWidth $ExpectedMapWidth -MapHeight $ExpectedMapHeight
+                $districtKeyBytes.Add($point.X.ToString())
+                $districtKeyBytes.Add($point.Y.ToString())
+            }
+
+            $districtHazardBytes = New-Object 'System.Collections.Generic.List[string]'
+            foreach ($token in @($district['Hazards'])) {
+                $point = ConvertTo-AnchorPoint -Token ([string]$token) -Context ("Campaign.Districts[{0}].Hazards" -f $districtId) -MapWidth $ExpectedMapWidth -MapHeight $ExpectedMapHeight
+                $districtHazardBytes.Add($point.X.ToString())
+                $districtHazardBytes.Add($point.Y.ToString())
+            }
+
+            $districtEnemyBytes = New-Object 'System.Collections.Generic.List[string]'
+            foreach ($enemyEntry in @($district['Enemies'])) {
+                if (-not ($enemyEntry -is [System.Collections.IDictionary])) {
+                    throw ("Campaign district '{0}' enemies in {1} must be hashtables with X, Y, and Kind." -f $districtId, $SourcePath)
+                }
+
+                $kindToken = ([string]$enemyEntry['Kind']).Trim().ToUpperInvariant()
+                if (-not $enemyKindLookup.ContainsKey($kindToken)) {
+                    throw ("Campaign district '{0}' enemy in {1} used unsupported Kind '{2}'." -f $districtId, $SourcePath, $enemyEntry['Kind'])
+                }
+
+                $districtEnemyBytes.Add(([int]$enemyEntry['X']).ToString())
+                $districtEnemyBytes.Add(([int]$enemyEntry['Y']).ToString())
+                $districtEnemyBytes.Add(([int]$enemyKindLookup[$kindToken]).ToString())
+            }
+
+            $districtPropXs = New-Object 'System.Collections.Generic.List[string]'
+            $districtPropYs = New-Object 'System.Collections.Generic.List[string]'
+            $districtPropMeshes = New-Object 'System.Collections.Generic.List[string]'
+            $districtPropYaws = New-Object 'System.Collections.Generic.List[string]'
+            foreach ($propEntry in @($district['Props'])) {
+                if (-not ($propEntry -is [System.Collections.IDictionary])) {
+                    throw ("Campaign district '{0}' props in {1} must be hashtables with X, Y, Mesh, and optional YawDegrees." -f $districtId, $SourcePath)
+                }
+
+                $meshToken = ([string]$propEntry['Mesh']).Trim()
+                if ([string]::IsNullOrWhiteSpace($meshToken)) {
+                    throw ("Campaign district '{0}' prop in {1} is missing Mesh." -f $districtId, $SourcePath)
+                }
+
+                $meshAsmToken = ("GAME3D_MESH_{0}_INDEX" -f (($meshToken.ToUpperInvariant()) -replace '[^A-Z0-9]', '_'))
+                $yawDegrees = if ($propEntry.ContainsKey('YawDegrees')) { [double]$propEntry['YawDegrees'] } else { 0.0 }
+                $yawValue = [int][Math]::Round((($yawDegrees % 360.0 + 360.0) % 360.0) * 256.0 / 360.0) % 256
+
+                $districtPropXs.Add(([int]$propEntry['X']).ToString())
+                $districtPropYs.Add(([int]$propEntry['Y']).ToString())
+                $districtPropMeshes.Add($meshAsmToken)
+                $districtPropYaws.Add($yawValue.ToString())
+            }
+
+            $relayTarget = if ($districtObjectiveCounts.ContainsKey('RelayCount')) { [int]$districtObjectiveCounts['RelayCount'] } else { [int]($districtSwitchBytes.Count / 2) }
+            $keycardTarget = if ($districtObjectiveCounts.ContainsKey('KeycardCount')) { [int]$districtObjectiveCounts['KeycardCount'] } else { [int]($districtKeyBytes.Count / 2) }
+            if ($relayTarget -ne [int]($districtSwitchBytes.Count / 2)) {
+                throw ("Campaign district '{0}' in {1} declared RelayCount={2} but authored {3} switch anchors." -f $districtId, $SourcePath, $relayTarget, [int]($districtSwitchBytes.Count / 2))
+            }
+            if ($keycardTarget -ne [int]($districtKeyBytes.Count / 2)) {
+                throw ("Campaign district '{0}' in {1} declared KeycardCount={2} but authored {3} key anchors." -f $districtId, $SourcePath, $keycardTarget, [int]($districtKeyBytes.Count / 2))
+            }
+
+            $campaignTitleRefs.Add(((& $appendCampaignPayload ([Text.Encoding]::ASCII.GetBytes($districtTitle + [char]0))).ToString()))
+            $campaignIntroRefs.Add(((& $appendCampaignPayload ([Text.Encoding]::ASCII.GetBytes($districtIntro + [char]0))).ToString()))
+            $campaignMapRefs.Add(((& $appendCampaignPayload ([Text.Encoding]::ASCII.GetBytes(($districtRows -join '')))).ToString()))
+            $campaignGemRefs.Add(((& $appendCampaignPayload ([byte[]]@($districtGemBytes | ForEach-Object { [byte][int]$_ }))).ToString()))
+            $campaignSwitchRefs.Add(((& $appendCampaignPayload ([byte[]]@($districtSwitchBytes | ForEach-Object { [byte][int]$_ }))).ToString()))
+            $campaignKeyRefs.Add(((& $appendCampaignPayload ([byte[]]@($districtKeyBytes | ForEach-Object { [byte][int]$_ }))).ToString()))
+            $campaignHazardRefs.Add(((& $appendCampaignPayload ([byte[]]@($districtHazardBytes | ForEach-Object { [byte][int]$_ }))).ToString()))
+            $campaignEnemyRefs.Add(((& $appendCampaignPayload ([byte[]]@($districtEnemyBytes | ForEach-Object { [byte][int]$_ }))).ToString()))
+            $campaignChunkMinXRefs.Add(((& $appendCampaignPayload ([byte[]]@($districtChunkMinXs | ForEach-Object { [byte][int]$_ }))).ToString()))
+            $campaignChunkMaxXRefs.Add(((& $appendCampaignPayload ([byte[]]@($districtChunkMaxXs | ForEach-Object { [byte][int]$_ }))).ToString()))
+            $campaignChunkMinYRefs.Add(((& $appendCampaignPayload ([byte[]]@($districtChunkMinYs | ForEach-Object { [byte][int]$_ }))).ToString()))
+            $campaignChunkMaxYRefs.Add(((& $appendCampaignPayload ([byte[]]@($districtChunkMaxYs | ForEach-Object { [byte][int]$_ }))).ToString()))
+            $districtChunkBaseHeightBytes = New-Object 'System.Collections.Generic.List[byte]'
+            foreach ($heightValue in $districtChunkBaseHeights) {
+                $districtChunkBaseHeightBytes.Add([byte]($heightValue -band 0xFF))
+                $districtChunkBaseHeightBytes.Add([byte](($heightValue -shr 8) -band 0xFF))
+            }
+            $campaignChunkBaseHeightRefs.Add(((& $appendCampaignPayload ($districtChunkBaseHeightBytes.ToArray())).ToString()))
+            $districtChunkShelfHeightBytes = New-Object 'System.Collections.Generic.List[byte]'
+            foreach ($heightValue in $districtChunkShelfHeights) {
+                $districtChunkShelfHeightBytes.Add([byte]($heightValue -band 0xFF))
+                $districtChunkShelfHeightBytes.Add([byte](($heightValue -shr 8) -band 0xFF))
+            }
+            $campaignChunkShelfHeightRefs.Add(((& $appendCampaignPayload ($districtChunkShelfHeightBytes.ToArray())).ToString()))
+            $campaignChunkRampDirRefs.Add(((& $appendCampaignPayload ([byte[]]@($districtChunkRampDirs | ForEach-Object { [byte][int]$_ }))).ToString()))
+            $campaignChunkCliffSideRefs.Add(((& $appendCampaignPayload ([byte[]]@($districtChunkCliffSides | ForEach-Object { [byte][int]$_ }))).ToString()))
+            $campaignChunkBridgeSpanRefs.Add(((& $appendCampaignPayload ([byte[]]@($districtChunkBridgeSpans | ForEach-Object { [byte][int]$_ }))).ToString()))
+            $campaignChunkLandmarkXRefs.Add(((& $appendCampaignPayload ([byte[]]@($districtChunkLandmarkXs | ForEach-Object { [byte][int]$_ }))).ToString()))
+            $campaignChunkLandmarkYRefs.Add(((& $appendCampaignPayload ([byte[]]@($districtChunkLandmarkYs | ForEach-Object { [byte][int]$_ }))).ToString()))
+            $campaignChunkPropBudgetRefs.Add(((& $appendCampaignPayload ([byte[]]@($districtChunkPropBudgets | ForEach-Object { [byte][int]$_ }))).ToString()))
+            $campaignPropXRefs.Add(((& $appendCampaignPayload ([byte[]]@($districtPropXs | ForEach-Object { [byte][int]$_ }))).ToString()))
+            $campaignPropYRefs.Add(((& $appendCampaignPayload ([byte[]]@($districtPropYs | ForEach-Object { [byte][int]$_ }))).ToString()))
+            $labelPrefix = ("campaign_district_{0}" -f $districtIndex)
+            $campaignPropMeshRefs.Add(("offset {0}_prop_mesh_table" -f $labelPrefix))
+            Add-AsmDataLines -Lines $campaignMeshLines -Label ("{0}_prop_mesh_table" -f $labelPrefix) -Directive 'db' -Values $(if ($districtPropMeshes.Count -gt 0) { $districtPropMeshes.ToArray() } else { @('0') }) -ValuesPerLine 8
+            $campaignPropYawRefs.Add(((& $appendCampaignPayload ([byte[]]@($districtPropYaws | ForEach-Object { [byte][int]$_ }))).ToString()))
+            $campaignStartXs.Add($districtStart.X.ToString())
+            $campaignStartYs.Add($districtStart.Y.ToString())
+            $campaignExitXs.Add($districtExit.X.ToString())
+            $campaignExitYs.Add($districtExit.Y.ToString())
+            $campaignNextDistricts.Add($districtNext.ToString())
+            $campaignRequiredGems.Add($districtRequiredGems.ToString())
+            $campaignGemCounts.Add(([int]($districtGemBytes.Count / 2)).ToString())
+            $campaignSwitchCounts.Add(([int]($districtSwitchBytes.Count / 2)).ToString())
+            $campaignKeyCounts.Add(([int]($districtKeyBytes.Count / 2)).ToString())
+            $campaignHazardCounts.Add(([int]($districtHazardBytes.Count / 2)).ToString())
+            $campaignEnemyCounts.Add(([int]($districtEnemyBytes.Count / 3)).ToString())
+            $campaignPropCounts.Add($districtPropXs.Count.ToString())
+            $campaignChunkCounts.Add($districtChunkMinXs.Count.ToString())
+            $campaignDistrictSummary.Add(("{0}: {1} start {2},{3} -> exit {4},{5}, shards {6}/{7}, relays {8}, keycards {9}, next {10}" -f $districtId, $districtTitle, $districtStart.X, $districtStart.Y, $districtExit.X, $districtExit.Y, [int]($districtGemBytes.Count / 2), $districtRequiredGems, [int]($districtSwitchBytes.Count / 2), [int]($districtKeyBytes.Count / 2), $districtNext))
         }
 
         $sectorLines.Add('')
-        $sectorLines.Add('; Adventure vertical-slice realm')
-        $sectorLines.Add(("adventure_realm_title db {0}, 0" -f (ConvertTo-AsmStringLiteral -Value $adventureTitle -Context 'AdventureRealm.Title')))
-        $sectorLines.Add(("adventure_realm_intro db {0}, 0" -f (ConvertTo-AsmStringLiteral -Value $adventureIntro -Context 'AdventureRealm.Intro')))
-        $sectorLines.Add(("adventure_realm_start_x db {0}" -f $adventureStart.X))
-        $sectorLines.Add(("adventure_realm_start_y db {0}" -f $adventureStart.Y))
-        $sectorLines.Add(("adventure_realm_portal_x db {0}" -f $adventurePortal.X))
-        $sectorLines.Add(("adventure_realm_portal_y db {0}" -f $adventurePortal.Y))
-        $sectorLines.Add(("adventure_realm_required_gems db {0}" -f $adventureRequiredGems))
-        $sectorLines.Add(("adventure_realm_gem_count db {0}" -f ($adventureGemBytes.Count / 2)))
-        $sectorLines.Add(("adventure_realm_switch_count db {0}" -f ($adventureSwitchBytes.Count / 2)))
-        $sectorLines.Add(("adventure_realm_key_count db {0}" -f ($adventureKeyBytes.Count / 2)))
-        $sectorLines.Add(("adventure_realm_hazard_count db {0}" -f ($adventureHazardBytes.Count / 2)))
-        $sectorLines.Add(("adventure_realm_enemy_count db {0}" -f ($adventureEnemyBytes.Count / 3)))
-        $sectorLines.Add(("adventure_realm_prop_count db {0}" -f $adventurePropXs.Count))
-        $sectorLines.Add(("adventure_realm_chunk_count db {0}" -f $adventureChunkMinXs.Count))
-        Add-AsmDataLines -Lines $sectorLines -Label 'adventure_realm_gem_table' -Directive 'db' -Values $(if ($adventureGemBytes.Count -gt 0) { $adventureGemBytes.ToArray() } else { @('0') }) -ValuesPerLine 12
-        Add-AsmDataLines -Lines $sectorLines -Label 'adventure_realm_switch_table' -Directive 'db' -Values $(if ($adventureSwitchBytes.Count -gt 0) { $adventureSwitchBytes.ToArray() } else { @('0') }) -ValuesPerLine 12
-        Add-AsmDataLines -Lines $sectorLines -Label 'adventure_realm_key_table' -Directive 'db' -Values $(if ($adventureKeyBytes.Count -gt 0) { $adventureKeyBytes.ToArray() } else { @('0') }) -ValuesPerLine 12
-        Add-AsmDataLines -Lines $sectorLines -Label 'adventure_realm_hazard_table' -Directive 'db' -Values $(if ($adventureHazardBytes.Count -gt 0) { $adventureHazardBytes.ToArray() } else { @('0') }) -ValuesPerLine 12
-        Add-AsmDataLines -Lines $sectorLines -Label 'adventure_realm_enemy_table' -Directive 'db' -Values $(if ($adventureEnemyBytes.Count -gt 0) { $adventureEnemyBytes.ToArray() } else { @('0') }) -ValuesPerLine 12
-        Add-AsmDataLines -Lines $sectorLines -Label 'adventure_realm_chunk_min_x_table' -Directive 'db' -Values $(if ($adventureChunkMinXs.Count -gt 0) { $adventureChunkMinXs.ToArray() } else { @('0') }) -ValuesPerLine 12
-        Add-AsmDataLines -Lines $sectorLines -Label 'adventure_realm_chunk_max_x_table' -Directive 'db' -Values $(if ($adventureChunkMaxXs.Count -gt 0) { $adventureChunkMaxXs.ToArray() } else { @('0') }) -ValuesPerLine 12
-        Add-AsmDataLines -Lines $sectorLines -Label 'adventure_realm_chunk_min_y_table' -Directive 'db' -Values $(if ($adventureChunkMinYs.Count -gt 0) { $adventureChunkMinYs.ToArray() } else { @('0') }) -ValuesPerLine 12
-        Add-AsmDataLines -Lines $sectorLines -Label 'adventure_realm_chunk_max_y_table' -Directive 'db' -Values $(if ($adventureChunkMaxYs.Count -gt 0) { $adventureChunkMaxYs.ToArray() } else { @('0') }) -ValuesPerLine 12
-        Add-AsmDataLines -Lines $sectorLines -Label 'adventure_realm_chunk_base_height_table' -Directive 'dw' -Values $(if ($adventureChunkBaseHeights.Count -gt 0) { $adventureChunkBaseHeights.ToArray() } else { @('0') }) -ValuesPerLine 6
-        Add-AsmDataLines -Lines $sectorLines -Label 'adventure_realm_chunk_shelf_height_table' -Directive 'dw' -Values $(if ($adventureChunkShelfHeights.Count -gt 0) { $adventureChunkShelfHeights.ToArray() } else { @('0') }) -ValuesPerLine 6
-        Add-AsmDataLines -Lines $sectorLines -Label 'adventure_realm_chunk_ramp_dir_table' -Directive 'db' -Values $(if ($adventureChunkRampDirs.Count -gt 0) { $adventureChunkRampDirs.ToArray() } else { @('0') }) -ValuesPerLine 12
-        Add-AsmDataLines -Lines $sectorLines -Label 'adventure_realm_chunk_cliff_side_table' -Directive 'db' -Values $(if ($adventureChunkCliffSides.Count -gt 0) { $adventureChunkCliffSides.ToArray() } else { @('0') }) -ValuesPerLine 12
-        Add-AsmDataLines -Lines $sectorLines -Label 'adventure_realm_chunk_bridge_span_table' -Directive 'db' -Values $(if ($adventureChunkBridgeSpans.Count -gt 0) { $adventureChunkBridgeSpans.ToArray() } else { @('0') }) -ValuesPerLine 12
-        Add-AsmDataLines -Lines $sectorLines -Label 'adventure_realm_chunk_landmark_x_table' -Directive 'db' -Values $(if ($adventureChunkLandmarkXs.Count -gt 0) { $adventureChunkLandmarkXs.ToArray() } else { @('0') }) -ValuesPerLine 12
-        Add-AsmDataLines -Lines $sectorLines -Label 'adventure_realm_chunk_landmark_y_table' -Directive 'db' -Values $(if ($adventureChunkLandmarkYs.Count -gt 0) { $adventureChunkLandmarkYs.ToArray() } else { @('0') }) -ValuesPerLine 12
-        Add-AsmDataLines -Lines $sectorLines -Label 'adventure_realm_chunk_prop_budget_table' -Directive 'db' -Values $(if ($adventureChunkPropBudgets.Count -gt 0) { $adventureChunkPropBudgets.ToArray() } else { @('0') }) -ValuesPerLine 12
-        Add-AsmDataLines -Lines $sectorLines -Label 'adventure_realm_prop_x_table' -Directive 'db' -Values $(if ($adventurePropXs.Count -gt 0) { $adventurePropXs.ToArray() } else { @('0') }) -ValuesPerLine 12
-        Add-AsmDataLines -Lines $sectorLines -Label 'adventure_realm_prop_y_table' -Directive 'db' -Values $(if ($adventurePropYs.Count -gt 0) { $adventurePropYs.ToArray() } else { @('0') }) -ValuesPerLine 12
-        Add-AsmDataLines -Lines $sectorLines -Label 'adventure_realm_prop_mesh_table' -Directive 'db' -Values $(if ($adventurePropMeshes.Count -gt 0) { $adventurePropMeshes.ToArray() } else { @('0') }) -ValuesPerLine 8
-        Add-AsmDataLines -Lines $sectorLines -Label 'adventure_realm_prop_yaw_table' -Directive 'db' -Values $(if ($adventurePropYaws.Count -gt 0) { $adventurePropYaws.ToArray() } else { @('0') }) -ValuesPerLine 12
-        for ($rowIndex = 0; $rowIndex -lt $adventureRows.Count; $rowIndex++) {
-            $row = $adventureRows[$rowIndex]
-            if ($row.Length -ne $ExpectedMapWidth) {
-                throw ("AdventureRealm row {0} in {1} has width {2}, expected {3}." -f ($rowIndex + 1), $SourcePath, $row.Length, $ExpectedMapWidth)
-            }
-
-            $rowPrefix = if ($rowIndex -eq 0) { 'adventure_realm_map db ' } else { (' ' * ('adventure_realm_map'.Length + 1)) + 'db ' }
-            $sectorLines.Add($rowPrefix + (ConvertTo-AsmStringLiteral -Value $row -Context ("AdventureRealm row {0}" -f ($rowIndex + 1))))
+        $sectorLines.Add('; Campaign district tables')
+        Add-AsmDataLines -Lines $sectorLines -Label 'campaign_district_title_table' -Directive 'dw' -Values $campaignTitleRefs.ToArray() -ValuesPerLine 4
+        Add-AsmDataLines -Lines $sectorLines -Label 'campaign_district_intro_table' -Directive 'dw' -Values $campaignIntroRefs.ToArray() -ValuesPerLine 4
+        Add-AsmDataLines -Lines $sectorLines -Label 'campaign_district_map_ptr_table' -Directive 'dw' -Values $campaignMapRefs.ToArray() -ValuesPerLine 4
+        Add-AsmDataLines -Lines $sectorLines -Label 'campaign_district_start_x_table' -Directive 'db' -Values $campaignStartXs.ToArray() -ValuesPerLine 8
+        Add-AsmDataLines -Lines $sectorLines -Label 'campaign_district_start_y_table' -Directive 'db' -Values $campaignStartYs.ToArray() -ValuesPerLine 8
+        Add-AsmDataLines -Lines $sectorLines -Label 'campaign_district_exit_x_table' -Directive 'db' -Values $campaignExitXs.ToArray() -ValuesPerLine 8
+        Add-AsmDataLines -Lines $sectorLines -Label 'campaign_district_exit_y_table' -Directive 'db' -Values $campaignExitYs.ToArray() -ValuesPerLine 8
+        Add-AsmDataLines -Lines $sectorLines -Label 'campaign_district_next_table' -Directive 'db' -Values $campaignNextDistricts.ToArray() -ValuesPerLine 8
+        Add-AsmDataLines -Lines $sectorLines -Label 'campaign_district_required_gems_table' -Directive 'db' -Values $campaignRequiredGems.ToArray() -ValuesPerLine 8
+        Add-AsmDataLines -Lines $sectorLines -Label 'campaign_district_gem_count_table' -Directive 'db' -Values $campaignGemCounts.ToArray() -ValuesPerLine 8
+        Add-AsmDataLines -Lines $sectorLines -Label 'campaign_district_switch_count_table' -Directive 'db' -Values $campaignSwitchCounts.ToArray() -ValuesPerLine 8
+        Add-AsmDataLines -Lines $sectorLines -Label 'campaign_district_key_count_table' -Directive 'db' -Values $campaignKeyCounts.ToArray() -ValuesPerLine 8
+        Add-AsmDataLines -Lines $sectorLines -Label 'campaign_district_hazard_count_table' -Directive 'db' -Values $campaignHazardCounts.ToArray() -ValuesPerLine 8
+        Add-AsmDataLines -Lines $sectorLines -Label 'campaign_district_enemy_count_table' -Directive 'db' -Values $campaignEnemyCounts.ToArray() -ValuesPerLine 8
+        Add-AsmDataLines -Lines $sectorLines -Label 'campaign_district_prop_count_table' -Directive 'db' -Values $campaignPropCounts.ToArray() -ValuesPerLine 8
+        Add-AsmDataLines -Lines $sectorLines -Label 'campaign_district_chunk_count_table' -Directive 'db' -Values $campaignChunkCounts.ToArray() -ValuesPerLine 8
+        Add-AsmDataLines -Lines $sectorLines -Label 'campaign_district_gem_ptr_table' -Directive 'dw' -Values $campaignGemRefs.ToArray() -ValuesPerLine 4
+        Add-AsmDataLines -Lines $sectorLines -Label 'campaign_district_switch_ptr_table' -Directive 'dw' -Values $campaignSwitchRefs.ToArray() -ValuesPerLine 4
+        Add-AsmDataLines -Lines $sectorLines -Label 'campaign_district_key_ptr_table' -Directive 'dw' -Values $campaignKeyRefs.ToArray() -ValuesPerLine 4
+        Add-AsmDataLines -Lines $sectorLines -Label 'campaign_district_hazard_ptr_table' -Directive 'dw' -Values $campaignHazardRefs.ToArray() -ValuesPerLine 4
+        Add-AsmDataLines -Lines $sectorLines -Label 'campaign_district_enemy_ptr_table' -Directive 'dw' -Values $campaignEnemyRefs.ToArray() -ValuesPerLine 4
+        Add-AsmDataLines -Lines $sectorLines -Label 'campaign_district_chunk_min_x_ptr_table' -Directive 'dw' -Values $campaignChunkMinXRefs.ToArray() -ValuesPerLine 4
+        Add-AsmDataLines -Lines $sectorLines -Label 'campaign_district_chunk_max_x_ptr_table' -Directive 'dw' -Values $campaignChunkMaxXRefs.ToArray() -ValuesPerLine 4
+        Add-AsmDataLines -Lines $sectorLines -Label 'campaign_district_chunk_min_y_ptr_table' -Directive 'dw' -Values $campaignChunkMinYRefs.ToArray() -ValuesPerLine 4
+        Add-AsmDataLines -Lines $sectorLines -Label 'campaign_district_chunk_max_y_ptr_table' -Directive 'dw' -Values $campaignChunkMaxYRefs.ToArray() -ValuesPerLine 4
+        Add-AsmDataLines -Lines $sectorLines -Label 'campaign_district_chunk_base_height_ptr_table' -Directive 'dw' -Values $campaignChunkBaseHeightRefs.ToArray() -ValuesPerLine 4
+        Add-AsmDataLines -Lines $sectorLines -Label 'campaign_district_chunk_shelf_height_ptr_table' -Directive 'dw' -Values $campaignChunkShelfHeightRefs.ToArray() -ValuesPerLine 4
+        Add-AsmDataLines -Lines $sectorLines -Label 'campaign_district_chunk_ramp_dir_ptr_table' -Directive 'dw' -Values $campaignChunkRampDirRefs.ToArray() -ValuesPerLine 4
+        Add-AsmDataLines -Lines $sectorLines -Label 'campaign_district_chunk_cliff_side_ptr_table' -Directive 'dw' -Values $campaignChunkCliffSideRefs.ToArray() -ValuesPerLine 4
+        Add-AsmDataLines -Lines $sectorLines -Label 'campaign_district_chunk_bridge_span_ptr_table' -Directive 'dw' -Values $campaignChunkBridgeSpanRefs.ToArray() -ValuesPerLine 4
+        Add-AsmDataLines -Lines $sectorLines -Label 'campaign_district_chunk_landmark_x_ptr_table' -Directive 'dw' -Values $campaignChunkLandmarkXRefs.ToArray() -ValuesPerLine 4
+        Add-AsmDataLines -Lines $sectorLines -Label 'campaign_district_chunk_landmark_y_ptr_table' -Directive 'dw' -Values $campaignChunkLandmarkYRefs.ToArray() -ValuesPerLine 4
+        Add-AsmDataLines -Lines $sectorLines -Label 'campaign_district_chunk_prop_budget_ptr_table' -Directive 'dw' -Values $campaignChunkPropBudgetRefs.ToArray() -ValuesPerLine 4
+        Add-AsmDataLines -Lines $sectorLines -Label 'campaign_district_prop_x_ptr_table' -Directive 'dw' -Values $campaignPropXRefs.ToArray() -ValuesPerLine 4
+        Add-AsmDataLines -Lines $sectorLines -Label 'campaign_district_prop_y_ptr_table' -Directive 'dw' -Values $campaignPropYRefs.ToArray() -ValuesPerLine 4
+        Add-AsmDataLines -Lines $sectorLines -Label 'campaign_district_prop_mesh_ptr_table' -Directive 'dw' -Values $campaignPropMeshRefs.ToArray() -ValuesPerLine 4
+        Add-AsmDataLines -Lines $sectorLines -Label 'campaign_district_prop_yaw_ptr_table' -Directive 'dw' -Values $campaignPropYawRefs.ToArray() -ValuesPerLine 4
+        $sectorLines.Add('')
+        foreach ($campaignMeshLine in $campaignMeshLines) {
+            $sectorLines.Add($campaignMeshLine)
         }
     }
 
@@ -1772,20 +1946,20 @@ function Write-GeneratedSectorIncludes {
         MapsOutputPath = $MapsOutputPath
         SectorCount = $sectors.Count
         MapCount = $mapCount
-        MapBytes = $mapBytes
-        MapPayloadBytes = $mapPayloadBytes.ToArray()
+        MapBytes = ($mapBytes + $campaignPayloadBytes.Count)
+        MapPayloadBytes = [byte[]](@($mapPayloadBytes.ToArray()) + @($campaignPayloadBytes.ToArray()))
         Geometry = ("{0}x{1}" -f $ExpectedMapWidth, $ExpectedMapHeight)
         TemplateSummary = ($templateSummary -join ', ')
         RuleSummary = ($ruleSummary -join ' | ')
         AnchorSummary = ($anchorSummary -join ' | ')
         ScenarioSummary = ($scenarioSummary -join ' | ')
         ShardPoolSummary = ($shardPoolSummary -join ' | ')
-        AdventureRealmSummary = if ($contentData.ContainsKey('AdventureRealm')) { ("{0} start {1},{2} -> portal {3},{4}, gems {5}/{6}" -f $adventureTitle, $adventureStart.X, $adventureStart.Y, $adventurePortal.X, $adventurePortal.Y, ($adventureGemBytes.Count / 2), $adventureRequiredGems) } else { 'none' }
-        AdventureZoneSummary = if ($contentData.ContainsKey('AdventureRealm')) { ($adventureMacroZoneSummary -join ' | ') } else { 'none' }
-        AdventureRouteSummary = if ($contentData.ContainsKey('AdventureRealm')) { ($adventureRouteBeatSummary -join ' | ') } else { 'none' }
-        AdventureChunkSummary = if ($contentData.ContainsKey('AdventureRealm')) { ($adventureChunkSummary -join ' | ') } else { 'none' }
-        AdventureCaptureSummary = if ($contentData.ContainsKey('AdventureRealm')) { $adventureCaptureSummary } else { 'none' }
-        AdventureRealmPresent = $contentData.ContainsKey('AdventureRealm')
+        AdventureRealmSummary = if ($campaignDistrictSummary.Count -gt 0) { ($campaignDistrictSummary -join ' | ') } else { 'none' }
+        AdventureZoneSummary = if ($campaignZoneSummary.Count -gt 0) { ($campaignZoneSummary -join ' | ') } else { 'none' }
+        AdventureRouteSummary = if ($campaignRouteSummary.Count -gt 0) { ($campaignRouteSummary -join ' | ') } else { 'none' }
+        AdventureChunkSummary = if ($campaignChunkSummary.Count -gt 0) { ($campaignChunkSummary -join ' | ') } else { 'none' }
+        AdventureCaptureSummary = if ($campaignCaptureSummary.Count -gt 0) { ($campaignCaptureSummary -join ' | ') } else { 'none' }
+        AdventureRealmPresent = ($campaignDistrictSummary.Count -gt 0)
     }
 }
 
@@ -1793,7 +1967,7 @@ function Write-GeneratedDemoInclude {
     param(
         [string]$SourcePath,
         [string]$OutputPath,
-        [int]$ExpectedSectorCount
+        [int]$ExpectedStartSectorCount
     )
 
     $demoData = Import-StructuredDataFile -SourcePath $SourcePath -Label 'demo source'
@@ -1842,10 +2016,14 @@ function Write-GeneratedDemoInclude {
     $seeds = New-Object 'System.Collections.Generic.List[string]'
     $scriptRefs = New-Object 'System.Collections.Generic.List[string]'
     $nameRefs = New-Object 'System.Collections.Generic.List[string]'
+    $districtNameRefs = New-Object 'System.Collections.Generic.List[string]'
+    $purposeRefs = New-Object 'System.Collections.Generic.List[string]'
     $attractFlags = New-Object 'System.Collections.Generic.List[string]'
     $captureTicks = New-Object 'System.Collections.Generic.List[string]'
     $demoDataLines = New-Object 'System.Collections.Generic.List[string]'
     $demoNameLines = New-Object 'System.Collections.Generic.List[string]'
+    $demoDistrictNameLines = New-Object 'System.Collections.Generic.List[string]'
+    $demoPurposeLines = New-Object 'System.Collections.Generic.List[string]'
     $demoSummary = New-Object 'System.Collections.Generic.List[string]'
     $stepCount = 0
 
@@ -1878,8 +2056,8 @@ function Write-GeneratedDemoInclude {
         $attract = if (($demo -is [System.Collections.IDictionary]) -and $demo.ContainsKey('Attract')) { [bool]$demo['Attract'] } else { $true }
 
         $startSector = [int]$demo['StartSector']
-        if ($startSector -lt 1 -or $startSector -gt $ExpectedSectorCount) {
-            throw ("Demo '{0}' in {1} must use StartSector 1..{2}." -f $name, $SourcePath, $ExpectedSectorCount)
+        if ($startSector -lt 1 -or $startSector -gt $ExpectedStartSectorCount) {
+            throw ("Demo '{0}' in {1} must use StartSector 1..{2}." -f $name, $SourcePath, $ExpectedStartSectorCount)
         }
 
         $seed = [int]$demo['Seed']
@@ -1894,16 +2072,24 @@ function Write-GeneratedDemoInclude {
 
         $demoLabel = ("demo_script_{0}" -f $demoIndex)
         $demoNameLabel = ("demo_name_{0}" -f $demoIndex)
+        $demoDistrictNameLabel = ("demo_district_name_{0}" -f $demoIndex)
+        $demoPurposeLabel = ("demo_purpose_{0}" -f $demoIndex)
+        $districtLabel = if ($demo.ContainsKey('DistrictName')) { [string]$demo['DistrictName'] } else { ("DISTRICT {0}" -f $startSector) }
+        $purposeLabel = if ($demo.ContainsKey('Purpose')) { [string]$demo['Purpose'] } else { $captureRole.ToUpperInvariant() }
         $attractFlagValue = if ($attract) { '1' } else { '0' }
         $startSectors.Add($startSector.ToString())
         $seeds.Add((Format-Hex16Literal $seed))
         $scriptRefs.Add(("offset {0}" -f $demoLabel))
         $nameRefs.Add(("offset {0}" -f $demoNameLabel))
+        $districtNameRefs.Add(("offset {0}" -f $demoDistrictNameLabel))
+        $purposeRefs.Add(("offset {0}" -f $demoPurposeLabel))
         $attractFlags.Add($attractFlagValue)
         $captureTicks.Add($captureTick.ToString())
-        $demoSummary.Add(("{0} [{1}] (S{2}, capture {3}t, {4} steps)" -f $name, $captureRole, $startSector, $captureTick, $steps.Count))
+        $demoSummary.Add(("{0} [{1}] ({2}, {3}, capture {4}t, {5} steps)" -f $name, $captureRole, $districtLabel, $purposeLabel, $captureTick, $steps.Count))
         $demoDataLines.Add(("; Demo {0}: {1}" -f ($demoIndex + 1), $name))
         $demoNameLines.Add(("{0} db '{1}', 0" -f $demoNameLabel, $name.Replace("'", "''")))
+        $demoDistrictNameLines.Add(("{0} db '{1}', 0" -f $demoDistrictNameLabel, $districtLabel.Replace("'", "''")))
+        $demoPurposeLines.Add(("{0} db '{1}', 0" -f $demoPurposeLabel, $purposeLabel.Replace("'", "''")))
 
         for ($stepIndex = 0; $stepIndex -lt $steps.Count; $stepIndex++) {
             $step = $steps[$stepIndex]
@@ -4839,6 +5025,11 @@ if ($render2DOverride) {
     $sceneRenderModeName = 'SCENES_3D_REFERENCE'
     $gameplayRenderModeValue = 1
     $gameplayRenderModeName = 'GAMEPLAY_3D_REFERENCE'
+} elseif ($renderMachineOverride) {
+    $sceneRenderModeValue = 2
+    $sceneRenderModeName = 'SCENES_3D_MACHINE'
+    $gameplayRenderModeValue = 2
+    $gameplayRenderModeName = 'GAMEPLAY_3D_MACHINE'
 } else {
     $sceneRenderModeValue = 1
     $sceneRenderModeName = 'SCENES_3D_REFERENCE'
@@ -4865,7 +5056,8 @@ $debugConfigLines = @(
     ("DEBUG_GAMEPLAY_RENDER_MODE EQU {0}" -f $gameplayRenderModeValue)
     ("DEBUG_RENDER_STAGE EQU {0}" -f $debugRenderStageValue)
     ("DEBUG_RENDER_ROOM_STAGE EQU {0}" -f $debugRenderRoomStageValue)
-    ("DEBUG_RENDER_SENTINELS EQU {0}" -f ([int]$DebugRenderSentinels.IsPresent))
+    ("DEBUG_SMOKE_SENTINEL EQU {0}" -f ([int]$DebugRenderSentinels.IsPresent))
+    'DEBUG_RENDER_SENTINELS EQU 0'
 )
 Set-Content -LiteralPath $debugConfig -Encoding ascii -Value $debugConfigLines
 Assert-PathExists -Path $debugConfig -Label 'generated debug config'
@@ -4927,6 +5119,7 @@ foreach ($renderLine in $renderSummaryLines) {
 $expectedMapWidth = Get-AsmEquValue -SourcePath $constantsSourcePath -Name 'MAP_W'
 $expectedMapHeight = Get-AsmEquValue -SourcePath $constantsSourcePath -Name 'MAP_H'
 $expectedSectorCount = Get-AsmEquValue -SourcePath $constantsSourcePath -Name 'TOTAL_SECTORS'
+$expectedCampaignDistrictCount = Get-AsmEquValue -SourcePath $constantsSourcePath -Name 'CAMPAIGN_DISTRICT_COUNT'
 $startX = Get-AsmEquValue -SourcePath $constantsSourcePath -Name 'START_X'
 $startY = Get-AsmEquValue -SourcePath $constantsSourcePath -Name 'START_Y'
 $exitCol = Get-AsmEquValue -SourcePath $constantsSourcePath -Name 'EXIT_COL'
@@ -4965,6 +5158,7 @@ $generatedSectors = Write-GeneratedSectorIncludes `
     -SourcePath $sectorSourcePath `
     -SectorOutputPath $generatedSectorContentPath `
     -MapsOutputPath $generatedMapsPath `
+    -IncludeLegacySectorContent ([bool]$legacyGameplayMode) `
     -ExpectedSectorCount $expectedSectorCount `
     -ExpectedMapWidth $expectedMapWidth `
     -ExpectedMapHeight $expectedMapHeight `
@@ -4991,7 +5185,7 @@ $gameplayGeometryBudget = Get-GameplayGeometryBudgetSummary `
 $generatedDemos = Write-GeneratedDemoInclude `
     -SourcePath $demoSourcePath `
     -OutputPath $generatedDemosPath `
-    -ExpectedSectorCount $expectedSectorCount
+    -ExpectedStartSectorCount $expectedCampaignDistrictCount
 $demoCount = [int]$generatedDemos.DemoCount
 if ($demoIndexProvided -and ($debugDemoIndexValue -lt 0 -or $debugDemoIndexValue -ge $demoCount)) {
     throw ("Debug demo index must be in the range 0..{0}. Received: {1}" -f ($demoCount - 1), $debugDemoIndexValue)
@@ -5077,11 +5271,11 @@ $generatedContentLines = @(
     ("Anchors: {0}" -f $generatedSectors.AnchorSummary)
     ("Scenarios: {0}" -f $generatedSectors.ScenarioSummary)
     ("Shard pools: {0}" -f $generatedSectors.ShardPoolSummary)
-    ("Adventure realm: {0}" -f $generatedSectors.AdventureRealmSummary)
-    ("Adventure zones: {0}" -f $generatedSectors.AdventureZoneSummary)
-    ("Adventure beats: {0}" -f $generatedSectors.AdventureRouteSummary)
-    ("Adventure chunks: {0}" -f $generatedSectors.AdventureChunkSummary)
-    ("Adventure capture: {0}" -f $generatedSectors.AdventureCaptureSummary)
+    ("Campaign districts: {0}" -f $generatedSectors.AdventureRealmSummary)
+    ("Campaign zones: {0}" -f $generatedSectors.AdventureZoneSummary)
+    ("Campaign beats: {0}" -f $generatedSectors.AdventureRouteSummary)
+    ("Campaign chunks: {0}" -f $generatedSectors.AdventureChunkSummary)
+    ("Campaign capture: {0}" -f $generatedSectors.AdventureCaptureSummary)
     ("Demo source: {0}" -f $generatedDemos.SourcePath)
     ("Demo include: {0}" -f $generatedDemos.OutputPath)
     ("Demos: {0}" -f $generatedDemos.DemoCount)
@@ -5347,7 +5541,13 @@ foreach ($frontendVerifyLine in $frontendVerifyLines) {
 
 $vmSmokeArtifacts = @()
 if ($VmSmoke.IsPresent) {
-    $vmSmokeResult = & $vmSmokeScript -ReportPath $vmSmokeReportPath
+    $vmSmokeResult = & $vmSmokeScript `
+        -Assembler $Assembler `
+        -AssemblerPath $AssemblerPath `
+        -MasmPath $MasmPath `
+        -SfxOnly:$SfxOnly.IsPresent `
+        -VmName 'CyberStorm' `
+        -ReportPath $vmSmokeReportPath
     $vmSmokeLines = @(
         ("Report: {0}" -f $vmSmokeResult.ReportPath)
     ) + @($vmSmokeResult.SummaryLines)
@@ -5400,7 +5600,7 @@ foreach ($runtimeVerifyLine in $runtimeVerifyLines) {
 }
 
 $showcaseArtifacts = @()
-$showcaseSourceSelection = 'Selection: branding uses the title screen, and beauty/action use authored AdventureRealm capture anchors so public shots come from curated in-engine demos rather than ad hoc debug frames.'
+$showcaseSourceSelection = 'Selection: branding uses the title screen, and beauty/action use authored Campaign district capture anchors so public shots come from curated in-engine demos rather than ad hoc debug frames.'
 if ($CaptureShowcase.IsPresent) {
     $showcaseResult = & $showcaseCaptureScript `
         -Assembler $Assembler `

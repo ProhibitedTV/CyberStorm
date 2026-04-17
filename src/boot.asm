@@ -60,6 +60,7 @@ next_sector:
 
     ; The boot contract is a far return to stage two offset 0000, so the first
     ; byte of src\game.asm must stay executable.
+    mov dl, [boot_drive]
     push GAME_SEGMENT
     push 0000h
     retf

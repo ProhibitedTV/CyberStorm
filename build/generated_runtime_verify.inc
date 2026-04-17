@@ -2,12 +2,16 @@
 ; source: replay-harness results
 ; edit assets/demos.psd1 or gameplay constants instead of this include
 
-VERIFY_DEMO_COUNT EQU 11
+VERIFY_DEMO_COUNT EQU 17
 
 verify_demo_checkpoint_count_table db 0, 0, 0, 0, 0, 0, 0, 0
-                                   db 0, 0, 0
+                                   db 0, 0, 0, 0, 0, 0, 0, 0
+                                   db 0
 verify_demo_final_signature_table dw 0F687h, 7A77h, 59CAh, 5B4Ah, 0CA96h, 39C6h
-                                  dw 8DE7h, 8DE7h, 0BAD7h, 4158h, 4158h
+                                  dw 8DE7h, 8DE7h, 0BAD7h, 4158h, 4158h, 0AF66h
+                                  dw 4823h, 0A676h, 6327h, 9B63h, 4823h
 verify_demo_checkpoint_table dw 0, 0, 0, 0
                              dw 0, 0, 0, 0
-                             dw 0, 0, 0
+                             dw 0, 0, 0, 0
+                             dw 0, 0, 0, 0
+                             dw 0

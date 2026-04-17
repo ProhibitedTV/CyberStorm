@@ -89,6 +89,14 @@ ENDIF
     ret
 
 sync_music_theme:
+    cmp byte ptr [session_music_enabled], 0
+    jne sync_music_theme_enabled
+    cmp byte ptr [music_theme], MUSIC_THEME_NONE
+    je sync_music_done
+    call stop_music
+    jmp sync_music_done
+
+sync_music_theme_enabled:
     call get_music_theme_for_state
     cmp al, [music_theme]
     je sync_music_done

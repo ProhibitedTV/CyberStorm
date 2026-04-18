@@ -27,6 +27,8 @@ $artifactDir = Join-Path $buildDir 'frontend-verify'
 $vbox = 'C:\Program Files\Oracle\VirtualBox\VBoxManage.exe'
 $vboxLogPath = Join-Path $root ("deploy\virtualbox\{0}\Logs\VBox.log" -f $VmName)
 
+. (Join-Path $PSScriptRoot 'vbox-common.ps1')
+
 function Assert-PathExists {
     param(
         [string]$Path,
@@ -57,85 +59,6 @@ function Get-AsmEquValue {
     }
 
     return [int]$token
-}
-
-function Invoke-VBoxManage {
-    param(
-        [string[]]$Arguments,
-        [int]$Attempt = 0
-    )
-
-    $captured = New-Object 'System.Collections.Generic.List[string]'
-    $previousErrorActionPreference = $ErrorActionPreference
-    $ErrorActionPreference = 'Continue'
-    try {
-        & $vbox @Arguments 2>&1 | ForEach-Object {
-            $captured.Add($_.ToString())
-        }
-    } finally {
-        $ErrorActionPreference = $previousErrorActionPreference
-    }
-
-    if ($LASTEXITCODE -eq 0) {
-        return $captured.ToArray()
-    }
-
-    $message = $captured -join [Environment]::NewLine
-    if ($Attempt -lt 3 -and $message -match 'CO_E_SERVER_EXEC_FAILURE|Failed to create the VirtualBox object') {
-        $previousErrorActionPreference = $ErrorActionPreference
-        $ErrorActionPreference = 'Continue'
-        try {
-            & taskkill /F /IM VBoxSVC.exe /IM VBoxHeadless.exe /IM VirtualBoxVM.exe *>$null
-        } finally {
-            $ErrorActionPreference = $previousErrorActionPreference
-        }
-        Start-Sleep -Seconds (2 + ($Attempt * 3))
-        return Invoke-VBoxManage -Arguments $Arguments -Attempt ($Attempt + 1)
-    }
-
-    throw ("VBoxManage failed: {0}`n{1}" -f ($Arguments -join ' '), $message)
-}
-
-function Stop-VmIfRunning {
-    param([string]$Name)
-
-    try {
-        Invoke-VBoxManage -Arguments @('controlvm', $Name, 'poweroff') | Out-Null
-        Start-Sleep -Seconds 2
-    } catch {
-        return
-    }
-}
-
-function Start-HeadlessVm {
-    param([string]$Name)
-
-    Invoke-VBoxManage -Arguments @('startvm', $Name, '--type', 'headless') | Out-Null
-    Start-Sleep -Seconds 2
-}
-
-function Invoke-DeployVm {
-    param([string]$Name)
-
-    & powershell -ExecutionPolicy Bypass -File $DeployScriptPath -VmName $Name | Out-Null
-    if ($LASTEXITCODE -ne 0) {
-        throw ("Deploy script failed for VM '{0}'." -f $Name)
-    }
-}
-
-function Ensure-VmRegistered {
-    param([string]$Name)
-
-    try {
-        Invoke-VBoxManage -Arguments @('showvminfo', $Name) | Out-Null
-    } catch {
-        if ($_.Exception.Message -match 'Could not find a registered machine named|VBOX_E_OBJECT_NOT_FOUND') {
-            Invoke-DeployVm -Name $Name
-            return
-        }
-
-        throw
-    }
 }
 
 function Convert-VgaChannel {
@@ -480,6 +403,9 @@ $lines.Add(("Generated: {0}" -f (Get-Date -Format 'yyyy-MM-dd HH:mm:ss K')))
 $lines.Add(("Constants source: {0}" -f $ConstantsSourcePath))
 $lines.Add('')
 
+$status = 'PASS'
+$failureKind = $null
+$caughtException = $null
 $restoreRelease = $true
 
 try {
@@ -515,14 +441,52 @@ try {
     $lines.Add(("  Observed signature: {0}" -f $forcedFail.ObservedSignature))
     $lines.Add(("  Screenshot: {0}" -f $forcedFail.ScreenshotPath))
     $lines.Add(("  VBox log: {0}" -f $forcedFail.LogPath))
+    $summaryLines.Insert(0, 'Status: PASS')
+} catch {
+    $status = 'FAIL'
+    $caughtException = $_
+    $failureKind = Get-VBoxFailureKind -Message $_.Exception.Message
+    $summaryLines.Clear()
+    $summaryLines.Add('Status: FAIL')
+    $summaryLines.Add(("Failure class: {0}" -f $failureKind))
+    $summaryLines.Add(("Error: {0}" -f $_.Exception.Message))
 } finally {
     Stop-VmIfRunning -Name $VmName
     if ($restoreRelease) {
-        Invoke-ChildBuild -ExtraArguments @()
+        try {
+            Invoke-ChildBuild -ExtraArguments @()
+        } catch {
+            if ($null -eq $caughtException) {
+                $status = 'FAIL'
+                $caughtException = $_
+                $failureKind = 'CONTENT'
+                $summaryLines.Clear()
+                $summaryLines.Add('Status: FAIL')
+                $summaryLines.Add(("Failure class: {0}" -f $failureKind))
+                $summaryLines.Add(("Error: {0}" -f $_.Exception.Message))
+            } else {
+                $summaryLines.Add(("Release restore failed: {0}" -f $_.Exception.Message))
+            }
+        }
     }
+
+    $statusLines = New-Object 'System.Collections.Generic.List[string]'
+    $statusLines.Add(("Status: {0}" -f $status))
+    if ($status -ne 'PASS') {
+        $statusLines.Add(("Failure class: {0}" -f $failureKind))
+        $statusLines.Add(("Error: {0}" -f $caughtException.Exception.Message))
+    }
+    $statusLines.Add('')
+    for ($statusIndex = $statusLines.Count - 1; $statusIndex -ge 0; $statusIndex--) {
+        $lines.Insert(3, $statusLines[$statusIndex])
+    }
+
+    Set-Content -LiteralPath $ReportPath -Encoding ascii -Value $lines
 }
 
-Set-Content -LiteralPath $ReportPath -Encoding ascii -Value $lines
+if ($null -ne $caughtException) {
+    throw $caughtException
+}
 
 [pscustomobject]@{
     ReportPath = $ReportPath

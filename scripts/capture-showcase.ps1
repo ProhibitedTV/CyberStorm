@@ -31,6 +31,9 @@ $artifactDir = Join-Path $buildDir 'showcase'
 $vbox = 'C:\Program Files\Oracle\VirtualBox\VBoxManage.exe'
 $vboxLogPath = Join-Path $root ("deploy\virtualbox\{0}\Logs\VBox.log" -f $VmName)
 
+. (Join-Path $PSScriptRoot 'vbox-common.ps1')
+. (Join-Path $PSScriptRoot 'showcase-gallery-common.ps1')
+
 function Assert-PathExists {
     param(
         [string]$Path,
@@ -83,150 +86,6 @@ function Get-AsmEquValue {
     }
 
     return [int]$token
-}
-
-function Invoke-VBoxManage {
-    param(
-        [string[]]$Arguments,
-        [int]$Attempt = 0,
-        [int]$TimeoutSeconds = 30
-    )
-
-    $capturedLines = New-Object 'System.Collections.Generic.List[string]'
-    $previousErrorActionPreference = $ErrorActionPreference
-    $ErrorActionPreference = 'Continue'
-    try {
-        & $vbox @Arguments 2>&1 | ForEach-Object {
-            $capturedLines.Add($_.ToString())
-        }
-    } finally {
-        $ErrorActionPreference = $previousErrorActionPreference
-    }
-
-    if ($LASTEXITCODE -eq 0) {
-        return $capturedLines.ToArray()
-    }
-
-    $message = $capturedLines -join [Environment]::NewLine
-    if ($Attempt -lt 3 -and $message -match 'CO_E_SERVER_EXEC_FAILURE|Failed to create the VirtualBox object') {
-        $previousErrorActionPreference = $ErrorActionPreference
-        $ErrorActionPreference = 'Continue'
-        try {
-            & taskkill /F /IM VBoxSVC.exe /IM VBoxHeadless.exe /IM VirtualBoxVM.exe *>$null
-        } finally {
-            $ErrorActionPreference = $previousErrorActionPreference
-        }
-        Start-Sleep -Seconds (2 + ($Attempt * 3))
-        return Invoke-VBoxManage -Arguments $Arguments -Attempt ($Attempt + 1) -TimeoutSeconds $TimeoutSeconds
-    }
-
-    throw ("VBoxManage failed: {0}`n{1}" -f ($Arguments -join ' '), $message)
-}
-
-function Get-VmState {
-    param([string]$Name)
-
-    $infoLines = Invoke-VBoxManage -Arguments @('showvminfo', $Name, '--machinereadable') -TimeoutSeconds 20
-    $stateLine = $infoLines | Where-Object { $_ -match '^VMState=' } | Select-Object -First 1
-    if ($stateLine -and $stateLine -match '^VMState="?([^"]+)"?$') {
-        return $Matches[1]
-    }
-
-    return 'unknown'
-}
-
-function Ensure-VmReadyForCapture {
-    param([string]$Name)
-
-    for ($attempt = 0; $attempt -lt 10; $attempt++) {
-        $state = Get-VmState -Name $Name
-        if ($state -eq 'running') {
-            return
-        }
-
-        if ($state -eq 'paused') {
-            Invoke-VBoxManage -Arguments @('controlvm', $Name, 'resume') -TimeoutSeconds 20 | Out-Null
-        }
-
-        Start-Sleep -Milliseconds 500
-    }
-
-    throw ("VM '{0}' never reached a capture-ready running state." -f $Name)
-}
-
-function Invoke-VmScreenshot {
-    param(
-        [string]$Name,
-        [string]$OutputPath
-    )
-
-    if (Test-Path -LiteralPath $OutputPath) {
-        Remove-Item -LiteralPath $OutputPath -Force
-    }
-
-    for ($attempt = 0; $attempt -lt 5; $attempt++) {
-        try {
-            Invoke-VBoxManage -Arguments @('controlvm', $Name, 'screenshotpng', $OutputPath) -TimeoutSeconds 45 | Out-Null
-        } catch {
-            if ($attempt -ge 4) {
-                throw
-            }
-        }
-
-        for ($fileAttempt = 0; $fileAttempt -lt 20; $fileAttempt++) {
-            if (Test-Path -LiteralPath $OutputPath) {
-                return
-            }
-
-            Start-Sleep -Milliseconds 250
-        }
-
-        Start-Sleep -Seconds 1
-    }
-
-    throw ("VM screenshot was not created: {0}" -f $OutputPath)
-}
-
-function Stop-VmIfRunning {
-    param([string]$Name)
-
-    try {
-        Invoke-VBoxManage -Arguments @('controlvm', $Name, 'poweroff') | Out-Null
-        Start-Sleep -Seconds 2
-    } catch {
-        return
-    }
-}
-
-function Start-HeadlessVm {
-    param([string]$Name)
-
-    Invoke-VBoxManage -Arguments @('startvm', $Name, '--type', 'headless') | Out-Null
-    Start-Sleep -Seconds 2
-}
-
-function Invoke-DeployVm {
-    param([string]$Name)
-
-    & powershell -ExecutionPolicy Bypass -File $DeployScriptPath -VmName $Name | Out-Null
-    if ($LASTEXITCODE -ne 0) {
-        throw ("Deploy script failed for VM '{0}'." -f $Name)
-    }
-}
-
-function Ensure-VmRegistered {
-    param([string]$Name)
-
-    try {
-        Invoke-VBoxManage -Arguments @('showvminfo', $Name, '--machinereadable') -TimeoutSeconds 20 | Out-Null
-    } catch {
-        if ($_.Exception.Message -match 'Could not find a registered machine named|VBOX_E_OBJECT_NOT_FOUND') {
-            Invoke-DeployVm -Name $Name
-            return
-        }
-
-        throw
-    }
 }
 
 function Get-StepRepeatCount {
@@ -608,23 +467,28 @@ $geometry = @{
     MarkerW = Get-AsmEquValue -SourcePath $ConstantsSourcePath -Name 'VERIFY_MARKER_W'
     MarkerH = Get-AsmEquValue -SourcePath $ConstantsSourcePath -Name 'VERIFY_MARKER_H'
 }
-$showcaseCapturePlan = @(Get-ShowcaseCapturePlan -SectorSourcePath $SectorSourcePath -DemoSourcePath $DemoSourcePath)
+$showcaseCapturePlan = @()
 $showcaseCapturePlanByRole = @{}
-foreach ($capturePlanEntry in $showcaseCapturePlan) {
-    $showcaseCapturePlanByRole[[string]$capturePlanEntry.Role] = $capturePlanEntry
-}
 
+$manifestPath = Get-ShowcaseGalleryManifestPath -ShowcaseDir $artifactDir
 $artifactPaths = New-Object 'System.Collections.Generic.List[string]'
 $summaryLines = New-Object 'System.Collections.Generic.List[string]'
 $reportLines = New-Object 'System.Collections.Generic.List[string]'
-$reportLines.Add('CyberStorm Showcase Capture Report')
-$reportLines.Add(("Generated: {0}" -f (Get-Date -Format 'yyyy-MM-dd HH:mm:ss K')))
-$reportLines.Add(("Demo source: {0}" -f $DemoSourcePath))
-$reportLines.Add('')
-
+$detailLines = New-Object 'System.Collections.Generic.List[string]'
+$status = 'PASS'
+$galleryFreshness = 'missing'
+$preservedGallery = $false
+$failureKind = $null
+$caughtException = $null
 $restoreRelease = $true
 
 try {
+    $showcaseCapturePlan = @(Get-ShowcaseCapturePlan -SectorSourcePath $SectorSourcePath -DemoSourcePath $DemoSourcePath)
+    $showcaseCapturePlanByRole = @{}
+    foreach ($capturePlanEntry in $showcaseCapturePlan) {
+        $showcaseCapturePlanByRole[[string]$capturePlanEntry.Role] = $capturePlanEntry
+    }
+
     Ensure-VmRegistered -Name $VmName
     $runtimeVerifyReport = Join-Path $buildDir 'cyberstorm-runtime-verify-report.txt'
     $runtimeVerifyArgs = @(
@@ -643,25 +507,26 @@ try {
     }
     $runtimeVerifyResult = & $RuntimeVerifyScriptPath @runtimeVerifyArgs
     $artifactPaths.Add($runtimeVerifyResult.ReportPath)
-    $reportLines.Add('Prerequisite: runtime verify')
-    $reportLines.Add(("  Report: {0}" -f $runtimeVerifyResult.ReportPath))
+    $detailLines.Add('Prerequisite: runtime verify')
+    $detailLines.Add(("  Report: {0}" -f $runtimeVerifyResult.ReportPath))
     foreach ($summaryLine in @($runtimeVerifyResult.SummaryLines)) {
-        $reportLines.Add(("  {0}" -f $summaryLine))
+        $detailLines.Add(("  {0}" -f $summaryLine))
     }
-    $reportLines.Add('')
+    $detailLines.Add('')
 
     $vmSmokeReport = Join-Path $buildDir 'cyberstorm-vm-smoke-report.txt'
     $vmSmokeResult = & $VmSmokeScriptPath -ReportPath $vmSmokeReport
+    $artifactPaths.Add($vmSmokeResult.ReportPath)
     $titleSource = Join-Path $buildDir 'vm-smoke\cyberstorm-vm-smoke-title.png'
     $titleTarget = Join-Path $artifactDir 'showcase-title.png'
     Copy-Item -LiteralPath $titleSource -Destination $titleTarget -Force
     Assert-ShowcaseBitmap -ImagePath $titleTarget -Role 'title' -Geometry $geometry
     $artifactPaths.Add($titleTarget)
-    $summaryLines.Add(("title: {0}" -f $titleTarget))
-    $reportLines.Add('Role: title')
-    $reportLines.Add(("  Source: release VM smoke title frame"))
-    $reportLines.Add(("  Screenshot: {0}" -f $titleTarget))
-    $reportLines.Add('')
+    $detailLines.Add('Role: title')
+    $detailLines.Add(("  Source: release VM smoke title frame"))
+    $detailLines.Add(("  Source id: vm-smoke:title-frame"))
+    $detailLines.Add(("  Screenshot: {0}" -f $titleTarget))
+    $detailLines.Add('')
 
     $beautyPlan = $showcaseCapturePlanByRole['beauty']
     $beautyCapture = Invoke-DemoCapture -Demo $beautyPlan.Demo -DemoIndex $beautyPlan.DemoIndex -ArtifactDir $artifactDir
@@ -669,15 +534,14 @@ try {
     $artifactPaths.Add($beautyCapture.ScreenshotPath)
     $artifactPaths.Add($beautyCapture.RawScreenshotPath)
     $artifactPaths.Add($beautyCapture.LogPath)
-    $summaryLines.Add(("beauty: {0}" -f $beautyCapture.ScreenshotPath))
-    $reportLines.Add('Role: beauty')
-    $reportLines.Add(("  Source: AdventureRealm.CaptureAnchors.Beauty -> {0}" -f $beautyPlan.DemoId))
-    $reportLines.Add(("  Demo: {0}" -f ([string]$beautyPlan.Demo.Name)))
-    $reportLines.Add(("  Wait: {0}s" -f $beautyCapture.WaitSeconds))
-    $reportLines.Add(("  Screenshot: {0}" -f $beautyCapture.ScreenshotPath))
-    $reportLines.Add(("  Raw screenshot: {0}" -f $beautyCapture.RawScreenshotPath))
-    $reportLines.Add(("  VBox log: {0}" -f $beautyCapture.LogPath))
-    $reportLines.Add('')
+    $detailLines.Add('Role: beauty')
+    $detailLines.Add(("  Source: AdventureRealm.CaptureAnchors.Beauty -> {0}" -f $beautyPlan.DemoId))
+    $detailLines.Add(("  Demo: {0}" -f ([string]$beautyPlan.Demo.Name)))
+    $detailLines.Add(("  Wait: {0}s" -f $beautyCapture.WaitSeconds))
+    $detailLines.Add(("  Screenshot: {0}" -f $beautyCapture.ScreenshotPath))
+    $detailLines.Add(("  Raw screenshot: {0}" -f $beautyCapture.RawScreenshotPath))
+    $detailLines.Add(("  VBox log: {0}" -f $beautyCapture.LogPath))
+    $detailLines.Add('')
 
     $actionPlan = $showcaseCapturePlanByRole['action']
     $actionCapture = Invoke-DemoCapture -Demo $actionPlan.Demo -DemoIndex $actionPlan.DemoIndex -ArtifactDir $artifactDir
@@ -685,28 +549,110 @@ try {
     $artifactPaths.Add($actionCapture.ScreenshotPath)
     $artifactPaths.Add($actionCapture.RawScreenshotPath)
     $artifactPaths.Add($actionCapture.LogPath)
-    $summaryLines.Add(("action: {0}" -f $actionCapture.ScreenshotPath))
-    $reportLines.Add('Role: action')
-    $reportLines.Add(("  Source: AdventureRealm.CaptureAnchors.Action -> {0}" -f $actionPlan.DemoId))
-    $reportLines.Add(("  Demo: {0}" -f ([string]$actionPlan.Demo.Name)))
-    $reportLines.Add(("  Wait: {0}s" -f $actionCapture.WaitSeconds))
-    $reportLines.Add(("  Screenshot: {0}" -f $actionCapture.ScreenshotPath))
-    $reportLines.Add(("  Raw screenshot: {0}" -f $actionCapture.RawScreenshotPath))
-    $reportLines.Add(("  VBox log: {0}" -f $actionCapture.LogPath))
-    $reportLines.Add('')
+    $detailLines.Add('Role: action')
+    $detailLines.Add(("  Source: AdventureRealm.CaptureAnchors.Action -> {0}" -f $actionPlan.DemoId))
+    $detailLines.Add(("  Demo: {0}" -f ([string]$actionPlan.Demo.Name)))
+    $detailLines.Add(("  Wait: {0}s" -f $actionCapture.WaitSeconds))
+    $detailLines.Add(("  Screenshot: {0}" -f $actionCapture.ScreenshotPath))
+    $detailLines.Add(("  Raw screenshot: {0}" -f $actionCapture.RawScreenshotPath))
+    $detailLines.Add(("  VBox log: {0}" -f $actionCapture.LogPath))
+    $detailLines.Add('')
 
-    $reportLines.Add('README roles')
-    $reportLines.Add(("  readme-shot-1.png <- {0}" -f $titleTarget))
-    $reportLines.Add(("  readme-shot-2.png <- {0}" -f $beautyCapture.ScreenshotPath))
-    $reportLines.Add(("  readme-shot-3.png <- {0}" -f $actionCapture.ScreenshotPath))
+    $captureTime = (Get-Date -Format 'o')
+    $manifest = New-ShowcaseGalleryManifest `
+        -Status 'fresh' `
+        -FailureReason $null `
+        -ReportPath $ReportPath `
+        -Slots @(
+            (New-ShowcaseGallerySlotRecord -Slot 'title' -ReadmeSlot 'readme-shot-1.png' -SourceArtifactPath $titleTarget -SourceId 'vm-smoke:title-frame' -CaptureTime $captureTime -Freshness 'fresh' -FailureReason $null),
+            (New-ShowcaseGallerySlotRecord -Slot 'beauty' -ReadmeSlot 'readme-shot-2.png' -SourceArtifactPath $beautyCapture.ScreenshotPath -SourceId $beautyPlan.DemoId -CaptureTime $captureTime -Freshness 'fresh' -FailureReason $null),
+            (New-ShowcaseGallerySlotRecord -Slot 'action' -ReadmeSlot 'readme-shot-3.png' -SourceArtifactPath $actionCapture.ScreenshotPath -SourceId $actionPlan.DemoId -CaptureTime $captureTime -Freshness 'fresh' -FailureReason $null)
+        )
+    Write-ShowcaseGalleryManifest -ManifestPath $manifestPath -Manifest $manifest
+    $artifactPaths.Add($manifestPath)
+
+    $status = 'PASS'
+    $galleryFreshness = 'fresh'
+    $summaryLines.Add('Status: PASS')
+    $summaryLines.Add(("Gallery freshness: {0}" -f $galleryFreshness))
+    $summaryLines.Add(("Gallery manifest: {0}" -f $manifestPath))
+    $summaryLines.Add(("title: {0} <- vm-smoke:title-frame" -f $titleTarget))
+    $summaryLines.Add(("beauty: {0} <- {1}" -f $beautyCapture.ScreenshotPath, $beautyPlan.DemoId))
+    $summaryLines.Add(("action: {0} <- {1}" -f $actionCapture.ScreenshotPath, $actionPlan.DemoId))
+
+    $detailLines.Add('README roles')
+    $detailLines.Add(("  readme-shot-1.png <- {0}" -f $titleTarget))
+    $detailLines.Add(("  readme-shot-2.png <- {0}" -f $beautyCapture.ScreenshotPath))
+    $detailLines.Add(("  readme-shot-3.png <- {0}" -f $actionCapture.ScreenshotPath))
+} catch {
+    $caughtException = $_
+    $status = 'FAIL'
 } finally {
     Stop-VmIfRunning -Name $VmName
     if ($restoreRelease) {
-        Invoke-ChildBuild -ExtraArguments @()
+        try {
+            Invoke-ChildBuild -ExtraArguments @()
+        } catch {
+            if ($null -eq $caughtException) {
+                $caughtException = $_
+                $failureKind = 'CONTENT'
+                $status = 'FAIL'
+            }
+        }
     }
 }
 
+if ($null -eq $caughtException) {
+    $caughtException = $null
+} elseif ($status -ne 'FAIL') {
+    $status = 'FAIL'
+}
+
+if ($status -ne 'PASS') {
+    $failureMessage = $caughtException.Exception.Message
+    $failureKind = Get-VBoxFailureKind -Message $failureMessage
+    $existingManifest = Read-ShowcaseGalleryManifest -ManifestPath $manifestPath
+    $manifest = Convert-ShowcaseGalleryManifestToState `
+        -Manifest $existingManifest `
+        -Status $(if (Test-ShowcaseGalleryManifestUsable -Manifest $existingManifest) { 'stale' } else { 'missing' }) `
+        -FailureReason $failureMessage `
+        -ReportPath $ReportPath
+    Write-ShowcaseGalleryManifest -ManifestPath $manifestPath -Manifest $manifest
+    $artifactPaths.Add($manifestPath)
+    $galleryFreshness = [string]$manifest.status
+    $preservedGallery = ($galleryFreshness -eq 'stale')
+    $summaryLines.Clear()
+    $summaryLines.Add('Status: FAIL')
+    $summaryLines.Add(("Failure class: {0}" -f $failureKind))
+    $summaryLines.Add(("Gallery freshness: {0}" -f $galleryFreshness))
+    $summaryLines.Add(("Gallery manifest: {0}" -f $manifestPath))
+    $summaryLines.Add(("Preserved gallery: {0}" -f $(if ($preservedGallery) { 'YES' } else { 'NO' })))
+    $summaryLines.Add(("Failure reason: {0}" -f $failureMessage))
+}
+
+$reportLines.Add('CyberStorm Showcase Capture Report')
+$reportLines.Add(("Generated: {0}" -f (Get-Date -Format 'yyyy-MM-dd HH:mm:ss K')))
+$reportLines.Add(("Demo source: {0}" -f $DemoSourcePath))
+$reportLines.Add(("Status: {0}" -f $status))
+if ($status -ne 'PASS') {
+    $reportLines.Add(("Failure class: {0}" -f $failureKind))
+}
+$reportLines.Add(("Gallery freshness: {0}" -f $galleryFreshness))
+$reportLines.Add(("Gallery manifest: {0}" -f $manifestPath))
+if ($status -ne 'PASS') {
+    $reportLines.Add(("Preserved gallery: {0}" -f $(if ($preservedGallery) { 'YES' } else { 'NO' })))
+    $reportLines.Add(("Failure reason: {0}" -f $caughtException.Exception.Message))
+}
+$reportLines.Add('')
+foreach ($detailLine in @($detailLines)) {
+    $reportLines.Add($detailLine)
+}
+
 Set-Content -LiteralPath $ReportPath -Encoding ascii -Value $reportLines
+
+if ($null -ne $caughtException) {
+    throw $caughtException
+}
 
 [pscustomobject]@{
     ReportPath = $ReportPath

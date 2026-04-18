@@ -37,6 +37,8 @@ $artifactDir = Join-Path $buildDir 'runtime-verify'
 $vbox = 'C:\Program Files\Oracle\VirtualBox\VBoxManage.exe'
 $vboxLogPath = Join-Path $root ("deploy\virtualbox\{0}\Logs\VBox.log" -f $VmName)
 
+. (Join-Path $PSScriptRoot 'vbox-common.ps1')
+
 function Assert-PathExists {
     param(
         [string]$Path,
@@ -91,133 +93,6 @@ function Get-AsmEquValue {
     return [int]$token
 }
 
-function Invoke-VBoxManage {
-    param(
-        [string[]]$Arguments,
-        [int]$Attempt = 0,
-        [int]$TimeoutSeconds = 30
-    )
-
-    $capturedLines = New-Object 'System.Collections.Generic.List[string]'
-    $previousErrorActionPreference = $ErrorActionPreference
-    $ErrorActionPreference = 'Continue'
-    try {
-        & $vbox @Arguments 2>&1 | ForEach-Object {
-            $capturedLines.Add($_.ToString())
-        }
-    } finally {
-        $ErrorActionPreference = $previousErrorActionPreference
-    }
-
-    if ($LASTEXITCODE -eq 0) {
-        return $capturedLines.ToArray()
-    }
-
-    $message = $capturedLines -join [Environment]::NewLine
-    if ($Attempt -lt 3 -and $message -match 'CO_E_SERVER_EXEC_FAILURE|Failed to create the VirtualBox object') {
-        $previousErrorActionPreference = $ErrorActionPreference
-        $ErrorActionPreference = 'Continue'
-        try {
-            & taskkill /F /IM VBoxSVC.exe /IM VBoxHeadless.exe /IM VirtualBoxVM.exe *>$null
-        } finally {
-            $ErrorActionPreference = $previousErrorActionPreference
-        }
-        Start-Sleep -Seconds (2 + ($Attempt * 3))
-        return Invoke-VBoxManage -Arguments $Arguments -Attempt ($Attempt + 1) -TimeoutSeconds $TimeoutSeconds
-    }
-
-    if ($message -match 'Timed out') {
-        throw ("VBoxManage failed: {0}`n{1}" -f ($Arguments -join ' '), $message)
-    }
-
-    if ($LASTEXITCODE -eq 0) {
-        return $capturedLines
-    }
-
-    throw ("VBoxManage failed: {0}`n{1}" -f ($Arguments -join ' '), $message)
-}
-
-function Get-VmState {
-    param([string]$Name)
-
-    $infoLines = Invoke-VBoxManage -Arguments @('showvminfo', $Name, '--machinereadable') -TimeoutSeconds 20
-    $stateLine = $infoLines | Where-Object { $_ -match '^VMState=' } | Select-Object -First 1
-    if ($stateLine -and $stateLine -match '^VMState="?([^"]+)"?$') {
-        return $Matches[1]
-    }
-
-    return 'unknown'
-}
-
-function Ensure-VmReadyForCapture {
-    param([string]$Name)
-
-    for ($attempt = 0; $attempt -lt 10; $attempt++) {
-        $state = Get-VmState -Name $Name
-        if ($state -eq 'running') {
-            return
-        }
-
-        if ($state -eq 'paused') {
-            Invoke-VBoxManage -Arguments @('controlvm', $Name, 'resume') -TimeoutSeconds 20 | Out-Null
-        }
-
-        Start-Sleep -Milliseconds 500
-    }
-
-    throw ("VM '{0}' never reached a capture-ready running state." -f $Name)
-}
-
-function Invoke-VmScreenshot {
-    param(
-        [string]$Name,
-        [string]$OutputPath
-    )
-
-    if (Test-Path -LiteralPath $OutputPath) {
-        Remove-Item -LiteralPath $OutputPath -Force
-    }
-
-    for ($attempt = 0; $attempt -lt 5; $attempt++) {
-        try {
-            Invoke-VBoxManage -Arguments @('controlvm', $Name, 'screenshotpng', $OutputPath) -TimeoutSeconds 45 | Out-Null
-        } catch {
-            if ($attempt -ge 4) {
-                throw
-            }
-        }
-
-        for ($fileAttempt = 0; $fileAttempt -lt 20; $fileAttempt++) {
-            if (Test-Path -LiteralPath $OutputPath) {
-                return
-            }
-
-            Start-Sleep -Milliseconds 250
-        }
-
-        Start-Sleep -Seconds 1
-    }
-
-    throw ("VM screenshot was not created: {0}" -f $OutputPath)
-}
-
-function Stop-VmIfRunning {
-    param([string]$Name)
-
-    try {
-        Invoke-VBoxManage -Arguments @('controlvm', $Name, 'poweroff') | Out-Null
-        Start-Sleep -Seconds 2
-    } catch {
-        return
-    }
-}
-
-function Start-HeadlessVm {
-    param([string]$Name)
-
-    Invoke-VBoxManage -Arguments @('startvm', $Name, '--type', 'headless') | Out-Null
-    Start-Sleep -Seconds 2
-}
 
 function Invoke-DeployVm {
     param([string]$Name)
@@ -755,89 +630,118 @@ if (-not [string]::IsNullOrWhiteSpace($DemoFilter)) {
 $lines.Add('')
 
 $runtimeResults = New-Object 'System.Collections.Generic.List[object]'
+$status = 'PASS'
+$failureKind = $null
+$caughtException = $null
 $restoreRelease = $true
 
 try {
-    Ensure-VmRegistered -Name $VmName
-    foreach ($runtimeDemo in $runtimeDemos) {
-        $result = Invoke-RuntimeVerifyRun -Demo $runtimeDemo.Demo -DemoIndex ([int]$runtimeDemo.DemoIndex) -ArtifactDir $artifactDir -Geometry $geometry -RenderMode $RenderMode -RenderStage $RenderStage -ReplayReportPath $replayReportPath
-        $runtimeResults.Add($result)
-        $artifactPaths.Add($result.ScreenshotPath)
-        $artifactPaths.Add($result.LogPath)
-        $summaryLines.Add(("{0}: {1} {2} [{3}] (expected {4}; reason {5}; wait {6}s; marker {7}/{8}/{9}; exp {10} / obs {11})" -f $result.Name, $result.Status, $result.Id, (Get-RenderLabel -Mode $result.RenderMode -Stage $result.RenderStage), $result.ExpectedStatus, $result.FailureReason, $result.WaitSeconds, $result.ClosestDistance, $result.PassDistance, $result.FailDistance, $result.ExpectedSignature, $result.ObservedSignature))
-        $lines.Add(("Demo: {0}" -f $result.Name))
-        $lines.Add(("  Id: {0}" -f $result.Id))
-        $lines.Add(("  Render: {0}" -f (Get-RenderLabel -Mode $result.RenderMode -Stage $result.RenderStage)))
-        $lines.Add(("  Status: {0}" -f $result.Status))
-        $lines.Add(("  Expected status: {0}" -f $result.ExpectedStatus))
-        $lines.Add(("  Status match: {0}" -f $(if ($result.StatusMatched) { 'YES' } else { 'NO' })))
-        $lines.Add(("  Failure reason: {0}" -f $result.FailureReason))
-        $lines.Add(("  Failure reason code: {0}" -f $result.FailureReasonCode))
-        $lines.Add(("  Wait: {0}s" -f $result.WaitSeconds))
-        $lines.Add(("  Marker resolved: {0}" -f $(if ($result.MarkerResolved) { 'YES' } else { 'NO' })))
-        $lines.Add(("  Marker closest distance: {0}" -f $result.ClosestDistance))
-        $lines.Add(("  Marker pass distance: {0}" -f $result.PassDistance))
-        $lines.Add(("  Marker fail distance: {0}" -f $result.FailDistance))
-        $lines.Add(("  Expected signature: {0}" -f $result.ExpectedSignature))
-        $lines.Add(("  Observed signature: {0}" -f $result.ObservedSignature))
-        $lines.Add(("  Screenshot: {0}" -f $result.ScreenshotPath))
-        $lines.Add(("  VBox log: {0}" -f $result.LogPath))
-        if ($result.HostReplayBlock.Count -gt 0) {
-            $lines.Add('  Host diagnostics:')
-            foreach ($hostLine in $result.HostReplayBlock) {
-                $lines.Add(("    {0}" -f $hostLine.TrimEnd()))
+    try {
+        Ensure-VmRegistered -Name $VmName
+        foreach ($runtimeDemo in $runtimeDemos) {
+            $result = Invoke-RuntimeVerifyRun -Demo $runtimeDemo.Demo -DemoIndex ([int]$runtimeDemo.DemoIndex) -ArtifactDir $artifactDir -Geometry $geometry -RenderMode $RenderMode -RenderStage $RenderStage -ReplayReportPath $replayReportPath
+            $runtimeResults.Add($result)
+            $artifactPaths.Add($result.ScreenshotPath)
+            $artifactPaths.Add($result.LogPath)
+            $summaryLines.Add(("{0}: {1} {2} [{3}] (expected {4}; reason {5}; wait {6}s; marker {7}/{8}/{9}; exp {10} / obs {11})" -f $result.Name, $result.Status, $result.Id, (Get-RenderLabel -Mode $result.RenderMode -Stage $result.RenderStage), $result.ExpectedStatus, $result.FailureReason, $result.WaitSeconds, $result.ClosestDistance, $result.PassDistance, $result.FailDistance, $result.ExpectedSignature, $result.ObservedSignature))
+            $lines.Add(("Demo: {0}" -f $result.Name))
+            $lines.Add(("  Id: {0}" -f $result.Id))
+            $lines.Add(("  Render: {0}" -f (Get-RenderLabel -Mode $result.RenderMode -Stage $result.RenderStage)))
+            $lines.Add(("  Status: {0}" -f $result.Status))
+            $lines.Add(("  Expected status: {0}" -f $result.ExpectedStatus))
+            $lines.Add(("  Status match: {0}" -f $(if ($result.StatusMatched) { 'YES' } else { 'NO' })))
+            $lines.Add(("  Failure reason: {0}" -f $result.FailureReason))
+            $lines.Add(("  Failure reason code: {0}" -f $result.FailureReasonCode))
+            $lines.Add(("  Wait: {0}s" -f $result.WaitSeconds))
+            $lines.Add(("  Marker resolved: {0}" -f $(if ($result.MarkerResolved) { 'YES' } else { 'NO' })))
+            $lines.Add(("  Marker closest distance: {0}" -f $result.ClosestDistance))
+            $lines.Add(("  Marker pass distance: {0}" -f $result.PassDistance))
+            $lines.Add(("  Marker fail distance: {0}" -f $result.FailDistance))
+            $lines.Add(("  Expected signature: {0}" -f $result.ExpectedSignature))
+            $lines.Add(("  Observed signature: {0}" -f $result.ObservedSignature))
+            $lines.Add(("  Screenshot: {0}" -f $result.ScreenshotPath))
+            $lines.Add(("  VBox log: {0}" -f $result.LogPath))
+            if ($result.HostReplayBlock.Count -gt 0) {
+                $lines.Add('  Host diagnostics:')
+                foreach ($hostLine in $result.HostReplayBlock) {
+                    $lines.Add(("    {0}" -f $hostLine.TrimEnd()))
+                }
             }
+            $lines.Add('')
         }
-        $lines.Add('')
+
+        if ([string]::IsNullOrWhiteSpace($DemoFilter)) {
+            $forcedFail = Invoke-RuntimeVerifyRun -Demo $runtimeDemos[0].Demo -DemoIndex ([int]$runtimeDemos[0].DemoIndex) -CorruptExpectation -ArtifactDir $artifactDir -Geometry $geometry -RenderMode $RenderMode -RenderStage $RenderStage -ReplayReportPath $replayReportPath
+            $artifactPaths.Add($forcedFail.ScreenshotPath)
+            $artifactPaths.Add($forcedFail.LogPath)
+            $summaryLines.Add(("Forced mismatch: {0} [{1}] (expected {2}; reason {3}; wait {4}s; marker {5}/{6}/{7}; exp {8} / obs {9})" -f $forcedFail.Status, (Get-RenderLabel -Mode $forcedFail.RenderMode -Stage $forcedFail.RenderStage), $forcedFail.ExpectedStatus, $forcedFail.FailureReason, $forcedFail.WaitSeconds, $forcedFail.ClosestDistance, $forcedFail.PassDistance, $forcedFail.FailDistance, $forcedFail.ExpectedSignature, $forcedFail.ObservedSignature))
+            $lines.Add('Forced mismatch demo')
+            $lines.Add(("  Demo: {0}" -f $forcedFail.Name))
+            $lines.Add(("  Render: {0}" -f (Get-RenderLabel -Mode $forcedFail.RenderMode -Stage $forcedFail.RenderStage)))
+            $lines.Add(("  Status: {0}" -f $forcedFail.Status))
+            $lines.Add(("  Expected status: {0}" -f $forcedFail.ExpectedStatus))
+            $lines.Add(("  Status match: {0}" -f $(if ($forcedFail.StatusMatched) { 'YES' } else { 'NO' })))
+            $lines.Add(("  Failure reason: {0}" -f $forcedFail.FailureReason))
+            $lines.Add(("  Failure reason code: {0}" -f $forcedFail.FailureReasonCode))
+            $lines.Add(("  Wait: {0}s" -f $forcedFail.WaitSeconds))
+            $lines.Add(("  Marker resolved: {0}" -f $(if ($forcedFail.MarkerResolved) { 'YES' } else { 'NO' })))
+            $lines.Add(("  Marker closest distance: {0}" -f $forcedFail.ClosestDistance))
+            $lines.Add(("  Marker pass distance: {0}" -f $forcedFail.PassDistance))
+            $lines.Add(("  Marker fail distance: {0}" -f $forcedFail.FailDistance))
+            $lines.Add(("  Expected signature: {0}" -f $forcedFail.ExpectedSignature))
+            $lines.Add(("  Observed signature: {0}" -f $forcedFail.ObservedSignature))
+            $lines.Add(("  Screenshot: {0}" -f $forcedFail.ScreenshotPath))
+            $lines.Add(("  VBox log: {0}" -f $forcedFail.LogPath))
+        }
+    } finally {
+        Stop-VmIfRunning -Name $VmName
+        if ($restoreRelease) {
+            Invoke-ChildBuild -ExtraArguments @()
+        }
     }
 
-    if ([string]::IsNullOrWhiteSpace($DemoFilter)) {
-        $forcedFail = Invoke-RuntimeVerifyRun -Demo $runtimeDemos[0].Demo -DemoIndex ([int]$runtimeDemos[0].DemoIndex) -CorruptExpectation -ArtifactDir $artifactDir -Geometry $geometry -RenderMode $RenderMode -RenderStage $RenderStage -ReplayReportPath $replayReportPath
-        $artifactPaths.Add($forcedFail.ScreenshotPath)
-        $artifactPaths.Add($forcedFail.LogPath)
-        $summaryLines.Add(("Forced mismatch: {0} [{1}] (expected {2}; reason {3}; wait {4}s; marker {5}/{6}/{7}; exp {8} / obs {9})" -f $forcedFail.Status, (Get-RenderLabel -Mode $forcedFail.RenderMode -Stage $forcedFail.RenderStage), $forcedFail.ExpectedStatus, $forcedFail.FailureReason, $forcedFail.WaitSeconds, $forcedFail.ClosestDistance, $forcedFail.PassDistance, $forcedFail.FailDistance, $forcedFail.ExpectedSignature, $forcedFail.ObservedSignature))
-        $lines.Add('Forced mismatch demo')
-        $lines.Add(("  Demo: {0}" -f $forcedFail.Name))
-        $lines.Add(("  Render: {0}" -f (Get-RenderLabel -Mode $forcedFail.RenderMode -Stage $forcedFail.RenderStage)))
-        $lines.Add(("  Status: {0}" -f $forcedFail.Status))
-        $lines.Add(("  Expected status: {0}" -f $forcedFail.ExpectedStatus))
-        $lines.Add(("  Status match: {0}" -f $(if ($forcedFail.StatusMatched) { 'YES' } else { 'NO' })))
-        $lines.Add(("  Failure reason: {0}" -f $forcedFail.FailureReason))
-        $lines.Add(("  Failure reason code: {0}" -f $forcedFail.FailureReasonCode))
-        $lines.Add(("  Wait: {0}s" -f $forcedFail.WaitSeconds))
-        $lines.Add(("  Marker resolved: {0}" -f $(if ($forcedFail.MarkerResolved) { 'YES' } else { 'NO' })))
-        $lines.Add(("  Marker closest distance: {0}" -f $forcedFail.ClosestDistance))
-        $lines.Add(("  Marker pass distance: {0}" -f $forcedFail.PassDistance))
-        $lines.Add(("  Marker fail distance: {0}" -f $forcedFail.FailDistance))
-        $lines.Add(("  Expected signature: {0}" -f $forcedFail.ExpectedSignature))
-        $lines.Add(("  Observed signature: {0}" -f $forcedFail.ObservedSignature))
-        $lines.Add(("  Screenshot: {0}" -f $forcedFail.ScreenshotPath))
-        $lines.Add(("  VBox log: {0}" -f $forcedFail.LogPath))
-    }
-} finally {
-    Stop-VmIfRunning -Name $VmName
-    if ($restoreRelease) {
-        Invoke-ChildBuild -ExtraArguments @()
-    }
-}
-
-$statusMismatches = @($runtimeResults | Where-Object { -not $_.StatusMatched })
-if ($statusMismatches.Count -eq 1) {
-    $focusedRepro = ("powershell -ExecutionPolicy Bypass -File .\scripts\runtime-verify.ps1 -DemoFilter {0}" -f $statusMismatches[0].Id)
-    $lines.Add('')
-    $lines.Add('Focused repro')
-    $lines.Add(("  {0}" -f $focusedRepro))
-    $summaryLines.Add(("Focused repro: {0}" -f $focusedRepro))
-}
-
-Set-Content -LiteralPath $ReportPath -Encoding ascii -Value $lines
-
-if ($statusMismatches.Count -gt 0) {
-    $summary = @($statusMismatches | ForEach-Object { "{0} expected {1} but observed {2} ({3})" -f $_.Id, $_.ExpectedStatus, $_.Status, $_.FailureReason })
+    $statusMismatches = @($runtimeResults | Where-Object { -not $_.StatusMatched })
     if ($statusMismatches.Count -eq 1) {
-        $summary += ("Focused repro: powershell -ExecutionPolicy Bypass -File .\scripts\runtime-verify.ps1 -DemoFilter {0}" -f $statusMismatches[0].Id)
+        $focusedRepro = ("powershell -ExecutionPolicy Bypass -File .\scripts\runtime-verify.ps1 -DemoFilter {0}" -f $statusMismatches[0].Id)
+        $lines.Add('')
+        $lines.Add('Focused repro')
+        $lines.Add(("  {0}" -f $focusedRepro))
+        $summaryLines.Add(("Focused repro: {0}" -f $focusedRepro))
     }
-    throw ("Runtime verify status mismatches detected.`n{0}" -f ($summary -join [Environment]::NewLine))
+
+    if ($statusMismatches.Count -gt 0) {
+        $summary = @($statusMismatches | ForEach-Object { "{0} expected {1} but observed {2} ({3})" -f $_.Id, $_.ExpectedStatus, $_.Status, $_.FailureReason })
+        if ($statusMismatches.Count -eq 1) {
+            $summary += ("Focused repro: powershell -ExecutionPolicy Bypass -File .\scripts\runtime-verify.ps1 -DemoFilter {0}" -f $statusMismatches[0].Id)
+        }
+        throw ("Runtime verify status mismatches detected.`n{0}" -f ($summary -join [Environment]::NewLine))
+    }
+
+    $summaryLines.Insert(0, 'Status: PASS')
+} catch {
+    $status = 'FAIL'
+    $caughtException = $_
+    $failureKind = Get-VBoxFailureKind -Message $_.Exception.Message
+    $summaryLines.Insert(0, ("Error: {0}" -f $_.Exception.Message))
+    $summaryLines.Insert(0, ("Failure class: {0}" -f $failureKind))
+    $summaryLines.Insert(0, 'Status: FAIL')
+} finally {
+    $statusLines = New-Object 'System.Collections.Generic.List[string]'
+    $statusLines.Add(("Status: {0}" -f $status))
+    if ($status -ne 'PASS') {
+        $statusLines.Add(("Failure class: {0}" -f $failureKind))
+        $statusLines.Add(("Error: {0}" -f $caughtException.Exception.Message))
+    }
+    $statusLines.Add('')
+    for ($statusIndex = $statusLines.Count - 1; $statusIndex -ge 0; $statusIndex--) {
+        $lines.Insert(3, $statusLines[$statusIndex])
+    }
+
+    Set-Content -LiteralPath $ReportPath -Encoding ascii -Value $lines
+}
+
+if ($null -ne $caughtException) {
+    throw $caughtException
 }
 
 [pscustomobject]@{

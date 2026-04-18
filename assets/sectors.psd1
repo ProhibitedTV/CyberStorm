@@ -795,8 +795,8 @@
             @{ From = 'glide-return'; To = 'portal-plaza'; Subject = 'portal-arch'; Summary = 'The final glide points directly back into the portal silhouette.' }
         )
         CaptureAnchors = @{
-            Beauty = 'glade-attract-a'
-            Action = 'glade-attract-b'
+            Beauty = 'subgrid-attract-a'
+            Action = 'subgrid-attract-b'
         }
         Key = @(
             '18,4'

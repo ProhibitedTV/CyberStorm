@@ -168,7 +168,7 @@ Current scope and limits:
 - Banks are read-only.
 - Each bank currently loads into one destination segment, so each bank must fit within 64 KiB padded to sectors.
 - The bank loader assumes the same `18 sectors/track, 2 heads` floppy geometry as [src/boot.asm](../src/boot.asm).
-- The runtime currently loads both banks up front during `start`, but the build/report structure is still set up so later banks can be added without changing the boot sector.
+- The runtime currently loads all three banks up front during `start`, but the build/report structure is still set up so later banks can be added without changing the boot sector.
 
 ## 9. Extension Checklist
 
@@ -299,10 +299,10 @@ That signature is computed after every consumed demo action and compared against
 
 Its contract is:
 
-- use the release VM smoke lane's startup-frame capture for the BitRiver branding shot
-- use authored demo metadata from `assets\demos.psd1` for gameplay/hazard/elite-pressure capture roles
-- use runtime verification pass/fail scenes for ending/technical proof shots
+- use the release VM smoke lane's title-frame capture for the branding shot
+- use the configured AdventureRealm beauty/action anchors from `assets\sectors.psd1` for the public gameplay captures (currently `subgrid-attract-a` / `subgrid-attract-b`)
 - write stable captures under `build\showcase\`
-- let `build.ps1` rotate README screenshots from those deterministic captures when they are present
+- publish a machine-readable verified-gallery manifest under `build\showcase\`
+- let `build.ps1` refresh the README slots from that manifest when capture succeeds, or preserve the last verified gallery when capture is unavailable
 
 This keeps the README/gallery reproducible instead of depending on hand-captured incidental screenshots.

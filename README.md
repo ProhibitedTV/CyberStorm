@@ -33,14 +33,14 @@
 
 ## Visual Gallery
 
-The README gallery is intentionally small. The build maintains three stable slots so the page stays curated instead of turning into a screenshot dump.
+The README gallery is intentionally small. The build maintains three verified public slots so the page stays curated instead of turning into a screenshot dump, and it preserves the last verified set when local capture is unavailable.
 
 | Title / Identity | Realm Beauty | Gameplay Action |
 | --- | --- | --- |
 | ![CyberStorm title shot](build/readme-shot-1.png) | ![CyberStorm gameplay shot](build/readme-shot-2.png) | ![CyberStorm payoff shot](build/readme-shot-3.png) |
 | The first shot should immediately communicate "bootable bare-metal game" through the title. | The middle shot should sell the realm silhouette, horizon, and toy-like prop language. | The last shot should show the runner, foes, and objective state in one readable action frame. |
 
-If you want the build to auto-pick better captures, name files with tags like `*-title-*`, `*-gameplay-*`, `*-hazard-*`, `*-elite-*`, `*-ending-*`, or `*-technical-*`.
+The gallery now comes only from the verified showcase manifest under [build/showcase/](build/showcase), not from ad hoc filename heuristics or incidental screenshots.
 
 ## How It Works
 
@@ -50,7 +50,7 @@ CyberStorm is small enough to inspect, but it is no longer a single opaque assem
 
 ![CyberStorm boot flow](docs/readme/boot-flow.svg)
 
-The boot sector at `LBA 0` loads stage two from `LBA 1..95` into `1000:0000`, then stage two loads the map bank from `LBA 96..103` into `7000:0000`, the presentation bank from `LBA 104..142` into `7800:0000`, and the geometry bank from `LBA 143..149` into `8000:0000` before entering VGA gameplay.
+The boot sector at `LBA 0` loads stage two into `1000:0000`, then stage two loads the map, presentation, and geometry banks into `7000:0000`, `7800:0000`, and `8000:0000` before entering VGA gameplay. The exact current sector ranges live in [build/cyberstorm-build-report.txt](build/cyberstorm-build-report.txt).
 
 ### Runtime Layout
 
@@ -111,19 +111,16 @@ If you leave the title screen alone for a few seconds, CyberStorm now auto-start
 
 ## Technical Facts
 
-These values come from the current [build/cyberstorm-build-report.txt](build/cyberstorm-build-report.txt).
+This section is intentionally stable. Exact byte counts, LBA ranges, and generated-content totals now live in the current [build/cyberstorm-build-report.txt](build/cyberstorm-build-report.txt) instead of being hardcoded here.
 
-| Fact | Current build |
+| Fact | Project contract |
 | --- | --- |
-| Boot code | `132 / 510` bytes |
-| Stage two | `48158` bytes across `95` sectors |
-| Banked payloads | maps `3780` bytes across `8` sectors, presentation `19968` bytes across `39` sectors, geometry `3234` bytes across `7` sectors |
-| Bank LBA ranges | map `96..103`, presentation `104..142`, geometry `143..149` |
-| Content set | `3` sectors, `9` maps, `9` breach scenarios, `3` demos, `5` music themes, `13` presentation assets, `7` geometry scenes, `21` scene groups, `14` meshes, `3` gameplay kits |
-| Balance sweep | `36` deterministic scenarios |
-| Release audio policy | `MUSIC` by default |
-| Video target | `320x200x256` in VGA mode `13h` |
-| Runtime model | Single-segment `16-bit` real mode with grouped low-poly scenes and a camera-relative gameplay-room 3D renderer |
+| Boot path | Boot sector at `LBA 0`, stage two loaded to `1000:0000`, then the runtime enters raw VGA without DOS. |
+| Stage-two contract | Stage two still fits a single `64 KiB` real-mode load segment, with exact current headroom reported by the build. |
+| Banked payloads | Map, presentation, and geometry payloads load into `7000:0000`, `7800:0000`, and `8000:0000`. |
+| Public gallery | `title`, `beauty`, and `action` README slots are sourced from the verified showcase manifest under [build/showcase/](build/showcase). |
+| Validation stack | Build, balance, replay, regression, frontend verify, VM smoke, runtime verify, and showcase capture all write reviewable reports. |
+| Release defaults | `MUSIC` audio policy, `320x200x256` VGA mode `13h`, grouped low-poly scenes, and camera-relative gameplay-room 3D rendering. |
 
 ## Why This Is A Strong AI-Assisted Development Example
 
@@ -341,10 +338,10 @@ powershell -ExecutionPolicy Bypass -File .\scripts\build.ps1 -CaptureShowcase
 
 This turns deterministic demos into reproducible public-facing captures:
 
-- a release branding shot from the VM smoke startup frame
-- curated gameplay, hazard, and elite-pressure demo shots from authored demos
-- technical proof shots from the replay verification pass/fail scenes
-- stable output under `build/showcase/` so the README gallery can come from deterministic captures instead of incidental screenshots
+- a verified `title` shot from the VM smoke title frame
+- a verified `beauty` shot from the configured AdventureRealm beauty anchor in `assets/sectors.psd1` (currently `subgrid-attract-a`)
+- a verified `action` shot from the configured AdventureRealm action anchor in `assets/sectors.psd1` (currently `subgrid-attract-b`)
+- a machine-readable gallery manifest under `build/showcase/` so the README can publish fresh captures or preserve the last verified set without rotating manual screenshots
 
 Artifacts:
 
@@ -385,6 +382,7 @@ CyberStorm now has a layered confidence model:
 - [build/cyberstorm-vm-smoke-report.txt](build/cyberstorm-vm-smoke-report.txt)
 - [build/cyberstorm-runtime-verify-report.txt](build/cyberstorm-runtime-verify-report.txt)
 - [build/cyberstorm-showcase-report.txt](build/cyberstorm-showcase-report.txt)
+- [build/showcase/verified-gallery.json](build/showcase/verified-gallery.json)
 - [build/boot.lst](build/boot.lst)
 - [build/game.lst](build/game.lst)
 - [build/debug_config.inc](build/debug_config.inc)

@@ -36,6 +36,8 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+. (Join-Path $PSScriptRoot 'showcase-gallery-common.ps1')
+
 if ($ExperimentalMusic.IsPresent -and $SfxOnly.IsPresent) {
     throw 'Use either -ExperimentalMusic (legacy alias) or -SfxOnly, not both.'
 }
@@ -4365,13 +4367,18 @@ function Sync-ReadmeScreenshots {
         [int]$PoolKeepCount,
         [int]$ReadmeSlotCount,
         [string]$ReadmeSlotPrefix,
-        [string]$ShowcaseDir
+        [string]$ShowcaseDir,
+        [ValidateSet('fresh', 'skipped', 'failed')]
+        [string]$ShowcaseStatus,
+        [string]$ShowcaseFailureReason,
+        [string]$ShowcaseReportPath
     )
 
     Assert-PathExists -Path $BuildDir -Label 'build directory'
 
     $rotationStatePath = Join-Path $BuildDir 'readme-screenshot-rotation.txt'
-    $slotNames = 1..$ReadmeSlotCount | ForEach-Object { "{0}{1}.png" -f $ReadmeSlotPrefix, $_ }
+    $slotDefinitions = @((Get-ShowcaseGallerySlotDefinitions) | Select-Object -First $ReadmeSlotCount)
+    $slotNames = @($slotDefinitions | ForEach-Object { $_.ReadmeSlot })
     $slotSet = New-Object 'System.Collections.Generic.HashSet[string]' ([System.StringComparer]::OrdinalIgnoreCase)
     foreach ($slotName in $slotNames) {
         $null = $slotSet.Add($slotName)
@@ -4394,221 +4401,115 @@ function Sync-ReadmeScreenshots {
         $sourceScreenshots = @($sourceScreenshots | Select-Object -First $PoolKeepCount)
     }
 
-    $galleryCandidates = @($sourceScreenshots | Where-Object { $_.Length -ge 3000 })
-    if ($galleryCandidates.Count -eq 0) {
-        $galleryCandidates = $sourceScreenshots
-    }
+    $manifestPath = Get-ShowcaseGalleryManifestPath -ShowcaseDir $ShowcaseDir
+    $slotSummary = New-Object 'System.Collections.Generic.List[string]'
+    $manifest = Read-ShowcaseGalleryManifest -ManifestPath $manifestPath
 
-    function Get-ScreenshotTags {
-        param([string]$Name)
-
-        $stem = [IO.Path]::GetFileNameWithoutExtension($Name).ToLowerInvariant()
-        $tags = New-Object 'System.Collections.Generic.List[string]'
-
-        if ($stem -match '(title|splash|boot|bitriver|intro)') { $tags.Add('title') }
-        if ($stem -match '(gameplay|sector|run|combat|hud|map)') { $tags.Add('gameplay') }
-        if ($stem -match '(hazard|surge|terminal|spoof|shard|emp|pulse|trap)') { $tags.Add('hazard') }
-        if ($stem -match '(elite|warden|flanker|hunter|enemy|pressure)') { $tags.Add('elite') }
-        if ($stem -match '(ending|win|lose|gate|unlock|transition|victory|defeat)') { $tags.Add('ending') }
-        if ($stem -match '(debug|overlay|pipeline|asset|bank|memory|module|technical|report)') { $tags.Add('technical') }
-
-        if ($tags.Count -eq 0) {
-            $tags.Add('uncategorized')
-        }
-
-        return @($tags)
-    }
-
-    function Get-PreferredScreenshotCandidate {
-        param(
-            [object[]]$Candidates,
-            [string[]]$PreferenceOrder,
-            [int]$RotationIndex
-        )
-
-        if ($Candidates.Count -eq 0) {
-            return $null
-        }
-
-        $ranked = foreach ($candidate in $Candidates) {
-            $rank = $PreferenceOrder.Count
-            for ($preferenceIndex = 0; $preferenceIndex -lt $PreferenceOrder.Count; $preferenceIndex++) {
-                if (@($candidate.Tags) -contains $PreferenceOrder[$preferenceIndex]) {
-                    $rank = $preferenceIndex
-                    break
-                }
-            }
-
-            [pscustomobject]@{
-                Candidate = $candidate
-                Rank = $rank
-            }
-        }
-
-        $bestRank = ($ranked | Measure-Object -Property Rank -Minimum).Minimum
-        $bestCandidates = @(
-            $ranked |
-                Where-Object { $_.Rank -eq $bestRank } |
-                Sort-Object -Property @{ Expression = { $_.Candidate.File.LastWriteTimeUtc }; Descending = $true }, @{ Expression = { $_.Candidate.File.Name }; Descending = $false }
-        )
-
-        $selectedIndex = $RotationIndex % $bestCandidates.Count
-        return $bestCandidates[$selectedIndex].Candidate
-    }
-
-    $galleryMetadata = @(
-        foreach ($candidate in $galleryCandidates) {
-            [pscustomobject]@{
-                File = $candidate
-                Tags = @(Get-ScreenshotTags -Name $candidate.Name)
-            }
-        }
-    )
-
-    $showcaseSummary = New-Object 'System.Collections.Generic.List[string]'
-    if (-not [string]::IsNullOrWhiteSpace($ShowcaseDir) -and (Test-Path -LiteralPath $ShowcaseDir)) {
-        $showcaseSlots = @(
-            [pscustomobject]@{
-                Label = 'title'
-                Candidates = @('showcase-title.png')
-            },
-            [pscustomobject]@{
-                Label = 'beauty'
-                Candidates = @('showcase-beauty.png')
-            },
-            [pscustomobject]@{
-                Label = 'action'
-                Candidates = @('showcase-action.png')
-            }
-        )
-
-        $showcaseAvailable = $true
-        $resolvedShowcaseSlots = New-Object 'System.Collections.Generic.List[object]'
-        for ($slotIndex = 0; $slotIndex -lt [Math]::Min($ReadmeSlotCount, $showcaseSlots.Count); $slotIndex++) {
-            $slotName = $slotNames[$slotIndex]
-            $slotConfig = $showcaseSlots[$slotIndex]
-            $candidatePath = $null
-            foreach ($candidateName in @($slotConfig.Candidates)) {
-                $candidateFullPath = Join-Path $ShowcaseDir $candidateName
-                if (Test-Path -LiteralPath $candidateFullPath) {
-                    $candidatePath = $candidateFullPath
-                    break
-                }
-            }
-
-            if ($null -eq $candidatePath) {
-                $showcaseAvailable = $false
-                break
-            }
-
-            $resolvedShowcaseSlots.Add([pscustomobject]@{
-                SlotName = $slotName
-                Label = $slotConfig.Label
-                CandidatePath = $candidatePath
-            })
-        }
-
-        if ($showcaseAvailable) {
-            foreach ($resolvedSlot in $resolvedShowcaseSlots) {
-                $slotPath = Join-Path $BuildDir $resolvedSlot.SlotName
-                Copy-Item -LiteralPath $resolvedSlot.CandidatePath -Destination $slotPath -Force
-                $showcaseSummary.Add(("{0} [{1}] <- {2}" -f $resolvedSlot.SlotName, $resolvedSlot.Label, ([IO.Path]::GetFileName($resolvedSlot.CandidatePath))))
-            }
-            Set-Content -LiteralPath $rotationStatePath -Encoding ascii -Value '0'
-            return [pscustomobject]@{
-                RotationStatePath = $rotationStatePath
-                SourceCount = $sourceScreenshots.Count
-                RemovedCount = $removed.Count
-                RemovedNames = @($removed)
-                ReadmeSlots = @($showcaseSummary)
-            }
-        }
-    }
-
-    $preservedSlots = New-Object 'System.Collections.Generic.List[string]'
-    foreach ($slotName in $slotNames) {
-        $slotPath = Join-Path $BuildDir $slotName
-        if (Test-Path -LiteralPath $slotPath) {
-            Remove-Item -LiteralPath $slotPath -Force
-            $preservedSlots.Add(("{0} [cleared] <- showcase capture incomplete; public slot removed until verified title/beauty/action captures exist" -f $slotName))
+    if ($ShowcaseStatus -ne 'fresh') {
+        $effectiveFailureReason = if (-not [string]::IsNullOrWhiteSpace($ShowcaseFailureReason)) {
+            $ShowcaseFailureReason
+        } elseif ($ShowcaseStatus -eq 'failed') {
+            'Verified showcase capture failed for this build.'
         } else {
-            $preservedSlots.Add(("{0} [missing] <- showcase capture incomplete; refusing to rotate debug or manual frames into public slots" -f $slotName))
+            'Verified showcase capture was skipped for this build.'
+        }
+
+        $manifest = Convert-ShowcaseGalleryManifestToState `
+            -Manifest $manifest `
+            -Status $(if (Test-ShowcaseGalleryManifestUsable -Manifest $manifest) { 'stale' } else { 'missing' }) `
+            -FailureReason $effectiveFailureReason `
+            -ReportPath $ShowcaseReportPath
+        Write-ShowcaseGalleryManifest -ManifestPath $manifestPath -Manifest $manifest
+    } elseif (-not (Test-ShowcaseGalleryManifestUsable -Manifest $manifest)) {
+        $manifest = Convert-ShowcaseGalleryManifestToState `
+            -Manifest $manifest `
+            -Status 'missing' `
+            -FailureReason 'Verified showcase capture did not produce a complete gallery manifest.' `
+            -ReportPath $ShowcaseReportPath
+        Write-ShowcaseGalleryManifest -ManifestPath $manifestPath -Manifest $manifest
+    }
+
+    $compactFailureReason = $null
+    if ($null -ne $manifest -and -not [string]::IsNullOrWhiteSpace([string]$manifest.failureReason)) {
+        $compactFailureReason = ((([string]$manifest.failureReason) -replace '\r?\n+', ' | ') -replace '\s{2,}', ' ').Trim()
+    }
+
+    $galleryStatus = if ($null -eq $manifest) { 'missing' } else { [string]$manifest.status }
+    $slotSummary.Add(("Gallery: {0}" -f $galleryStatus))
+    $slotSummary.Add(("Manifest: {0}" -f $manifestPath))
+    if (-not [string]::IsNullOrWhiteSpace($compactFailureReason)) {
+        $slotSummary.Add(("Reason: {0}" -f $compactFailureReason))
+    }
+
+    $preservedGallery = $false
+    if (Test-ShowcaseGalleryManifestUsable -Manifest $manifest) {
+        $preservedGallery = ($galleryStatus -eq 'stale')
+        foreach ($slotDefinition in @($slotDefinitions)) {
+            $slotRecord = Get-ShowcaseGallerySlotRecord -Manifest $manifest -Slot $slotDefinition.Slot
+            $slotPath = Join-Path $BuildDir ([string]$slotRecord.readmeSlot)
+            Copy-Item -LiteralPath ([string]$slotRecord.sourceArtifactPath) -Destination $slotPath -Force
+            $slotSummary.Add(("{0} [{1}/{2}] <- {3} ({4})" -f [string]$slotRecord.readmeSlot, [string]$slotRecord.slot, [string]$slotRecord.freshness, ([IO.Path]::GetFileName([string]$slotRecord.sourceArtifactPath)), [string]$slotRecord.sourceId))
+        }
+    } else {
+        foreach ($slotDefinition in @($slotDefinitions)) {
+            $slotPath = Join-Path $BuildDir $slotDefinition.ReadmeSlot
+            if (Test-Path -LiteralPath $slotPath) {
+                Remove-Item -LiteralPath $slotPath -Force
+            }
+            $slotSummary.Add(("{0} [missing] <- no verified {1} capture is available" -f $slotDefinition.ReadmeSlot, $slotDefinition.Slot))
         }
     }
+
     Set-Content -LiteralPath $rotationStatePath -Encoding ascii -Value '0'
     return [pscustomobject]@{
         RotationStatePath = $rotationStatePath
         SourceCount = $sourceScreenshots.Count
         RemovedCount = $removed.Count
         RemovedNames = @($removed)
-        ReadmeSlots = @($preservedSlots)
+        ReadmeSlots = @($slotSummary)
+        GalleryStatus = $galleryStatus
+        GalleryManifestPath = $manifestPath
+        GalleryFailureReason = if ($null -eq $manifest) { $null } else { $compactFailureReason }
+        PreservedGallery = $preservedGallery
+    }
+}
+
+function Get-ShowcaseReportSummaryLines {
+    param([string]$ReportPath)
+
+    if (-not (Test-Path -LiteralPath $ReportPath)) {
+        return @('Status: FAIL', 'Failure reason: showcase report was not written.')
     }
 
-    $slotTaxonomy = @(
-        [pscustomobject]@{
-            Label = 'title'
-            PreferenceOrder = @('title', 'gameplay', 'technical', 'hazard', 'elite', 'ending', 'uncategorized')
-        }
-        [pscustomobject]@{
-            Label = 'gameplay'
-            PreferenceOrder = @('gameplay', 'hazard', 'elite', 'title', 'technical', 'ending', 'uncategorized')
-        }
-        [pscustomobject]@{
-            Label = 'payoff'
-            PreferenceOrder = @('ending', 'hazard', 'elite', 'technical', 'gameplay', 'title', 'uncategorized')
-        }
+    $interestingPrefixes = @(
+        'Status:',
+        'Failure class:',
+        'Gallery freshness:',
+        'Gallery manifest:',
+        'Preserved gallery:',
+        'Failure reason:'
     )
 
-    $rotationIndex = 0
-    if (Test-Path -LiteralPath $rotationStatePath) {
-        $rawRotation = (Get-Content -LiteralPath $rotationStatePath -Raw).Trim()
-        if ($rawRotation -match '^\d+$') {
-            $rotationIndex = [int]$rawRotation
+    $summaryLines = New-Object 'System.Collections.Generic.List[string]'
+    foreach ($reportLine in @(Get-Content -LiteralPath $ReportPath)) {
+        $trimmedLine = $reportLine.Trim()
+        if ([string]::IsNullOrWhiteSpace($trimmedLine)) {
+            continue
         }
-    }
 
-    $slotSummary = New-Object 'System.Collections.Generic.List[string]'
-    $usedSourcePaths = New-Object 'System.Collections.Generic.HashSet[string]' ([System.StringComparer]::OrdinalIgnoreCase)
-
-    if ($sourceScreenshots.Count -eq 0) {
-        foreach ($slotName in $slotNames) {
-            $slotPath = Join-Path $BuildDir $slotName
-            if (Test-Path -LiteralPath $slotPath) {
-                Remove-Item -LiteralPath $slotPath -Force
-                $removed.Add($slotName)
+        foreach ($prefix in $interestingPrefixes) {
+            if ($trimmedLine.StartsWith($prefix, [System.StringComparison]::OrdinalIgnoreCase)) {
+                $summaryLines.Add($trimmedLine)
+                break
             }
         }
-
-        Set-Content -LiteralPath $rotationStatePath -Encoding ascii -Value '0'
-    } else {
-        for ($slotIndex = 0; $slotIndex -lt $ReadmeSlotCount; $slotIndex++) {
-            $slotConfig = if ($slotIndex -lt $slotTaxonomy.Count) { $slotTaxonomy[$slotIndex] } else { $slotTaxonomy[$slotTaxonomy.Count - 1] }
-            $availableCandidates = @($galleryMetadata | Where-Object { -not $usedSourcePaths.Contains($_.File.FullName) })
-            if ($availableCandidates.Count -eq 0) {
-                $availableCandidates = $galleryMetadata
-            }
-
-            $sourceShot = Get-PreferredScreenshotCandidate `
-                -Candidates $availableCandidates `
-                -PreferenceOrder $slotConfig.PreferenceOrder `
-                -RotationIndex ($rotationIndex + $slotIndex)
-            $slotName = $slotNames[$slotIndex]
-            $slotPath = Join-Path $BuildDir $slotName
-            Copy-Item -LiteralPath $sourceShot.File.FullName -Destination $slotPath -Force
-            $null = $usedSourcePaths.Add($sourceShot.File.FullName)
-            $slotSummary.Add(("{0} [{1}] <- {2}" -f $slotName, $slotConfig.Label, $sourceShot.File.Name))
-        }
-
-        Set-Content -LiteralPath $rotationStatePath -Encoding ascii -Value ($rotationIndex + 1)
     }
 
-    return [pscustomobject]@{
-        RotationStatePath = $rotationStatePath
-        SourceCount = $sourceScreenshots.Count
-        RemovedCount = $removed.Count
-        RemovedNames = @($removed)
-        ReadmeSlots = @($slotSummary)
+    if ($summaryLines.Count -eq 0) {
+        return @('Status: FAIL', 'Failure reason: showcase report did not include a summary block.')
     }
+
+    return $summaryLines.ToArray()
 }
 
 function Write-BuildReport {
@@ -5600,20 +5501,35 @@ foreach ($runtimeVerifyLine in $runtimeVerifyLines) {
 }
 
 $showcaseArtifacts = @()
-$showcaseSourceSelection = 'Selection: branding uses the title screen, and beauty/action use authored Campaign district capture anchors so public shots come from curated in-engine demos rather than ad hoc debug frames.'
+$showcaseSourceSelection = 'Selection: the public gallery uses verified title, beauty, and action slots sourced from the VM smoke title frame plus the configured AdventureRealm beauty/action anchors in assets/sectors.psd1.'
+$showcaseSyncStatus = 'skipped'
+$showcaseSyncReason = 'Verified showcase capture was skipped for this build.'
+$showcaseFailure = $null
 if ($CaptureShowcase.IsPresent) {
-    $showcaseResult = & $showcaseCaptureScript `
-        -Assembler $Assembler `
-        -AssemblerPath $AssemblerPath `
-        -MasmPath $MasmPath `
-        -SfxOnly:$SfxOnly.IsPresent `
-        -VmName 'CyberStorm' `
-        -ReportPath $showcaseReportPath
-    $showcaseCaptureLines = @(
-        ("Report: {0}" -f $showcaseResult.ReportPath)
-        $showcaseSourceSelection
-    ) + @($showcaseResult.SummaryLines)
-    $showcaseArtifacts = @($showcaseResult.ArtifactPaths)
+    try {
+        $showcaseResult = & $showcaseCaptureScript `
+            -Assembler $Assembler `
+            -AssemblerPath $AssemblerPath `
+            -MasmPath $MasmPath `
+            -SfxOnly:$SfxOnly.IsPresent `
+            -VmName 'CyberStorm' `
+            -ReportPath $showcaseReportPath
+        $showcaseSyncStatus = 'fresh'
+        $showcaseSyncReason = $null
+        $showcaseCaptureLines = @(
+            ("Report: {0}" -f $showcaseResult.ReportPath)
+            $showcaseSourceSelection
+        ) + @($showcaseResult.SummaryLines)
+        $showcaseArtifacts = @($showcaseResult.ArtifactPaths)
+    } catch {
+        $showcaseSyncStatus = 'failed'
+        $showcaseSyncReason = $_.Exception.Message
+        $showcaseFailure = $_
+        $showcaseCaptureLines = @(
+            ("Report: {0}" -f $showcaseReportPath)
+            $showcaseSourceSelection
+        ) + @(Get-ShowcaseReportSummaryLines -ReportPath $showcaseReportPath)
+    }
 } else {
     $showcaseCaptureLines = @(
         'Status: skipped (use -CaptureShowcase to generate deterministic title/beauty/action screenshots).'
@@ -5633,8 +5549,31 @@ foreach ($showcaseLine in $showcaseCaptureLines) {
     Write-Host $showcaseLine
 }
 
-$screenshotSync = Sync-ReadmeScreenshots -BuildDir $buildDir -PoolKeepCount $screenshotPoolKeepCount -ReadmeSlotCount $readmeScreenshotCount -ReadmeSlotPrefix $readmeScreenshotPrefix -ShowcaseDir (Join-Path $buildDir 'showcase')
-$screenshotHousekeepingText = ("kept {0} source screenshots, removed {1}, README slots now follow the verified showcase-only policy" -f $screenshotSync.SourceCount, $screenshotSync.RemovedCount)
+$screenshotSync = Sync-ReadmeScreenshots `
+    -BuildDir $buildDir `
+    -PoolKeepCount $screenshotPoolKeepCount `
+    -ReadmeSlotCount $readmeScreenshotCount `
+    -ReadmeSlotPrefix $readmeScreenshotPrefix `
+    -ShowcaseDir (Join-Path $buildDir 'showcase') `
+    -ShowcaseStatus $showcaseSyncStatus `
+    -ShowcaseFailureReason $showcaseSyncReason `
+    -ShowcaseReportPath $showcaseReportPath
+$publishedReadmeScreenshotArtifacts = @($readmeScreenshotArtifacts | Where-Object { Test-Path -LiteralPath $_ })
+$screenshotHousekeepingText = ("kept {0} source screenshots, removed {1}, public gallery status is {2}" -f $screenshotSync.SourceCount, $screenshotSync.RemovedCount, $screenshotSync.GalleryStatus)
+
+if ($showcaseSyncStatus -eq 'skipped') {
+    Set-Content -LiteralPath $showcaseReportPath -Encoding ascii -Value @(
+        'CyberStorm Showcase Capture Report'
+        ("Generated: {0}" -f (Get-Date -Format 'yyyy-MM-dd HH:mm:ss K'))
+        'Status: skipped'
+        ("Gallery freshness: {0}" -f $screenshotSync.GalleryStatus)
+        ("Gallery manifest: {0}" -f $screenshotSync.GalleryManifestPath)
+        ("Preserved gallery: {0}" -f $(if ($screenshotSync.PreservedGallery) { 'YES' } else { 'NO' }))
+        ("Failure reason: {0}" -f $screenshotSync.GalleryFailureReason)
+        $showcaseSourceSelection
+        'Run scripts/build.ps1 -CaptureShowcase or scripts/capture-showcase.ps1 to generate deterministic public-gallery screenshots.'
+    )
+}
 
 $bootStartOffset = Get-SymbolValue -ObjectModel $bootFlat.ObjectModel -Names @('start', '_start')
 $stageStartOffset = Get-SymbolValue -ObjectModel $gameFlat.ObjectModel -Names @('start', '_start')
@@ -5694,7 +5633,7 @@ Write-BuildReport `
     -BootStartOffset $bootStartOffset `
     -StageStartOffset $stageStartOffset `
     -Warnings $warnings `
-    -ArtifactPaths @($generatedArtPath, $generatedPresentationPath, $generatedGeometryPath, $generatedMachineCodePath, $generatedSectorContentPath, $generatedMapsPath, $generatedDemosPath, $generatedRuntimeVerifyPath, $generatedMusicPath, $machineCodeReportPath, $textureBankReportPath, $replayReportPath, $balanceReportPath, $regressionReportPath, $frontendVerifyReportPath, $vmSmokeReportPath, $runtimeVerifyReportPath, $showcaseReportPath, $generatedBankLayoutPath, $codeBankBinPath, $textureBankBinPath, $mapBankBinPath, $presentationBankBinPath, $geometryBankBinPath, $bootBinPath, $stage2BinPath, $bootList, $gameList, $bootConfig, $debugConfig, $audioConfig, $imgPath, $vfdPath) + $readmeScreenshotArtifacts + @($reportPath, $screenshotSync.RotationStatePath) + $frontendVerifyArtifacts + $vmSmokeArtifacts + $runtimeVerifyArtifacts + $showcaseArtifacts `
+    -ArtifactPaths @($generatedArtPath, $generatedPresentationPath, $generatedGeometryPath, $generatedMachineCodePath, $generatedSectorContentPath, $generatedMapsPath, $generatedDemosPath, $generatedRuntimeVerifyPath, $generatedMusicPath, $machineCodeReportPath, $textureBankReportPath, $replayReportPath, $balanceReportPath, $regressionReportPath, $frontendVerifyReportPath, $vmSmokeReportPath, $runtimeVerifyReportPath, $showcaseReportPath, $generatedBankLayoutPath, $codeBankBinPath, $textureBankBinPath, $mapBankBinPath, $presentationBankBinPath, $geometryBankBinPath, $bootBinPath, $stage2BinPath, $bootList, $gameList, $bootConfig, $debugConfig, $audioConfig, $imgPath, $vfdPath) + $publishedReadmeScreenshotArtifacts + @($reportPath, $screenshotSync.RotationStatePath, $screenshotSync.GalleryManifestPath) + $frontendVerifyArtifacts + $vmSmokeArtifacts + $runtimeVerifyArtifacts + $showcaseArtifacts `
     -Layout $layout
 
 Write-Section -Title 'Artifacts'
@@ -5724,7 +5663,7 @@ Write-Host ("Bank    {0}" -f $textureBankBinPath)
 Write-Host ("Bank    {0}" -f $mapBankBinPath)
 Write-Host ("Bank    {0}" -f $presentationBankBinPath)
 Write-Host ("Bank    {0}" -f $geometryBankBinPath)
-foreach ($readmeShot in $readmeScreenshotArtifacts) {
+foreach ($readmeShot in $publishedReadmeScreenshotArtifacts) {
     Write-Host ("Shot    {0}" -f $readmeShot)
 }
 Write-Host ("Listing {0}" -f $bootList)
@@ -5734,12 +5673,16 @@ Write-Host ("Config  {0}" -f $audioConfig)
 Write-Host ("Report  {0}" -f $reportPath)
 
 Write-Section -Title 'Screenshots'
-Write-Host ("Policy  : keep newest {0} source screenshots + {1} rotating README slots" -f $screenshotPoolKeepCount, $readmeScreenshotCount)
+Write-Host ("Policy  : keep newest {0} source screenshots + {1} verified README slots" -f $screenshotPoolKeepCount, $readmeScreenshotCount)
 Write-Host ("Status  : {0}" -f $screenshotHousekeepingText)
 if (@($screenshotSync.ReadmeSlots).Count -gt 0) {
     foreach ($slotLine in @($screenshotSync.ReadmeSlots)) {
         Write-Host ("README  : {0}" -f $slotLine)
     }
+}
+
+if ($null -ne $showcaseFailure) {
+    throw $showcaseFailure
 }
 
 Write-Section -Title 'Layout Summary'

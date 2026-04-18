@@ -36,7 +36,10 @@ IF DEBUG_RENDER_SENTINELS
     mov al, PAL_AMBER
     call draw_debug_render_sentinel_vga
 ENDIF
+    cmp byte ptr [splash_ticks], SPLASH_REVEAL_LOGO
+    jb draw_splash_scene_3d_ui_gate
     call draw_splash_brand_stack
+draw_splash_scene_3d_ui_gate:
     cmp byte ptr [splash_ticks], SPLASH_REVEAL_UI
     jb draw_splash_scene_3d_done
     call draw_splash_ui
@@ -58,10 +61,17 @@ draw_title_scene_3d:
     call fill_rect
 
     mov bx, 0
-    mov dx, 120
+    mov dx, 112
     mov cx, SCREEN_W
-    mov bp, 80
+    mov bp, 88
     mov al, PAL_BG0
+    call fill_rect
+
+    mov bx, 0
+    mov dx, 94
+    mov cx, SCREEN_W
+    mov bp, 1
+    mov al, PAL_CYAN
     call fill_rect
 
 IF DEBUG_RENDER_SENTINELS

@@ -1,4 +1,19 @@
 CyberStorm Frontend Verification Report
-Generated: 2026-04-18 17:01:36 -06:00
-Status: skipped
-Run scripts/build.ps1 -FrontendVerify or scripts/frontend-verify.ps1 to exercise the frontend trust verification lane.
+Generated: 2026-04-18 17:28:44 -06:00
+Constants source: C:\Users\RhythmicCarnage\Desktop\CyberStorm\scripts\..\src\game\constants.inc
+Status: FAIL
+Failure class: CONTENT
+Error: Frontend verify scenario 'TITLE TO START' never reached a verify scene after 14s.
+
+
+Scenario: SPLASH TO TITLE
+  Id: splash-to-title
+  Status: PASS
+  Wait: 8s
+  Expected terminal: TITLE
+  Observed terminal: TITLE
+  Expected signature: 0x0000
+  Observed signature: 0x0000
+  Screenshot: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\frontend-verify\frontend-verify-splash-to-title-pass.png
+  VBox log: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\frontend-verify\frontend-verify-splash-to-title-pass.log
+

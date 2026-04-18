@@ -404,7 +404,7 @@ text_msg_key      db 'KEYCARD CLAIMED. THE GATE CAN NOW UNSEAL.', 0
 
 splash_brand    db 'BITRIVER', 0
 splash_subtitle db 'SOFTWARE', 0
-splash_tagline  db 'INDUSTRIAL DISTRICTS. RAW VGA. NO HOST RUNTIME.', 0
+splash_tagline  db 0
 splash_run_prompt  db 'ENTER OR SPACE OPENS MENU', 0
 splash_skip_prompt db 'ANY OTHER KEY SKIPS', 0
 

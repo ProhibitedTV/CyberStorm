@@ -483,6 +483,9 @@ draw_splash_brand_stack:
     push dx
     push si
     push bp
+    mov al, [splash_ticks]
+    cmp al, SPLASH_REVEAL_LOGO
+    jb splash_brand_stack_done
     xor ax, ax
     mov al, [splash_ticks]
     cmp al, SPLASH_REVEAL_WORDMARK
@@ -495,82 +498,90 @@ draw_splash_brand_stack:
 
 splash_brand_lockup_ready:
     mov [scene3d_temp_s], ax
-    mov bx, 82
-    mov dx, 58
+    mov bx, 98
+    mov dx, 62
     add dx, [scene3d_temp_s]
-    mov cx, 156
-    mov bp, 30
-    mov al, PAL_PANEL
-    call fill_rect
-
-    mov bx, 80
-    mov dx, 56
-    add dx, [scene3d_temp_s]
-    mov cx, 160
-    mov bp, 34
+    mov cx, 124
+    mov bp, 1
     test byte ptr [anim_phase], 1
-    jz splash_brand_frame_dim
+    jz splash_brand_rule_dim
     mov al, PAL_CYAN2
-    jmp splash_brand_frame_ready
+    jmp splash_brand_rule_ready
 
-splash_brand_frame_dim:
+splash_brand_rule_dim:
     mov al, PAL_CYAN
 
-splash_brand_frame_ready:
-    call draw_rect_outline
+splash_brand_rule_ready:
+    call fill_rect
 
-    mov bx, 95
-    mov dx, 64
+    mov bx, 92
+    mov dx, 62
+    add dx, [scene3d_temp_s]
+    mov cx, 2
+    mov bp, 18
+    mov al, PAL_AMBER
+    call fill_rect
+
+    mov bx, 226
+    mov dx, 62
+    add dx, [scene3d_temp_s]
+    mov cx, 2
+    mov bp, 18
+    mov al, PAL_AMBER
+    call fill_rect
+
+    mov bx, 101
+    mov dx, 68
     add dx, [scene3d_temp_s]
     mov si, offset splash_brand
     mov ah, PAL_PANEL2
     call draw_text_big
 
-    mov bx, 94
-    mov dx, 63
+    mov bx, 100
+    mov dx, 67
     add dx, [scene3d_temp_s]
     mov si, offset splash_brand
     mov ah, PAL_WHITE
     call draw_text_big
 
+    mov bx, 96
+    mov dx, 84
+    add dx, [scene3d_temp_s]
+    mov cx, 128
+    mov bp, 1
+    mov al, PAL_WHITE
+    call fill_rect
+
     cmp byte ptr [splash_ticks], SPLASH_REVEAL_WORDMARK
     jb splash_brand_stack_done
 
-    mov bx, 116
-    mov dx, 86
+    mov bx, 108
+    mov dx, 88
     add dx, [scene3d_temp_s]
-    mov cx, 88
-    mov bp, 8
-    mov al, PAL_PANEL2
+    mov cx, 12
+    mov bp, 1
+    mov al, PAL_CYAN
     call fill_rect
 
-    mov bx, 114
-    mov dx, 84
+    mov bx, 200
+    mov dx, 88
     add dx, [scene3d_temp_s]
-    mov cx, 92
-    mov bp, 12
-    mov al, PAL_AMBER
-    call draw_rect_outline
+    mov cx, 12
+    mov bp, 1
+    mov al, PAL_CYAN
+    call fill_rect
 
     mov bx, 128
-    mov dx, 88
+    mov dx, 86
     add dx, [scene3d_temp_s]
     mov si, offset splash_subtitle
     mov ah, PAL_WHITE
     call draw_text_small
 
-    mov bx, 94
-    mov dx, 54
+    mov bx, 118
+    mov dx, 94
     add dx, [scene3d_temp_s]
-    mov cx, 132
-    mov bp, 1
-    mov al, PAL_WHITE
-    call fill_rect
-
-    mov bx, 110
-    mov dx, 97
-    add dx, [scene3d_temp_s]
-    mov cx, 100
+    mov cx, 84
     mov bp, 1
     mov al, PAL_AMBER
     call fill_rect
@@ -585,23 +596,17 @@ splash_brand_stack_done:
     ret
 
 draw_splash_ui:
-    mov bx, 53
-    mov dx, 126
-    mov si, offset splash_tagline
-    mov ah, PAL_CYAN
-    call draw_text_small
-
-    mov bx, 78
-    mov dx, 148
-    mov cx, 164
-    mov bp, 8
+    mov bx, 86
+    mov dx, 144
+    mov cx, 148
+    mov bp, 6
     mov al, PAL_PANEL2
     call fill_rect
 
-    mov bx, 76
-    mov dx, 146
-    mov cx, 168
-    mov bp, 12
+    mov bx, 84
+    mov dx, 142
+    mov cx, 152
+    mov bp, 10
     test byte ptr [anim_phase], 1
     jz splash_ui_frame_dim
     mov al, PAL_WHITE
@@ -618,16 +623,16 @@ splash_ui_frame_ready:
     mov cx, ax
     shl ax, 1
     add ax, cx
-    cmp ax, 160
+    cmp ax, 144
     jbe splash_bar_clamped
-    mov ax, 160
+    mov ax, 144
 
 splash_bar_clamped:
     mov cx, ax
     jcxz splash_ui_prompt
-    mov bx, 80
-    mov dx, 150
-    mov bp, 4
+    mov bx, 88
+    mov dx, 146
+    mov bp, 2
     test byte ptr [anim_phase], 1
     jz splash_bar_base
     mov al, PAL_WHITE
@@ -641,13 +646,13 @@ splash_bar_ready:
 
 splash_ui_prompt:
     mov bx, 79
-    mov dx, 166
+    mov dx, 161
     mov si, offset splash_run_prompt
     mov ah, PAL_WHITE
     call draw_text_small
 
     mov bx, 88
-    mov dx, 176
+    mov dx, 171
     mov si, offset splash_skip_prompt
     test byte ptr [anim_phase], 1
     jz splash_prompt_dim

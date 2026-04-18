@@ -4,44 +4,44 @@
 
 SCENE3D_SPLASH_INDEX EQU 0
 SCENE3D_SPLASH_VERTEX_OFFSET EQU 0
-SCENE3D_SPLASH_VERTEX_COUNT EQU 36
+SCENE3D_SPLASH_VERTEX_COUNT EQU 84
 SCENE3D_SPLASH_FACE_OFFSET EQU 96
-SCENE3D_SPLASH_FACE_COUNT EQU 18
+SCENE3D_SPLASH_FACE_COUNT EQU 46
 SCENE3D_SPLASH_VIEW_X EQU 0
 SCENE3D_SPLASH_VIEW_Y EQU 0
 SCENE3D_SPLASH_VIEW_W EQU 320
 SCENE3D_SPLASH_VIEW_H EQU 200
 SCENE3D_SPLASH_CAMERA_X EQU 0000h
-SCENE3D_SPLASH_CAMERA_Y EQU 014Dh
-SCENE3D_SPLASH_CAMERA_Z EQU 0F666h
-SCENE3D_SPLASH_YAW_BASE EQU 250
+SCENE3D_SPLASH_CAMERA_Y EQU 0126h
+SCENE3D_SPLASH_CAMERA_Z EQU 0F500h
+SCENE3D_SPLASH_YAW_BASE EQU 253
 SCENE3D_SPLASH_YAW_STEP EQU 0
 SCENE3D_SPLASH_PITCH_BASE EQU 247
 SCENE3D_SPLASH_PITCH_STEP EQU 0
-SCENE3D_SPLASH_PROJECT_SCALE EQU 124
+SCENE3D_SPLASH_PROJECT_SCALE EQU 118
 
 SCENE3D_TITLE_INDEX EQU 1
-SCENE3D_TITLE_VERTEX_OFFSET EQU 342
-SCENE3D_TITLE_VERTEX_COUNT EQU 24
-SCENE3D_TITLE_FACE_OFFSET EQU 390
-SCENE3D_TITLE_FACE_COUNT EQU 12
+SCENE3D_TITLE_VERTEX_OFFSET EQU 826
+SCENE3D_TITLE_VERTEX_COUNT EQU 60
+SCENE3D_TITLE_FACE_OFFSET EQU 922
+SCENE3D_TITLE_FACE_COUNT EQU 34
 SCENE3D_TITLE_VIEW_X EQU 0
 SCENE3D_TITLE_VIEW_Y EQU 0
 SCENE3D_TITLE_VIEW_W EQU 320
 SCENE3D_TITLE_VIEW_H EQU 200
 SCENE3D_TITLE_CAMERA_X EQU 0000h
-SCENE3D_TITLE_CAMERA_Y EQU 0100h
-SCENE3D_TITLE_CAMERA_Z EQU 0F866h
-SCENE3D_TITLE_YAW_BASE EQU 7
-SCENE3D_TITLE_YAW_STEP EQU 255
+SCENE3D_TITLE_CAMERA_Y EQU 00F3h
+SCENE3D_TITLE_CAMERA_Z EQU 0F71Ah
+SCENE3D_TITLE_YAW_BASE EQU 4
+SCENE3D_TITLE_YAW_STEP EQU 0
 SCENE3D_TITLE_PITCH_BASE EQU 249
 SCENE3D_TITLE_PITCH_STEP EQU 0
-SCENE3D_TITLE_PROJECT_SCALE EQU 112
+SCENE3D_TITLE_PROJECT_SCALE EQU 108
 
 SCENE3D_SECTOR1_INDEX EQU 2
-SCENE3D_SECTOR1_VERTEX_OFFSET EQU 570
+SCENE3D_SECTOR1_VERTEX_OFFSET EQU 1424
 SCENE3D_SECTOR1_VERTEX_COUNT EQU 16
-SCENE3D_SECTOR1_FACE_OFFSET EQU 594
+SCENE3D_SECTOR1_FACE_OFFSET EQU 1448
 SCENE3D_SECTOR1_FACE_COUNT EQU 8
 SCENE3D_SECTOR1_VIEW_X EQU 56
 SCENE3D_SECTOR1_VIEW_Y EQU 42
@@ -57,9 +57,9 @@ SCENE3D_SECTOR1_PITCH_STEP EQU 0
 SCENE3D_SECTOR1_PROJECT_SCALE EQU 98
 
 SCENE3D_SECTOR2_INDEX EQU 3
-SCENE3D_SECTOR2_VERTEX_OFFSET EQU 722
+SCENE3D_SECTOR2_VERTEX_OFFSET EQU 1576
 SCENE3D_SECTOR2_VERTEX_COUNT EQU 16
-SCENE3D_SECTOR2_FACE_OFFSET EQU 746
+SCENE3D_SECTOR2_FACE_OFFSET EQU 1600
 SCENE3D_SECTOR2_FACE_COUNT EQU 8
 SCENE3D_SECTOR2_VIEW_X EQU 56
 SCENE3D_SECTOR2_VIEW_Y EQU 42
@@ -75,9 +75,9 @@ SCENE3D_SECTOR2_PITCH_STEP EQU 0
 SCENE3D_SECTOR2_PROJECT_SCALE EQU 98
 
 SCENE3D_SECTOR3_INDEX EQU 4
-SCENE3D_SECTOR3_VERTEX_OFFSET EQU 874
+SCENE3D_SECTOR3_VERTEX_OFFSET EQU 1728
 SCENE3D_SECTOR3_VERTEX_COUNT EQU 16
-SCENE3D_SECTOR3_FACE_OFFSET EQU 898
+SCENE3D_SECTOR3_FACE_OFFSET EQU 1752
 SCENE3D_SECTOR3_FACE_COUNT EQU 8
 SCENE3D_SECTOR3_VIEW_X EQU 56
 SCENE3D_SECTOR3_VIEW_Y EQU 42
@@ -93,9 +93,9 @@ SCENE3D_SECTOR3_PITCH_STEP EQU 0
 SCENE3D_SECTOR3_PROJECT_SCALE EQU 102
 
 SCENE3D_WIN_INDEX EQU 5
-SCENE3D_WIN_VERTEX_OFFSET EQU 1026
+SCENE3D_WIN_VERTEX_OFFSET EQU 1880
 SCENE3D_WIN_VERTEX_COUNT EQU 16
-SCENE3D_WIN_FACE_OFFSET EQU 1050
+SCENE3D_WIN_FACE_OFFSET EQU 1904
 SCENE3D_WIN_FACE_COUNT EQU 8
 SCENE3D_WIN_VIEW_X EQU 0
 SCENE3D_WIN_VIEW_Y EQU 0
@@ -111,9 +111,9 @@ SCENE3D_WIN_PITCH_STEP EQU 0
 SCENE3D_WIN_PROJECT_SCALE EQU 104
 
 SCENE3D_LOSE_INDEX EQU 6
-SCENE3D_LOSE_VERTEX_OFFSET EQU 1178
+SCENE3D_LOSE_VERTEX_OFFSET EQU 2032
 SCENE3D_LOSE_VERTEX_COUNT EQU 16
-SCENE3D_LOSE_FACE_OFFSET EQU 1202
+SCENE3D_LOSE_FACE_OFFSET EQU 2056
 SCENE3D_LOSE_FACE_COUNT EQU 8
 SCENE3D_LOSE_VIEW_X EQU 0
 SCENE3D_LOSE_VIEW_Y EQU 0
@@ -129,213 +129,213 @@ SCENE3D_LOSE_PITCH_STEP EQU 0
 SCENE3D_LOSE_PROJECT_SCALE EQU 104
 
 GAME3D_MESH_GATE_VAULT_INDEX EQU 0
-GAME3D_MESH_GATE_VAULT_VERTEX_OFFSET EQU 1330
+GAME3D_MESH_GATE_VAULT_VERTEX_OFFSET EQU 2184
 GAME3D_MESH_GATE_VAULT_VERTEX_COUNT EQU 16
-GAME3D_MESH_GATE_VAULT_FACE_OFFSET EQU 1426
+GAME3D_MESH_GATE_VAULT_FACE_OFFSET EQU 2280
 GAME3D_MESH_GATE_VAULT_FACE_COUNT EQU 8
 
 GAME3D_MESH_GATE_FURNACE_INDEX EQU 1
-GAME3D_MESH_GATE_FURNACE_VERTEX_OFFSET EQU 1482
+GAME3D_MESH_GATE_FURNACE_VERTEX_OFFSET EQU 2336
 GAME3D_MESH_GATE_FURNACE_VERTEX_COUNT EQU 16
-GAME3D_MESH_GATE_FURNACE_FACE_OFFSET EQU 1578
+GAME3D_MESH_GATE_FURNACE_FACE_OFFSET EQU 2432
 GAME3D_MESH_GATE_FURNACE_FACE_COUNT EQU 8
 
 GAME3D_MESH_GATE_LOCK_INDEX EQU 2
-GAME3D_MESH_GATE_LOCK_VERTEX_OFFSET EQU 1634
+GAME3D_MESH_GATE_LOCK_VERTEX_OFFSET EQU 2488
 GAME3D_MESH_GATE_LOCK_VERTEX_COUNT EQU 16
-GAME3D_MESH_GATE_LOCK_FACE_OFFSET EQU 1730
+GAME3D_MESH_GATE_LOCK_FACE_OFFSET EQU 2584
 GAME3D_MESH_GATE_LOCK_FACE_COUNT EQU 8
 
 GAME3D_MESH_TERMINAL_VAULT_INDEX EQU 3
-GAME3D_MESH_TERMINAL_VAULT_VERTEX_OFFSET EQU 1786
+GAME3D_MESH_TERMINAL_VAULT_VERTEX_OFFSET EQU 2640
 GAME3D_MESH_TERMINAL_VAULT_VERTEX_COUNT EQU 12
-GAME3D_MESH_TERMINAL_VAULT_FACE_OFFSET EQU 1858
+GAME3D_MESH_TERMINAL_VAULT_FACE_OFFSET EQU 2712
 GAME3D_MESH_TERMINAL_VAULT_FACE_COUNT EQU 12
 
 GAME3D_MESH_TERMINAL_FURNACE_INDEX EQU 4
-GAME3D_MESH_TERMINAL_FURNACE_VERTEX_OFFSET EQU 1942
+GAME3D_MESH_TERMINAL_FURNACE_VERTEX_OFFSET EQU 2796
 GAME3D_MESH_TERMINAL_FURNACE_VERTEX_COUNT EQU 12
-GAME3D_MESH_TERMINAL_FURNACE_FACE_OFFSET EQU 2014
+GAME3D_MESH_TERMINAL_FURNACE_FACE_OFFSET EQU 2868
 GAME3D_MESH_TERMINAL_FURNACE_FACE_COUNT EQU 12
 
 GAME3D_MESH_TERMINAL_LOCK_INDEX EQU 5
-GAME3D_MESH_TERMINAL_LOCK_VERTEX_OFFSET EQU 2098
+GAME3D_MESH_TERMINAL_LOCK_VERTEX_OFFSET EQU 2952
 GAME3D_MESH_TERMINAL_LOCK_VERTEX_COUNT EQU 12
-GAME3D_MESH_TERMINAL_LOCK_FACE_OFFSET EQU 2170
+GAME3D_MESH_TERMINAL_LOCK_FACE_OFFSET EQU 3024
 GAME3D_MESH_TERMINAL_LOCK_FACE_COUNT EQU 12
 
 GAME3D_MESH_SURGE_VAULT_INDEX EQU 6
-GAME3D_MESH_SURGE_VAULT_VERTEX_OFFSET EQU 2254
+GAME3D_MESH_SURGE_VAULT_VERTEX_OFFSET EQU 3108
 GAME3D_MESH_SURGE_VAULT_VERTEX_COUNT EQU 9
-GAME3D_MESH_SURGE_VAULT_FACE_OFFSET EQU 2308
+GAME3D_MESH_SURGE_VAULT_FACE_OFFSET EQU 3162
 GAME3D_MESH_SURGE_VAULT_FACE_COUNT EQU 12
 
 GAME3D_MESH_SURGE_FURNACE_INDEX EQU 7
-GAME3D_MESH_SURGE_FURNACE_VERTEX_OFFSET EQU 2392
+GAME3D_MESH_SURGE_FURNACE_VERTEX_OFFSET EQU 3246
 GAME3D_MESH_SURGE_FURNACE_VERTEX_COUNT EQU 9
-GAME3D_MESH_SURGE_FURNACE_FACE_OFFSET EQU 2446
+GAME3D_MESH_SURGE_FURNACE_FACE_OFFSET EQU 3300
 GAME3D_MESH_SURGE_FURNACE_FACE_COUNT EQU 12
 
 GAME3D_MESH_SURGE_LOCK_INDEX EQU 8
-GAME3D_MESH_SURGE_LOCK_VERTEX_OFFSET EQU 2530
+GAME3D_MESH_SURGE_LOCK_VERTEX_OFFSET EQU 3384
 GAME3D_MESH_SURGE_LOCK_VERTEX_COUNT EQU 9
-GAME3D_MESH_SURGE_LOCK_FACE_OFFSET EQU 2584
+GAME3D_MESH_SURGE_LOCK_FACE_OFFSET EQU 3438
 GAME3D_MESH_SURGE_LOCK_FACE_COUNT EQU 12
 
 GAME3D_MESH_SHARD_VAULT_INDEX EQU 9
-GAME3D_MESH_SHARD_VAULT_VERTEX_OFFSET EQU 2668
+GAME3D_MESH_SHARD_VAULT_VERTEX_OFFSET EQU 3522
 GAME3D_MESH_SHARD_VAULT_VERTEX_COUNT EQU 10
-GAME3D_MESH_SHARD_VAULT_FACE_OFFSET EQU 2728
+GAME3D_MESH_SHARD_VAULT_FACE_OFFSET EQU 3582
 GAME3D_MESH_SHARD_VAULT_FACE_COUNT EQU 14
 
 GAME3D_MESH_SHARD_FURNACE_INDEX EQU 10
-GAME3D_MESH_SHARD_FURNACE_VERTEX_OFFSET EQU 2826
+GAME3D_MESH_SHARD_FURNACE_VERTEX_OFFSET EQU 3680
 GAME3D_MESH_SHARD_FURNACE_VERTEX_COUNT EQU 10
-GAME3D_MESH_SHARD_FURNACE_FACE_OFFSET EQU 2886
+GAME3D_MESH_SHARD_FURNACE_FACE_OFFSET EQU 3740
 GAME3D_MESH_SHARD_FURNACE_FACE_COUNT EQU 14
 
 GAME3D_MESH_SHARD_LOCK_INDEX EQU 11
-GAME3D_MESH_SHARD_LOCK_VERTEX_OFFSET EQU 2984
+GAME3D_MESH_SHARD_LOCK_VERTEX_OFFSET EQU 3838
 GAME3D_MESH_SHARD_LOCK_VERTEX_COUNT EQU 10
-GAME3D_MESH_SHARD_LOCK_FACE_OFFSET EQU 3044
+GAME3D_MESH_SHARD_LOCK_FACE_OFFSET EQU 3898
 GAME3D_MESH_SHARD_LOCK_FACE_COUNT EQU 14
 
 GAME3D_MESH_BEACON_EXIT_INDEX EQU 12
-GAME3D_MESH_BEACON_EXIT_VERTEX_OFFSET EQU 3142
+GAME3D_MESH_BEACON_EXIT_VERTEX_OFFSET EQU 3996
 GAME3D_MESH_BEACON_EXIT_VERTEX_COUNT EQU 9
-GAME3D_MESH_BEACON_EXIT_FACE_OFFSET EQU 3196
+GAME3D_MESH_BEACON_EXIT_FACE_OFFSET EQU 4050
 GAME3D_MESH_BEACON_EXIT_FACE_COUNT EQU 12
 
 GAME3D_MESH_BEACON_FOCUS_INDEX EQU 13
-GAME3D_MESH_BEACON_FOCUS_VERTEX_OFFSET EQU 3280
+GAME3D_MESH_BEACON_FOCUS_VERTEX_OFFSET EQU 4134
 GAME3D_MESH_BEACON_FOCUS_VERTEX_COUNT EQU 9
-GAME3D_MESH_BEACON_FOCUS_FACE_OFFSET EQU 3334
+GAME3D_MESH_BEACON_FOCUS_FACE_OFFSET EQU 4188
 GAME3D_MESH_BEACON_FOCUS_FACE_COUNT EQU 12
 
 GAME3D_MESH_BEACON_SPOOF_INDEX EQU 14
-GAME3D_MESH_BEACON_SPOOF_VERTEX_OFFSET EQU 3418
+GAME3D_MESH_BEACON_SPOOF_VERTEX_OFFSET EQU 4272
 GAME3D_MESH_BEACON_SPOOF_VERTEX_COUNT EQU 9
-GAME3D_MESH_BEACON_SPOOF_FACE_OFFSET EQU 3472
+GAME3D_MESH_BEACON_SPOOF_FACE_OFFSET EQU 4326
 GAME3D_MESH_BEACON_SPOOF_FACE_COUNT EQU 12
 
 GAME3D_MESH_BEACON_THREAT_INDEX EQU 15
-GAME3D_MESH_BEACON_THREAT_VERTEX_OFFSET EQU 3556
+GAME3D_MESH_BEACON_THREAT_VERTEX_OFFSET EQU 4410
 GAME3D_MESH_BEACON_THREAT_VERTEX_COUNT EQU 9
-GAME3D_MESH_BEACON_THREAT_FACE_OFFSET EQU 3610
+GAME3D_MESH_BEACON_THREAT_FACE_OFFSET EQU 4464
 GAME3D_MESH_BEACON_THREAT_FACE_COUNT EQU 12
 
 GAME3D_MESH_LANDMARK_VAULT_INDEX EQU 16
-GAME3D_MESH_LANDMARK_VAULT_VERTEX_OFFSET EQU 3694
+GAME3D_MESH_LANDMARK_VAULT_VERTEX_OFFSET EQU 4548
 GAME3D_MESH_LANDMARK_VAULT_VERTEX_COUNT EQU 11
-GAME3D_MESH_LANDMARK_VAULT_FACE_OFFSET EQU 3760
+GAME3D_MESH_LANDMARK_VAULT_FACE_OFFSET EQU 4614
 GAME3D_MESH_LANDMARK_VAULT_FACE_COUNT EQU 14
 
 GAME3D_MESH_LANDMARK_FURNACE_INDEX EQU 17
-GAME3D_MESH_LANDMARK_FURNACE_VERTEX_OFFSET EQU 3858
+GAME3D_MESH_LANDMARK_FURNACE_VERTEX_OFFSET EQU 4712
 GAME3D_MESH_LANDMARK_FURNACE_VERTEX_COUNT EQU 12
-GAME3D_MESH_LANDMARK_FURNACE_FACE_OFFSET EQU 3930
+GAME3D_MESH_LANDMARK_FURNACE_FACE_OFFSET EQU 4784
 GAME3D_MESH_LANDMARK_FURNACE_FACE_COUNT EQU 16
 
 GAME3D_MESH_LANDMARK_LOCK_INDEX EQU 18
-GAME3D_MESH_LANDMARK_LOCK_VERTEX_OFFSET EQU 4042
+GAME3D_MESH_LANDMARK_LOCK_VERTEX_OFFSET EQU 4896
 GAME3D_MESH_LANDMARK_LOCK_VERTEX_COUNT EQU 11
-GAME3D_MESH_LANDMARK_LOCK_FACE_OFFSET EQU 4108
+GAME3D_MESH_LANDMARK_LOCK_FACE_OFFSET EQU 4962
 GAME3D_MESH_LANDMARK_LOCK_FACE_COUNT EQU 14
 
 GAME3D_MESH_PORTAL_ARCH_INDEX EQU 19
-GAME3D_MESH_PORTAL_ARCH_VERTEX_OFFSET EQU 4206
+GAME3D_MESH_PORTAL_ARCH_VERTEX_OFFSET EQU 5060
 GAME3D_MESH_PORTAL_ARCH_VERTEX_COUNT EQU 16
-GAME3D_MESH_PORTAL_ARCH_FACE_OFFSET EQU 4302
+GAME3D_MESH_PORTAL_ARCH_FACE_OFFSET EQU 5156
 GAME3D_MESH_PORTAL_ARCH_FACE_COUNT EQU 8
 
 GAME3D_MESH_SWITCH_PEDESTAL_INDEX EQU 20
-GAME3D_MESH_SWITCH_PEDESTAL_VERTEX_OFFSET EQU 4358
+GAME3D_MESH_SWITCH_PEDESTAL_VERTEX_OFFSET EQU 5212
 GAME3D_MESH_SWITCH_PEDESTAL_VERTEX_COUNT EQU 11
-GAME3D_MESH_SWITCH_PEDESTAL_FACE_OFFSET EQU 4424
+GAME3D_MESH_SWITCH_PEDESTAL_FACE_OFFSET EQU 5278
 GAME3D_MESH_SWITCH_PEDESTAL_FACE_COUNT EQU 14
 
 GAME3D_MESH_LAVA_VENT_INDEX EQU 21
-GAME3D_MESH_LAVA_VENT_VERTEX_OFFSET EQU 4522
+GAME3D_MESH_LAVA_VENT_VERTEX_OFFSET EQU 5376
 GAME3D_MESH_LAVA_VENT_VERTEX_COUNT EQU 9
-GAME3D_MESH_LAVA_VENT_FACE_OFFSET EQU 4576
+GAME3D_MESH_LAVA_VENT_FACE_OFFSET EQU 5430
 GAME3D_MESH_LAVA_VENT_FACE_COUNT EQU 12
 
 GAME3D_MESH_GEM_CLUSTER_INDEX EQU 22
-GAME3D_MESH_GEM_CLUSTER_VERTEX_OFFSET EQU 4660
+GAME3D_MESH_GEM_CLUSTER_VERTEX_OFFSET EQU 5514
 GAME3D_MESH_GEM_CLUSTER_VERTEX_COUNT EQU 9
-GAME3D_MESH_GEM_CLUSTER_FACE_OFFSET EQU 4714
+GAME3D_MESH_GEM_CLUSTER_FACE_OFFSET EQU 5568
 GAME3D_MESH_GEM_CLUSTER_FACE_COUNT EQU 12
 
 GAME3D_MESH_TREE_ROUND_INDEX EQU 23
-GAME3D_MESH_TREE_ROUND_VERTEX_OFFSET EQU 4798
+GAME3D_MESH_TREE_ROUND_VERTEX_OFFSET EQU 5652
 GAME3D_MESH_TREE_ROUND_VERTEX_COUNT EQU 13
-GAME3D_MESH_TREE_ROUND_FACE_OFFSET EQU 4876
+GAME3D_MESH_TREE_ROUND_FACE_OFFSET EQU 5730
 GAME3D_MESH_TREE_ROUND_FACE_COUNT EQU 12
 
 GAME3D_MESH_STONE_STACK_INDEX EQU 24
-GAME3D_MESH_STONE_STACK_VERTEX_OFFSET EQU 4960
+GAME3D_MESH_STONE_STACK_VERTEX_OFFSET EQU 5814
 GAME3D_MESH_STONE_STACK_VERTEX_COUNT EQU 12
-GAME3D_MESH_STONE_STACK_FACE_OFFSET EQU 5032
+GAME3D_MESH_STONE_STACK_FACE_OFFSET EQU 5886
 GAME3D_MESH_STONE_STACK_FACE_COUNT EQU 16
 
 GAME3D_MESH_BRIDGE_SPAN_INDEX EQU 25
-GAME3D_MESH_BRIDGE_SPAN_VERTEX_OFFSET EQU 5144
+GAME3D_MESH_BRIDGE_SPAN_VERTEX_OFFSET EQU 5998
 GAME3D_MESH_BRIDGE_SPAN_VERTEX_COUNT EQU 12
-GAME3D_MESH_BRIDGE_SPAN_FACE_OFFSET EQU 5216
+GAME3D_MESH_BRIDGE_SPAN_FACE_OFFSET EQU 6070
 GAME3D_MESH_BRIDGE_SPAN_FACE_COUNT EQU 12
 
 GAME3D_MESH_TOWER_TOY_INDEX EQU 26
-GAME3D_MESH_TOWER_TOY_VERTEX_OFFSET EQU 5300
+GAME3D_MESH_TOWER_TOY_VERTEX_OFFSET EQU 6154
 GAME3D_MESH_TOWER_TOY_VERTEX_COUNT EQU 13
-GAME3D_MESH_TOWER_TOY_FACE_OFFSET EQU 5378
+GAME3D_MESH_TOWER_TOY_FACE_OFFSET EQU 6232
 GAME3D_MESH_TOWER_TOY_FACE_COUNT EQU 20
 
 GAME3D_MESH_ENEMY_RUSHER_INDEX EQU 27
-GAME3D_MESH_ENEMY_RUSHER_VERTEX_OFFSET EQU 5518
+GAME3D_MESH_ENEMY_RUSHER_VERTEX_OFFSET EQU 6372
 GAME3D_MESH_ENEMY_RUSHER_VERTEX_COUNT EQU 9
-GAME3D_MESH_ENEMY_RUSHER_FACE_OFFSET EQU 5572
+GAME3D_MESH_ENEMY_RUSHER_FACE_OFFSET EQU 6426
 GAME3D_MESH_ENEMY_RUSHER_FACE_COUNT EQU 12
 
 GAME3D_MESH_ENEMY_RUSHER_ALT_INDEX EQU 28
-GAME3D_MESH_ENEMY_RUSHER_ALT_VERTEX_OFFSET EQU 5656
+GAME3D_MESH_ENEMY_RUSHER_ALT_VERTEX_OFFSET EQU 6510
 GAME3D_MESH_ENEMY_RUSHER_ALT_VERTEX_COUNT EQU 9
-GAME3D_MESH_ENEMY_RUSHER_ALT_FACE_OFFSET EQU 5710
+GAME3D_MESH_ENEMY_RUSHER_ALT_FACE_OFFSET EQU 6564
 GAME3D_MESH_ENEMY_RUSHER_ALT_FACE_COUNT EQU 12
 
 GAME3D_MESH_ENEMY_FLANKER_INDEX EQU 29
-GAME3D_MESH_ENEMY_FLANKER_VERTEX_OFFSET EQU 5794
+GAME3D_MESH_ENEMY_FLANKER_VERTEX_OFFSET EQU 6648
 GAME3D_MESH_ENEMY_FLANKER_VERTEX_COUNT EQU 9
-GAME3D_MESH_ENEMY_FLANKER_FACE_OFFSET EQU 5848
+GAME3D_MESH_ENEMY_FLANKER_FACE_OFFSET EQU 6702
 GAME3D_MESH_ENEMY_FLANKER_FACE_COUNT EQU 12
 
 GAME3D_MESH_ENEMY_FLANKER_ALT_INDEX EQU 30
-GAME3D_MESH_ENEMY_FLANKER_ALT_VERTEX_OFFSET EQU 5932
+GAME3D_MESH_ENEMY_FLANKER_ALT_VERTEX_OFFSET EQU 6786
 GAME3D_MESH_ENEMY_FLANKER_ALT_VERTEX_COUNT EQU 9
-GAME3D_MESH_ENEMY_FLANKER_ALT_FACE_OFFSET EQU 5986
+GAME3D_MESH_ENEMY_FLANKER_ALT_FACE_OFFSET EQU 6840
 GAME3D_MESH_ENEMY_FLANKER_ALT_FACE_COUNT EQU 12
 
 GAME3D_MESH_PLAYER_RUNNER_INDEX EQU 31
-GAME3D_MESH_PLAYER_RUNNER_VERTEX_OFFSET EQU 6070
+GAME3D_MESH_PLAYER_RUNNER_VERTEX_OFFSET EQU 6924
 GAME3D_MESH_PLAYER_RUNNER_VERTEX_COUNT EQU 11
-GAME3D_MESH_PLAYER_RUNNER_FACE_OFFSET EQU 6136
+GAME3D_MESH_PLAYER_RUNNER_FACE_OFFSET EQU 6990
 GAME3D_MESH_PLAYER_RUNNER_FACE_COUNT EQU 14
 
 GAME3D_MESH_PLAYER_RUNNER_LEAN_INDEX EQU 32
-GAME3D_MESH_PLAYER_RUNNER_LEAN_VERTEX_OFFSET EQU 6234
+GAME3D_MESH_PLAYER_RUNNER_LEAN_VERTEX_OFFSET EQU 7088
 GAME3D_MESH_PLAYER_RUNNER_LEAN_VERTEX_COUNT EQU 11
-GAME3D_MESH_PLAYER_RUNNER_LEAN_FACE_OFFSET EQU 6300
+GAME3D_MESH_PLAYER_RUNNER_LEAN_FACE_OFFSET EQU 7154
 GAME3D_MESH_PLAYER_RUNNER_LEAN_FACE_COUNT EQU 14
 
 GAME3D_MESH_WARDEN_INDEX EQU 33
-GAME3D_MESH_WARDEN_VERTEX_OFFSET EQU 6398
+GAME3D_MESH_WARDEN_VERTEX_OFFSET EQU 7252
 GAME3D_MESH_WARDEN_VERTEX_COUNT EQU 11
-GAME3D_MESH_WARDEN_FACE_OFFSET EQU 6464
+GAME3D_MESH_WARDEN_FACE_OFFSET EQU 7318
 GAME3D_MESH_WARDEN_FACE_COUNT EQU 14
 
 GAME3D_MESH_WARDEN_PRESSURE_INDEX EQU 34
-GAME3D_MESH_WARDEN_PRESSURE_VERTEX_OFFSET EQU 6562
+GAME3D_MESH_WARDEN_PRESSURE_VERTEX_OFFSET EQU 7416
 GAME3D_MESH_WARDEN_PRESSURE_VERTEX_COUNT EQU 11
-GAME3D_MESH_WARDEN_PRESSURE_FACE_OFFSET EQU 6628
+GAME3D_MESH_WARDEN_PRESSURE_FACE_OFFSET EQU 7482
 GAME3D_MESH_WARDEN_PRESSURE_FACE_COUNT EQU 14
 
 GAME3D_KIT_SECTOR1_INDEX EQU 0
@@ -345,20 +345,20 @@ GAME3D_KIT_SECTOR2_INDEX EQU 1
 GAME3D_KIT_SECTOR3_INDEX EQU 2
 
 SCENE3D_COUNT EQU 7
-SCENE3D_GROUP_COUNT EQU 21
+SCENE3D_GROUP_COUNT EQU 25
 SCENE3D_MATERIAL_COUNT EQU 37
 GAME3D_MESH_COUNT EQU 35
 GAME3D_KIT_COUNT EQU 3
 
-scene3d_vertex_offset_table dw 0, 342, 570, 722
-                            dw 874, 1026, 1178
+scene3d_vertex_offset_table dw 0, 826, 1424, 1576
+                            dw 1728, 1880, 2032
 
-scene3d_vertex_count_table db 36, 24, 16, 16, 16, 16, 16
+scene3d_vertex_count_table db 84, 60, 16, 16, 16, 16, 16
 
-scene3d_face_offset_table dw 96, 390, 594, 746
-                          dw 898, 1050, 1202
+scene3d_face_offset_table dw 96, 922, 1448, 1600
+                          dw 1752, 1904, 2056
 
-scene3d_face_count_table db 18, 12, 8, 8, 8, 8, 8
+scene3d_face_count_table db 46, 34, 8, 8, 8, 8, 8
 
 scene3d_view_x_table dw 0, 0, 56, 56
                      dw 56, 0, 0
@@ -375,101 +375,116 @@ scene3d_view_h_table dw 200, 200, 64, 64
 scene3d_camera_x_table dw 0000h, 0000h, 0000h, 0000h
                        dw 0000h, 0000h, 0000h
 
-scene3d_camera_y_table dw 014Dh, 0100h, 00B3h, 00B3h
+scene3d_camera_y_table dw 0126h, 00F3h, 00B3h, 00B3h
                        dw 00C0h, 0100h, 0100h
 
-scene3d_camera_z_table dw 0F666h, 0F866h, 0FA66h, 0FA66h
+scene3d_camera_z_table dw 0F500h, 0F71Ah, 0FA66h, 0FA66h
                        dw 0FA33h, 0F900h, 0F900h
 
-scene3d_yaw_base_table db 250, 7, 249, 7, 0, 252, 4
+scene3d_yaw_base_table db 253, 4, 249, 7, 0, 252, 4
 
-scene3d_yaw_step_table db 0, 255, 0, 0, 0, 0, 0
+scene3d_yaw_step_table db 0, 0, 0, 0, 0, 0, 0
 
 scene3d_pitch_base_table db 247, 249, 249, 250, 250, 247, 247
 
 scene3d_pitch_step_table db 0, 0, 0, 0, 0, 0, 0
 
-scene3d_project_scale_table dw 124, 112, 98, 98
+scene3d_project_scale_table dw 118, 108, 98, 98
                             dw 102, 104, 104
 
 scene3d_timeline_length_table db 60, 48, 8, 8, 8, 24, 24
 scene3d_timeline_loop_table db 0, 48, 0, 0, 0, 0, 0
-scene3d_group_start_table db 0, 3, 6, 9, 12, 15, 18
-scene3d_group_count_table db 3, 3, 3, 3, 3, 3, 3
+scene3d_group_start_table db 0, 6, 10, 13, 16, 19, 22
+scene3d_group_count_table db 6, 4, 3, 3, 3, 3, 3
 
-scene3d_group_vertex_offset_table dw 0, 152, 266, 342
-                                  dw 418, 494, 570, 608
-                                  dw 684, 722, 760, 836
-                                  dw 874, 912, 988, 1026
-                                  dw 1064, 1140, 1178, 1216
-                                  dw 1292
+scene3d_group_vertex_offset_table dw 0, 180, 294, 408
+                                  dw 522, 674, 826, 1006
+                                  dw 1158, 1310, 1424, 1462
+                                  dw 1538, 1576, 1614, 1690
+                                  dw 1728, 1766, 1842, 1880
+                                  dw 1918, 1994, 2032, 2070
+                                  dw 2146
 
-scene3d_group_vertex_count_table db 16, 12, 8, 8, 8, 8, 4, 8
-                                 db 4, 4, 8, 4, 4, 8, 4, 4
-                                 db 8, 4, 4, 8, 4
+scene3d_group_vertex_count_table db 16, 12, 12, 12, 16, 16, 16, 16
+                                 db 16, 12, 4, 8, 4, 4, 8, 4
+                                 db 4, 8, 4, 4, 8, 4, 4, 8
+                                 db 4
 
-scene3d_group_face_offset_table dw 96, 224, 314, 390
-                                dw 466, 542, 594, 656
-                                dw 708, 746, 808, 860
-                                dw 898, 960, 1012, 1050
-                                dw 1112, 1164, 1202, 1264
-                                dw 1316
+scene3d_group_face_offset_table dw 96, 252, 366, 480
+                                dw 618, 770, 922, 1102
+                                dw 1254, 1382, 1448, 1510
+                                dw 1562, 1600, 1662, 1714
+                                dw 1752, 1814, 1866, 1904
+                                dw 1966, 2018, 2056, 2118
+                                dw 2170
 
-scene3d_group_face_count_table db 8, 6, 4, 4, 4, 4, 2, 4
-                               db 2, 2, 4, 2, 2, 4, 2, 2
-                               db 4, 2, 2, 4, 2
-scene3d_group_start_tick_table db 0, 10, 20, 0, 6, 16, 0, 1
-                               db 3, 0, 1, 3, 0, 1, 3, 0
-                               db 2, 8, 0, 2, 8
-scene3d_group_end_tick_table db 59, 59, 59, 47, 47, 47, 7, 7
-                             db 7, 7, 7, 7, 7, 7, 7, 23
-                             db 23, 23, 23, 23, 23
-scene3d_group_motion_ticks_table db 0, 22, 18, 0, 18, 12, 0, 3
-                                 db 2, 0, 3, 2, 0, 3, 2, 0
-                                 db 8, 6, 0, 8, 6
+scene3d_group_face_count_table db 12, 6, 6, 6, 8, 8, 12, 8
+                               db 8, 6, 2, 4, 2, 2, 4, 2
+                               db 2, 4, 2, 2, 4, 2, 2, 4
+                               db 2
+scene3d_group_start_tick_table db 0, 0, 8, 10, 18, 32, 0, 0
+                               db 0, 12, 0, 1, 3, 0, 1, 3
+                               db 0, 1, 3, 0, 2, 8, 0, 2
+                               db 8
+scene3d_group_end_tick_table db 59, 59, 59, 59, 59, 59, 47, 47
+                             db 47, 47, 7, 7, 7, 7, 7, 7
+                             db 7, 7, 7, 23, 23, 23, 23, 23
+                             db 23
+scene3d_group_motion_ticks_table db 0, 0, 10, 10, 14, 12, 0, 8
+                                 db 12, 8, 0, 3, 2, 0, 3, 2
+                                 db 0, 3, 2, 0, 8, 6, 0, 8
+                                 db 6
 
-scene3d_group_offset_x_table dw 0000h, 0000h, 0000h, 0000h
+scene3d_group_offset_x_table dw 0000h, 0000h, 0FF66h, 009Ah
+                             dw 0000h, 0000h, 0000h, 0000h
                              dw 0000h, 0000h, 0000h, 0000h
                              dw 0000h, 0000h, 0000h, 0000h
                              dw 0000h, 0000h, 0000h, 0000h
                              dw 0000h, 0000h, 0000h, 0000h
                              dw 0000h
-scene3d_group_offset_y_table dw 0000h, 0FE8Dh, 0FF1Ah, 0000h
-                             dw 0FFA6h, 0FFC0h, 0000h, 0FFD2h
+scene3d_group_offset_y_table dw 0000h, 0000h, 0FF0Dh, 0FF0Dh
+                             dw 0FEA6h, 0FF8Dh, 0000h, 0FFC8h
+                             dw 0FFD2h, 0FFDAh, 0000h, 0FFD2h
                              dw 0FFECh, 0000h, 0FFD7h, 0FFF1h
                              dw 0000h, 0FFC8h, 0FFECh, 0000h
                              dw 0FF9Ah, 0FFD2h, 0000h, 0FF94h
                              dw 0FFD7h
-scene3d_group_offset_z_table dw 0000h, 01CDh, 00C0h, 0000h
-                             dw 00DAh, 0073h, 0000h, 005Ah
+scene3d_group_offset_z_table dw 0000h, 0000h, 0073h, 0073h
+                             dw 00E6h, 008Dh, 0000h, 004Dh
+                             dw 002Eh, 0040h, 0000h, 005Ah
                              dw 0033h, 0000h, 0048h, 0029h
                              dw 0000h, 0057h, 002Eh, 0000h
                              dw 00C0h, 0048h, 0000h, 00CDh
                              dw 003Dh
-scene3d_group_offset_x_step_table dw 0000h, 0000h, 0000h, 0000h
+scene3d_group_offset_x_step_table dw 0000h, 0000h, 000Fh, 0FFF1h
+                                  dw 0000h, 0000h, 0000h, 0000h
                                   dw 0000h, 0000h, 0000h, 0000h
                                   dw 0000h, 0000h, 0000h, 0000h
                                   dw 0000h, 0000h, 0000h, 0000h
                                   dw 0000h, 0000h, 0000h, 0000h
                                   dw 0000h
-scene3d_group_offset_y_step_table dw 0000h, 0011h, 000Ah, 0000h
-                                  dw 0008h, 0005h, 0000h, 000Dh
+scene3d_group_offset_y_step_table dw 0000h, 0000h, 0018h, 0018h
+                                  dw 0016h, 000Ah, 0000h, 0007h
+                                  dw 0004h, 0005h, 0000h, 000Dh
                                   dw 000Ah, 0000h, 000Ah, 0008h
                                   dw 0000h, 000Dh, 0008h, 0000h
                                   dw 000Ah, 0006h, 0000h, 000Ah
                                   dw 0006h
-scene3d_group_offset_z_step_table dw 0000h, 0FFF2h, 0FFF8h, 0000h
-                                  dw 0FFFAh, 0FFFCh, 0000h, 0FFF3h
+scene3d_group_offset_z_step_table dw 0000h, 0000h, 0FFF4h, 0FFF4h
+                                  dw 0FFF2h, 0FFF8h, 0000h, 0FFFBh
+                                  dw 0FFFDh, 0FFFDh, 0000h, 0FFF3h
                                   dw 0FFF8h, 0000h, 0FFF4h, 0FFFBh
                                   dw 0000h, 0FFF4h, 0FFFBh, 0000h
                                   dw 0FFF8h, 0FFFCh, 0000h, 0FFF8h
                                   dw 0FFFCh
-scene3d_group_yaw_base_table db 0, 249, 0, 0, 253, 0, 0, 0
-                             db 0, 0, 3, 0, 0, 0, 0, 0
-                             db 0, 0, 0, 0, 0
+scene3d_group_yaw_base_table db 0, 0, 253, 3, 255, 0, 0, 0
+                             db 0, 0, 0, 0, 0, 0, 3, 0
+                             db 0, 0, 0, 0, 0, 0, 0, 0
+                             db 0
 scene3d_group_yaw_step_table db 0, 0, 0, 0, 0, 0, 0, 0
                              db 0, 0, 0, 0, 0, 0, 0, 0
-                             db 0, 0, 0, 0, 0
+                             db 0, 0, 0, 0, 0, 0, 0, 0
+                             db 0
 
 scene3d_timeline_camera_x_table dw 0000h, 0000h, 0000h, 0000h
                                 dw 0000h, 0000h, 0000h, 0000h
@@ -583,38 +598,38 @@ scene3d_timeline_camera_x_table dw 0000h, 0000h, 0000h, 0000h
                                 dw 0000h, 0000h, 0000h, 0000h
                                 dw 0000h, 0000h, 0000h, 0000h
                                 dw 0000h, 0000h, 0000h, 0000h
-scene3d_timeline_camera_y_table dw 014Dh, 014Dh, 014Dh, 014Dh
-                                dw 014Dh, 014Dh, 014Dh, 014Dh
-                                dw 014Dh, 014Dh, 014Dh, 014Dh
-                                dw 014Dh, 014Dh, 014Dh, 014Dh
-                                dw 014Dh, 014Dh, 014Dh, 014Dh
-                                dw 014Dh, 014Dh, 014Dh, 014Dh
-                                dw 014Dh, 014Dh, 014Dh, 014Dh
-                                dw 014Dh, 014Dh, 014Dh, 014Dh
-                                dw 014Dh, 014Dh, 014Dh, 014Dh
-                                dw 014Dh, 014Dh, 014Dh, 014Dh
-                                dw 014Dh, 014Dh, 014Dh, 014Dh
-                                dw 014Dh, 014Dh, 014Dh, 014Dh
-                                dw 014Dh, 014Dh, 014Dh, 014Dh
-                                dw 014Dh, 014Dh, 014Dh, 014Dh
-                                dw 014Dh, 014Dh, 014Dh, 014Dh
-                                dw 014Dh, 014Dh, 014Dh, 014Dh
-                                dw 0100h, 0100h, 0100h, 0100h
-                                dw 0100h, 0100h, 0100h, 0100h
-                                dw 0100h, 0100h, 0100h, 0100h
-                                dw 0100h, 0100h, 0100h, 0100h
-                                dw 0100h, 0100h, 0100h, 0100h
-                                dw 0100h, 0100h, 0100h, 0100h
-                                dw 0100h, 0100h, 0100h, 0100h
-                                dw 0100h, 0100h, 0100h, 0100h
-                                dw 0100h, 0100h, 0100h, 0100h
-                                dw 0100h, 0100h, 0100h, 0100h
-                                dw 0100h, 0100h, 0100h, 0100h
-                                dw 0100h, 0100h, 0100h, 0100h
-                                dw 0100h, 0100h, 0100h, 0100h
-                                dw 0100h, 0100h, 0100h, 0100h
-                                dw 0100h, 0100h, 0100h, 0100h
-                                dw 0100h, 0100h, 0100h, 0100h
+scene3d_timeline_camera_y_table dw 0126h, 0126h, 0126h, 0126h
+                                dw 0126h, 0126h, 0126h, 0126h
+                                dw 0126h, 0126h, 0126h, 0126h
+                                dw 0126h, 0126h, 0126h, 0126h
+                                dw 0126h, 0126h, 0126h, 0126h
+                                dw 0126h, 0126h, 0126h, 0126h
+                                dw 0126h, 0126h, 0126h, 0126h
+                                dw 0126h, 0126h, 0126h, 0126h
+                                dw 0126h, 0126h, 0126h, 0126h
+                                dw 0126h, 0126h, 0126h, 0126h
+                                dw 0126h, 0126h, 0126h, 0126h
+                                dw 0126h, 0126h, 0126h, 0126h
+                                dw 0126h, 0126h, 0126h, 0126h
+                                dw 0126h, 0126h, 0126h, 0126h
+                                dw 0126h, 0126h, 0126h, 0126h
+                                dw 0126h, 0126h, 0126h, 0126h
+                                dw 00F3h, 00F3h, 00F3h, 00F3h
+                                dw 00F3h, 00F3h, 00F3h, 00F3h
+                                dw 00F3h, 00F3h, 00F3h, 00F3h
+                                dw 00F3h, 00F3h, 00F3h, 00F3h
+                                dw 00F3h, 00F3h, 00F3h, 00F3h
+                                dw 00F3h, 00F3h, 00F3h, 00F3h
+                                dw 00F3h, 00F3h, 00F3h, 00F3h
+                                dw 00F3h, 00F3h, 00F3h, 00F3h
+                                dw 00F3h, 00F3h, 00F3h, 00F3h
+                                dw 00F3h, 00F3h, 00F3h, 00F3h
+                                dw 00F3h, 00F3h, 00F3h, 00F3h
+                                dw 00F3h, 00F3h, 00F3h, 00F3h
+                                dw 00F3h, 00F3h, 00F3h, 00F3h
+                                dw 00F3h, 00F3h, 00F3h, 00F3h
+                                dw 00F3h, 00F3h, 00F3h, 00F3h
+                                dw 00F3h, 00F3h, 00F3h, 00F3h
                                 dw 00B3h, 00B3h, 00B3h, 00B3h
                                 dw 00B3h, 00B3h, 00B3h, 00B3h
                                 dw 00B3h, 00B3h, 00B3h, 00B3h
@@ -695,38 +710,38 @@ scene3d_timeline_camera_y_table dw 014Dh, 014Dh, 014Dh, 014Dh
                                 dw 0100h, 0100h, 0100h, 0100h
                                 dw 0100h, 0100h, 0100h, 0100h
                                 dw 0100h, 0100h, 0100h, 0100h
-scene3d_timeline_camera_z_table dw 0F666h, 0F666h, 0F666h, 0F666h
-                                dw 0F666h, 0F666h, 0F666h, 0F666h
-                                dw 0F666h, 0F666h, 0F666h, 0F666h
-                                dw 0F666h, 0F666h, 0F666h, 0F666h
-                                dw 0F666h, 0F666h, 0F666h, 0F666h
-                                dw 0F666h, 0F666h, 0F666h, 0F666h
-                                dw 0F666h, 0F666h, 0F666h, 0F666h
-                                dw 0F666h, 0F666h, 0F666h, 0F666h
-                                dw 0F666h, 0F666h, 0F666h, 0F666h
-                                dw 0F666h, 0F666h, 0F666h, 0F666h
-                                dw 0F666h, 0F666h, 0F666h, 0F666h
-                                dw 0F666h, 0F666h, 0F666h, 0F666h
-                                dw 0F666h, 0F666h, 0F666h, 0F666h
-                                dw 0F666h, 0F666h, 0F666h, 0F666h
-                                dw 0F666h, 0F666h, 0F666h, 0F666h
-                                dw 0F666h, 0F666h, 0F666h, 0F666h
-                                dw 0F866h, 0F866h, 0F866h, 0F866h
-                                dw 0F866h, 0F866h, 0F866h, 0F866h
-                                dw 0F866h, 0F866h, 0F866h, 0F866h
-                                dw 0F866h, 0F866h, 0F866h, 0F866h
-                                dw 0F866h, 0F866h, 0F866h, 0F866h
-                                dw 0F866h, 0F866h, 0F866h, 0F866h
-                                dw 0F866h, 0F866h, 0F866h, 0F866h
-                                dw 0F866h, 0F866h, 0F866h, 0F866h
-                                dw 0F866h, 0F866h, 0F866h, 0F866h
-                                dw 0F866h, 0F866h, 0F866h, 0F866h
-                                dw 0F866h, 0F866h, 0F866h, 0F866h
-                                dw 0F866h, 0F866h, 0F866h, 0F866h
-                                dw 0F866h, 0F866h, 0F866h, 0F866h
-                                dw 0F866h, 0F866h, 0F866h, 0F866h
-                                dw 0F866h, 0F866h, 0F866h, 0F866h
-                                dw 0F866h, 0F866h, 0F866h, 0F866h
+scene3d_timeline_camera_z_table dw 0F500h, 0F500h, 0F500h, 0F500h
+                                dw 0F500h, 0F500h, 0F500h, 0F500h
+                                dw 0F500h, 0F500h, 0F500h, 0F500h
+                                dw 0F500h, 0F500h, 0F500h, 0F500h
+                                dw 0F500h, 0F500h, 0F500h, 0F500h
+                                dw 0F500h, 0F500h, 0F500h, 0F500h
+                                dw 0F500h, 0F500h, 0F500h, 0F500h
+                                dw 0F500h, 0F500h, 0F500h, 0F500h
+                                dw 0F500h, 0F500h, 0F500h, 0F500h
+                                dw 0F500h, 0F500h, 0F500h, 0F500h
+                                dw 0F500h, 0F500h, 0F500h, 0F500h
+                                dw 0F500h, 0F500h, 0F500h, 0F500h
+                                dw 0F500h, 0F500h, 0F500h, 0F500h
+                                dw 0F500h, 0F500h, 0F500h, 0F500h
+                                dw 0F500h, 0F500h, 0F500h, 0F500h
+                                dw 0F500h, 0F500h, 0F500h, 0F500h
+                                dw 0F71Ah, 0F71Ah, 0F71Ah, 0F71Ah
+                                dw 0F71Ah, 0F71Ah, 0F71Ah, 0F71Ah
+                                dw 0F71Ah, 0F71Ah, 0F71Ah, 0F71Ah
+                                dw 0F71Ah, 0F71Ah, 0F71Ah, 0F71Ah
+                                dw 0F71Ah, 0F71Ah, 0F71Ah, 0F71Ah
+                                dw 0F71Ah, 0F71Ah, 0F71Ah, 0F71Ah
+                                dw 0F71Ah, 0F71Ah, 0F71Ah, 0F71Ah
+                                dw 0F71Ah, 0F71Ah, 0F71Ah, 0F71Ah
+                                dw 0F71Ah, 0F71Ah, 0F71Ah, 0F71Ah
+                                dw 0F71Ah, 0F71Ah, 0F71Ah, 0F71Ah
+                                dw 0F71Ah, 0F71Ah, 0F71Ah, 0F71Ah
+                                dw 0F71Ah, 0F71Ah, 0F71Ah, 0F71Ah
+                                dw 0F71Ah, 0F71Ah, 0F71Ah, 0F71Ah
+                                dw 0F71Ah, 0F71Ah, 0F71Ah, 0F71Ah
+                                dw 0F71Ah, 0F71Ah, 0F71Ah, 0F71Ah
+                                dw 0F71Ah, 0F71Ah, 0F71Ah, 0F71Ah
                                 dw 0FA66h, 0FA66h, 0FA66h, 0FA66h
                                 dw 0FA66h, 0FA66h, 0FA66h, 0FA66h
                                 dw 0FA66h, 0FA66h, 0FA66h, 0FA66h
@@ -807,38 +822,38 @@ scene3d_timeline_camera_z_table dw 0F666h, 0F666h, 0F666h, 0F666h
                                 dw 0F900h, 0F900h, 0F900h, 0F900h
                                 dw 0F900h, 0F900h, 0F900h, 0F900h
                                 dw 0F900h, 0F900h, 0F900h, 0F900h
-scene3d_timeline_project_scale_table dw 124, 124, 124, 124
-                                     dw 124, 124, 124, 124
-                                     dw 124, 124, 124, 124
-                                     dw 124, 124, 124, 124
-                                     dw 124, 124, 124, 124
-                                     dw 124, 124, 124, 124
-                                     dw 124, 124, 124, 124
-                                     dw 124, 124, 124, 124
-                                     dw 124, 124, 124, 124
-                                     dw 124, 124, 124, 124
-                                     dw 124, 124, 124, 124
-                                     dw 124, 124, 124, 124
-                                     dw 124, 124, 124, 124
-                                     dw 124, 124, 124, 124
-                                     dw 124, 124, 124, 124
-                                     dw 124, 124, 124, 124
-                                     dw 112, 112, 112, 112
-                                     dw 112, 112, 112, 112
-                                     dw 112, 112, 112, 112
-                                     dw 112, 112, 112, 112
-                                     dw 112, 112, 112, 112
-                                     dw 112, 112, 112, 112
-                                     dw 112, 112, 112, 112
-                                     dw 112, 112, 112, 112
-                                     dw 112, 112, 112, 112
-                                     dw 112, 112, 112, 112
-                                     dw 112, 112, 112, 112
-                                     dw 112, 112, 112, 112
-                                     dw 112, 112, 112, 112
-                                     dw 112, 112, 112, 112
-                                     dw 112, 112, 112, 112
-                                     dw 112, 112, 112, 112
+scene3d_timeline_project_scale_table dw 118, 118, 118, 118
+                                     dw 118, 118, 118, 118
+                                     dw 118, 118, 118, 118
+                                     dw 118, 118, 118, 118
+                                     dw 118, 118, 118, 118
+                                     dw 118, 118, 118, 118
+                                     dw 118, 118, 118, 118
+                                     dw 118, 118, 118, 118
+                                     dw 118, 118, 118, 118
+                                     dw 118, 118, 118, 118
+                                     dw 118, 118, 118, 118
+                                     dw 118, 118, 118, 118
+                                     dw 118, 118, 118, 118
+                                     dw 118, 118, 118, 118
+                                     dw 118, 118, 118, 118
+                                     dw 118, 118, 118, 118
+                                     dw 108, 108, 108, 108
+                                     dw 108, 108, 108, 108
+                                     dw 108, 108, 108, 108
+                                     dw 108, 108, 108, 108
+                                     dw 108, 108, 108, 108
+                                     dw 108, 108, 108, 108
+                                     dw 108, 108, 108, 108
+                                     dw 108, 108, 108, 108
+                                     dw 108, 108, 108, 108
+                                     dw 108, 108, 108, 108
+                                     dw 108, 108, 108, 108
+                                     dw 108, 108, 108, 108
+                                     dw 108, 108, 108, 108
+                                     dw 108, 108, 108, 108
+                                     dw 108, 108, 108, 108
+                                     dw 108, 108, 108, 108
                                      dw 98, 98, 98, 98
                                      dw 98, 98, 98, 98
                                      dw 98, 98, 98, 98
@@ -919,22 +934,22 @@ scene3d_timeline_project_scale_table dw 124, 124, 124, 124
                                      dw 104, 104, 104, 104
                                      dw 104, 104, 104, 104
                                      dw 104, 104, 104, 104
-scene3d_timeline_yaw_table db 250, 250, 250, 250, 250, 250, 250, 250
-                           db 250, 250, 250, 250, 250, 250, 250, 250
-                           db 250, 250, 250, 250, 250, 250, 250, 250
-                           db 250, 250, 250, 250, 250, 250, 250, 250
-                           db 250, 250, 250, 250, 250, 250, 250, 250
-                           db 250, 250, 250, 250, 250, 250, 250, 250
-                           db 250, 250, 250, 250, 250, 250, 250, 250
-                           db 250, 250, 250, 250, 250, 250, 250, 250
-                           db 7, 6, 5, 4, 3, 2, 1, 0
-                           db 255, 254, 253, 252, 251, 250, 249, 248
-                           db 247, 246, 245, 244, 243, 242, 241, 240
-                           db 239, 238, 237, 236, 235, 234, 233, 232
-                           db 231, 230, 229, 228, 227, 226, 225, 224
-                           db 223, 222, 221, 220, 219, 218, 217, 216
-                           db 7, 6, 5, 4, 3, 2, 1, 0
-                           db 255, 254, 253, 252, 251, 250, 249, 248
+scene3d_timeline_yaw_table db 253, 253, 253, 253, 253, 253, 253, 253
+                           db 253, 253, 253, 253, 253, 253, 253, 253
+                           db 253, 253, 253, 253, 253, 253, 253, 253
+                           db 253, 253, 253, 253, 253, 253, 253, 253
+                           db 253, 253, 253, 253, 253, 253, 253, 253
+                           db 253, 253, 253, 253, 253, 253, 253, 253
+                           db 253, 253, 253, 253, 253, 253, 253, 253
+                           db 253, 253, 253, 253, 253, 253, 253, 253
+                           db 4, 4, 4, 4, 4, 4, 4, 4
+                           db 4, 4, 4, 4, 4, 4, 4, 4
+                           db 4, 4, 4, 4, 4, 4, 4, 4
+                           db 4, 4, 4, 4, 4, 4, 4, 4
+                           db 4, 4, 4, 4, 4, 4, 4, 4
+                           db 4, 4, 4, 4, 4, 4, 4, 4
+                           db 4, 4, 4, 4, 4, 4, 4, 4
+                           db 4, 4, 4, 4, 4, 4, 4, 4
                            db 249, 249, 249, 249, 249, 249, 249, 249
                            db 249, 249, 249, 249, 249, 249, 249, 249
                            db 249, 249, 249, 249, 249, 249, 249, 249
@@ -1032,15 +1047,15 @@ scene3d_timeline_pitch_table db 247, 247, 247, 247, 247, 247, 247, 247
                              db 247, 247, 247, 247, 247, 247, 247, 247
                              db 247, 247, 247, 247, 247, 247, 247, 247
 
-game3d_mesh_vertex_offset_table dw 1330, 1482, 1634, 1786
-                                dw 1942, 2098, 2254, 2392
-                                dw 2530, 2668, 2826, 2984
-                                dw 3142, 3280, 3418, 3556
-                                dw 3694, 3858, 4042, 4206
-                                dw 4358, 4522, 4660, 4798
-                                dw 4960, 5144, 5300, 5518
-                                dw 5656, 5794, 5932, 6070
-                                dw 6234, 6398, 6562
+game3d_mesh_vertex_offset_table dw 2184, 2336, 2488, 2640
+                                dw 2796, 2952, 3108, 3246
+                                dw 3384, 3522, 3680, 3838
+                                dw 3996, 4134, 4272, 4410
+                                dw 4548, 4712, 4896, 5060
+                                dw 5212, 5376, 5514, 5652
+                                dw 5814, 5998, 6154, 6372
+                                dw 6510, 6648, 6786, 6924
+                                dw 7088, 7252, 7416
 
 game3d_mesh_vertex_count_table db 16, 16, 16, 12, 12, 12, 9, 9
                                db 9, 10, 10, 10, 9, 9, 9, 9
@@ -1048,15 +1063,15 @@ game3d_mesh_vertex_count_table db 16, 16, 16, 12, 12, 12, 9, 9
                                db 12, 12, 13, 9, 9, 9, 9, 11
                                db 11, 11, 11
 
-game3d_mesh_face_offset_table dw 1426, 1578, 1730, 1858
-                              dw 2014, 2170, 2308, 2446
-                              dw 2584, 2728, 2886, 3044
-                              dw 3196, 3334, 3472, 3610
-                              dw 3760, 3930, 4108, 4302
-                              dw 4424, 4576, 4714, 4876
-                              dw 5032, 5216, 5378, 5572
-                              dw 5710, 5848, 5986, 6136
-                              dw 6300, 6464, 6628
+game3d_mesh_face_offset_table dw 2280, 2432, 2584, 2712
+                              dw 2868, 3024, 3162, 3300
+                              dw 3438, 3582, 3740, 3898
+                              dw 4050, 4188, 4326, 4464
+                              dw 4614, 4784, 4962, 5156
+                              dw 5278, 5430, 5568, 5730
+                              dw 5886, 6070, 6232, 6426
+                              dw 6564, 6702, 6840, 6990
+                              dw 7154, 7318, 7482
 
 game3d_mesh_face_count_table db 8, 8, 8, 12, 12, 12, 12, 12
                              db 12, 14, 14, 14, 12, 12, 12, 12

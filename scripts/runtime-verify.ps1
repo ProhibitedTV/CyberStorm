@@ -420,6 +420,18 @@ function Format-Hex16 {
     return ("0x{0:X4}" -f ($Value -band 0xFFFF))
 }
 
+function Get-RuntimeVerifyFailureReason {
+    param([int]$Code)
+
+    switch ($Code -band 0xFFFF) {
+        0 { return 'NONE' }
+        1 { return 'TIMEOUT' }
+        2 { return 'EARLY END' }
+        3 { return 'DIVERGED' }
+        default { return ("UNKNOWN({0})" -f (Format-Hex16 $Code)) }
+    }
+}
+
 function Get-RenderLabel {
     param(
         [string]$Mode,
@@ -573,6 +585,9 @@ function Invoke-RuntimeVerifyRun {
     $statusSample = $null
     $expectedSignature = 0
     $observedSignature = 0
+    $failureReasonCode = 0
+    $failureReason = 'NONE'
+    $markerResolved = $false
 
     Start-HeadlessVm -Name $VmName
     Start-Sleep -Seconds $initialWaitSeconds
@@ -615,21 +630,35 @@ function Invoke-RuntimeVerifyRun {
                     -BitPitch $Geometry.BitPitch `
                     -ScreenW $Geometry.ScreenW `
                     -ScreenH $Geometry.ScreenH
+                $failureReasonCode = Get-SignatureFromBitmap `
+                    -Bitmap $bitmap `
+                    -StartX $Geometry.BitsX `
+                    -StartY $Geometry.ReasonBitsY `
+                    -BitSize $Geometry.BitSize `
+                    -BitPitch $Geometry.BitPitch `
+                    -ScreenW $Geometry.ScreenW `
+                    -ScreenH $Geometry.ScreenH
+                $failureReason = Get-RuntimeVerifyFailureReason -Code $failureReasonCode
             }
         } finally {
             $bitmap.Dispose()
         }
 
         if ($statusSample.Status -ne 'UNKNOWN') {
+            $markerResolved = $true
             break
         }
     }
 
     if ($null -eq $statusSample -or $statusSample.Status -eq 'UNKNOWN') {
-        $closestDistance = if ($null -eq $statusSample) { -1 } else { $statusSample.ClosestDistance }
-        $passDistance = if ($null -eq $statusSample) { -1 } else { $statusSample.PassDistance }
-        $failDistance = if ($null -eq $statusSample) { -1 } else { $statusSample.FailDistance }
-        throw ("Runtime verify demo '{0}' never reached a verify scene after {1}s (closest marker distance {2}, pass distance {3}, fail distance {4})." -f $Demo.Name, $totalWaitSeconds, $closestDistance, $passDistance, $failDistance)
+        $statusSample = [pscustomobject]@{
+            Status = 'FAIL'
+            PassDistance = if ($null -eq $statusSample) { -1 } else { $statusSample.PassDistance }
+            FailDistance = if ($null -eq $statusSample) { -1 } else { $statusSample.FailDistance }
+            ClosestDistance = if ($null -eq $statusSample) { -1 } else { $statusSample.ClosestDistance }
+        }
+        $failureReasonCode = 1
+        $failureReason = Get-RuntimeVerifyFailureReason -Code $failureReasonCode
     }
 
     $status = [string]$statusSample.Status
@@ -642,6 +671,12 @@ function Invoke-RuntimeVerifyRun {
         Status = $status
         ExpectedStatus = $expectedStatus
         StatusMatched = ($status -eq $expectedStatus)
+        FailureReason = $failureReason
+        FailureReasonCode = (Format-Hex16 $failureReasonCode)
+        MarkerResolved = $markerResolved
+        ClosestDistance = [int]$statusSample.ClosestDistance
+        PassDistance = [int]$statusSample.PassDistance
+        FailDistance = [int]$statusSample.FailDistance
         ExpectedSignature = (Format-Hex16 $expectedSignature)
         ObservedSignature = (Format-Hex16 $observedSignature)
         ScreenshotPath = $shotPath
@@ -669,6 +704,7 @@ $geometry = @{
     BitsX = Get-AsmEquValue -SourcePath $ConstantsSourcePath -Name 'VERIFY_BITS_X'
     ExpectBitsY = Get-AsmEquValue -SourcePath $ConstantsSourcePath -Name 'VERIFY_EXPECT_BITS_Y'
     ObsBitsY = Get-AsmEquValue -SourcePath $ConstantsSourcePath -Name 'VERIFY_OBS_BITS_Y'
+    ReasonBitsY = Get-AsmEquValue -SourcePath $ConstantsSourcePath -Name 'VERIFY_REASON_BITS_Y'
     BitSize = Get-AsmEquValue -SourcePath $ConstantsSourcePath -Name 'VERIFY_BIT_SIZE'
     BitPitch = Get-AsmEquValue -SourcePath $ConstantsSourcePath -Name 'VERIFY_BIT_PITCH'
 }
@@ -728,14 +764,20 @@ try {
         $runtimeResults.Add($result)
         $artifactPaths.Add($result.ScreenshotPath)
         $artifactPaths.Add($result.LogPath)
-        $summaryLines.Add(("{0}: {1} {2} [{3}] (expected {4}; exp {5} / obs {6})" -f $result.Name, $result.Status, $result.Id, (Get-RenderLabel -Mode $result.RenderMode -Stage $result.RenderStage), $result.ExpectedStatus, $result.ExpectedSignature, $result.ObservedSignature))
+        $summaryLines.Add(("{0}: {1} {2} [{3}] (expected {4}; reason {5}; wait {6}s; marker {7}/{8}/{9}; exp {10} / obs {11})" -f $result.Name, $result.Status, $result.Id, (Get-RenderLabel -Mode $result.RenderMode -Stage $result.RenderStage), $result.ExpectedStatus, $result.FailureReason, $result.WaitSeconds, $result.ClosestDistance, $result.PassDistance, $result.FailDistance, $result.ExpectedSignature, $result.ObservedSignature))
         $lines.Add(("Demo: {0}" -f $result.Name))
         $lines.Add(("  Id: {0}" -f $result.Id))
         $lines.Add(("  Render: {0}" -f (Get-RenderLabel -Mode $result.RenderMode -Stage $result.RenderStage)))
         $lines.Add(("  Status: {0}" -f $result.Status))
         $lines.Add(("  Expected status: {0}" -f $result.ExpectedStatus))
         $lines.Add(("  Status match: {0}" -f $(if ($result.StatusMatched) { 'YES' } else { 'NO' })))
+        $lines.Add(("  Failure reason: {0}" -f $result.FailureReason))
+        $lines.Add(("  Failure reason code: {0}" -f $result.FailureReasonCode))
         $lines.Add(("  Wait: {0}s" -f $result.WaitSeconds))
+        $lines.Add(("  Marker resolved: {0}" -f $(if ($result.MarkerResolved) { 'YES' } else { 'NO' })))
+        $lines.Add(("  Marker closest distance: {0}" -f $result.ClosestDistance))
+        $lines.Add(("  Marker pass distance: {0}" -f $result.PassDistance))
+        $lines.Add(("  Marker fail distance: {0}" -f $result.FailDistance))
         $lines.Add(("  Expected signature: {0}" -f $result.ExpectedSignature))
         $lines.Add(("  Observed signature: {0}" -f $result.ObservedSignature))
         $lines.Add(("  Screenshot: {0}" -f $result.ScreenshotPath))
@@ -753,13 +795,20 @@ try {
         $forcedFail = Invoke-RuntimeVerifyRun -Demo $runtimeDemos[0].Demo -DemoIndex ([int]$runtimeDemos[0].DemoIndex) -CorruptExpectation -ArtifactDir $artifactDir -Geometry $geometry -RenderMode $RenderMode -RenderStage $RenderStage -ReplayReportPath $replayReportPath
         $artifactPaths.Add($forcedFail.ScreenshotPath)
         $artifactPaths.Add($forcedFail.LogPath)
-        $summaryLines.Add(("Forced mismatch: {0} [{1}] (expected {2}; exp {3} / obs {4})" -f $forcedFail.Status, (Get-RenderLabel -Mode $forcedFail.RenderMode -Stage $forcedFail.RenderStage), $forcedFail.ExpectedStatus, $forcedFail.ExpectedSignature, $forcedFail.ObservedSignature))
+        $summaryLines.Add(("Forced mismatch: {0} [{1}] (expected {2}; reason {3}; wait {4}s; marker {5}/{6}/{7}; exp {8} / obs {9})" -f $forcedFail.Status, (Get-RenderLabel -Mode $forcedFail.RenderMode -Stage $forcedFail.RenderStage), $forcedFail.ExpectedStatus, $forcedFail.FailureReason, $forcedFail.WaitSeconds, $forcedFail.ClosestDistance, $forcedFail.PassDistance, $forcedFail.FailDistance, $forcedFail.ExpectedSignature, $forcedFail.ObservedSignature))
         $lines.Add('Forced mismatch demo')
         $lines.Add(("  Demo: {0}" -f $forcedFail.Name))
         $lines.Add(("  Render: {0}" -f (Get-RenderLabel -Mode $forcedFail.RenderMode -Stage $forcedFail.RenderStage)))
         $lines.Add(("  Status: {0}" -f $forcedFail.Status))
         $lines.Add(("  Expected status: {0}" -f $forcedFail.ExpectedStatus))
         $lines.Add(("  Status match: {0}" -f $(if ($forcedFail.StatusMatched) { 'YES' } else { 'NO' })))
+        $lines.Add(("  Failure reason: {0}" -f $forcedFail.FailureReason))
+        $lines.Add(("  Failure reason code: {0}" -f $forcedFail.FailureReasonCode))
+        $lines.Add(("  Wait: {0}s" -f $forcedFail.WaitSeconds))
+        $lines.Add(("  Marker resolved: {0}" -f $(if ($forcedFail.MarkerResolved) { 'YES' } else { 'NO' })))
+        $lines.Add(("  Marker closest distance: {0}" -f $forcedFail.ClosestDistance))
+        $lines.Add(("  Marker pass distance: {0}" -f $forcedFail.PassDistance))
+        $lines.Add(("  Marker fail distance: {0}" -f $forcedFail.FailDistance))
         $lines.Add(("  Expected signature: {0}" -f $forcedFail.ExpectedSignature))
         $lines.Add(("  Observed signature: {0}" -f $forcedFail.ObservedSignature))
         $lines.Add(("  Screenshot: {0}" -f $forcedFail.ScreenshotPath))
@@ -772,11 +821,22 @@ try {
     }
 }
 
+$statusMismatches = @($runtimeResults | Where-Object { -not $_.StatusMatched })
+if ($statusMismatches.Count -eq 1) {
+    $focusedRepro = ("powershell -ExecutionPolicy Bypass -File .\scripts\runtime-verify.ps1 -DemoFilter {0}" -f $statusMismatches[0].Id)
+    $lines.Add('')
+    $lines.Add('Focused repro')
+    $lines.Add(("  {0}" -f $focusedRepro))
+    $summaryLines.Add(("Focused repro: {0}" -f $focusedRepro))
+}
+
 Set-Content -LiteralPath $ReportPath -Encoding ascii -Value $lines
 
-$statusMismatches = @($runtimeResults | Where-Object { -not $_.StatusMatched })
 if ($statusMismatches.Count -gt 0) {
-    $summary = @($statusMismatches | ForEach-Object { "{0} expected {1} but observed {2}" -f $_.Id, $_.ExpectedStatus, $_.Status })
+    $summary = @($statusMismatches | ForEach-Object { "{0} expected {1} but observed {2} ({3})" -f $_.Id, $_.ExpectedStatus, $_.Status, $_.FailureReason })
+    if ($statusMismatches.Count -eq 1) {
+        $summary += ("Focused repro: powershell -ExecutionPolicy Bypass -File .\scripts\runtime-verify.ps1 -DemoFilter {0}" -f $statusMismatches[0].Id)
+    }
     throw ("Runtime verify status mismatches detected.`n{0}" -f ($summary -join [Environment]::NewLine))
 }
 

@@ -92,13 +92,13 @@ function Face {
             TimelineTicks = 60
             Camera = @{
                 X = 0.0
-                Y = 1.45
-                Z = -8.8
-                YawDegrees = -4.0
-                YawStepDegrees = 1.4
-                PitchDegrees = -11.0
-                PitchStepDegrees = -0.8
-                ProjectScale = 118
+                Y = 1.30
+                Z = -9.6
+                YawDegrees = -9.0
+                YawStepDegrees = 0.22
+                PitchDegrees = -13.0
+                PitchStepDegrees = 0.06
+                ProjectScale = 124
                 Viewport = @{ X = 0; Y = 0; W = 320; H = 200 }
             }
             Groups = @(
@@ -108,15 +108,15 @@ function Face {
                     EndTick = 59
                     MotionTicks = 0
                     Vertices = @(
-                        (V -12.0 -1.7 2.0), (V 12.0 -1.7 2.0), (V 8.8 -1.7 20.0), (V -8.8 -1.7 20.0),
-                        (V -6.4 -1.2 16.2), (V 6.4 -1.2 16.2), (V 5.4 4.2 18.8), (V -5.4 4.2 18.8),
-                        (V -10.4 -1.7 4.8), (V -8.8 -1.7 4.8), (V -7.1 3.3 12.8), (V -9.1 3.3 12.8),
-                        (V 8.8 -1.7 4.8), (V 10.4 -1.7 4.8), (V 9.1 3.3 12.8), (V 7.1 3.3 12.8)
+                        (V -14.0 -1.9 2.0), (V 14.0 -1.9 2.0), (V 9.4 -1.9 24.0), (V -9.4 -1.9 24.0),
+                        (V -7.6 -1.1 18.5), (V 7.6 -1.1 18.5), (V 6.2 4.8 22.5), (V -6.2 4.8 22.5),
+                        (V -11.8 -1.9 4.5), (V -9.8 -1.9 4.5), (V -7.8 4.1 15.8), (V -10.4 4.1 15.8),
+                        (V 9.8 -1.9 4.5), (V 11.8 -1.9 4.5), (V 10.4 4.1 15.8), (V 7.8 4.1 15.8)
                     )
                     Faces = @(
                         (Face @(0, 1, 2, 3) 'floor_dark'),
                         (Face @(4, 5, 6, 7) 'panel_dark'),
-                        (Face @(8, 9, 10, 11) 'wall_dark'),
+                        (Face @(8, 9, 10, 11) 'panel_cyan' 'pulse_cyan'),
                         (Face @(12, 13, 14, 15) 'wall_dark')
                     )
                 }
@@ -124,15 +124,15 @@ function Face {
                     Key = 'mark'
                     StartTick = 10
                     EndTick = 59
-                    MotionTicks = 18
-                    Offset = @{ X = 0.0; Y = -1.35; Z = 1.55 }
-                    OffsetStep = @{ X = 0.0; Y = 0.075; Z = -0.07 }
-                    YawDegrees = -6.0
-                    YawStepDegrees = 0.35
+                    MotionTicks = 22
+                    Offset = @{ X = 0.0; Y = -1.45; Z = 1.8 }
+                    OffsetStep = @{ X = 0.0; Y = 0.065; Z = -0.055 }
+                    YawDegrees = -10.0
+                    YawStepDegrees = 0.18
                     Vertices = @(
-                        (V -5.2 -1.0 5.8), (V 5.2 -1.0 5.8), (V 3.8 2.1 13.4), (V -3.8 2.1 13.4),
-                        (V -2.0 -1.2 9.4), (V 2.0 -1.2 9.4), (V 1.4 0.8 12.4), (V -1.4 0.8 12.4),
-                        (V -0.6 -0.1 10.6), (V 0.6 -0.1 10.6), (V 0.9 2.3 12.2), (V -0.9 2.3 12.2)
+                        (V -6.2 -1.2 6.0), (V 6.2 -1.2 6.0), (V 4.0 2.4 14.6), (V -4.0 2.4 14.6),
+                        (V -2.6 -1.25 9.7), (V 2.6 -1.25 9.7), (V 1.7 1.0 13.0), (V -1.7 1.0 13.0),
+                        (V -1.0 0.0 11.0), (V 1.0 0.0 11.0), (V 1.4 2.7 12.8), (V -1.4 2.7 12.8)
                     )
                     Faces = @(
                         (Face @(0, 1, 2, 3) 'panel_cyan' 'pulse_cyan'),
@@ -142,18 +142,18 @@ function Face {
                 }
                 @{
                     Key = 'crown'
-                    StartTick = 26
+                    StartTick = 20
                     EndTick = 59
-                    MotionTicks = 14
-                    Offset = @{ X = 0.0; Y = -0.8; Z = 0.7 }
-                    OffsetStep = @{ X = 0.0; Y = 0.055; Z = -0.045 }
+                    MotionTicks = 18
+                    Offset = @{ X = 0.0; Y = -0.9; Z = 0.75 }
+                    OffsetStep = @{ X = 0.0; Y = 0.04; Z = -0.03 }
                     Vertices = @(
-                        (V -4.6 2.5 15.7), (V 4.6 2.5 15.7), (V 3.9 3.0 16.6), (V -3.9 3.0 16.6),
-                        (V -3.2 0.6 8.8), (V -2.0 0.6 8.8), (V 0.6 2.8 12.6), (V -0.6 2.8 12.6)
+                        (V -5.0 2.7 16.2), (V 5.0 2.7 16.2), (V 4.0 3.4 17.4), (V -4.0 3.4 17.4),
+                        (V -3.6 1.0 9.6), (V -1.8 1.0 9.6), (V 0.6 3.0 13.2), (V -0.6 3.0 13.2)
                     )
                     Faces = @(
-                        (Face @(0, 1, 2, 3) 'panel_amber' 'pulse_amber'),
-                        (Face @(4, 5, 6, 7) 'panel_white' 'glint')
+                        (Face @(0, 1, 2, 3) 'panel_white' 'glint'),
+                        (Face @(4, 5, 6, 7) 'panel_amber' 'pulse_amber')
                     )
                 }
             )

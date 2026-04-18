@@ -86,6 +86,7 @@ demo_script_ptr dw 0
 verify_action_pending db 0
 verify_action_index db 0
 verify_result_demo_index db 0
+verify_fail_reason db VERIFY_FAIL_REASON_NONE
 verify_expected_signature dw 0
 verify_observed_signature dw 0
 verify_snapshot_heading db 0
@@ -317,7 +318,6 @@ rank_c_text db 'RANK C', 0
 rank_d_text db 'RANK D', 0
 
 title_menu_new_game_text db 'NEW GAME', 0
-title_menu_attract_text db 'ATTRACT DEMO', 0
 title_menu_credits_text db 'CREDITS', 0
 title_menu_options_text db 'OPTIONS', 0
 title_panel_credits_text db 'CREDITS', 0
@@ -327,7 +327,7 @@ title_option_idle_demo_text db 'IDLE DEMO', 0
 title_option_back_text db 'BACK', 0
 title_toggle_on_text db 'ON', 0
 title_toggle_off_text db 'OFF', 0
-title_menu_hint_text db 'WS NAV  AD OPT  ENTER CONFIRM', 0
+title_menu_hint_text db 'WS NAV  ENTER SELECT', 0
 title_panel_return_text db 'ENTER OR LEFT RETURNS', 0
 credits_line_1 db 'BITRIVER SOFTWARE', 0
 credits_line_2 db 'CYBERSTORM CAMPAIGN BUILD', 0
@@ -456,7 +456,9 @@ replay_prompt db 'ENTER CONTINUES.', 0
 verify_pass_headline db 'REPLAY PASS', 0
 verify_fail_headline db 'REPLAY FAIL', 0
 verify_line_1 db 'LIVE RUNTIME MATCHED THE AUTHORED DEMO.', 0
-verify_line_2 db 'THE BOOTED GAME DIVERGED FROM EXPECTED STATE.', 0
+verify_line_2 db 'DIVERGED', 0
+verify_reason_timeout_text db 'TIMEOUT', 0
+verify_reason_early_end_text db 'EARLY END', 0
 verify_demo_label db 'DEMO', 0
 verify_scenario_label db 'SCN', 0
 verify_step_label db 'ACT', 0

@@ -80,7 +80,6 @@ IF DEBUG_RENDER_SENTINELS
     mov al, PAL_AMBER
     call draw_debug_render_sentinel_vga
 ENDIF
-    call draw_title_scene_overlay
 IF DEBUG_RENDER_SENTINELS
     mov bx, 16
     mov dx, 12

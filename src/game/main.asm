@@ -165,16 +165,10 @@ title_menu_check_confirm:
     mov al, [title_menu_index]
     cmp al, TITLE_MENU_NEW_GAME
     je frontend_start_now
-    cmp al, TITLE_MENU_ATTRACT
-    je title_start_attract
     cmp al, TITLE_MENU_CREDITS
     je title_open_credits
     mov byte ptr [title_panel_mode], TITLE_PANEL_OPTIONS
     jmp title_input_done
-
-title_start_attract:
-    call start_demo_run
-    jmp main_loop
 
 title_open_credits:
     mov byte ptr [title_panel_mode], TITLE_PANEL_CREDITS
@@ -418,6 +412,13 @@ IF DEBUG_FRONTEND_VERIFY
     cmp byte ptr [game_state], STATE_VERIFY_FAIL
     je frontend_state_done
 ENDIF
+IF DEBUG_RUNTIME_VERIFY
+    call update_runtime_verify_watchdog
+    cmp byte ptr [game_state], STATE_VERIFY_PASS
+    je frontend_state_done
+    cmp byte ptr [game_state], STATE_VERIFY_FAIL
+    je frontend_state_done
+ENDIF
     cmp byte ptr [game_state], STATE_SPLASH
     je frontend_update_splash
     cmp byte ptr [game_state], STATE_TITLE
@@ -592,7 +593,7 @@ clear_demo_playback_state:
 clear_runtime_verify_replay_state:
     xor ax, ax
     mov word ptr [verify_action_pending], ax
-    mov byte ptr [verify_result_demo_index], al
+    mov word ptr [verify_result_demo_index], ax
     mov word ptr [verify_snapshot_heading], ax
     mov word ptr [verify_snapshot_cue_flags], ax
     mov word ptr [verify_snapshot_enemy_tick], ax
@@ -613,6 +614,62 @@ clear_frontend_verify_session_state:
 clear_runtime_verify_state:
     call clear_runtime_verify_replay_state
     jmp clear_frontend_verify_session_state
+
+load_runtime_verify_expected_signature:
+    xor bx, bx
+    mov bl, [verify_result_demo_index]
+    shl bx, 1
+    mov ax, [verify_demo_final_signature_table + bx]
+    mov [verify_expected_signature], ax
+    ret
+
+commit_runtime_verify_fail:
+    mov [verify_fail_reason], al
+    mov byte ptr [verify_action_pending], 0
+    push ax
+    mov al, [demo_index]
+    mov byte ptr [verify_result_demo_index], al
+    pop ax
+    mov byte ptr [demo_active], 0
+    mov byte ptr [game_state], STATE_VERIFY_FAIL
+    ret
+
+fail_runtime_verify_demo:
+    push ax
+    call compute_runtime_verify_signature
+    mov [verify_observed_signature], ax
+    mov al, [demo_index]
+    mov byte ptr [verify_result_demo_index], al
+    call load_runtime_verify_expected_signature
+    pop ax
+    jmp commit_runtime_verify_fail
+
+get_runtime_verify_timeout_limit:
+    xor bx, bx
+    mov bl, [demo_index]
+    mov al, [demo_capture_tick_table + bx]
+    add al, RUNTIME_VERIFY_TIMEOUT_GRACE_TICKS
+    jnc runtime_verify_timeout_ready
+    mov al, 255
+
+runtime_verify_timeout_ready:
+    ret
+
+update_runtime_verify_watchdog:
+    cmp byte ptr [verify_mode], VERIFY_MODE_FRONTEND
+    je runtime_verify_watchdog_done
+    cmp byte ptr [demo_active], 0
+    je runtime_verify_watchdog_done
+    cmp byte ptr [game_state], STATE_PLAYING
+    jne runtime_verify_watchdog_done
+    call get_runtime_verify_timeout_limit
+    cmp byte ptr [state_ticks], al
+    jb runtime_verify_watchdog_done
+    mov al, VERIFY_FAIL_REASON_TIMEOUT
+    call fail_runtime_verify_demo
+
+runtime_verify_watchdog_done:
+    ret
 
 prepare_verify_transition_state:
     call reset_keyboard_state
@@ -1157,15 +1214,8 @@ verify_runtime_checkpoint:
     mov al, [verify_action_index]
     cmp al, [verify_demo_checkpoint_count_table + bx]
     jb verify_checkpoint_in_range
-    call compute_runtime_verify_signature
-    mov [verify_observed_signature], ax
-    shl bx, 1
-    mov ax, [verify_demo_final_signature_table + bx]
-    mov [verify_expected_signature], ax
-    mov al, [demo_index]
-    mov byte ptr [verify_result_demo_index], al
-    mov byte ptr [demo_active], 0
-    mov byte ptr [game_state], STATE_VERIFY_FAIL
+    mov al, VERIFY_FAIL_REASON_DIVERGED
+    call fail_runtime_verify_demo
     ret
 
 verify_checkpoint_in_range:
@@ -1184,16 +1234,13 @@ verify_checkpoint_in_range:
     mov [verify_expected_signature], ax
     cmp ax, [verify_observed_signature]
     je verify_checkpoint_done
-    mov al, [demo_index]
-    mov byte ptr [verify_result_demo_index], al
-    mov byte ptr [demo_active], 0
-    mov byte ptr [game_state], STATE_VERIFY_FAIL
+    mov al, VERIFY_FAIL_REASON_DIVERGED
+    call commit_runtime_verify_fail
 
 verify_checkpoint_done:
     ret
 
 finalize_runtime_verify_demo:
-    mov byte ptr [demo_active], 0
     mov byte ptr [verify_action_pending], 0
     mov al, [demo_index]
     mov byte ptr [verify_result_demo_index], al
@@ -1201,32 +1248,26 @@ finalize_runtime_verify_demo:
     mov bl, al
     mov al, [verify_action_index]
     cmp al, [verify_demo_checkpoint_count_table + bx]
-    je verify_demo_action_count_ok
-    call compute_runtime_verify_signature
-    mov [verify_observed_signature], ax
-    xor bx, bx
-    mov bl, [verify_result_demo_index]
-    shl bx, 1
-    mov ax, [verify_demo_final_signature_table + bx]
-    mov [verify_expected_signature], ax
-    mov byte ptr [game_state], STATE_VERIFY_FAIL
-    ret
+    jne verify_demo_early_end
 
-verify_demo_action_count_ok:
     call compute_runtime_verify_signature
     mov [verify_observed_signature], ax
-    xor bx, bx
-    mov bl, [verify_result_demo_index]
-    shl bx, 1
-    mov ax, [verify_demo_final_signature_table + bx]
-    mov [verify_expected_signature], ax
+    call load_runtime_verify_expected_signature
     cmp ax, [verify_observed_signature]
     jne verify_demo_fail
+    mov byte ptr [verify_fail_reason], VERIFY_FAIL_REASON_NONE
+    mov byte ptr [demo_active], 0
     mov byte ptr [game_state], STATE_VERIFY_PASS
     ret
 
+verify_demo_early_end:
+    mov al, VERIFY_FAIL_REASON_EARLY_END
+    call fail_runtime_verify_demo
+    ret
+
 verify_demo_fail:
-    mov byte ptr [game_state], STATE_VERIFY_FAIL
+    mov al, VERIFY_FAIL_REASON_DIVERGED
+    call fail_runtime_verify_demo
     ret
 
 compute_runtime_verify_signature:

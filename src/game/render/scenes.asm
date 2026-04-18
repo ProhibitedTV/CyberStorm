@@ -750,22 +750,8 @@ title_new_game_dim:
 title_new_game_ready:
     call draw_text_small
 
-    mov bx, 82
-    mov dx, 134
-    mov si, offset title_menu_attract_text
-    cmp byte ptr [title_menu_index], TITLE_MENU_ATTRACT
-    jne title_attract_dim
-    mov ah, PAL_WHITE
-    jmp title_attract_ready
-
-title_attract_dim:
-    mov ah, PAL_CYAN2
-
-title_attract_ready:
-    call draw_text_small
-
     mov bx, 102
-    mov dx, 146
+    mov dx, 136
     mov si, offset title_menu_credits_text
     cmp byte ptr [title_menu_index], TITLE_MENU_CREDITS
     jne title_credits_dim
@@ -779,7 +765,7 @@ title_credits_ready:
     call draw_text_small
 
     mov bx, 102
-    mov dx, 158
+    mov dx, 150
     mov si, offset title_menu_options_text
     cmp byte ptr [title_menu_index], TITLE_MENU_OPTIONS
     jne title_options_dim
@@ -792,8 +778,8 @@ title_options_dim:
 title_options_ready:
     call draw_text_small
 
-    mov bx, 58
-    mov dx, 172
+    mov bx, 84
+    mov dx, 168
     mov si, offset title_menu_hint_text
     mov ah, PAL_WHITE
     call draw_text_small
@@ -1498,11 +1484,33 @@ verify_scene_detail_ready:
     jmp verify_scene_body_ready
 
 verify_scene_body_fail:
-    mov si, offset verify_line_2
+    call get_runtime_verify_fail_reason_ptr
     mov ah, PAL_WHITE
 
 verify_scene_body_ready:
     call draw_text_small
+
+    mov ax, [verify_expected_signature]
+    mov bx, VERIFY_BITS_X
+    mov dx, VERIFY_EXPECT_BITS_Y
+    call draw_verify_word_bits
+
+    mov ax, [verify_observed_signature]
+    mov bx, VERIFY_BITS_X
+    mov dx, VERIFY_OBS_BITS_Y
+    call draw_verify_word_bits
+
+    xor ax, ax
+    cmp byte ptr [verify_mode], VERIFY_MODE_FRONTEND
+    je verify_scene_reason_bits_ready
+    cmp byte ptr [game_state], STATE_VERIFY_FAIL
+    jne verify_scene_reason_bits_ready
+    mov al, [verify_fail_reason]
+
+verify_scene_reason_bits_ready:
+    mov bx, VERIFY_BITS_X
+    mov dx, VERIFY_REASON_BITS_Y
+    call draw_verify_word_bits
     jmp verify_scene_prompt
 
 verify_scene_body_frontend:
@@ -1519,14 +1527,14 @@ verify_scene_body_frontend_fail:
 
 verify_scene_prompt:
     mov bx, 78
-    mov dx, 146
+    mov dx, 154
     mov cx, 168
     mov bp, 12
     mov al, PAL_PANEL2
     call fill_rect
 
     mov bx, 76
-    mov dx, 144
+    mov dx, 152
     mov cx, 176
     mov bp, 16
     test byte ptr [anim_phase], 1
@@ -1541,7 +1549,7 @@ verify_scene_prompt_ready:
     call draw_rect_outline
 
     mov bx, 88
-    mov dx, 150
+    mov dx, 158
     mov si, offset verify_prompt
     test byte ptr [anim_phase], 1
     jz verify_scene_prompt_dim
@@ -1563,6 +1571,65 @@ get_verify_scene_accent_color:
 
 verify_scene_color_fail:
     mov al, PAL_RED2
+    ret
+
+get_runtime_verify_fail_reason_ptr:
+    mov al, [verify_fail_reason]
+    cmp al, VERIFY_FAIL_REASON_TIMEOUT
+    je verify_scene_reason_timeout
+    cmp al, VERIFY_FAIL_REASON_EARLY_END
+    je verify_scene_reason_early_end
+    mov si, offset verify_line_2
+    ret
+
+verify_scene_reason_timeout:
+    mov si, offset verify_reason_timeout_text
+    ret
+
+verify_scene_reason_early_end:
+    mov si, offset verify_reason_early_end_text
+    ret
+
+draw_verify_word_bits:
+    push ax
+    push bx
+    push cx
+    push dx
+    push si
+    push di
+    push bp
+    mov si, ax
+    mov [text_cursor_x], bx
+    mov [text_cursor_y], dx
+    mov di, 16
+
+verify_word_bits_loop:
+    mov bx, [text_cursor_x]
+    mov dx, [text_cursor_y]
+    test si, 8000h
+    jz verify_word_bits_off
+    mov al, PAL_WHITE
+    jmp verify_word_bits_color_ready
+
+verify_word_bits_off:
+    mov al, PAL_BG0
+
+verify_word_bits_color_ready:
+    mov cx, VERIFY_BIT_SIZE
+    mov bp, VERIFY_BIT_SIZE
+    call fill_rect
+    add word ptr [text_cursor_x], VERIFY_BIT_PITCH
+    shl si, 1
+    dec di
+    jne verify_word_bits_loop
+
+    pop bp
+    pop di
+    pop si
+    pop dx
+    pop cx
+    pop bx
+    pop ax
     ret
 
 draw_title_demo_arm_badge:

@@ -95,6 +95,8 @@ ENDIF
     call draw_verify_fail_scene
 
 render_present:
+    mov ax, BACKBUFFER_SEG
+    mov es, ax
 IF DEBUG_SMOKE_SENTINEL
     mov bx, SMOKE_SENTINEL_X
     xor dx, dx
@@ -112,6 +114,7 @@ ELSE
 ENDIF
     ret
 
+IF DEBUG_SCENE_RENDER_MODE EQ SCENE_RENDER_MODE_2D
 draw_splash_scene_2d:
     ; The startup splash now reads as a studio ident instead of a flat panel:
     ; the floor grid and pylons establish depth first, then the BitRiver mark
@@ -475,6 +478,7 @@ splash_pylon_scan_ready:
     pop bx
     pop ax
     ret
+ENDIF
 
 draw_splash_brand_stack:
     push ax
@@ -676,17 +680,31 @@ ENDIF
     ret
 
 draw_title_scene_overlay:
-    mov bx, 24
-    mov dx, 20
-    mov cx, 272
-    mov bp, 160
+    mov bx, 56
+    mov dx, 22
+    mov cx, 208
+    mov bp, 30
     mov al, PAL_PANEL
     call fill_rect
 
-    mov bx, 20
+    mov bx, 60
+    mov dx, 74
+    mov cx, 200
+    mov bp, 34
+    mov al, PAL_PANEL
+    call fill_rect
+
+    mov bx, 52
+    mov dx, 116
+    mov cx, 216
+    mov bp, 74
+    mov al, PAL_PANEL
+    call fill_rect
+
+    mov bx, 40
     mov dx, 16
-    mov cx, 280
-    mov bp, 168
+    mov cx, 240
+    mov bp, 176
     test byte ptr [anim_phase], 1
     jz title_frame_dim
     mov al, PAL_CYAN2
@@ -699,21 +717,21 @@ title_frame_ready:
     call draw_rect_outline
 
     mov bx, 74
-    mov dx, 40
+    mov dx, 30
     mov si, offset title_logo
     mov ah, PAL_CYAN2
     call draw_text_big
 
-    mov bx, 70
-    mov dx, 66
-    mov cx, 180
+    mov bx, 74
+    mov dx, 58
+    mov cx, 172
     mov bp, 1
     mov al, PAL_CYAN
     call fill_rect
 
-    mov bx, 92
-    mov dx, 70
-    mov cx, 136
+    mov bx, 96
+    mov dx, 64
+    mov cx, 128
     mov bp, 1
     mov al, PAL_AMBER
     call fill_rect
@@ -794,6 +812,9 @@ title_options_ready:
     mov si, offset title_prompt
     mov ah, PAL_CYAN
     call draw_text_small
+IF DEBUG_FRONTEND_VERIFY
+    call draw_title_frontend_verify_debug
+ENDIF
     call draw_title_demo_arm_badge
     ret
 
@@ -909,6 +930,81 @@ title_opt_back_ready:
     call draw_text_small
 
     ret
+
+IF DEBUG_FRONTEND_VERIFY
+draw_title_frontend_verify_debug:
+    cmp byte ptr [verify_mode], VERIFY_MODE_FRONTEND
+    jne title_frontend_verify_debug_done
+
+    mov bx, 6
+    mov dx, 6
+    mov si, offset frontend_verify_vm_tag
+    mov ah, PAL_CYAN2
+    call draw_text_small
+    mov al, [verify_mode]
+    mov ah, PAL_WHITE
+    mov bx, 18
+    mov dx, 6
+    call draw_byte_hex_small
+
+    mov bx, 36
+    mov dx, 6
+    mov si, offset frontend_verify_sc_tag
+    mov ah, PAL_CYAN2
+    call draw_text_small
+    mov al, [verify_frontend_scenario]
+    mov ah, PAL_WHITE
+    mov bx, 48
+    mov dx, 6
+    call draw_byte_hex_small
+
+    mov bx, 66
+    mov dx, 6
+    mov si, offset frontend_verify_vt_tag
+    mov ah, PAL_CYAN2
+    call draw_text_small
+    mov al, [verify_frontend_ticks]
+    mov ah, PAL_WHITE
+    mov bx, 78
+    mov dx, 6
+    call draw_byte_hex_small
+
+    mov bx, 96
+    mov dx, 6
+    mov si, offset frontend_verify_ti_tag
+    mov ah, PAL_CYAN2
+    call draw_text_small
+    mov al, [title_idle_ticks]
+    mov ah, PAL_WHITE
+    mov bx, 108
+    mov dx, 6
+    call draw_byte_hex_small
+
+    mov bx, 126
+    mov dx, 6
+    mov si, offset frontend_verify_vf_tag
+    mov ah, PAL_CYAN2
+    call draw_text_small
+    mov al, [verify_frontend_event_fired]
+    mov ah, PAL_WHITE
+    mov bx, 138
+    mov dx, 6
+    call draw_byte_hex_small
+
+    mov bx, 156
+    mov dx, 6
+    mov si, offset frontend_verify_fa_tag
+    mov ah, PAL_CYAN2
+    call draw_text_small
+    mov al, [frontend_last_action]
+    mov ah, PAL_WHITE
+    mov bx, 168
+    mov dx, 6
+    call draw_byte_hex_small
+
+title_frontend_verify_debug_done:
+    ret
+ENDIF
 
 draw_win_scene:
 IF DEBUG_SCENE_RENDER_MODE EQ SCENE_RENDER_MODE_2D
@@ -1458,11 +1554,11 @@ verify_scene_detail_ready:
     mov ah, PAL_WHITE
     call draw_text_small
 
-    mov ax, [verify_expected_signature]
     mov bx, 114
     mov dx, 98
     call get_verify_scene_accent_color
     mov cl, al
+    mov ax, [verify_expected_signature]
     call draw_word_hex_small
 
     mov bx, 178
@@ -1471,11 +1567,11 @@ verify_scene_detail_ready:
     mov ah, PAL_WHITE
     call draw_text_small
 
-    mov ax, [verify_observed_signature]
     mov bx, 208
     mov dx, 98
     call get_verify_scene_accent_color
     mov cl, al
+    mov ax, [verify_observed_signature]
     call draw_word_hex_small
 
     mov bx, 66

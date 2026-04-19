@@ -54,6 +54,11 @@ adventure_chunk_max_y    db MAP_H - 1
 ; Boot drive is captured from DL on stage-two entry so post-boot bank reads do
 ; not depend on the boot sector staying resident.
 boot_drive   db 0
+video_output_mode db ENHANCED_OUTPUT_MODE_OFF
+video_pitch dw SCREEN_W
+video_output_w dw SCREEN_W
+video_output_h dw SCREEN_H
+video_lfb_addr dd 0
 rng_state    dw 0ACE1h
 last_tick    dw 0
 pit_frame_due_low dw 0
@@ -236,6 +241,7 @@ scene3d_temp_l      dw 0
 scene3d_temp_r      dw 0
 scene3d_temp_s      dw 0
 scene3d_temp_depth  dw 0
+scene3d_temp_fog    db 0
 scene3d_tri_x0      dw 0
 scene3d_tri_y0      dw 0
 scene3d_tri_u0      dw 0
@@ -415,6 +421,14 @@ title_line_3  db 'FOUR DISTRICTS. ONE SESSION.', 0
 title_line_4  db 'USE THE START MENU TO JACK IN.', 0
 title_prompt  db 'IDLE STARTS ATTRACT.', 0
 demo_takeover_text db 'ENTER RETURNS TO MENU. LIVE KEYS JACK IN.', 0
+IF DEBUG_FRONTEND_VERIFY
+frontend_verify_vm_tag db 'VM', 0
+frontend_verify_sc_tag db 'SC', 0
+frontend_verify_vt_tag db 'VT', 0
+frontend_verify_ti_tag db 'TI', 0
+frontend_verify_vf_tag db 'VF', 0
+frontend_verify_fa_tag db 'FA', 0
+ENDIF
 IF DEBUG_OVERLAY
 debug_tag_text   db 'DBG', 0
 debug_state_tag  db 'GS', 0

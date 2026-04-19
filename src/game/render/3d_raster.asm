@@ -876,6 +876,27 @@ scene3d_draw_textured_span_loop:
     mov al, cs:[scene3d_temp_color]
 
 scene3d_draw_textured_span_color_ready:
+    cmp byte ptr cs:[scene3d_temp_fog], 0
+    je scene3d_draw_textured_span_store
+    mov bx, si
+    xor bl, byte ptr cs:[scene3d_temp_x]
+    cmp byte ptr cs:[scene3d_temp_fog], 2
+    je scene3d_draw_textured_span_far_fog
+    test bl, 3
+    jne scene3d_draw_textured_span_store
+    mov al, cs:[scene3d_temp_dither]
+    jmp scene3d_draw_textured_span_store
+
+scene3d_draw_textured_span_far_fog:
+    test bl, 1
+    jnz scene3d_draw_textured_span_far_base
+    mov al, cs:[scene3d_temp_dither]
+    jmp scene3d_draw_textured_span_store
+
+scene3d_draw_textured_span_far_base:
+    mov al, cs:[scene3d_temp_color]
+
+scene3d_draw_textured_span_store:
     mov es:[di], al
     inc di
     inc si

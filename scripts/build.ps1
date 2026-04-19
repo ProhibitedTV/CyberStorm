@@ -51,12 +51,14 @@ $buildDir = Join-Path $root 'build'
 $layout = [pscustomobject]@{
     BootSectorBytes      = 512
     BootCodeLimitBytes   = 510
-    FloppyBytes          = 1474560
-    FloppySectors        = 2880
+    FloppyBytes          = 33554432
+    FloppySectors        = 65536
+    BootstrapStartLba    = 1
+    BootstrapLoadSegment = 0x0800
     Stage2LoadSegment    = 0x1000
     Stage2LoadOffset     = 0x0000
     Stage2LoadLimitBytes = 0x10000
-    Stage2StartLba       = 1
+    Stage2StartLba       = 2
     AssetBankLoadLimitBytes = 0x10000
 }
 
@@ -105,6 +107,15 @@ function Write-UInt16Le {
 
     $Bytes[$Offset] = [byte]($Value -band 0xFF)
     $Bytes[$Offset + 1] = [byte](($Value -shr 8) -band 0xFF)
+}
+
+function Write-UInt32Le {
+    param([byte[]]$Bytes, [int]$Offset, [uint32]$Value)
+
+    $Bytes[$Offset] = [byte]($Value -band 0xFF)
+    $Bytes[$Offset + 1] = [byte](($Value -shr 8) -band 0xFF)
+    $Bytes[$Offset + 2] = [byte](($Value -shr 16) -band 0xFF)
+    $Bytes[$Offset + 3] = [byte](($Value -shr 24) -band 0xFF)
 }
 
 function Format-Hex16 {
@@ -521,6 +532,14 @@ function Get-CoffFlatBinary {
                 $current = Read-UInt16Le $flat $virtualAddress
                 Write-UInt16Le $flat $virtualAddress ($current + $symbol.Value)
             }
+            0x0006 {
+                if (($virtualAddress + 4) -gt $flat.Length) {
+                    throw ("32-bit relocation at RVA {0} was outside flattened section '{1}' in {2}" -f (Format-Hex32 $virtualAddress), $targetSection.Name, $ObjectPath)
+                }
+
+                $current = Read-UInt32Le $flat $virtualAddress
+                Write-UInt32Le $flat $virtualAddress ([uint32]($current + $symbol.Value))
+            }
             default {
                 throw ("Unsupported relocation type {0} for symbol '{1}' in {2}" -f (Format-Hex16 $relocationType), $symbol.Name, $ObjectPath)
             }
@@ -619,12 +638,12 @@ The current bootloader reads stage two into a single 64 KiB segment.
     }
 
     if ($Stage2Sectors -gt ($Layout.FloppySectors - 1)) {
-        throw ("Stage two requires {0} sectors, but only {1} sectors are available after the boot sector." -f $Stage2Sectors, ($Layout.FloppySectors - 1))
+        throw ("Stage two requires {0} sectors, but only {1} sectors are available after the boot sector on the generated disk image." -f $Stage2Sectors, ($Layout.FloppySectors - 1))
     }
 
     $stage2EndOffset = $Layout.BootSectorBytes + $Stage2Bytes
     if ($stage2EndOffset -gt $Layout.FloppyBytes) {
-        throw ("Boot + stage two would overflow the floppy image: end offset {0}, image size {1}." -f $stage2EndOffset, $Layout.FloppyBytes)
+        throw ("Boot + stage two would overflow the generated disk image: end offset {0}, image size {1}." -f $stage2EndOffset, $Layout.FloppyBytes)
     }
 
     $stage2PaddedBytes = $Stage2Sectors * $Layout.BootSectorBytes
@@ -637,10 +656,12 @@ function Resolve-AssetBankLayout {
     param(
         [object[]]$AssetBanks,
         [int]$Stage2Sectors,
+        [Nullable[int]]$Stage2StartLba,
         $Layout
     )
 
-    $nextLba = $Layout.Stage2StartLba + $Stage2Sectors
+    $stage2Start = if ($null -ne $Stage2StartLba) { [int]$Stage2StartLba } else { [int]$Layout.Stage2StartLba }
+    $nextLba = $stage2Start + $Stage2Sectors
     $resolvedBanks = New-Object 'System.Collections.Generic.List[object]'
 
     foreach ($bank in @($AssetBanks)) {
@@ -699,11 +720,13 @@ function Write-GeneratedBankLayoutInclude {
 function Validate-AssetBanks {
     param(
         [int]$Stage2Sectors,
+        [Nullable[int]]$Stage2StartLba,
         [object[]]$AssetBanks,
         $Layout
     )
 
-    $expectedStartLba = $Layout.Stage2StartLba + $Stage2Sectors
+    $stage2Start = if ($null -ne $Stage2StartLba) { [int]$Stage2StartLba } else { [int]$Layout.Stage2StartLba }
+    $expectedStartLba = $stage2Start + $Stage2Sectors
     foreach ($bank in @($AssetBanks)) {
         if ($bank.Bytes -lt 1) {
             throw ("Asset bank '{0}' is empty." -f $bank.Name)
@@ -722,7 +745,7 @@ function Validate-AssetBanks {
         }
 
         if ($bank.EndLba -ge $Layout.FloppySectors) {
-            throw ("Asset bank '{0}' would overflow the floppy image at LBA {1}. The highest valid LBA is {2}." -f $bank.Name, $bank.EndLba, ($Layout.FloppySectors - 1))
+            throw ("Asset bank '{0}' would overflow the generated disk image at LBA {1}. The highest valid LBA is {2}." -f $bank.Name, $bank.EndLba, ($Layout.FloppySectors - 1))
         }
 
         $expectedStartLba = $bank.EndLba + 1
@@ -734,6 +757,7 @@ function Validate-ImageLayout {
         [int]$BootBytes,
         [int]$Stage2Bytes,
         [int]$Stage2Sectors,
+        [Nullable[int]]$Stage2StartLba,
         [object[]]$AssetBanks = @(),
         $Layout
     )
@@ -747,11 +771,11 @@ function Validate-ImageLayout {
     }
 
     Validate-Stage2Layout -Stage2Bytes $Stage2Bytes -Stage2Sectors $Stage2Sectors -Layout $Layout
-    Validate-AssetBanks -Stage2Sectors $Stage2Sectors -AssetBanks $AssetBanks -Layout $Layout
+    Validate-AssetBanks -Stage2Sectors $Stage2Sectors -Stage2StartLba $Stage2StartLba -AssetBanks $AssetBanks -Layout $Layout
 
     $diskFootprintBytes = $Layout.BootSectorBytes + ($Stage2Sectors * $Layout.BootSectorBytes) + ((@($AssetBanks) | Measure-Object -Property PaddedBytes -Sum).Sum)
     if ($diskFootprintBytes -gt $Layout.FloppyBytes) {
-        throw ("Boot + stage two + asset banks would overflow the floppy image: {0} bytes required, image size {1}." -f $diskFootprintBytes, $Layout.FloppyBytes)
+        throw ("Boot + stage two + asset banks would overflow the generated disk image: {0} bytes required, image size {1}." -f $diskFootprintBytes, $Layout.FloppyBytes)
     }
 }
 
@@ -778,7 +802,7 @@ function Get-BuildWarnings {
 
     $imagePercent = [math]::Round(($DiskFootprintBytes / $Layout.FloppyBytes) * 100, 2)
     if ($imagePercent -ge $imageWarningPercent) {
-        $warnings.Add(("Disk footprint is using {0}% of the floppy capacity." -f $imagePercent))
+        $warnings.Add(("Disk footprint is using {0}% of the current HDD image capacity." -f $imagePercent))
     }
 
     if ($Stage2Sectors -ge 120) {
@@ -2875,6 +2899,29 @@ function Write-GeneratedTextureBank {
             for ($x = 0; $x -lt $tileSize; $x++) {
                 $color = $base
                 switch -Regex ($key) {
+                    'grate|grid' {
+                        if ((($x % 6) -eq 0) -or (($y % 6) -eq 0)) { $color = $dither }
+                        elseif (((($x * 5) + ($y * 3)) % 17) -lt 2) { $color = [byte](($base + 1) -band 0xFF) }
+                    }
+                    'metal|steel|brush|panel' {
+                        if (((($x * 3) + $y) % 9) -lt 3) { $color = $dither }
+                        elseif ((($x + ($y * 2)) % 13) -eq 0) { $color = [byte](($base + 1) -band 0xFF) }
+                    }
+                    'concrete|noir' {
+                        if (((($x * 7) + ($y * 11)) % 19) -lt 5) { $color = $dither }
+                        elseif (((($x * 5) + ($y * 2)) % 23) -eq 0) { $color = [byte](($base + 1) -band 0xFF) }
+                    }
+                    'hazard' {
+                        if (((($x + $y) % 10) -lt 4) -or (((($x -shl 1) + $y) % 17) -eq 0)) { $color = $dither }
+                    }
+                    'emissive|strip|rail' {
+                        if ((($x % 8) -lt 2) -or (($y % 12) -eq 0)) { $color = $dither }
+                        elseif (((($x * 3) + $y) % 21) -eq 0) { $color = [byte](($base + 1) -band 0xFF) }
+                    }
+                    'logo|glass' {
+                        if (((($x * 2) + ($y * 3)) % 15) -lt 4) { $color = $dither }
+                        elseif ((($x + $y) % 11) -eq 0) { $color = [byte](($base + 1) -band 0xFF) }
+                    }
                     'grass|meadow' {
                         if ((($x + $y) % 7) -eq 0) { $color = $dither }
                         elseif (($y % 8) -eq 0) { $color = [byte](($base + 1) -band 0xFF) }
@@ -4554,6 +4601,9 @@ function Write-BuildReport {
         [string]$ScreenshotHousekeeping,
         [string[]]$ReadmeScreenshotSlots,
         [int]$BootBytes,
+        [int]$BootstrapBytes,
+        [int]$BootstrapSectors,
+        [int]$BootstrapPaddedBytes,
         [int]$Stage2Bytes,
         [int]$Stage2Sectors,
         [int]$Stage2PaddedBytes,
@@ -4573,11 +4623,13 @@ function Write-BuildReport {
     )
 
     $bootPhysical = Get-PhysicalAddress -Segment 0 -Offset 0x7C00
+    $bootstrapPhysical = Get-PhysicalAddress -Segment $Layout.BootstrapLoadSegment -Offset 0x0000
     $stagePhysical = Get-PhysicalAddress -Segment $Layout.Stage2LoadSegment -Offset $Layout.Stage2LoadOffset
     $bootFreeBytes = $Layout.BootCodeLimitBytes - $BootBytes
     $stage2FreeBytes = $Layout.Stage2LoadLimitBytes - $Stage2Bytes
     $imageFreeBytes = $Layout.FloppyBytes - $ImageBytesUsed
     $diskFootprintFreeBytes = $Layout.FloppyBytes - $DiskFootprintBytes
+    $bootstrapEndLba = $Layout.BootstrapStartLba + $BootstrapSectors - 1
     $stage2EndLba = $Layout.Stage2StartLba + $Stage2Sectors - 1
 
     [array]$warningList = @()
@@ -4771,17 +4823,22 @@ function Write-BuildReport {
         'Layout'
         ("  Boot code bytes: {0} / {1}" -f $BootBytes, $Layout.BootCodeLimitBytes)
         ("  Boot code free bytes: {0}" -f $bootFreeBytes)
+        ("  Bootstrap bytes: {0}" -f $BootstrapBytes)
+        ("  Bootstrap padded bytes: {0}" -f $BootstrapPaddedBytes)
+        ("  Bootstrap sectors: {0}" -f $BootstrapSectors)
         ("  Stage2 bytes: {0}" -f $Stage2Bytes)
         ("  Stage2 free bytes before 64 KiB limit: {0}" -f $stage2FreeBytes)
         ("  Stage2 padded bytes: {0}" -f $Stage2PaddedBytes)
         ("  Stage2 sectors: {0}" -f $Stage2Sectors)
-        ("  Image bytes used: {0} / {1}" -f $ImageBytesUsed, $Layout.FloppyBytes)
-        ("  Image free bytes: {0}" -f $imageFreeBytes)
-        ("  Disk footprint bytes: {0} / {1}" -f $DiskFootprintBytes, $Layout.FloppyBytes)
-        ("  Disk footprint free bytes: {0}" -f $diskFootprintFreeBytes)
+        ("  Disk image bytes used: {0} / {1}" -f $ImageBytesUsed, $Layout.FloppyBytes)
+        ("  Disk image free bytes: {0}" -f $imageFreeBytes)
+        ("  Occupied sector bytes: {0} / {1}" -f $DiskFootprintBytes, $Layout.FloppyBytes)
+        ("  Occupied sector free bytes: {0}" -f $diskFootprintFreeBytes)
         ("  Boot load address: 0000:7C00 (phys {0})" -f (Format-Hex32 $bootPhysical))
+        ("  Bootstrap load address: {0}:0000 (phys {1})" -f (Format-Hex16 $Layout.BootstrapLoadSegment), (Format-Hex32 $bootstrapPhysical))
         ("  Stage2 load address: {0}:{1} (phys {2})" -f (Format-Hex16 $Layout.Stage2LoadSegment), (Format-Hex16 $Layout.Stage2LoadOffset), (Format-Hex32 $stagePhysical))
         ("  Boot signature: 0x55AA @ byte 510")
+        ("  Bootstrap LBA range: {0}..{1}" -f $Layout.BootstrapStartLba, $bootstrapEndLba)
         ("  Stage2 LBA range: {0}..{1}" -f $Layout.Stage2StartLba, $stage2EndLba)
         ("  Boot section: {0} (relocations applied: {1})" -f $BootSectionName, $BootRelocations)
         ("  Stage2 section: {0} (relocations applied: {1})" -f $StageSectionName, $StageRelocations)
@@ -4830,6 +4887,7 @@ $assemblerTool = Resolve-AssemblerTool -Kind $Assembler -RequestedPath $Assemble
 
 $gameAsm = Join-Path $srcDir 'game.asm'
 $bootAsm = Join-Path $srcDir 'boot.asm'
+$bootstrapAsm = Join-Path $srcDir 'bootstrap.asm'
 $constantsSourcePath = Join-Path $srcDir 'game\constants.inc'
 $artSourcePath = Join-Path $root 'assets\visuals.psd1'
 $presentationSourcePath = Join-Path $root 'assets\presentation.psd1'
@@ -4843,8 +4901,10 @@ $balanceHarnessScript = Join-Path $PSScriptRoot 'balance-harness.ps1'
 $regressionHarnessScript = Join-Path $PSScriptRoot 'regression-harness.ps1'
 $gameObj = Join-Path $buildDir 'game.obj'
 $bootObj = Join-Path $buildDir 'boot.obj'
+$bootstrapObj = Join-Path $buildDir 'bootstrap.obj'
 $gameList = Join-Path $buildDir 'game.lst'
 $bootList = Join-Path $buildDir 'boot.lst'
+$bootstrapList = Join-Path $buildDir 'bootstrap.lst'
 $bootConfig = Join-Path $buildDir 'boot_config.inc'
 $debugConfig = Join-Path $buildDir 'debug_config.inc'
 $audioConfig = Join-Path $buildDir 'audio_config.inc'
@@ -4867,8 +4927,8 @@ $presentationBankBinPath = Join-Path $buildDir 'cyberstorm-presentation-bank.bin
 $geometryBankBinPath = Join-Path $buildDir 'cyberstorm-geometry-bank.bin'
 $stage2BinPath = Join-Path $buildDir 'cyberstorm-stage2.bin'
 $bootBinPath = Join-Path $buildDir 'cyberstorm-boot.bin'
+$bootstrapBinPath = Join-Path $buildDir 'cyberstorm-bootstrap.bin'
 $imgPath = Join-Path $buildDir 'cyberstorm.img'
-$vfdPath = Join-Path $buildDir 'cyberstorm.vfd'
 $reportPath = Join-Path $buildDir 'cyberstorm-build-report.txt'
 $replayReportPath = Join-Path $buildDir 'cyberstorm-replay-report.txt'
 $balanceReportPath = Join-Path $buildDir 'cyberstorm-balance-report.txt'
@@ -4990,6 +5050,7 @@ $audioSummaryLines = @(
 $renderSummaryLines = @(
     ("Scene renderer: {0}" -f $sceneRenderModeName)
     ("Gameplay renderer: {0}" -f $gameplayRenderModeName)
+    'Primary output: BIOS HDD boot + VBE 640x480x8 LFB present; gameplay logic still renders through the 320x200 compatibility surface.'
     ("3D render stage: {0}" -f $debugRenderStageValue)
     'Debug switches: -DebugRender2D uses the oracle path, -DebugRenderReference forces stage-two MASM kernels, and -DebugRenderMachine (or legacy -DebugRender3D) enables the banked raw machine-code rail.'
 )
@@ -5036,6 +5097,10 @@ $expectedBannerHeight = Get-AsmEquValue -SourcePath $constantsSourcePath -Name '
 $game3dFaceBudget = Get-AsmEquValue -SourcePath $constantsSourcePath -Name 'SCENE3D_MAX_FACES'
 $game3dOptionalFaceBudget = Get-AsmEquValue -SourcePath $constantsSourcePath -Name 'GAME3D_OPTIONAL_FACE_BUDGET'
 $shardCount = Get-AsmEquValue -SourcePath $constantsSourcePath -Name 'SHARD_COUNT'
+$splashRevealPylons = Get-AsmEquValue -SourcePath $constantsSourcePath -Name 'SPLASH_REVEAL_PYLONS'
+$splashRevealLogo = Get-AsmEquValue -SourcePath $constantsSourcePath -Name 'SPLASH_REVEAL_LOGO'
+$splashRevealWordmark = Get-AsmEquValue -SourcePath $constantsSourcePath -Name 'SPLASH_REVEAL_WORDMARK'
+$splashRevealUi = Get-AsmEquValue -SourcePath $constantsSourcePath -Name 'SPLASH_REVEAL_UI'
 
 $generatedArt = Write-GeneratedArtInclude -SourcePath $artSourcePath -OutputPath $generatedArtPath
 $generatedPresentation = Write-GeneratedPresentationContent `
@@ -5159,6 +5224,8 @@ $generatedContentLines = @(
     ("Geometry textured materials: {0}" -f $generatedGeometry.TexturedMaterialCount)
     ("Geometry texture summary: {0}" -f $generatedGeometry.TextureSummary)
     ("Textured realm showcase path: {0}" -f $(if ($generatedGeometry.TexturedMaterialCount -gt 0) { 'active' } else { 'inactive' }))
+    ("Frontend identity lane: splash/title now favor textured geometry, banked materials, and open-frame overlays")
+    ("Frontend splash timing: pylons {0}, logo {1}, wordmark {2}, ui {3}" -f $splashRevealPylons, $splashRevealLogo, $splashRevealWordmark, $splashRevealUi)
     ("Gameplay camera: quadrant-aware chase presets with authored projection, structure depth, horizon bands, and atmosphere")
     ("Gameplay viewport: {0}x{1} at {2},{3}" -f $game3dViewW, $game3dViewH, $game3dViewX, $game3dViewY)
     ("Gameplay room structural headroom: {0}" -f ($gameplayGeometryBudget.SummaryLines -join ' | '))
@@ -5276,46 +5343,70 @@ $assetBanksBase = @(
 )
 
 Write-Section -Title 'Stage Two'
-$provisionalStage2Sectors = 0
 $resolvedAssetBanks = @()
-$stage2Resolved = $false
-$gameBuild = $null
-$gameFlat = $null
-$gameBin = $null
-$gameSectorCount = 0
+$gameBuild = Invoke-Assembler -SourcePath $gameAsm -ObjectPath $gameObj -ListPath $gameList -IncludePaths @($buildDir) -ToolPath $assemblerTool.Path -AssemblerName $assemblerTool.Name
+$gameFlat = Get-CoffFlatBinary -ObjectPath $gameObj
+$gameBin = $gameFlat.FlatBytes
+$gameSectorCount = [int][Math]::Ceiling($gameBin.Length / $layout.BootSectorBytes)
+Validate-Stage2Layout -Stage2Bytes $gameBin.Length -Stage2Sectors $gameSectorCount -Layout $layout
+[IO.File]::WriteAllBytes($stage2BinPath, $gameBin)
+Write-Host ("Stage2 : {0} bytes, {1} sectors" -f $gameBin.Length, $gameSectorCount)
 
-for ($stage2Pass = 1; $stage2Pass -le 3; $stage2Pass++) {
-    $resolvedAssetBanks = Resolve-AssetBankLayout -AssetBanks $assetBanksBase -Stage2Sectors $provisionalStage2Sectors -Layout $layout
+Write-Section -Title 'Bootstrap'
+$bootstrapBuild = $null
+$bootstrapFlat = $null
+$bootstrapBin = $null
+$bootstrapSectorCount = 0
+$bootstrapResolved = $false
+$provisionalBootstrapSectors = 1
+
+for ($bootstrapPass = 1; $bootstrapPass -le 4; $bootstrapPass++) {
+    $stage2StartLba = $layout.BootstrapStartLba + $provisionalBootstrapSectors
+    $resolvedAssetBanks = Resolve-AssetBankLayout -AssetBanks $assetBanksBase -Stage2Sectors $gameSectorCount -Stage2StartLba $stage2StartLba -Layout $layout
     Write-GeneratedBankLayoutInclude -OutputPath $generatedBankLayoutPath -AssetBanks $resolvedAssetBanks
+    Set-Content -LiteralPath $bootConfig -Encoding ascii -Value @(
+        '; generated by scripts/build.ps1'
+        ("BOOTSTRAP_SECTORS EQU {0}" -f $provisionalBootstrapSectors)
+        ("GAME_SECTORS EQU {0}" -f $gameSectorCount)
+        ("STAGE2_LBA EQU {0}" -f $stage2StartLba)
+    )
+    Assert-PathExists -Path $bootConfig -Label 'generated boot config'
 
-    if (@($resolvedAssetBanks).Count -gt 0) {
-        Write-Host ("Pass {0} : assume {1} stage2 sectors, first bank at LBA {2}" -f $stage2Pass, $provisionalStage2Sectors, $resolvedAssetBanks[0].StartLba)
-    } else {
-        Write-Host ("Pass {0} : assume {1} stage2 sectors" -f $stage2Pass, $provisionalStage2Sectors)
-    }
+    Write-Host ("Pass {0} : assume {1} bootstrap sectors, stage2 at LBA {2}" -f $bootstrapPass, $provisionalBootstrapSectors, $stage2StartLba)
 
-    $gameBuild = Invoke-Assembler -SourcePath $gameAsm -ObjectPath $gameObj -ListPath $gameList -IncludePaths @($buildDir) -ToolPath $assemblerTool.Path -AssemblerName $assemblerTool.Name
-    $gameFlat = Get-CoffFlatBinary -ObjectPath $gameObj
-    $gameBin = $gameFlat.FlatBytes
-    $currentStage2Sectors = [int][Math]::Ceiling($gameBin.Length / $layout.BootSectorBytes)
-    Validate-Stage2Layout -Stage2Bytes $gameBin.Length -Stage2Sectors $currentStage2Sectors -Layout $layout
+    $bootstrapBuild = Invoke-Assembler -SourcePath $bootstrapAsm -ObjectPath $bootstrapObj -ListPath $bootstrapList -IncludePaths @($buildDir) -ToolPath $assemblerTool.Path -AssemblerName $assemblerTool.Name
+    $bootstrapFlat = Get-CoffFlatBinary -ObjectPath $bootstrapObj
+    $bootstrapBin = $bootstrapFlat.FlatBytes
+    $currentBootstrapSectors = [int][Math]::Ceiling($bootstrapBin.Length / $layout.BootSectorBytes)
 
-    if ($currentStage2Sectors -eq $provisionalStage2Sectors) {
-        $gameSectorCount = $currentStage2Sectors
-        $stage2Resolved = $true
+    if ($currentBootstrapSectors -eq $provisionalBootstrapSectors) {
+        $bootstrapSectorCount = $currentBootstrapSectors
+        $bootstrapResolved = $true
         break
     }
 
-    $provisionalStage2Sectors = $currentStage2Sectors
+    $provisionalBootstrapSectors = $currentBootstrapSectors
 }
 
-if (-not $stage2Resolved) {
-    throw "Stage-two bank metadata did not stabilize after 3 assembly passes. Check the generated bank layout include for a size-sensitive dependency."
+if (-not $bootstrapResolved) {
+    throw "Bootstrap metadata did not stabilize after 4 assembly passes. Check the generated bank layout include or boot config for a size-sensitive dependency."
 }
 
-$resolvedAssetBanks = Resolve-AssetBankLayout -AssetBanks $assetBanksBase -Stage2Sectors $gameSectorCount -Layout $layout
+$layout.Stage2StartLba = $layout.BootstrapStartLba + $bootstrapSectorCount
+$resolvedAssetBanks = Resolve-AssetBankLayout -AssetBanks $assetBanksBase -Stage2Sectors $gameSectorCount -Stage2StartLba $layout.Stage2StartLba -Layout $layout
 Write-GeneratedBankLayoutInclude -OutputPath $generatedBankLayoutPath -AssetBanks $resolvedAssetBanks
-[IO.File]::WriteAllBytes($stage2BinPath, $gameBin)
+Set-Content -LiteralPath $bootConfig -Encoding ascii -Value @(
+    '; generated by scripts/build.ps1'
+    ("BOOTSTRAP_SECTORS EQU {0}" -f $bootstrapSectorCount)
+    ("GAME_SECTORS EQU {0}" -f $gameSectorCount)
+    ("STAGE2_LBA EQU {0}" -f $layout.Stage2StartLba)
+)
+Assert-PathExists -Path $bootConfig -Label 'generated boot config'
+$bootstrapBuild = Invoke-Assembler -SourcePath $bootstrapAsm -ObjectPath $bootstrapObj -ListPath $bootstrapList -IncludePaths @($buildDir) -ToolPath $assemblerTool.Path -AssemblerName $assemblerTool.Name
+$bootstrapFlat = Get-CoffFlatBinary -ObjectPath $bootstrapObj
+$bootstrapBin = $bootstrapFlat.FlatBytes
+[IO.File]::WriteAllBytes($bootstrapBinPath, $bootstrapBin)
+Write-Host ("Bootstrap : {0} bytes, {1} sectors, stage2 at LBA {2}" -f $bootstrapBin.Length, $bootstrapSectorCount, $layout.Stage2StartLba)
 
 $assetBankLines = @(
     ("Layout include: {0}" -f $generatedBankLayoutPath)
@@ -5329,15 +5420,12 @@ foreach ($assetBankLine in $assetBankLines) {
     Write-Host $assetBankLine
 }
 
-Set-Content -LiteralPath $bootConfig -Encoding ascii -Value ("GAME_SECTORS EQU {0}" -f $gameSectorCount)
-Assert-PathExists -Path $bootConfig -Label 'generated boot config'
-
 Write-Section -Title 'Boot Sector'
 $bootBuild = Invoke-Assembler -SourcePath $bootAsm -ObjectPath $bootObj -ListPath $bootList -IncludePaths @($buildDir) -ToolPath $assemblerTool.Path -AssemblerName $assemblerTool.Name
 $bootFlat = Get-CoffFlatBinary -ObjectPath $bootObj
 $bootBin = $bootFlat.FlatBytes
 
-Validate-ImageLayout -BootBytes $bootBin.Length -Stage2Bytes $gameBin.Length -Stage2Sectors $gameSectorCount -AssetBanks $resolvedAssetBanks -Layout $layout
+Validate-ImageLayout -BootBytes $bootBin.Length -Stage2Bytes $gameBin.Length -Stage2Sectors $gameSectorCount -Stage2StartLba $layout.Stage2StartLba -AssetBanks $resolvedAssetBanks -Layout $layout
 
 $bootSector = New-Object byte[] $layout.BootSectorBytes
 [Array]::Copy($bootBin, 0, $bootSector, 0, $bootBin.Length)
@@ -5350,9 +5438,10 @@ if ($bootSector[510] -ne 0x55 -or $bootSector[511] -ne 0xAA) {
 
 [IO.File]::WriteAllBytes($bootBinPath, $bootSector)
 
-$imageBytesUsed = $layout.BootSectorBytes + $gameBin.Length + ((@($resolvedAssetBanks) | Measure-Object -Property Bytes -Sum).Sum)
+$imageBytesUsed = $layout.BootSectorBytes + $bootstrapBin.Length + $gameBin.Length + ((@($resolvedAssetBanks) | Measure-Object -Property Bytes -Sum).Sum)
+$bootstrapPaddedBytes = $bootstrapSectorCount * $layout.BootSectorBytes
 $stage2PaddedBytes = $gameSectorCount * $layout.BootSectorBytes
-$diskFootprintBytes = $layout.BootSectorBytes + $stage2PaddedBytes + ((@($resolvedAssetBanks) | Measure-Object -Property PaddedBytes -Sum).Sum)
+$diskFootprintBytes = $layout.BootSectorBytes + $bootstrapPaddedBytes + $stage2PaddedBytes + ((@($resolvedAssetBanks) | Measure-Object -Property PaddedBytes -Sum).Sum)
 $warnings = Get-BuildWarnings -BootBytes $bootBin.Length -Stage2Bytes $gameBin.Length -Stage2Sectors $gameSectorCount -ImageBytesUsed $imageBytesUsed -DiskFootprintBytes $diskFootprintBytes -AssetBanks $resolvedAssetBanks -Layout $layout
 if ($null -ne $replayHarness.WarningLines -and @($replayHarness.WarningLines).Count -gt 0) {
     $warnings = @($warnings) + @($replayHarness.WarningLines)
@@ -5364,29 +5453,26 @@ if ($null -ne $gameplayGeometryBudget.WarningLines -and @($gameplayGeometryBudge
     $warnings = @($warnings) + @($gameplayGeometryBudget.WarningLines)
 }
 
-$floppy = New-Object byte[] $layout.FloppyBytes
-[Array]::Copy($bootSector, 0, $floppy, 0, $bootSector.Length)
-[Array]::Copy($gameBin, 0, $floppy, $layout.BootSectorBytes, $gameBin.Length)
+$diskImage = New-Object byte[] $layout.FloppyBytes
+[Array]::Copy($bootSector, 0, $diskImage, 0, $bootSector.Length)
+[Array]::Copy($bootstrapBin, 0, $diskImage, ($layout.BootstrapStartLba * $layout.BootSectorBytes), $bootstrapBin.Length)
+[Array]::Copy($gameBin, 0, $diskImage, ($layout.Stage2StartLba * $layout.BootSectorBytes), $gameBin.Length)
 foreach ($assetBank in @($resolvedAssetBanks)) {
     $assetBankBytes = [IO.File]::ReadAllBytes($assetBank.BinaryPath)
-    [Array]::Copy($assetBankBytes, 0, $floppy, ($assetBank.StartLba * $layout.BootSectorBytes), $assetBankBytes.Length)
+    [Array]::Copy($assetBankBytes, 0, $diskImage, ($assetBank.StartLba * $layout.BootSectorBytes), $assetBankBytes.Length)
 }
 
-[IO.File]::WriteAllBytes($imgPath, $floppy)
-[IO.File]::WriteAllBytes($vfdPath, $floppy)
+[IO.File]::WriteAllBytes($imgPath, $diskImage)
 
 if ((Get-Item -LiteralPath $imgPath).Length -ne $layout.FloppyBytes) {
     throw ("Image size mismatch after write: {0}" -f $imgPath)
-}
-
-if ((Get-Item -LiteralPath $vfdPath).Length -ne $layout.FloppyBytes) {
-    throw ("Image size mismatch after write: {0}" -f $vfdPath)
 }
 
 $regressionHarness = & $regressionHarnessScript `
     -BootConfigPath $bootConfig `
     -BankLayoutPath $generatedBankLayoutPath `
     -BootBinaryPath $bootBinPath `
+    -BootstrapBinaryPath $bootstrapBinPath `
     -Stage2BinaryPath $stage2BinPath `
     -CodeBankBinaryPath $codeBankBinPath `
     -TextureBankBinaryPath $textureBankBinPath `
@@ -5394,8 +5480,8 @@ $regressionHarness = & $regressionHarnessScript `
     -PresentationBankBinaryPath $presentationBankBinPath `
     -GeometryBankBinaryPath $geometryBankBinPath `
     -ImagePath $imgPath `
-    -VfdPath $vfdPath `
     -BootListPath $bootList `
+    -BootstrapListPath $bootstrapList `
     -GameListPath $gameList `
     -ReportPath $regressionReportPath
 $regressionHarnessLines = @(
@@ -5619,6 +5705,9 @@ Write-BuildReport `
     -ScreenshotHousekeeping $screenshotHousekeepingText `
     -ReadmeScreenshotSlots $screenshotSync.ReadmeSlots `
     -BootBytes $bootBin.Length `
+    -BootstrapBytes $bootstrapBin.Length `
+    -BootstrapSectors $bootstrapSectorCount `
+    -BootstrapPaddedBytes $bootstrapPaddedBytes `
     -Stage2Bytes $gameBin.Length `
     -Stage2Sectors $gameSectorCount `
     -Stage2PaddedBytes $stage2PaddedBytes `
@@ -5633,12 +5722,11 @@ Write-BuildReport `
     -BootStartOffset $bootStartOffset `
     -StageStartOffset $stageStartOffset `
     -Warnings $warnings `
-    -ArtifactPaths @($generatedArtPath, $generatedPresentationPath, $generatedGeometryPath, $generatedMachineCodePath, $generatedSectorContentPath, $generatedMapsPath, $generatedDemosPath, $generatedRuntimeVerifyPath, $generatedMusicPath, $machineCodeReportPath, $textureBankReportPath, $replayReportPath, $balanceReportPath, $regressionReportPath, $frontendVerifyReportPath, $vmSmokeReportPath, $runtimeVerifyReportPath, $showcaseReportPath, $generatedBankLayoutPath, $codeBankBinPath, $textureBankBinPath, $mapBankBinPath, $presentationBankBinPath, $geometryBankBinPath, $bootBinPath, $stage2BinPath, $bootList, $gameList, $bootConfig, $debugConfig, $audioConfig, $imgPath, $vfdPath) + $publishedReadmeScreenshotArtifacts + @($reportPath, $screenshotSync.RotationStatePath, $screenshotSync.GalleryManifestPath) + $frontendVerifyArtifacts + $vmSmokeArtifacts + $runtimeVerifyArtifacts + $showcaseArtifacts `
+    -ArtifactPaths @($generatedArtPath, $generatedPresentationPath, $generatedGeometryPath, $generatedMachineCodePath, $generatedSectorContentPath, $generatedMapsPath, $generatedDemosPath, $generatedRuntimeVerifyPath, $generatedMusicPath, $machineCodeReportPath, $textureBankReportPath, $replayReportPath, $balanceReportPath, $regressionReportPath, $frontendVerifyReportPath, $vmSmokeReportPath, $runtimeVerifyReportPath, $showcaseReportPath, $generatedBankLayoutPath, $codeBankBinPath, $textureBankBinPath, $mapBankBinPath, $presentationBankBinPath, $geometryBankBinPath, $bootBinPath, $bootstrapBinPath, $stage2BinPath, $bootList, $bootstrapList, $gameList, $bootConfig, $debugConfig, $audioConfig, $imgPath) + $publishedReadmeScreenshotArtifacts + @($reportPath, $screenshotSync.RotationStatePath, $screenshotSync.GalleryManifestPath) + $frontendVerifyArtifacts + $vmSmokeArtifacts + $runtimeVerifyArtifacts + $showcaseArtifacts `
     -Layout $layout
 
 Write-Section -Title 'Artifacts'
 Write-Host ("Built {0}" -f $imgPath)
-Write-Host ("Built {0}" -f $vfdPath)
 Write-Host ("Art     {0}" -f $generatedArtPath)
 Write-Host ("Present {0}" -f $generatedPresentationPath)
 Write-Host ("Geom    {0}" -f $generatedGeometryPath)
@@ -5663,10 +5751,14 @@ Write-Host ("Bank    {0}" -f $textureBankBinPath)
 Write-Host ("Bank    {0}" -f $mapBankBinPath)
 Write-Host ("Bank    {0}" -f $presentationBankBinPath)
 Write-Host ("Bank    {0}" -f $geometryBankBinPath)
+Write-Host ("Boot    {0}" -f $bootBinPath)
+Write-Host ("Boot    {0}" -f $bootstrapBinPath)
+Write-Host ("Stage2  {0}" -f $stage2BinPath)
 foreach ($readmeShot in $publishedReadmeScreenshotArtifacts) {
     Write-Host ("Shot    {0}" -f $readmeShot)
 }
 Write-Host ("Listing {0}" -f $bootList)
+Write-Host ("Listing {0}" -f $bootstrapList)
 Write-Host ("Listing {0}" -f $gameList)
 Write-Host ("Config  {0}" -f $debugConfig)
 Write-Host ("Config  {0}" -f $audioConfig)
@@ -5687,11 +5779,14 @@ if ($null -ne $showcaseFailure) {
 
 Write-Section -Title 'Layout Summary'
 Write-Host ("Boot code : {0} bytes ({1} bytes free)" -f $bootBin.Length, ($layout.BootCodeLimitBytes - $bootBin.Length))
+Write-Host ("Bootstrap : {0} bytes, {1} sectors, padded to {2} bytes" -f $bootstrapBin.Length, $bootstrapSectorCount, $bootstrapPaddedBytes)
 Write-Host ("Stage2    : {0} bytes ({1} bytes free), {2} sectors, padded to {3} bytes" -f $gameBin.Length, ($layout.Stage2LoadLimitBytes - $gameBin.Length), $gameSectorCount, $stage2PaddedBytes)
-Write-Host ("Image     : {0} / {1} bytes used ({2} bytes free)" -f $imageBytesUsed, $layout.FloppyBytes, ($layout.FloppyBytes - $imageBytesUsed))
+Write-Host ("Disk img  : {0} / {1} bytes used ({2} bytes free)" -f $imageBytesUsed, $layout.FloppyBytes, ($layout.FloppyBytes - $imageBytesUsed))
 Write-Host ("Disk use  : {0} / {1} bytes of occupied sectors ({2} bytes free)" -f $diskFootprintBytes, $layout.FloppyBytes, ($layout.FloppyBytes - $diskFootprintBytes))
 Write-Host ("Boot load : 0000:7C00 (phys {0})" -f (Format-Hex32 (Get-PhysicalAddress -Segment 0 -Offset 0x7C00)))
+Write-Host ("Bootstrap : {0}:0000 (phys {1})" -f (Format-Hex16 $layout.BootstrapLoadSegment), (Format-Hex32 (Get-PhysicalAddress -Segment $layout.BootstrapLoadSegment -Offset 0x0000)))
 Write-Host ("Stage2    : {0}:{1} (phys {2})" -f (Format-Hex16 $layout.Stage2LoadSegment), (Format-Hex16 $layout.Stage2LoadOffset), (Format-Hex32 (Get-PhysicalAddress -Segment $layout.Stage2LoadSegment -Offset $layout.Stage2LoadOffset)))
+Write-Host ("Bootstrap LBA: {0}..{1}" -f $layout.BootstrapStartLba, ($layout.BootstrapStartLba + $bootstrapSectorCount - 1))
 Write-Host ("Stage2 LBA: {0}..{1}" -f $layout.Stage2StartLba, ($layout.Stage2StartLba + $gameSectorCount - 1))
 foreach ($assetBank in @($resolvedAssetBanks)) {
     Write-Host ("{0,-10}: {1} bytes, {2} sectors, LBA {3}..{4}, load {5}:0000" -f $assetBank.Name, $assetBank.Bytes, $assetBank.Sectors, $assetBank.StartLba, $assetBank.EndLba, (Format-Hex16 $assetBank.LoadSegment))

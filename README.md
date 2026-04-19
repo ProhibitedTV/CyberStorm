@@ -2,13 +2,13 @@
 
 > No OS. No shell. Just the realm.
 >
-> CyberStorm is a bootable 16-bit x86 3D adventure slice and a compact bare-metal engine project. It boots from a floppy image, enters a hand-written boot sector, loads a real-mode stage two, switches into raw VGA mode `13h`, and runs without DOS or any host runtime.
+> CyberStorm is a bootable x86 3D adventure slice and a compact bare-metal engine project. The current mainline build emits a BIOS hard-disk image, enters a hand-written boot sector plus tiny bootstrap, prepares an enhanced VBE present path, and then hands off into the legacy real-mode stage-two runtime without DOS or any host runtime.
 
 ![CyberStorm hero](build/readme-shot-1.png)
 
 | Built for | Boots from | Video | Runtime |
 | --- | --- | --- | --- |
-| BIOS x86 + Oracle VirtualBox | Raw floppy image (`.img` / `.vfd`) | VGA mode `13h` | 16-bit real mode |
+| BIOS x86 + Oracle VirtualBox | Raw HDD image (`.img`) | VBE `640x480x8` present path over a `320x200` compatibility surface | i386-targeted boot chain + legacy 16-bit stage-two runtime |
 
 ## Key Features
 
@@ -22,7 +22,7 @@
 
 ### For Engine People
 
-- **A real boot path.** The build emits a bootable floppy image, not a host app wrapped in a fake shell.
+- **A real boot path.** The build emits a bootable BIOS disk image, not a host app wrapped in a fake shell.
 - **A compact but structured runtime.** Stage two stays inside a documented single-segment contract while still using modular render, gameplay, audio, and data layers.
 - **Generated content tooling.** Sprites, banked presentation assets, low-poly scene geometry, sectors, rules, demos, and music come from readable source files that generate MASM-friendly data at build time.
 - **A real software 3D render path.** Splash, title, sector-entry cards, end screens, and now live gameplay all run through a flat-shaded low-poly renderer, while `-DebugRender2D` still keeps the legacy 2D oracle available for parity work.
@@ -50,7 +50,7 @@ CyberStorm is small enough to inspect, but it is no longer a single opaque assem
 
 ![CyberStorm boot flow](docs/readme/boot-flow.svg)
 
-The boot sector at `LBA 0` loads stage two into `1000:0000`, then stage two loads the map, presentation, and geometry banks into `7000:0000`, `7800:0000`, and `8000:0000` before entering VGA gameplay. The exact current sector ranges live in [build/cyberstorm-build-report.txt](build/cyberstorm-build-report.txt).
+The boot sector at `LBA 0` loads a tiny bootstrap, the bootstrap loads stage two plus the bank payloads, probes VBE, and writes a handoff block, and then stage two continues through the gameplay runtime. The exact current LBA ranges live in [build/cyberstorm-build-report.txt](build/cyberstorm-build-report.txt).
 
 ### Runtime Layout
 
@@ -58,7 +58,7 @@ The boot sector at `LBA 0` loads stage two into `1000:0000`, then stage two load
 
 ![CyberStorm runtime modules](docs/readme/runtime-modules.svg)
 
-The runtime keeps BIOS-owned low memory untouched, inherits the boot stack at `0000:7C00`, runs stage two from a single segment at `1000:0000`, stages maps/presentation/geometry in conventional-memory banks, and uses a backbuffer at `9000:0000` before presenting to VGA memory at `A000:0000`.
+The runtime keeps BIOS-owned low memory untouched, inherits the boot stack at `0000:7C00`, runs stage two from a single segment at `1000:0000`, stages maps/presentation/geometry in conventional-memory banks, and now presents through an enhanced VBE linear-framebuffer path when the bootstrap handoff succeeds.
 
 ### Asset And Content Pipeline
 
@@ -76,10 +76,13 @@ powershell -ExecutionPolicy Bypass -File .\scripts\build.ps1
 
 ### Boot It In VirtualBox
 
-1. Create a BIOS-based VM such as `Other/Unknown (32-bit)`.
-2. Keep or add a floppy controller.
-3. Attach [build/cyberstorm.vfd](build/cyberstorm.vfd) as the floppy disk.
-4. Boot the VM.
+The supported path is the included deployment script, which refreshes a VirtualBox-ready disk from [build/cyberstorm.img](build/cyberstorm.img):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\deploy-vm.ps1
+```
+
+If you wire a VM manually, use a BIOS VM and attach a hard disk derived from [build/cyberstorm.img](build/cyberstorm.img), not the retired floppy artifact path.
 
 ### Use The Included Workspace VM
 
@@ -115,12 +118,12 @@ This section is intentionally stable. Exact byte counts, LBA ranges, and generat
 
 | Fact | Project contract |
 | --- | --- |
-| Boot path | Boot sector at `LBA 0`, stage two loaded to `1000:0000`, then the runtime enters raw VGA without DOS. |
+| Boot path | Boot sector at `LBA 0`, tiny bootstrap immediately after it, then stage two and the asset packs follow on the BIOS HDD image. |
 | Stage-two contract | Stage two still fits a single `64 KiB` real-mode load segment, with exact current headroom reported by the build. |
 | Banked payloads | Map, presentation, and geometry payloads load into `7000:0000`, `7800:0000`, and `8000:0000`. |
 | Public gallery | `title`, `beauty`, and `action` README slots are sourced from the verified showcase manifest under [build/showcase/](build/showcase). |
 | Validation stack | Build, balance, replay, regression, frontend verify, VM smoke, runtime verify, and showcase capture all write reviewable reports. |
-| Release defaults | `MUSIC` audio policy, `320x200x256` VGA mode `13h`, grouped low-poly scenes, and camera-relative gameplay-room 3D rendering. |
+| Release defaults | `MUSIC` audio policy, grouped low-poly scenes, camera-relative gameplay-room 3D rendering, and an enhanced VBE present path that currently displays the `320x200` gameplay/runtime surface inside the new boot chain. |
 
 ## Why This Is A Strong AI-Assisted Development Example
 
@@ -128,7 +131,7 @@ CyberStorm is a good AI-assisted project for a specific reason: the repository g
 
 - **The source of truth is readable.** Visuals, presentation art, sector layouts, sector rules, demos, and music live in compact authored files instead of sprawling raw assembly data.
 - **The runtime contracts are explicit.** [docs/architecture.md](docs/architecture.md) spells out the boot handoff, segment assumptions, memory map, state layout, and bank-loading rules.
-- **The build enforces the dangerous constraints.** [scripts/build.ps1](scripts/build.ps1) validates boot-sector size, the single-segment stage-two limit, bank layout, floppy footprint, and generated content shape before writing the image.
+- **The build enforces the dangerous constraints.** [scripts/build.ps1](scripts/build.ps1) validates boot-sector size, bootstrap size, the single-segment stage-two limit, bank layout, disk-image footprint, and generated content shape before writing the image.
 - **Debugging can be reproduced.** Deterministic debug flags can force a known RNG seed, start in a chosen sector, and enable a compact overlay.
 - **Balance changes get guardrails.** [scripts/balance-harness.ps1](scripts/balance-harness.ps1) runs static fairness checks and fixed-seed spawn sweeps before someone boots VirtualBox.
 - **Design intent is written down.** [docs/sector-identity.md](docs/sector-identity.md) and [docs/enemy-drama.md](docs/enemy-drama.md) explain what sectors and enemies are supposed to feel like, not just how they are coded.

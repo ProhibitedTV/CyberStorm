@@ -1,19 +1,11 @@
 start:
     ; Stage two stays in a single tiny-model segment: code, data, and the IRQ1
-    ; handler all expect DS = CS. SS:SP still points at the boot stack.
+    ; handler all expect DS = CS. SS:SP still points at the inherited bootstrap
+    ; stack, while FS stays reserved for the enhanced flat-memory presenter.
     push cs
     pop ds
-    ; Banked payloads are only supported from the floppy target in the current
-    ; VirtualBox workflow, so normalize any exotic BIOS boot-drive aliases.
-    cmp dl, 1
-    jbe boot_drive_ready
-    xor dl, dl
-boot_drive_ready:
     mov [boot_drive], dl
-    call load_required_asset_banks
-
-    mov ax, 0013h
-    int 10h
+    call init_video_output
     call init_palette
     call init_audio
 IF DEBUG_LEGACY_GAMEPLAY EQ 0
@@ -609,6 +601,7 @@ clear_frontend_verify_session_state:
     mov word ptr [verify_observed_signature], ax
     mov word ptr [verify_mode], ax
     mov word ptr [verify_frontend_ticks], ax
+    mov byte ptr [verify_frontend_event_fired], 0
     ret
 
 clear_runtime_verify_state:

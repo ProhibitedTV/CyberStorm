@@ -64,6 +64,9 @@ wait_vblank_start:
     ret
 
 present_frame:
+    cmp byte ptr [video_output_mode], ENHANCED_OUTPUT_MODE_VBE
+    je present_frame_vbe
+
     push ax
     push cx
     push si

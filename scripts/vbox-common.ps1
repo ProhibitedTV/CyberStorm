@@ -167,6 +167,27 @@ function Invoke-DeployVm {
     }
 }
 
+function Test-VmNeedsEnhancedRedeploy {
+    param([string]$Name)
+
+    $infoLines = Invoke-VBoxManage -Arguments @('showvminfo', $Name) -TimeoutSeconds 20
+    $infoText = $infoLines -join [Environment]::NewLine
+
+    if ($infoText -match 'Boot Device 1:\s+Floppy') {
+        return $true
+    }
+
+    if ($infoText -match 'cyberstorm\.vfd') {
+        return $true
+    }
+
+    if ($infoText -notmatch 'cyberstorm\.(img|vdi)') {
+        return $true
+    }
+
+    return $false
+}
+
 function Ensure-VmRegistered {
     param([string]$Name)
 
@@ -179,5 +200,9 @@ function Ensure-VmRegistered {
         }
 
         throw
+    }
+
+    if (Test-VmNeedsEnhancedRedeploy -Name $Name) {
+        Invoke-DeployVm -Name $Name
     }
 }

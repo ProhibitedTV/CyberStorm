@@ -277,6 +277,7 @@ function Invoke-FrontendVerifyRun {
     Ensure-VmRegistered -Name $VmName
     Stop-VmIfRunning -Name $VmName
     Invoke-ChildBuild -ExtraArguments $buildArgs
+    Invoke-DeployVm -Name $VmName
     Start-HeadlessVm -Name $VmName
     $maxCaptureAttempts = 4
     $retryDelaySeconds = 2

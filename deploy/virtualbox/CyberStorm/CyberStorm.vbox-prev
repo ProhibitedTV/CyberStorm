@@ -8,43 +8,37 @@
 ** Written by VirtualBox 7.2.6 (r172322)
 -->
 <VirtualBox xmlns="http://www.virtualbox.org/" version="1.19-windows">
-  <Machine uuid="{f05f7dc5-bc9e-4034-a57c-1121b6e15108}" name="CyberStorm" OSType="Other" snapshotFolder="Snapshots" lastStateChange="2026-04-18T23:29:13Z">
+  <Machine uuid="{f35af43e-934c-474e-bba6-eb1f423617f3}" name="CyberStorm" OSType="Other" snapshotFolder="Snapshots" lastStateChange="2026-04-19T17:35:45Z">
     <MediaRegistry>
-      <FloppyImages>
-        <Image uuid="{aa73f26b-98f9-4ce7-b144-688151f6bc3d}" location="C:/Users/RhythmicCarnage/Desktop/CyberStorm/build/cyberstorm.vfd"/>
-      </FloppyImages>
+      <HardDisks>
+        <HardDisk uuid="{6b125e83-1e62-4a77-8e19-8f4ad0a93345}" location="C:/Users/RhythmicCarnage/Desktop/CyberStorm/deploy/virtualbox/CyberStorm.vdi" format="VDI" type="Normal"/>
+      </HardDisks>
     </MediaRegistry>
-    <ExtraData>
-      <ExtraDataItem name="GUI/LastCloseAction" value="PowerOff"/>
-      <ExtraDataItem name="GUI/LastNormalWindowPosition" value="2061,261,640,523"/>
-    </ExtraData>
     <Hardware>
-      <Memory RAMSize="32"/>
+      <Memory RAMSize="64"/>
       <Boot>
-        <Order position="1" device="Floppy"/>
+        <Order position="1" device="HardDisk"/>
         <Order position="2" device="None"/>
         <Order position="3" device="None"/>
         <Order position="4" device="None"/>
       </Boot>
+      <Display VRAMSize="16"/>
       <Firmware/>
       <BIOS>
         <SmbiosUuidLittleEndian enabled="true"/>
         <AutoSerialNumGen enabled="true"/>
       </BIOS>
       <Network>
-        <Adapter slot="0" enabled="true" MACAddress="0800277BE5E8">
-          <NAT localhost-reachable="true"/>
+        <Adapter slot="0" enabled="true" MACAddress="080027DCBD0A">
+          <NAT/>
         </Adapter>
       </Network>
       <AudioAdapter controller="SB16" useDefault="true" driver="WAS" enabled="true" enabledOut="true"/>
       <Clipboard/>
-      <GuestProperties>
-        <GuestProperty name="/VirtualBox/HostInfo/GUI/LanguageID" value="en_US" timestamp="1776456797674751000" flags="RDONLYGUEST"/>
-      </GuestProperties>
       <StorageControllers>
-        <StorageController name="Floppy" type="I82078" PortCount="1" useHostIOCache="true" Bootable="true">
-          <AttachedDevice type="Floppy" hotpluggable="false" port="0" device="0">
-            <Image uuid="{aa73f26b-98f9-4ce7-b144-688151f6bc3d}"/>
+        <StorageController name="IDE" type="PIIX4" PortCount="2" useHostIOCache="true" Bootable="true">
+          <AttachedDevice type="HardDisk" hotpluggable="false" port="0" device="0">
+            <Image uuid="{6b125e83-1e62-4a77-8e19-8f4ad0a93345}"/>
           </AttachedDevice>
         </StorageController>
       </StorageControllers>

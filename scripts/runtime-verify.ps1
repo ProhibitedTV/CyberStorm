@@ -451,6 +451,7 @@ function Invoke-RuntimeVerifyRun {
     Ensure-VmRegistered -Name $VmName
     Stop-VmIfRunning -Name $VmName
     Invoke-ChildBuild -ExtraArguments $buildArgs
+    Invoke-DeployVm -Name $VmName
     $hostReplayBlock = Get-HostReplayBlock -ReportPath $ReplayReportPath -DemoId $demoId
     $expectedStatus = if ($CorruptExpectation.IsPresent) { 'FAIL' } else { 'PASS' }
     $initialWaitSeconds = Get-WaitSecondsForDemo -Demo $Demo -RuntimeVerify

@@ -36,5 +36,6 @@ include game\render\effects.asm
 include game\state.asm
 include game\art.asm
 include game\maps.asm
+include game\render\enhanced_present.asm
 
 end start

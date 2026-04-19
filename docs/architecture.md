@@ -1,21 +1,22 @@
 # CyberStorm Architecture
 
-CyberStorm is a single-segment 16-bit real-mode game that boots directly from a floppy image. There is no DOS, filesystem, or kernel underneath it. The sections below call out the contracts that make the current boot flow and runtime work.
+CyberStorm is a bare-metal x86 game with a BIOS HDD boot chain and a still-legacy single-segment stage-two runtime. There is no DOS, filesystem, or kernel underneath it. The sections below call out the contracts that make the current enhanced boot flow and runtime work.
 
 ## 1. Boot And Load Contract
 
-1. The BIOS loads the first floppy sector to `0000:7C00` and enters [src/boot.asm](../src/boot.asm).
-2. The boot sector reads `GAME_SECTORS` sectors starting at floppy sector `2` into physical address `0x10000` (`1000:0000`).
-3. The boot sector far-returns to `1000:0000`.
-4. [src/game.asm](../src/game.asm) therefore must keep executable code at offset `0`, which is why the file begins with `jmp start`.
+1. The BIOS loads the first HDD sector to `0000:7C00` and enters [src/boot.asm](../src/boot.asm).
+2. The boot sector verifies EDD support, loads the tiny bootstrap from `LBA 1`, and far-returns into [src/bootstrap.asm](../src/bootstrap.asm).
+3. The bootstrap loads stage two plus the bank payloads, probes the enhanced VBE target, and writes a handoff block at `BOOTSTRAP_SEG:ENHANCED_HANDOFF_OFFSET`.
+4. The bootstrap then far-returns to `1000:0000`, where [src/game.asm](../src/game.asm) begins with the legacy stage-two runtime.
+5. [src/game.asm](../src/game.asm) therefore must keep executable code at offset `0`, which is why the file begins with `jmp start`.
 
 Practical consequences:
 
-- Stage two must remain a flat binary that starts immediately after the boot sector in the image.
+- Stage two remains a flat binary loaded to `1000:0000`, but it no longer sits immediately after the boot sector on disk; the bootstrap now occupies the sectors in between.
 - Stage two must fit inside one 64 KiB segment. The build validates this because the bootloader never updates `ES` while reading.
 - The bootloader clears the direction flag and stage two relies on that for `lodsb`, `stosb`, and `movsb`-based code.
-- Stage two inherits the boot stack set by the bootloader. Today that means `SS:SP = 0000:7C00` remains live after the far jump.
-- Stage two now captures the BIOS boot drive from `DL` on entry so it can read later asset-bank sectors without changing the bootloader handoff.
+- Stage two still inherits the boot lineage from the BIOS/bootloader stack, but the bootstrap re-establishes its own temporary stack before handing off.
+- Stage two now captures the BIOS boot drive from `DL` on entry while also consuming the bootstrap's enhanced-output handoff block.
 
 ## 2. Memory And Segment Layout
 
@@ -23,13 +24,14 @@ Practical consequences:
 | --- | --- | --- |
 | `0000:0000-0000:03FF` | Interrupt vector table | Left under BIOS ownership in the default runtime. |
 | `0000:0400-0000:04FF` | BIOS data area | Must remain untouched. |
-| `0000:7C00` downward | Active stack | Created by the boot sector and still used by stage two and the keyboard ISR. |
+| `0000:7C00` downward | Boot stack lineage | Created by the boot sector; the bootstrap temporarily switches to its own stack before stage two resumes the legacy runtime model. |
+| `0800:0000` | Bootstrap + enhanced handoff block | Tiny real-mode loader plus VBE handoff metadata. |
 | `1000:0000` upward | Stage two code + data | `DS` is set to `CS` on entry and the whole game assumes one shared segment. |
 | `7000:0000` | Map bank | Read-only authored map payload loaded by stage two after boot. |
 | `7800:0000` | Presentation bank | Read-only scene-kit payload for splash, title, attract/demo, sector-entry, and end screens. |
 | `8000:0000` | Geometry bank | Read-only low-poly scene, prop, actor, and gameplay-kit payload for the 3D renderer. |
 | `9000:0000` | Backbuffer | 64,000-byte linear framebuffer used before presenting to VGA. |
-| `A000:0000` | VGA mode `13h` framebuffer | Final 320x200x8 output. |
+| VBE LFB (physical) | Enhanced present target | Final `640x480x8` output target when the bootstrap VBE handoff succeeds. |
 
 Register assumptions that matter:
 
@@ -52,7 +54,8 @@ Register assumptions that matter:
 - [src/game/art.asm](../src/game/art.asm) is the visual-data wrapper and includes the build-generated sprite/tile bitmap include before the hand-authored palette/font data.
 - [src/game/state.asm](../src/game/state.asm) now includes generated sector metadata/rule tables from the content pipeline.
 - [src/game/state.asm](../src/game/state.asm) also includes generated attract/demo scripts from the content pipeline.
-- [src/game/banks.asm](../src/game/banks.asm) owns the minimal BIOS disk-read helper for post-boot asset banks.
+- [src/bootstrap.asm](../src/bootstrap.asm) owns the new BIOS HDD/VBE bootstrap work: stage-two load, asset-pack load, VBE probe, and the enhanced handoff block.
+- [src/game/banks.asm](../src/game/banks.asm) is now effectively legacy documentation for the older post-boot bank-loading path; the enhanced boot chain is moving that responsibility earlier.
 - [src/game/maps.asm](../src/game/maps.asm) is now documentation only; the authored map pool lives in a bank payload instead of stage two.
 - [src/game/audio.asm](../src/game/audio.asm) keeps the playback logic in-source, but includes generated theme data from the content pipeline.
 - `build\audio_config.inc` now compiles the runtime in `MUSIC` mode by default. `-SfxOnly` is the explicit quiet build profile when you want one-shot effects without looping themes.

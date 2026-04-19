@@ -918,6 +918,7 @@ scene3d_draw_face_by_index:
     push si
     push di
 
+    mov [scene3d_temp_face], bl
     xor bh, bh
     mov si, bx
     mov ax, SCENE3D_FACE_BYTES
@@ -992,6 +993,12 @@ scene3d_draw_face_room_fx:
 scene3d_draw_face_scene_fx:
     mov al, [si + 5]
     call scene3d_apply_face_fx
+    call scene3d_apply_frontend_face_fog
+    cmp byte ptr [scene3d_temp_texture], SCENE3D_TEXTURE_NONE
+    je scene3d_draw_face_fx_done
+    call scene3d_prepare_face_texture
+    call scene3d_draw_textured_triangle
+    jmp scene3d_draw_face_by_index_done
 
 scene3d_draw_face_fx_done:
     call scene3d_draw_triangle
@@ -1003,6 +1010,29 @@ scene3d_draw_face_by_index_done:
     pop cx
     pop bx
     pop ax
+    ret
+
+scene3d_apply_frontend_face_fog:
+    mov byte ptr [scene3d_temp_fog], 0
+    cmp byte ptr [scene3d_temp_texture], SCENE3D_TEXTURE_NONE
+    je scene3d_apply_frontend_face_fog_done
+
+    xor bx, bx
+    mov bl, [scene3d_temp_face]
+    shl bx, 1
+    mov ax, [scene3d_face_depth + bx]
+    cmp ax, SCENE3D_FRONTEND_FOG_MID_Z
+    jb scene3d_apply_frontend_face_fog_done
+    mov byte ptr [scene3d_temp_color], PAL_PANEL2
+    mov byte ptr [scene3d_temp_dither], PAL_PANEL
+    mov byte ptr [scene3d_temp_fog], 1
+    cmp ax, SCENE3D_FRONTEND_FOG_FAR_Z
+    jb scene3d_apply_frontend_face_fog_done
+    mov byte ptr [scene3d_temp_color], PAL_PANEL
+    mov byte ptr [scene3d_temp_dither], PAL_BG1
+    mov byte ptr [scene3d_temp_fog], 2
+
+scene3d_apply_frontend_face_fog_done:
     ret
 
 scene3d_apply_face_fx:

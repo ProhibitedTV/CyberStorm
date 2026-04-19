@@ -384,6 +384,7 @@ function Invoke-DemoCapture {
         '-DebugDemoIndex',
         $DemoIndex.ToString()
     )
+    Invoke-DeployVm -Name $VmName
     Start-HeadlessVm -Name $VmName
     Start-Sleep -Seconds (Get-CaptureWaitSeconds -Demo $Demo)
     Invoke-VmScreenshot -Name $VmName -OutputPath $rawShotPath
@@ -429,6 +430,7 @@ function Invoke-DirectGameplayCapture {
         '-DebugSeed',
         '4660'
     )
+    Invoke-DeployVm -Name $VmName
     Start-HeadlessVm -Name $VmName
     Start-Sleep -Seconds $waitSeconds
     Invoke-VmScreenshot -Name $VmName -OutputPath $rawShotPath

@@ -27,7 +27,7 @@ $root = Split-Path -Parent $PSScriptRoot
 $buildDir = Join-Path $root 'build'
 $artifactDir = Join-Path $buildDir 'vm-smoke'
 $vbox = 'C:\Program Files\Oracle\VirtualBox\VBoxManage.exe'
-$floppy = Join-Path $buildDir 'cyberstorm.vfd'
+$diskImage = Join-Path $buildDir 'cyberstorm.img'
 $startupScreenshotPath = Join-Path $artifactDir 'cyberstorm-vm-smoke-startup.png'
 $titleScreenshotPath = Join-Path $artifactDir 'cyberstorm-vm-smoke-title.png'
 $screenshotPath = Join-Path $artifactDir 'cyberstorm-vm-smoke.png'
@@ -254,7 +254,7 @@ if ([string]::IsNullOrWhiteSpace($AudioConfigPath)) {
 }
 
 Assert-PathExists -Path $vbox -Label 'VBoxManage'
-Assert-PathExists -Path $floppy -Label 'boot image'
+Assert-PathExists -Path $diskImage -Label 'boot image'
 Assert-PathExists -Path $AudioConfigPath -Label 'audio config'
 Assert-PathExists -Path $ConstantsSourcePath -Label 'assembly constants source'
 Assert-PathExists -Path $BuildScriptPath -Label 'build script'
@@ -295,6 +295,7 @@ try {
 
     Invoke-ChildBuild -ExtraArguments @('-DebugRenderSentinels')
     $restoreRelease = $true
+    Invoke-DeployVm -Name $VmName
 
     Start-HeadlessVm -Name $VmName
     Start-Sleep -Seconds $startupCaptureSeconds
@@ -318,8 +319,8 @@ try {
         throw 'VBox log never reported the VM entering the Running state.'
     }
 
-    if (@($liveLogLines | Where-Object { $_ -match 'Booting from Floppy' }).Count -eq 0) {
-        throw 'VBox log never reached the floppy boot path.'
+    if (@($liveLogLines | Where-Object { $_ -match 'Booting from Hard Disk|Booting from fixed disk' }).Count -eq 0) {
+        throw 'VBox log never reached the hard-disk boot path.'
     }
 
     $attractCapture = Capture-SmokeWindow -Label 'Attract' -OutputPath $screenshotPath -Geometry $geometry

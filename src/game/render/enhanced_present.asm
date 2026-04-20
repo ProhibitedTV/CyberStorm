@@ -1,4 +1,4 @@
-.386
+.386p
 
 init_video_output:
     push ax
@@ -45,6 +45,54 @@ init_video_output_done:
     pop ax
     ret
 
+refresh_vbe_flat_fs:
+    push ax
+    push bx
+    push ds
+    cli
+    push cs
+    pop ds
+
+    xor eax, eax
+    mov ax, cs
+    shl eax, 4
+    mov word ptr [vbe_flat_gdt_code + 2], ax
+    shr eax, 16
+    mov byte ptr [vbe_flat_gdt_code + 4], al
+    mov byte ptr [vbe_flat_gdt_code + 7], ah
+
+    xor eax, eax
+    mov ax, cs
+    shl eax, 4
+    add eax, OFFSET vbe_flat_gdt_start
+    mov dword ptr [vbe_flat_gdt_descriptor + 2], eax
+
+    lgdt fword ptr [vbe_flat_gdt_descriptor]
+    mov eax, cr0
+    or eax, 1
+    mov cr0, eax
+    push VBE_FLAT_CODE_SEL
+    push OFFSET refresh_vbe_flat_fs_protected
+    retf
+
+refresh_vbe_flat_fs_protected:
+    mov ax, VBE_FLAT_DATA_SEL
+    mov fs, ax
+
+    mov eax, cr0
+    and eax, 0FFFFFFFEh
+    mov cr0, eax
+    push STAGE2_SEG
+    push OFFSET refresh_vbe_flat_fs_real
+    retf
+
+refresh_vbe_flat_fs_real:
+    sti
+    pop ds
+    pop bx
+    pop ax
+    ret
+
 present_frame_vbe:
     push eax
     push ebx
@@ -53,6 +101,7 @@ present_frame_vbe:
     push esi
     push edi
     push ds
+    call refresh_vbe_flat_fs
     call wait_for_vblank
     mov ax, BACKBUFFER_SEG
     mov ds, ax
@@ -67,15 +116,19 @@ present_frame_vbe_row:
     mov cx, SCREEN_W
 
 present_frame_vbe_pixel:
-    mov al, [si]
+    xor bx, bx
+    mov bl, [si]
     inc si
-    mov ah, al
+    shl bx, 1
+    mov ax, [palette_rgb565_table + bx]
     mov word ptr fs:[edi], ax
-    add edi, 2
+    mov word ptr fs:[edi + 2], ax
+    add edi, 4
     loop present_frame_vbe_pixel
 
     movzx eax, word ptr [video_pitch]
     movzx ecx, word ptr [video_output_w]
+    shl ecx, 1
     sub eax, ecx
     add edi, eax
 
@@ -97,3 +150,17 @@ present_frame_vbe_same_source:
     pop ebx
     pop eax
     ret
+
+VBE_FLAT_CODE_SEL equ 08h
+VBE_FLAT_DATA_SEL equ 10h
+
+even
+vbe_flat_gdt_start label byte
+vbe_flat_gdt_null dq 0
+vbe_flat_gdt_code dw 0FFFFh, 0000h
+                  db 00h, 09Ah, 00h, 00h
+vbe_flat_gdt_data dw 0FFFFh, 0000h
+                  db 00h, 092h, 08Fh, 00h
+vbe_flat_gdt_end label byte
+vbe_flat_gdt_descriptor dw vbe_flat_gdt_end - vbe_flat_gdt_start - 1
+                        dd 0

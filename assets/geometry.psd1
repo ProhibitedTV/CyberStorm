@@ -85,6 +85,18 @@ function Face {
         @{ Key = 'logo_panel'; Base = 7; Dither = 6; TextureKey = 'logo-panel'; ShadeMode = 'affine' }
         @{ Key = 'logo_dark'; Base = 3; Dither = 6; TextureKey = 'logo-panel'; ShadeMode = 'affine' }
         @{ Key = 'emissive_strip'; Base = 5; Dither = 6; TextureKey = 'emissive-strip'; ShadeMode = 'affine' }
+        @{ Key = 'concrete_rain'; Base = 11; Dither = 3; TextureKey = 'concrete-rain'; ShadeMode = 'affine' }
+        @{ Key = 'concrete_pit'; Base = 3; Dither = 12; TextureKey = 'concrete-pit'; ShadeMode = 'affine' }
+        @{ Key = 'metal_plate'; Base = 7; Dither = 11; TextureKey = 'metal-plate'; ShadeMode = 'affine' }
+        @{ Key = 'metal_oil'; Base = 3; Dither = 4; TextureKey = 'metal-oil'; ShadeMode = 'affine' }
+        @{ Key = 'steel_rib'; Base = 6; Dither = 7; TextureKey = 'steel-rib'; ShadeMode = 'affine' }
+        @{ Key = 'grate_deep'; Base = 11; Dither = 6; TextureKey = 'grate-deep'; ShadeMode = 'affine' }
+        @{ Key = 'rail_cyan'; Base = 5; Dither = 7; TextureKey = 'rail-cyan'; ShadeMode = 'affine' }
+        @{ Key = 'hazard_diag'; Base = 8; Dither = 10; TextureKey = 'hazard-diag'; ShadeMode = 'affine' }
+        @{ Key = 'logo_void'; Base = 3; Dither = 11; TextureKey = 'logo-void'; ShadeMode = 'affine' }
+        @{ Key = 'logo_shine'; Base = 7; Dither = 8; TextureKey = 'logo-shine'; ShadeMode = 'affine' }
+        @{ Key = 'strip_hot'; Base = 8; Dither = 7; TextureKey = 'strip-hot'; ShadeMode = 'affine' }
+        @{ Key = 'stone_shadow'; Base = 11; Dither = 4; TextureKey = 'stone-shadow'; ShadeMode = 'affine' }
         @{ Key = 'sky_stone'; Base = 7; Dither = 6; TextureKey = 'soft-stone'; ShadeMode = 'affine' }
         @{ Key = 'sun_warm'; Base = 8; Dither = 7; TextureKey = 'banner-warm'; ShadeMode = 'affine' }
         @{ Key = 'meadow_ground'; Base = 13; Dither = 8; TextureKey = 'grass'; ShadeMode = 'affine' }
@@ -97,305 +109,451 @@ function Face {
     Scenes = @(
         @{
             Key = 'splash'
-            TimelineTicks = 60
+            TimelineTicks = 96
             Camera = @{
                 X = 0.0
-                Y = 1.15
-                Z = -11.0
-                YawDegrees = -4.0
-                YawStepDegrees = 0.14
-                PitchDegrees = -12.0
+                Y = 1.0
+                Z = -12.6
+                YawDegrees = -2.0
+                YawStepDegrees = 0.09
+                PitchDegrees = -11.0
                 PitchStepDegrees = 0.04
-                ProjectScale = 118
+                ProjectScale = 124
                 Viewport = @{ X = 0; Y = 0; W = 320; H = 200 }
             }
             Groups = @(
                 @{
-                    Key = 'deck'
+                    Key = 'floor_shell'
                     StartTick = 0
-                    EndTick = 59
+                    EndTick = 95
                     MotionTicks = 0
                     Vertices = @(
-                        (V -14.2 -1.25 3.2), (V -5.3 -1.25 3.2), (V -3.9 -1.85 24.8), (V -11.9 -1.85 24.8),
-                        (V 5.3 -1.25 3.2), (V 14.2 -1.25 3.2), (V 11.9 -1.85 24.8), (V 3.9 -1.85 24.8),
-                        (V -5.3 -2.2 4.2), (V 5.3 -2.2 4.2), (V 3.9 -3.1 24.8), (V -3.9 -3.1 24.8),
-                        (V -7.6 -0.65 14.2), (V 7.6 -0.65 14.2), (V 6.1 0.3 24.2), (V -6.1 0.3 24.2),
-                        (V -12.7 0.8 22.6), (V -7.8 0.8 22.6), (V -6.5 2.2 27.3), (V -11.5 2.2 27.3),
-                        (V 7.8 0.8 22.6), (V 12.7 0.8 22.6), (V 11.5 2.2 27.3), (V 6.5 2.2 27.3)
+                        (V -15.0 -1.55 4.2), (V -9.2 -1.55 4.2), (V -8.3 -1.85 12.2), (V -13.9 -1.85 12.2),
+                        (V -13.9 -1.85 12.2), (V -8.3 -1.85 12.2), (V -6.1 -2.0 25.8), (V -12.3 -2.0 25.8),
+                        (V 9.2 -1.55 4.2), (V 15.0 -1.55 4.2), (V 13.9 -1.85 12.2), (V 8.3 -1.85 12.2),
+                        (V 8.3 -1.85 12.2), (V 13.9 -1.85 12.2), (V 12.3 -2.0 25.8), (V 6.1 -2.0 25.8),
+                        (V -8.4 -1.75 4.6), (V -4.9 -1.75 4.6), (V -3.6 -2.55 24.8), (V -6.1 -2.0 24.8),
+                        (V 4.9 -1.75 4.6), (V 8.4 -1.75 4.6), (V 6.1 -2.0 24.8), (V 3.6 -2.55 24.8),
+                        (V -13.2 -0.2 20.8), (V -8.2 -0.2 20.8), (V -7.2 1.3 27.8), (V -12.0 1.3 27.8),
+                        (V 8.2 -0.2 20.8), (V 13.2 -0.2 20.8), (V 12.0 1.3 27.8), (V 7.2 1.3 27.8)
                     )
                     Faces = @(
                         (Face @(0, 1, 2, 3) 'concrete_noir'),
-                        (Face @(4, 5, 6, 7) 'concrete_noir'),
-                        (Face @(8, 9, 10, 11) 'metal_dark'),
-                        (Face @(1, 8, 11, 2) 'metal_dark'),
-                        (Face @(9, 4, 7, 10) 'metal_dark'),
-                        (Face @(12, 13, 14, 15) 'steel_brush'),
-                        (Face @(16, 17, 18, 19) 'concrete_noir'),
-                        (Face @(20, 21, 22, 23) 'concrete_noir')
+                        (Face @(4, 5, 6, 7) 'concrete_rain'),
+                        (Face @(8, 9, 10, 11) 'concrete_noir'),
+                        (Face @(12, 13, 14, 15) 'concrete_rain'),
+                        (Face @(16, 17, 18, 19) 'metal_oil'),
+                        (Face @(20, 21, 22, 23) 'metal_oil'),
+                        (Face @(24, 25, 26, 27) 'stone_shadow'),
+                        (Face @(28, 29, 30, 31) 'stone_shadow')
                     )
                 }
                 @{
-                    Key = 'rails'
+                    Key = 'canal_core'
                     StartTick = 0
-                    EndTick = 59
+                    EndTick = 95
                     MotionTicks = 0
                     Vertices = @(
-                        (V -3.05 -2.16 5.3), (V -2.2 -2.16 5.3), (V -1.55 -2.62 23.9), (V -2.25 -2.62 23.9),
-                        (V 2.2 -2.16 5.3), (V 3.05 -2.16 5.3), (V 2.25 -2.62 23.9), (V 1.55 -2.62 23.9),
-                        (V -0.52 -2.3 9.2), (V 0.52 -2.3 9.2), (V 0.35 -2.76 24.6), (V -0.35 -2.76 24.6),
-                        (V -4.35 -1.9 6.0), (V -3.7 -1.9 6.0), (V -2.9 -2.18 24.0), (V -3.45 -2.18 24.0),
-                        (V 3.7 -1.9 6.0), (V 4.35 -1.9 6.0), (V 3.45 -2.18 24.0), (V 2.9 -2.18 24.0)
+                        (V -4.4 -2.45 5.0), (V 4.4 -2.45 5.0), (V 3.2 -3.2 13.6), (V -3.2 -3.2 13.6),
+                        (V -3.2 -3.2 13.6), (V 3.2 -3.2 13.6), (V 2.4 -3.5 25.8), (V -2.4 -3.5 25.8),
+                        (V -4.8 -1.7 4.9), (V -3.4 -1.7 4.9), (V -2.5 -3.15 25.8), (V -3.7 -3.15 25.8),
+                        (V 3.4 -1.7 4.9), (V 4.8 -1.7 4.9), (V 3.7 -3.15 25.8), (V 2.5 -3.15 25.8),
+                        (V -3.0 -3.0 24.9), (V 3.0 -3.0 24.9), (V 2.6 -1.25 28.2), (V -2.6 -1.25 28.2),
+                        (V -0.95 -2.28 7.6), (V 0.95 -2.28 7.6), (V 0.55 -3.16 25.0), (V -0.55 -3.16 25.0)
                     )
                     Faces = @(
-                        (Face @(0, 1, 2, 3) 'panel_cyan' 'pulse_cyan'),
-                        (Face @(4, 5, 6, 7) 'panel_cyan' 'pulse_cyan'),
-                        (Face @(8, 9, 10, 11) 'panel_amber' 'pulse_amber'),
+                        (Face @(0, 1, 2, 3) 'grate_deep'),
+                        (Face @(4, 5, 6, 7) 'metal_dark'),
+                        (Face @(8, 9, 10, 11) 'metal_plate'),
+                        (Face @(12, 13, 14, 15) 'metal_plate'),
+                        (Face @(16, 17, 18, 19) 'logo_void'),
+                        (Face @(20, 21, 22, 23) 'rail_cyan' 'pulse_cyan')
+                    )
+                }
+                @{
+                    Key = 'rail_lights'
+                    StartTick = 0
+                    EndTick = 95
+                    MotionTicks = 0
+                    Vertices = @(
+                        (V -3.45 -2.1 5.4), (V -2.6 -2.1 5.4), (V -1.6 -2.7 25.0), (V -2.3 -2.7 25.0),
+                        (V 2.6 -2.1 5.4), (V 3.45 -2.1 5.4), (V 2.3 -2.7 25.0), (V 1.6 -2.7 25.0),
+                        (V -0.8 -2.22 8.0), (V 0.8 -2.22 8.0), (V 0.42 -3.02 25.1), (V -0.42 -3.02 25.1),
+                        (V -4.45 -1.85 6.2), (V -3.8 -1.85 6.2), (V -2.9 -2.35 25.0), (V -3.45 -2.35 25.0),
+                        (V 3.8 -1.85 6.2), (V 4.45 -1.85 6.2), (V 3.45 -2.35 25.0), (V 2.9 -2.35 25.0)
+                    )
+                    Faces = @(
+                        (Face @(0, 1, 2, 3) 'rail_cyan' 'pulse_cyan'),
+                        (Face @(4, 5, 6, 7) 'rail_cyan' 'pulse_cyan'),
+                        (Face @(8, 9, 10, 11) 'strip_hot' 'pulse_amber'),
                         (Face @(12, 13, 14, 15) 'panel_white' 'glint'),
                         (Face @(16, 17, 18, 19) 'panel_white' 'glint')
                     )
                 }
                 @{
                     Key = 'left_monolith'
-                    StartTick = 8
-                    EndTick = 59
-                    MotionTicks = 10
-                    Offset = @{ X = -0.6; Y = -0.95; Z = 0.45 }
-                    OffsetStep = @{ X = 0.06; Y = 0.095; Z = -0.045 }
+                    StartTick = 10
+                    EndTick = 95
+                    MotionTicks = 12
+                    Offset = @{ X = -0.65; Y = -1.0; Z = 0.45 }
+                    OffsetStep = @{ X = 0.05; Y = 0.08; Z = -0.03 }
                     YawDegrees = -4.0
-                    YawStepDegrees = 0.12
+                    YawStepDegrees = 0.08
                     Vertices = @(
-                        (V -11.1 -1.85 6.0), (V -7.2 -1.85 6.0), (V -6.5 5.1 20.8), (V -9.9 5.1 20.8),
-                        (V -9.5 -0.85 8.0), (V -8.1 -0.85 8.0), (V -7.7 3.8 18.1), (V -9.1 3.8 18.1),
-                        (V -11.0 4.9 17.6), (V -10.0 5.8 20.9), (V -7.1 5.8 20.9), (V -6.2 4.9 17.6),
-                        (V -10.4 -1.2 10.4), (V -9.7 -1.2 10.4), (V -9.0 4.0 18.7), (V -9.8 4.0 18.7)
+                        (V -12.0 -1.95 6.8), (V -8.1 -1.95 6.8), (V -7.6 4.9 20.8), (V -10.9 5.1 20.8),
+                        (V -11.3 -1.7 8.4), (V -8.8 -1.7 8.4), (V -8.4 3.6 19.0), (V -10.6 3.8 19.0),
+                        (V -12.6 5.1 17.8), (V -11.1 6.4 21.8), (V -7.8 6.4 21.8), (V -6.4 5.1 17.8),
+                        (V -12.1 -1.2 11.2), (V -10.9 -1.2 11.2), (V -10.0 4.0 18.6), (V -11.2 4.0 18.6),
+                        (V -8.7 -0.6 10.8), (V -7.4 -0.6 10.8), (V -6.8 2.8 17.4), (V -8.1 2.8 17.4)
                     )
                     Faces = @(
-                        (Face @(0, 1, 2, 3) 'concrete_noir'),
-                        (Face @(4, 5, 6, 7) 'panel_cyan' 'pulse_cyan'),
-                        (Face @(8, 9, 10, 11) 'steel_brush'),
-                        (Face @(12, 13, 14, 15) 'hazard_amber')
+                        (Face @(0, 1, 2, 3) 'concrete_pit'),
+                        (Face @(4, 5, 6, 7) 'concrete_rain'),
+                        (Face @(8, 9, 10, 11) 'metal_plate'),
+                        (Face @(12, 13, 14, 15) 'metal_oil'),
+                        (Face @(16, 17, 18, 19) 'steel_rib')
                     )
                 }
                 @{
                     Key = 'right_monolith'
-                    StartTick = 10
-                    EndTick = 59
-                    MotionTicks = 10
-                    Offset = @{ X = 0.6; Y = -0.95; Z = 0.45 }
-                    OffsetStep = @{ X = -0.06; Y = 0.095; Z = -0.045 }
-                    YawDegrees = 4.0
-                    YawStepDegrees = -0.12
-                    Vertices = @(
-                        (V 7.2 -1.85 6.0), (V 11.1 -1.85 6.0), (V 9.9 5.1 20.8), (V 6.5 5.1 20.8),
-                        (V 8.1 -0.85 8.0), (V 9.5 -0.85 8.0), (V 9.1 3.8 18.1), (V 7.7 3.8 18.1),
-                        (V 6.2 4.9 17.6), (V 7.1 5.8 20.9), (V 10.0 5.8 20.9), (V 11.0 4.9 17.6),
-                        (V 9.7 -1.2 10.4), (V 10.4 -1.2 10.4), (V 9.8 4.0 18.7), (V 9.0 4.0 18.7)
-                    )
-                    Faces = @(
-                        (Face @(0, 1, 2, 3) 'concrete_noir'),
-                        (Face @(4, 5, 6, 7) 'panel_cyan' 'pulse_cyan'),
-                        (Face @(8, 9, 10, 11) 'steel_brush'),
-                        (Face @(12, 13, 14, 15) 'hazard_amber')
-                    )
-                }
-                @{
-                    Key = 'rear_bulkhead'
-                    StartTick = 6
-                    EndTick = 59
+                    StartTick = 12
+                    EndTick = 95
                     MotionTicks = 12
-                    Offset = @{ X = 0.0; Y = -0.55; Z = 0.9 }
-                    OffsetStep = @{ X = 0.0; Y = 0.05; Z = -0.05 }
+                    Offset = @{ X = 0.65; Y = -1.0; Z = 0.45 }
+                    OffsetStep = @{ X = -0.05; Y = 0.08; Z = -0.03 }
+                    YawDegrees = 4.0
+                    YawStepDegrees = -0.08
                     Vertices = @(
-                        (V -9.2 -0.9 18.5), (V 9.2 -0.9 18.5), (V 7.4 4.7 24.4), (V -7.4 4.7 24.4),
-                        (V -10.8 -1.2 21.0), (V -8.6 -1.2 21.0), (V -7.6 4.0 25.7), (V -9.8 4.0 25.7),
-                        (V 8.6 -1.2 21.0), (V 10.8 -1.2 21.0), (V 9.8 4.0 25.7), (V 7.6 4.0 25.7),
-                        (V -5.4 0.3 20.0), (V 5.4 0.3 20.0), (V 4.6 1.2 24.8), (V -4.6 1.2 24.8)
+                        (V 8.1 -1.95 6.8), (V 12.0 -1.95 6.8), (V 10.9 5.1 20.8), (V 7.6 4.9 20.8),
+                        (V 8.8 -1.7 8.4), (V 11.3 -1.7 8.4), (V 10.6 3.8 19.0), (V 8.4 3.6 19.0),
+                        (V 6.4 5.1 17.8), (V 7.8 6.4 21.8), (V 11.1 6.4 21.8), (V 12.6 5.1 17.8),
+                        (V 10.9 -1.2 11.2), (V 12.1 -1.2 11.2), (V 11.2 4.0 18.6), (V 10.0 4.0 18.6),
+                        (V 7.4 -0.6 10.8), (V 8.7 -0.6 10.8), (V 8.1 2.8 17.4), (V 6.8 2.8 17.4)
                     )
                     Faces = @(
-                        (Face @(0, 1, 2, 3) 'metal_dark'),
-                        (Face @(4, 5, 6, 7) 'steel_brush'),
-                        (Face @(8, 9, 10, 11) 'steel_brush'),
-                        (Face @(12, 13, 14, 15) 'logo_dark')
+                        (Face @(0, 1, 2, 3) 'concrete_pit'),
+                        (Face @(4, 5, 6, 7) 'concrete_rain'),
+                        (Face @(8, 9, 10, 11) 'metal_plate'),
+                        (Face @(12, 13, 14, 15) 'metal_oil'),
+                        (Face @(16, 17, 18, 19) 'steel_rib')
                     )
                 }
                 @{
-                    Key = 'emblem'
-                    StartTick = 18
-                    EndTick = 59
-                    MotionTicks = 14
-                    Offset = @{ X = 0.0; Y = -1.35; Z = 0.9 }
-                    OffsetStep = @{ X = 0.0; Y = 0.085; Z = -0.055 }
-                    YawDegrees = -2.0
-                    YawStepDegrees = 0.10
+                    Key = 'monolith_insets'
+                    StartTick = 12
+                    EndTick = 95
+                    MotionTicks = 10
+                    Offset = @{ X = 0.0; Y = -0.7; Z = 0.28 }
+                    OffsetStep = @{ X = 0.0; Y = 0.06; Z = -0.02 }
                     Vertices = @(
-                        (V -5.2 -0.95 10.1), (V -2.5 -0.95 9.0), (V -0.9 3.1 12.7), (V -2.5 3.4 14.1),
-                        (V -4.4 -0.3 11.2), (V -2.9 -0.3 10.6), (V -1.8 2.4 13.1), (V -2.9 2.6 13.9),
-                        (V 2.5 -0.95 9.0), (V 5.2 -0.95 10.1), (V 2.5 3.4 14.1), (V 0.9 3.1 12.7),
-                        (V 2.9 -0.3 10.6), (V 4.4 -0.3 11.2), (V 2.9 2.6 13.9), (V 1.8 2.4 13.1),
-                        (V -0.55 -0.6 9.7), (V 0.55 -0.6 9.7), (V 0.4 2.5 13.6), (V -0.4 2.5 13.6)
+                        (V -10.3 -0.4 9.9), (V -9.0 -0.4 9.9), (V -8.7 2.8 17.8), (V -9.9 2.8 17.8),
+                        (V -10.7 1.2 12.8), (V -9.4 1.2 12.8), (V -9.1 4.2 18.9), (V -10.3 4.2 18.9),
+                        (V 9.0 -0.4 9.9), (V 10.3 -0.4 9.9), (V 9.9 2.8 17.8), (V 8.7 2.8 17.8),
+                        (V 9.4 1.2 12.8), (V 10.7 1.2 12.8), (V 10.3 4.2 18.9), (V 9.1 4.2 18.9)
+                    )
+                    Faces = @(
+                        (Face @(0, 1, 2, 3) 'emissive_strip' 'pulse_cyan'),
+                        (Face @(4, 5, 6, 7) 'hazard_diag' 'pulse_amber'),
+                        (Face @(8, 9, 10, 11) 'emissive_strip' 'pulse_cyan'),
+                        (Face @(12, 13, 14, 15) 'hazard_diag' 'pulse_amber')
+                    )
+                }
+                @{
+                    Key = 'rear_gate'
+                    StartTick = 34
+                    EndTick = 95
+                    MotionTicks = 16
+                    Offset = @{ X = 0.0; Y = -0.5; Z = 0.65 }
+                    OffsetStep = @{ X = 0.0; Y = 0.03; Z = -0.03 }
+                    Vertices = @(
+                        (V -8.9 3.2 16.0), (V 8.9 3.2 16.0), (V 7.4 4.4 21.2), (V -7.4 4.4 21.2),
+                        (V -10.1 -0.8 15.2), (V -8.0 -0.8 15.2), (V -7.0 3.1 20.8), (V -8.9 3.1 20.8),
+                        (V 8.0 -0.8 15.2), (V 10.1 -0.8 15.2), (V 8.9 3.1 20.8), (V 7.0 3.1 20.8),
+                        (V -6.0 0.4 18.0), (V 6.0 0.4 18.0), (V 5.1 1.2 22.4), (V -5.1 1.2 22.4),
+                        (V -4.4 0.8 20.2), (V 4.4 0.8 20.2), (V 3.7 2.0 23.4), (V -3.7 2.0 23.4),
+                        (V -1.8 1.4 21.4), (V 1.8 1.4 21.4), (V 1.4 2.4 23.8), (V -1.4 2.4 23.8)
+                    )
+                    Faces = @(
+                        (Face @(0, 1, 2, 3) 'steel_rib'),
+                        (Face @(4, 5, 6, 7) 'metal_oil'),
+                        (Face @(8, 9, 10, 11) 'metal_oil'),
+                        (Face @(12, 13, 14, 15) 'logo_void'),
+                        (Face @(16, 17, 18, 19) 'logo_shine' 'glint'),
+                        (Face @(20, 21, 22, 23) 'panel_white' 'glint')
+                    )
+                }
+                @{
+                    Key = 'emblem_left'
+                    StartTick = 20
+                    EndTick = 95
+                    MotionTicks = 16
+                    Offset = @{ X = -0.15; Y = -1.3; Z = 0.8 }
+                    OffsetStep = @{ X = 0.02; Y = 0.08; Z = -0.04 }
+                    YawDegrees = -3.0
+                    YawStepDegrees = 0.08
+                    Vertices = @(
+                        (V -5.6 -1.1 10.0), (V -3.2 -1.1 9.0), (V -1.2 2.9 12.9), (V -2.8 3.3 14.8),
+                        (V -5.1 -0.2 10.9), (V -3.8 -0.2 10.4), (V -2.0 2.2 13.0), (V -3.2 2.5 14.2),
+                        (V -4.7 0.7 11.8), (V -3.6 0.7 11.4), (V -2.4 2.3 13.4), (V -3.5 2.6 14.1),
+                        (V -4.1 1.6 12.7), (V -3.1 1.6 12.3), (V -2.1 2.5 13.9), (V -3.0 2.7 14.6),
+                        (V -2.9 -0.8 9.8), (V -2.0 -0.8 9.4), (V -1.2 2.3 13.2), (V -1.9 2.5 13.9)
                     )
                     Faces = @(
                         (Face @(0, 1, 2, 3) 'logo_panel'),
                         (Face @(4, 5, 6, 7) 'logo_dark'),
-                        (Face @(8, 9, 10, 11) 'logo_panel'),
-                        (Face @(12, 13, 14, 15) 'logo_dark'),
-                        (Face @(16, 17, 18, 19) 'panel_amber' 'pulse_amber')
+                        (Face @(8, 9, 10, 11) 'logo_shine' 'glint'),
+                        (Face @(12, 13, 14, 15) 'logo_void'),
+                        (Face @(16, 17, 18, 19) 'strip_hot' 'pulse_amber')
+                    )
+                }
+                @{
+                    Key = 'emblem_right'
+                    StartTick = 22
+                    EndTick = 95
+                    MotionTicks = 16
+                    Offset = @{ X = 0.15; Y = -1.3; Z = 0.8 }
+                    OffsetStep = @{ X = -0.02; Y = 0.08; Z = -0.04 }
+                    YawDegrees = 3.0
+                    YawStepDegrees = -0.08
+                    Vertices = @(
+                        (V 3.2 -1.1 9.0), (V 5.6 -1.1 10.0), (V 2.8 3.3 14.8), (V 1.2 2.9 12.9),
+                        (V 3.8 -0.2 10.4), (V 5.1 -0.2 10.9), (V 3.2 2.5 14.2), (V 2.0 2.2 13.0),
+                        (V 3.6 0.7 11.4), (V 4.7 0.7 11.8), (V 3.5 2.6 14.1), (V 2.4 2.3 13.4),
+                        (V 3.1 1.6 12.3), (V 4.1 1.6 12.7), (V 3.0 2.7 14.6), (V 2.1 2.5 13.9),
+                        (V 2.0 -0.8 9.4), (V 2.9 -0.8 9.8), (V 1.9 2.5 13.9), (V 1.2 2.3 13.2)
+                    )
+                    Faces = @(
+                        (Face @(0, 1, 2, 3) 'logo_panel'),
+                        (Face @(4, 5, 6, 7) 'logo_dark'),
+                        (Face @(8, 9, 10, 11) 'logo_shine' 'glint'),
+                        (Face @(12, 13, 14, 15) 'logo_void'),
+                        (Face @(16, 17, 18, 19) 'strip_hot' 'pulse_amber')
+                    )
+                }
+                @{
+                    Key = 'emblem_core'
+                    StartTick = 26
+                    EndTick = 95
+                    MotionTicks = 12
+                    Offset = @{ X = 0.0; Y = -1.1; Z = 0.6 }
+                    OffsetStep = @{ X = 0.0; Y = 0.07; Z = -0.03 }
+                    Vertices = @(
+                        (V -0.7 -0.8 9.6), (V 0.7 -0.8 9.6), (V 0.4 2.5 13.9), (V -0.4 2.5 13.9),
+                        (V -0.35 -0.2 10.6), (V 0.35 -0.2 10.6), (V 0.2 2.1 13.5), (V -0.2 2.1 13.5)
+                    )
+                    Faces = @(
+                        (Face @(0, 1, 2, 3) 'panel_amber' 'pulse_amber'),
+                        (Face @(4, 5, 6, 7) 'logo_shine' 'glint')
                     )
                 }
                 @{
                     Key = 'halo'
-                    StartTick = 32
-                    EndTick = 59
-                    MotionTicks = 12
-                    Offset = @{ X = 0.0; Y = -0.45; Z = 0.55 }
-                    OffsetStep = @{ X = 0.0; Y = 0.04; Z = -0.03 }
+                    StartTick = 38
+                    EndTick = 95
+                    MotionTicks = 14
+                    Offset = @{ X = 0.0; Y = -0.38; Z = 0.42 }
+                    OffsetStep = @{ X = 0.0; Y = 0.03; Z = -0.02 }
                     Vertices = @(
-                        (V -6.8 3.7 15.8), (V 6.8 3.7 15.8), (V 5.8 4.5 18.2), (V -5.8 4.5 18.2),
-                        (V -7.4 -0.7 15.2), (V -6.0 -0.7 15.2), (V -5.1 3.9 18.0), (V -6.4 3.9 18.0),
-                        (V 6.0 -0.7 15.2), (V 7.4 -0.7 15.2), (V 6.4 3.9 18.0), (V 5.1 3.9 18.0),
-                        (V -5.4 -0.1 16.5), (V 5.4 -0.1 16.5), (V 4.7 0.7 18.3), (V -4.7 0.7 18.3),
-                        (V -3.2 1.2 17.0), (V 3.2 1.2 17.0), (V 2.8 1.8 18.0), (V -2.8 1.8 18.0)
+                        (V -7.2 4.0 15.8), (V 7.2 4.0 15.8), (V 6.0 4.9 18.8), (V -6.0 4.9 18.8),
+                        (V -7.8 -0.8 15.0), (V -6.2 -0.8 15.0), (V -5.3 4.1 18.5), (V -6.8 4.1 18.5),
+                        (V 6.2 -0.8 15.0), (V 7.8 -0.8 15.0), (V 6.8 4.1 18.5), (V 5.3 4.1 18.5),
+                        (V -5.8 0.2 16.8), (V 5.8 0.2 16.8), (V 5.1 1.0 18.8), (V -5.1 1.0 18.8)
                     )
                     Faces = @(
                         (Face @(0, 1, 2, 3) 'panel_white' 'glint'),
                         (Face @(4, 5, 6, 7) 'hazard_amber'),
                         (Face @(8, 9, 10, 11) 'hazard_amber'),
-                        (Face @(12, 13, 14, 15) 'steel_brush'),
-                        (Face @(16, 17, 18, 19) 'panel_cyan' 'pulse_cyan')
+                        (Face @(12, 13, 14, 15) 'rail_cyan' 'pulse_cyan')
                     )
                 }
             )
         }
         @{
             Key = 'title'
-            TimelineTicks = 48
-            LoopTicks = 48
+            TimelineTicks = 64
+            LoopTicks = 64
             Camera = @{
                 X = 0.0
                 Y = 0.95
-                Z = -8.9
-                YawDegrees = 5.5
-                YawStepDegrees = -0.6
-                PitchDegrees = -9.5
+                Z = -10.6
+                YawDegrees = 3.0
+                YawStepDegrees = -0.12
+                PitchDegrees = -8.5
                 PitchStepDegrees = 0.0
-                ProjectScale = 108
+                ProjectScale = 114
                 Viewport = @{ X = 0; Y = 0; W = 320; H = 200 }
             }
             Groups = @(
                 @{
-                    Key = 'canal'
+                    Key = 'floor_shell'
                     StartTick = 0
-                    EndTick = 47
+                    EndTick = 63
                     MotionTicks = 0
                     Vertices = @(
-                        (V -12.4 -1.45 3.2), (V -5.2 -1.45 3.2), (V -3.9 -1.85 19.0), (V -10.4 -1.85 19.0),
-                        (V 5.2 -1.45 3.2), (V 12.4 -1.45 3.2), (V 10.4 -1.85 19.0), (V 3.9 -1.85 19.0),
-                        (V -5.2 -2.1 4.4), (V 5.2 -2.1 4.4), (V 3.6 -2.55 19.8), (V -3.6 -2.55 19.8),
-                        (V -7.8 -0.85 12.8), (V 7.8 -0.85 12.8), (V 6.4 0.1 20.6), (V -6.4 0.1 20.6),
-                        (V -3.7 -1.7 4.8), (V -2.7 -1.7 4.8), (V -1.8 -2.15 19.3), (V -2.6 -2.15 19.3),
-                        (V 2.7 -1.7 4.8), (V 3.7 -1.7 4.8), (V 2.6 -2.15 19.3), (V 1.8 -2.15 19.3)
+                        (V -14.0 -1.55 4.0), (V -8.0 -1.55 4.0), (V -7.1 -1.82 12.0), (V -12.8 -1.82 12.0),
+                        (V -12.8 -1.82 12.0), (V -7.1 -1.82 12.0), (V -5.6 -1.98 22.6), (V -11.4 -1.98 22.6),
+                        (V 8.0 -1.55 4.0), (V 14.0 -1.55 4.0), (V 12.8 -1.82 12.0), (V 7.1 -1.82 12.0),
+                        (V 7.1 -1.82 12.0), (V 12.8 -1.82 12.0), (V 11.4 -1.98 22.6), (V 5.6 -1.98 22.6),
+                        (V -7.2 -1.72 4.4), (V -4.7 -1.72 4.4), (V -3.5 -2.45 22.0), (V -5.7 -1.96 22.0),
+                        (V 4.7 -1.72 4.4), (V 7.2 -1.72 4.4), (V 5.7 -1.96 22.0), (V 3.5 -2.45 22.0),
+                        (V -11.8 -0.35 18.0), (V -7.5 -0.35 18.0), (V -6.5 1.0 24.8), (V -10.7 1.0 24.8),
+                        (V 7.5 -0.35 18.0), (V 11.8 -0.35 18.0), (V 10.7 1.0 24.8), (V 6.5 1.0 24.8)
                     )
                     Faces = @(
                         (Face @(0, 1, 2, 3) 'concrete_noir'),
-                        (Face @(4, 5, 6, 7) 'concrete_noir'),
-                        (Face @(8, 9, 10, 11) 'metal_dark'),
-                        (Face @(1, 8, 11, 2) 'metal_dark'),
-                        (Face @(9, 4, 7, 10) 'metal_dark'),
-                        (Face @(12, 13, 14, 15) 'steel_brush'),
-                        (Face @(16, 17, 18, 19) 'panel_cyan' 'pulse_cyan'),
-                        (Face @(20, 21, 22, 23) 'panel_cyan' 'pulse_cyan')
+                        (Face @(4, 5, 6, 7) 'concrete_rain'),
+                        (Face @(8, 9, 10, 11) 'concrete_noir'),
+                        (Face @(12, 13, 14, 15) 'concrete_rain'),
+                        (Face @(16, 17, 18, 19) 'metal_oil'),
+                        (Face @(20, 21, 22, 23) 'metal_oil'),
+                        (Face @(24, 25, 26, 27) 'stone_shadow'),
+                        (Face @(28, 29, 30, 31) 'stone_shadow')
+                    )
+                }
+                @{
+                    Key = 'canal_core'
+                    StartTick = 0
+                    EndTick = 63
+                    MotionTicks = 0
+                    Vertices = @(
+                        (V -4.2 -2.3 5.2), (V 4.2 -2.3 5.2), (V 3.2 -3.0 13.8), (V -3.2 -3.0 13.8),
+                        (V -3.2 -3.0 13.8), (V 3.2 -3.0 13.8), (V 2.5 -3.3 23.0), (V -2.5 -3.3 23.0),
+                        (V -4.5 -1.72 5.0), (V -3.2 -1.72 5.0), (V -2.5 -3.0 23.0), (V -3.6 -3.0 23.0),
+                        (V 3.2 -1.72 5.0), (V 4.5 -1.72 5.0), (V 3.6 -3.0 23.0), (V 2.5 -3.0 23.0)
+                    )
+                    Faces = @(
+                        (Face @(0, 1, 2, 3) 'grate_deep'),
+                        (Face @(4, 5, 6, 7) 'metal_dark'),
+                        (Face @(8, 9, 10, 11) 'metal_plate'),
+                        (Face @(12, 13, 14, 15) 'metal_plate')
+                    )
+                }
+                @{
+                    Key = 'left_mass'
+                    StartTick = 0
+                    EndTick = 63
+                    MotionTicks = 12
+                    Offset = @{ X = 0.0; Y = -0.18; Z = 0.16 }
+                    OffsetStep = @{ X = 0.0; Y = 0.012; Z = -0.008 }
+                    Vertices = @(
+                        (V -12.6 -1.35 6.0), (V -9.0 -1.35 6.0), (V -8.2 4.6 17.6), (V -11.2 4.6 17.6),
+                        (V -11.1 -0.4 7.9), (V -9.7 -0.4 7.9), (V -9.0 3.2 15.6), (V -10.4 3.2 15.6),
+                        (V -10.4 0.5 11.4), (V -8.6 0.5 11.4), (V -7.9 2.2 18.6), (V -9.8 2.2 18.6),
+                        (V -8.8 1.8 18.0), (V -6.8 1.8 18.0), (V -6.1 3.0 23.4), (V -8.1 3.0 23.4),
+                        (V -10.6 5.0 18.2), (V -8.2 5.0 18.2), (V -7.2 6.2 21.8), (V -9.6 6.2 21.8)
+                    )
+                    Faces = @(
+                        (Face @(0, 1, 2, 3) 'concrete_pit'),
+                        (Face @(4, 5, 6, 7) 'concrete_rain'),
+                        (Face @(8, 9, 10, 11) 'steel_rib'),
+                        (Face @(12, 13, 14, 15) 'metal_plate'),
+                        (Face @(16, 17, 18, 19) 'stone_shadow')
+                    )
+                }
+                @{
+                    Key = 'right_mass'
+                    StartTick = 12
+                    EndTick = 63
+                    MotionTicks = 8
+                    Offset = @{ X = 0.0; Y = -0.15; Z = 0.25 }
+                    OffsetStep = @{ X = 0.0; Y = 0.018; Z = -0.012 }
+                    Vertices = @(
+                        (V 9.0 -1.35 6.0), (V 12.6 -1.35 6.0), (V 11.2 4.6 17.6), (V 8.2 4.6 17.6),
+                        (V 9.7 -0.4 7.9), (V 11.1 -0.4 7.9), (V 10.4 3.2 15.6), (V 9.0 3.2 15.6),
+                        (V 8.6 0.5 11.4), (V 10.4 0.5 11.4), (V 9.8 2.2 18.6), (V 7.9 2.2 18.6),
+                        (V 6.8 1.8 18.0), (V 8.8 1.8 18.0), (V 8.1 3.0 23.4), (V 6.1 3.0 23.4),
+                        (V 8.2 5.0 18.2), (V 10.6 5.0 18.2), (V 9.6 6.2 21.8), (V 7.2 6.2 21.8)
+                    )
+                    Faces = @(
+                        (Face @(0, 1, 2, 3) 'concrete_pit'),
+                        (Face @(4, 5, 6, 7) 'concrete_rain'),
+                        (Face @(8, 9, 10, 11) 'steel_rib'),
+                        (Face @(12, 13, 14, 15) 'metal_plate'),
+                        (Face @(16, 17, 18, 19) 'stone_shadow')
                     )
                 }
                 @{
                     Key = 'gate_frame'
-                    StartTick = 0
-                    EndTick = 47
-                    MotionTicks = 8
-                    Offset = @{ X = 0.0; Y = -0.22; Z = 0.3 }
-                    OffsetStep = @{ X = 0.0; Y = 0.028; Z = -0.02 }
+                    StartTick = 8
+                    EndTick = 63
+                    MotionTicks = 12
+                    Offset = @{ X = 0.0; Y = -0.2; Z = 0.28 }
+                    OffsetStep = @{ X = 0.0; Y = 0.016; Z = -0.012 }
                     Vertices = @(
-                        (V -8.4 3.0 15.5), (V 8.4 3.0 15.5), (V 7.0 4.0 19.6), (V -7.0 4.0 19.6),
-                        (V -9.3 -0.7 14.8), (V -7.6 -0.7 14.8), (V -6.5 3.1 18.9), (V -8.0 3.1 18.9),
-                        (V 7.6 -0.7 14.8), (V 9.3 -0.7 14.8), (V 8.0 3.1 18.9), (V 6.5 3.1 18.9),
-                        (V -5.9 0.2 16.6), (V 5.9 0.2 16.6), (V 5.0 0.9 19.8), (V -5.0 0.9 19.8)
+                        (V -8.8 3.2 16.0), (V 8.8 3.2 16.0), (V 7.2 4.4 21.0), (V -7.2 4.4 21.0),
+                        (V -9.8 -0.8 15.0), (V -7.8 -0.8 15.0), (V -6.8 3.2 20.5), (V -8.6 3.2 20.5),
+                        (V 7.8 -0.8 15.0), (V 9.8 -0.8 15.0), (V 8.6 3.2 20.5), (V 6.8 3.2 20.5),
+                        (V -5.8 0.4 18.0), (V 5.8 0.4 18.0), (V 5.0 1.2 22.2), (V -5.0 1.2 22.2),
+                        (V -4.2 1.0 20.2), (V 4.2 1.0 20.2), (V 3.4 2.2 23.2), (V -3.4 2.2 23.2),
+                        (V -7.0 -0.1 21.4), (V -4.9 -0.1 21.4), (V -4.1 2.4 24.2), (V -6.2 2.4 24.2)
+                    )
+                    Faces = @(
+                        (Face @(0, 1, 2, 3) 'panel_white' 'glint'),
+                        (Face @(4, 5, 6, 7) 'hazard_diag' 'pulse_amber'),
+                        (Face @(8, 9, 10, 11) 'hazard_diag' 'pulse_amber'),
+                        (Face @(12, 13, 14, 15) 'steel_rib'),
+                        (Face @(16, 17, 18, 19) 'logo_void'),
+                        (Face @(20, 21, 22, 23) 'logo_shine' 'glint')
+                    )
+                }
+                @{
+                    Key = 'rear_ribs'
+                    StartTick = 10
+                    EndTick = 63
+                    MotionTicks = 8
+                    Offset = @{ X = 0.0; Y = -0.1; Z = 0.18 }
+                    OffsetStep = @{ X = 0.0; Y = 0.012; Z = -0.008 }
+                    Vertices = @(
+                        (V -9.1 0.8 18.6), (V -6.5 0.8 18.6), (V -5.2 3.4 24.6), (V -7.9 3.4 24.6),
+                        (V 6.5 0.8 18.6), (V 9.1 0.8 18.6), (V 7.9 3.4 24.6), (V 5.2 3.4 24.6),
+                        (V -4.9 1.0 17.8), (V 4.9 1.0 17.8), (V 4.0 2.6 24.2), (V -4.0 2.6 24.2),
+                        (V -2.6 2.5 19.4), (V 2.6 2.5 19.4), (V 2.1 3.2 23.6), (V -2.1 3.2 23.6)
+                    )
+                    Faces = @(
+                        (Face @(0, 1, 2, 3) 'metal_oil'),
+                        (Face @(4, 5, 6, 7) 'metal_oil'),
+                        (Face @(8, 9, 10, 11) 'steel_brush'),
+                        (Face @(12, 13, 14, 15) 'panel_white' 'glint')
+                    )
+                }
+                @{
+                    Key = 'scan_bridge'
+                    StartTick = 14
+                    EndTick = 63
+                    MotionTicks = 8
+                    Offset = @{ X = 0.0; Y = -0.1; Z = 0.16 }
+                    OffsetStep = @{ X = 0.0; Y = 0.01; Z = -0.006 }
+                    Vertices = @(
+                        (V -5.8 1.1 9.0), (V 5.8 1.1 9.0), (V 4.4 2.0 15.4), (V -4.4 2.0 15.4),
+                        (V -3.3 0.4 10.8), (V 3.3 0.4 10.8), (V 2.6 1.1 13.8), (V -2.6 1.1 13.8),
+                        (V -1.9 2.6 16.9), (V 1.9 2.6 16.9), (V 1.4 3.0 18.0), (V -1.4 3.0 18.0),
+                        (V -4.4 -1.95 5.2), (V -3.7 -1.95 5.2), (V -2.7 -2.2 19.6), (V -3.3 -2.2 19.6)
+                    )
+                    Faces = @(
+                        (Face @(0, 1, 2, 3) 'rail_cyan' 'pulse_cyan'),
+                        (Face @(4, 5, 6, 7) 'panel_amber' 'pulse_amber'),
+                        (Face @(8, 9, 10, 11) 'panel_white' 'glint'),
+                        (Face @(12, 13, 14, 15) 'panel_white' 'glint')
+                    )
+                }
+                @{
+                    Key = 'halo'
+                    StartTick = 18
+                    EndTick = 63
+                    MotionTicks = 10
+                    Offset = @{ X = 0.0; Y = -0.12; Z = 0.16 }
+                    OffsetStep = @{ X = 0.0; Y = 0.01; Z = -0.006 }
+                    Vertices = @(
+                        (V -6.4 3.9 15.8), (V 6.4 3.9 15.8), (V 5.4 4.7 18.8), (V -5.4 4.7 18.8),
+                        (V -6.9 -0.6 15.0), (V -5.5 -0.6 15.0), (V -4.8 3.8 18.2), (V -6.1 3.8 18.2),
+                        (V 5.5 -0.6 15.0), (V 6.9 -0.6 15.0), (V 6.1 3.8 18.2), (V 4.8 3.8 18.2),
+                        (V -5.2 0.2 16.8), (V 5.2 0.2 16.8), (V 4.5 0.9 18.8), (V -4.5 0.9 18.8)
                     )
                     Faces = @(
                         (Face @(0, 1, 2, 3) 'panel_white' 'glint'),
                         (Face @(4, 5, 6, 7) 'hazard_amber'),
                         (Face @(8, 9, 10, 11) 'hazard_amber'),
-                        (Face @(12, 13, 14, 15) 'steel_brush')
-                    )
-                }
-                @{
-                    Key = 'pylons'
-                    StartTick = 0
-                    EndTick = 47
-                    MotionTicks = 12
-                    Offset = @{ X = 0.0; Y = -0.18; Z = 0.18 }
-                    OffsetStep = @{ X = 0.0; Y = 0.015; Z = -0.01 }
-                    Vertices = @(
-                        (V -11.8 -1.3 6.1), (V -8.8 -1.3 6.1), (V -8.0 4.5 16.8), (V -10.8 4.5 16.8),
-                        (V -10.2 -0.25 7.8), (V -9.1 -0.25 7.8), (V -8.6 3.2 15.2), (V -9.8 3.2 15.2),
-                        (V 8.8 -1.3 6.1), (V 11.8 -1.3 6.1), (V 10.8 4.5 16.8), (V 8.0 4.5 16.8),
-                        (V 9.1 -0.25 7.8), (V 10.2 -0.25 7.8), (V 9.8 3.2 15.2), (V 8.6 3.2 15.2)
-                    )
-                    Faces = @(
-                        (Face @(0, 1, 2, 3) 'concrete_noir'),
-                        (Face @(4, 5, 6, 7) 'panel_cyan' 'pulse_cyan'),
-                        (Face @(8, 9, 10, 11) 'concrete_noir'),
-                        (Face @(12, 13, 14, 15) 'panel_cyan' 'pulse_cyan')
-                    )
-                }
-                @{
-                    Key = 'signal_bridge'
-                    StartTick = 12
-                    EndTick = 47
-                    MotionTicks = 8
-                    Offset = @{ X = 0.0; Y = -0.15; Z = 0.25 }
-                    OffsetStep = @{ X = 0.0; Y = 0.018; Z = -0.012 }
-                    Vertices = @(
-                        (V -5.9 1.0 8.7), (V 5.9 1.0 8.7), (V 4.6 1.95 15.0), (V -4.6 1.95 15.0),
-                        (V -3.6 0.25 10.0), (V 3.6 0.25 10.0), (V 2.8 0.9 13.0), (V -2.8 0.9 13.0),
-                        (V -1.9 2.5 16.5), (V 1.9 2.5 16.5), (V 1.4 2.95 17.6), (V -1.4 2.95 17.6)
-                    )
-                    Faces = @(
-                        (Face @(0, 1, 2, 3) 'panel_cyan' 'pulse_cyan'),
-                        (Face @(4, 5, 6, 7) 'panel_amber' 'pulse_amber'),
-                        (Face @(8, 9, 10, 11) 'panel_white' 'glint')
-                    )
-                }
-                @{
-                    Key = 'rear_fins'
-                    StartTick = 8
-                    EndTick = 47
-                    MotionTicks = 10
-                    Offset = @{ X = 0.0; Y = -0.2; Z = 0.3 }
-                    OffsetStep = @{ X = 0.0; Y = 0.016; Z = -0.012 }
-                    Vertices = @(
-                        (V -9.2 0.4 18.0), (V -6.8 0.4 18.0), (V -5.7 3.1 23.0), (V -8.2 3.1 23.0),
-                        (V 6.8 0.4 18.0), (V 9.2 0.4 18.0), (V 8.2 3.1 23.0), (V 5.7 3.1 23.0),
-                        (V -4.6 0.8 17.2), (V 4.6 0.8 17.2), (V 3.7 2.4 22.8), (V -3.7 2.4 22.8)
-                    )
-                    Faces = @(
-                        (Face @(0, 1, 2, 3) 'metal_dark'),
-                        (Face @(4, 5, 6, 7) 'metal_dark'),
-                        (Face @(8, 9, 10, 11) 'steel_brush')
-                    )
-                }
-                @{
-                    Key = 'scan_lanes'
-                    StartTick = 10
-                    EndTick = 47
-                    MotionTicks = 8
-                    Offset = @{ X = 0.0; Y = -0.1; Z = 0.18 }
-                    OffsetStep = @{ X = 0.0; Y = 0.012; Z = -0.008 }
-                    Vertices = @(
-                        (V -4.5 -1.95 5.2), (V -3.8 -1.95 5.2), (V -2.7 -2.2 18.9), (V -3.3 -2.2 18.9),
-                        (V 3.8 -1.95 5.2), (V 4.5 -1.95 5.2), (V 3.3 -2.2 18.9), (V 2.7 -2.2 18.9)
-                    )
-                    Faces = @(
-                        (Face @(0, 1, 2, 3) 'panel_white' 'glint'),
-                        (Face @(4, 5, 6, 7) 'panel_white' 'glint')
+                        (Face @(12, 13, 14, 15) 'rail_cyan' 'pulse_cyan')
                     )
                 }
             )

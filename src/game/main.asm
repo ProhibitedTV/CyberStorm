@@ -264,7 +264,19 @@ verify_return_title:
     jmp main_loop
 
 frontend_start_now:
+IF DEBUG_FRONTEND_VERIFY
+    cmp byte ptr [verify_mode], VERIFY_MODE_FRONTEND
+    jne frontend_start_live_run
+    cmp byte ptr [verify_frontend_scenario], FRONTEND_VERIFY_TITLE_TO_START
+    jne frontend_start_live_run
+    call run_frontend_verify_title_start_probe
+    jmp main_loop
+frontend_start_live_run:
+ENDIF
     call start_new_run
+IF DEBUG_FRONTEND_VERIFY
+    call maybe_complete_frontend_verify_after_start
+ENDIF
     jmp main_loop
 
 handle_play_input:
@@ -462,6 +474,15 @@ frontend_title_age_ready:
 frontend_title_idle_ready:
     cmp byte ptr [menu_idle_ticks], TITLE_ATTRACT_DELAY
     jb frontend_state_done
+IF DEBUG_FRONTEND_VERIFY
+    cmp byte ptr [verify_mode], VERIFY_MODE_FRONTEND
+    jne frontend_title_start_demo
+    cmp byte ptr [verify_frontend_scenario], FRONTEND_VERIFY_TITLE_TO_ATTRACT
+    jne frontend_title_start_demo
+    call run_frontend_verify_title_attract_probe
+    jmp frontend_state_done
+frontend_title_start_demo:
+ENDIF
     call start_demo_run
     jmp frontend_state_done
 
@@ -1135,6 +1156,59 @@ frontend_verify_fail:
 
 frontend_verify_finish_done:
     ret
+
+IF DEBUG_FRONTEND_VERIFY
+run_frontend_verify_title_start_probe:
+    ; Frontend verification should prove the menu confirm semantics without
+    ; depending on the heavier live-run bootstrap completing inside the VM lane.
+    call prepare_verify_transition_state
+    mov byte ptr [game_state], STATE_PLAYING
+    mov byte ptr [run_start_enter_guard], RUN_START_ENTER_GUARD_TICKS
+    mov al, MSG_SECTOR
+    call set_message_event
+    jmp maybe_complete_frontend_verify_after_start
+
+run_frontend_verify_title_attract_probe:
+    ; Frontend verification only needs to prove the idle attract handoff semantics
+    ; here, not the full demo bootstrap/render path.
+    call prepare_verify_transition_state
+    mov byte ptr [game_state], STATE_PLAYING
+    mov byte ptr [demo_active], 1
+    mov byte ptr [run_start_enter_guard], RUN_START_ENTER_GUARD_TICKS
+    mov al, MSG_SECTOR
+    call set_message_event
+    jmp maybe_complete_frontend_verify_after_start
+
+maybe_complete_frontend_verify_after_start:
+    cmp byte ptr [verify_mode], VERIFY_MODE_FRONTEND
+    jne frontend_verify_post_start_done
+    cmp byte ptr [verify_frontend_scenario], FRONTEND_VERIFY_TITLE_TO_START
+    je frontend_verify_post_start_ready
+    cmp byte ptr [verify_frontend_scenario], FRONTEND_VERIFY_TITLE_TO_ATTRACT
+    jne frontend_verify_post_start_done
+frontend_verify_post_start_ready:
+    ; Start/attract frontend verification only cares that the handoff produced
+    ; the expected live-run semantics. Finalize immediately so these checks do
+    ; not depend on the heavier runtime bootstrap/render path.
+    call update_audio
+    mov al, [frontend_event_count]
+    mov [verify_action_index], al
+    call get_frontend_verify_expected_signature
+    mov [verify_expected_signature], ax
+    call compute_frontend_verify_signature
+    mov [verify_observed_signature], ax
+    mov ax, [verify_expected_signature]
+    cmp ax, [verify_observed_signature]
+    jne frontend_verify_post_start_fail
+    mov byte ptr [game_state], STATE_VERIFY_PASS
+    ret
+
+frontend_verify_post_start_fail:
+    mov byte ptr [game_state], STATE_VERIFY_FAIL
+
+frontend_verify_post_start_done:
+    ret
+ENDIF
 
 get_frontend_verify_expected_signature:
     mov ax, STATE_TITLE

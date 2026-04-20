@@ -4,44 +4,44 @@
 
 SCENE3D_SPLASH_INDEX EQU 0
 SCENE3D_SPLASH_VERTEX_OFFSET EQU 0
-SCENE3D_SPLASH_VERTEX_COUNT EQU 132
-SCENE3D_SPLASH_FACE_OFFSET EQU 144
-SCENE3D_SPLASH_FACE_COUNT EQU 70
+SCENE3D_SPLASH_VERTEX_COUNT EQU 220
+SCENE3D_SPLASH_FACE_OFFSET EQU 192
+SCENE3D_SPLASH_FACE_COUNT EQU 110
 SCENE3D_SPLASH_VIEW_X EQU 0
 SCENE3D_SPLASH_VIEW_Y EQU 0
 SCENE3D_SPLASH_VIEW_W EQU 320
 SCENE3D_SPLASH_VIEW_H EQU 200
 SCENE3D_SPLASH_CAMERA_X EQU 0000h
-SCENE3D_SPLASH_CAMERA_Y EQU 0126h
-SCENE3D_SPLASH_CAMERA_Z EQU 0F500h
-SCENE3D_SPLASH_YAW_BASE EQU 253
+SCENE3D_SPLASH_CAMERA_Y EQU 0100h
+SCENE3D_SPLASH_CAMERA_Z EQU 0F366h
+SCENE3D_SPLASH_YAW_BASE EQU 255
 SCENE3D_SPLASH_YAW_STEP EQU 0
-SCENE3D_SPLASH_PITCH_BASE EQU 247
+SCENE3D_SPLASH_PITCH_BASE EQU 248
 SCENE3D_SPLASH_PITCH_STEP EQU 0
-SCENE3D_SPLASH_PROJECT_SCALE EQU 118
+SCENE3D_SPLASH_PROJECT_SCALE EQU 124
 
 SCENE3D_TITLE_INDEX EQU 1
-SCENE3D_TITLE_VERTEX_OFFSET EQU 1282
-SCENE3D_TITLE_VERTEX_COUNT EQU 88
-SCENE3D_TITLE_FACE_OFFSET EQU 1426
-SCENE3D_TITLE_FACE_COUNT EQU 48
+SCENE3D_TITLE_VERTEX_OFFSET EQU 2090
+SCENE3D_TITLE_VERTEX_COUNT EQU 160
+SCENE3D_TITLE_FACE_OFFSET EQU 2282
+SCENE3D_TITLE_FACE_COUNT EQU 80
 SCENE3D_TITLE_VIEW_X EQU 0
 SCENE3D_TITLE_VIEW_Y EQU 0
 SCENE3D_TITLE_VIEW_W EQU 320
 SCENE3D_TITLE_VIEW_H EQU 200
 SCENE3D_TITLE_CAMERA_X EQU 0000h
 SCENE3D_TITLE_CAMERA_Y EQU 00F3h
-SCENE3D_TITLE_CAMERA_Z EQU 0F71Ah
-SCENE3D_TITLE_YAW_BASE EQU 4
+SCENE3D_TITLE_CAMERA_Z EQU 0F566h
+SCENE3D_TITLE_YAW_BASE EQU 2
 SCENE3D_TITLE_YAW_STEP EQU 0
-SCENE3D_TITLE_PITCH_BASE EQU 249
+SCENE3D_TITLE_PITCH_BASE EQU 250
 SCENE3D_TITLE_PITCH_STEP EQU 0
-SCENE3D_TITLE_PROJECT_SCALE EQU 108
+SCENE3D_TITLE_PROJECT_SCALE EQU 114
 
 SCENE3D_SECTOR1_INDEX EQU 2
-SCENE3D_SECTOR1_VERTEX_OFFSET EQU 2146
+SCENE3D_SECTOR1_VERTEX_OFFSET EQU 3610
 SCENE3D_SECTOR1_VERTEX_COUNT EQU 16
-SCENE3D_SECTOR1_FACE_OFFSET EQU 2170
+SCENE3D_SECTOR1_FACE_OFFSET EQU 3634
 SCENE3D_SECTOR1_FACE_COUNT EQU 8
 SCENE3D_SECTOR1_VIEW_X EQU 56
 SCENE3D_SECTOR1_VIEW_Y EQU 42
@@ -57,9 +57,9 @@ SCENE3D_SECTOR1_PITCH_STEP EQU 0
 SCENE3D_SECTOR1_PROJECT_SCALE EQU 98
 
 SCENE3D_SECTOR2_INDEX EQU 3
-SCENE3D_SECTOR2_VERTEX_OFFSET EQU 2298
+SCENE3D_SECTOR2_VERTEX_OFFSET EQU 3762
 SCENE3D_SECTOR2_VERTEX_COUNT EQU 16
-SCENE3D_SECTOR2_FACE_OFFSET EQU 2322
+SCENE3D_SECTOR2_FACE_OFFSET EQU 3786
 SCENE3D_SECTOR2_FACE_COUNT EQU 8
 SCENE3D_SECTOR2_VIEW_X EQU 56
 SCENE3D_SECTOR2_VIEW_Y EQU 42
@@ -75,9 +75,9 @@ SCENE3D_SECTOR2_PITCH_STEP EQU 0
 SCENE3D_SECTOR2_PROJECT_SCALE EQU 98
 
 SCENE3D_SECTOR3_INDEX EQU 4
-SCENE3D_SECTOR3_VERTEX_OFFSET EQU 2450
+SCENE3D_SECTOR3_VERTEX_OFFSET EQU 3914
 SCENE3D_SECTOR3_VERTEX_COUNT EQU 16
-SCENE3D_SECTOR3_FACE_OFFSET EQU 2474
+SCENE3D_SECTOR3_FACE_OFFSET EQU 3938
 SCENE3D_SECTOR3_FACE_COUNT EQU 8
 SCENE3D_SECTOR3_VIEW_X EQU 56
 SCENE3D_SECTOR3_VIEW_Y EQU 42
@@ -93,9 +93,9 @@ SCENE3D_SECTOR3_PITCH_STEP EQU 0
 SCENE3D_SECTOR3_PROJECT_SCALE EQU 102
 
 SCENE3D_WIN_INDEX EQU 5
-SCENE3D_WIN_VERTEX_OFFSET EQU 2602
+SCENE3D_WIN_VERTEX_OFFSET EQU 4066
 SCENE3D_WIN_VERTEX_COUNT EQU 16
-SCENE3D_WIN_FACE_OFFSET EQU 2626
+SCENE3D_WIN_FACE_OFFSET EQU 4090
 SCENE3D_WIN_FACE_COUNT EQU 8
 SCENE3D_WIN_VIEW_X EQU 0
 SCENE3D_WIN_VIEW_Y EQU 0
@@ -111,9 +111,9 @@ SCENE3D_WIN_PITCH_STEP EQU 0
 SCENE3D_WIN_PROJECT_SCALE EQU 104
 
 SCENE3D_LOSE_INDEX EQU 6
-SCENE3D_LOSE_VERTEX_OFFSET EQU 2754
+SCENE3D_LOSE_VERTEX_OFFSET EQU 4218
 SCENE3D_LOSE_VERTEX_COUNT EQU 16
-SCENE3D_LOSE_FACE_OFFSET EQU 2778
+SCENE3D_LOSE_FACE_OFFSET EQU 4242
 SCENE3D_LOSE_FACE_COUNT EQU 8
 SCENE3D_LOSE_VIEW_X EQU 0
 SCENE3D_LOSE_VIEW_Y EQU 0
@@ -129,213 +129,213 @@ SCENE3D_LOSE_PITCH_STEP EQU 0
 SCENE3D_LOSE_PROJECT_SCALE EQU 104
 
 GAME3D_MESH_GATE_VAULT_INDEX EQU 0
-GAME3D_MESH_GATE_VAULT_VERTEX_OFFSET EQU 2906
+GAME3D_MESH_GATE_VAULT_VERTEX_OFFSET EQU 4370
 GAME3D_MESH_GATE_VAULT_VERTEX_COUNT EQU 16
-GAME3D_MESH_GATE_VAULT_FACE_OFFSET EQU 3002
+GAME3D_MESH_GATE_VAULT_FACE_OFFSET EQU 4466
 GAME3D_MESH_GATE_VAULT_FACE_COUNT EQU 8
 
 GAME3D_MESH_GATE_FURNACE_INDEX EQU 1
-GAME3D_MESH_GATE_FURNACE_VERTEX_OFFSET EQU 3058
+GAME3D_MESH_GATE_FURNACE_VERTEX_OFFSET EQU 4522
 GAME3D_MESH_GATE_FURNACE_VERTEX_COUNT EQU 16
-GAME3D_MESH_GATE_FURNACE_FACE_OFFSET EQU 3154
+GAME3D_MESH_GATE_FURNACE_FACE_OFFSET EQU 4618
 GAME3D_MESH_GATE_FURNACE_FACE_COUNT EQU 8
 
 GAME3D_MESH_GATE_LOCK_INDEX EQU 2
-GAME3D_MESH_GATE_LOCK_VERTEX_OFFSET EQU 3210
+GAME3D_MESH_GATE_LOCK_VERTEX_OFFSET EQU 4674
 GAME3D_MESH_GATE_LOCK_VERTEX_COUNT EQU 16
-GAME3D_MESH_GATE_LOCK_FACE_OFFSET EQU 3306
+GAME3D_MESH_GATE_LOCK_FACE_OFFSET EQU 4770
 GAME3D_MESH_GATE_LOCK_FACE_COUNT EQU 8
 
 GAME3D_MESH_TERMINAL_VAULT_INDEX EQU 3
-GAME3D_MESH_TERMINAL_VAULT_VERTEX_OFFSET EQU 3362
+GAME3D_MESH_TERMINAL_VAULT_VERTEX_OFFSET EQU 4826
 GAME3D_MESH_TERMINAL_VAULT_VERTEX_COUNT EQU 12
-GAME3D_MESH_TERMINAL_VAULT_FACE_OFFSET EQU 3434
+GAME3D_MESH_TERMINAL_VAULT_FACE_OFFSET EQU 4898
 GAME3D_MESH_TERMINAL_VAULT_FACE_COUNT EQU 12
 
 GAME3D_MESH_TERMINAL_FURNACE_INDEX EQU 4
-GAME3D_MESH_TERMINAL_FURNACE_VERTEX_OFFSET EQU 3518
+GAME3D_MESH_TERMINAL_FURNACE_VERTEX_OFFSET EQU 4982
 GAME3D_MESH_TERMINAL_FURNACE_VERTEX_COUNT EQU 12
-GAME3D_MESH_TERMINAL_FURNACE_FACE_OFFSET EQU 3590
+GAME3D_MESH_TERMINAL_FURNACE_FACE_OFFSET EQU 5054
 GAME3D_MESH_TERMINAL_FURNACE_FACE_COUNT EQU 12
 
 GAME3D_MESH_TERMINAL_LOCK_INDEX EQU 5
-GAME3D_MESH_TERMINAL_LOCK_VERTEX_OFFSET EQU 3674
+GAME3D_MESH_TERMINAL_LOCK_VERTEX_OFFSET EQU 5138
 GAME3D_MESH_TERMINAL_LOCK_VERTEX_COUNT EQU 12
-GAME3D_MESH_TERMINAL_LOCK_FACE_OFFSET EQU 3746
+GAME3D_MESH_TERMINAL_LOCK_FACE_OFFSET EQU 5210
 GAME3D_MESH_TERMINAL_LOCK_FACE_COUNT EQU 12
 
 GAME3D_MESH_SURGE_VAULT_INDEX EQU 6
-GAME3D_MESH_SURGE_VAULT_VERTEX_OFFSET EQU 3830
+GAME3D_MESH_SURGE_VAULT_VERTEX_OFFSET EQU 5294
 GAME3D_MESH_SURGE_VAULT_VERTEX_COUNT EQU 9
-GAME3D_MESH_SURGE_VAULT_FACE_OFFSET EQU 3884
+GAME3D_MESH_SURGE_VAULT_FACE_OFFSET EQU 5348
 GAME3D_MESH_SURGE_VAULT_FACE_COUNT EQU 12
 
 GAME3D_MESH_SURGE_FURNACE_INDEX EQU 7
-GAME3D_MESH_SURGE_FURNACE_VERTEX_OFFSET EQU 3968
+GAME3D_MESH_SURGE_FURNACE_VERTEX_OFFSET EQU 5432
 GAME3D_MESH_SURGE_FURNACE_VERTEX_COUNT EQU 9
-GAME3D_MESH_SURGE_FURNACE_FACE_OFFSET EQU 4022
+GAME3D_MESH_SURGE_FURNACE_FACE_OFFSET EQU 5486
 GAME3D_MESH_SURGE_FURNACE_FACE_COUNT EQU 12
 
 GAME3D_MESH_SURGE_LOCK_INDEX EQU 8
-GAME3D_MESH_SURGE_LOCK_VERTEX_OFFSET EQU 4106
+GAME3D_MESH_SURGE_LOCK_VERTEX_OFFSET EQU 5570
 GAME3D_MESH_SURGE_LOCK_VERTEX_COUNT EQU 9
-GAME3D_MESH_SURGE_LOCK_FACE_OFFSET EQU 4160
+GAME3D_MESH_SURGE_LOCK_FACE_OFFSET EQU 5624
 GAME3D_MESH_SURGE_LOCK_FACE_COUNT EQU 12
 
 GAME3D_MESH_SHARD_VAULT_INDEX EQU 9
-GAME3D_MESH_SHARD_VAULT_VERTEX_OFFSET EQU 4244
+GAME3D_MESH_SHARD_VAULT_VERTEX_OFFSET EQU 5708
 GAME3D_MESH_SHARD_VAULT_VERTEX_COUNT EQU 10
-GAME3D_MESH_SHARD_VAULT_FACE_OFFSET EQU 4304
+GAME3D_MESH_SHARD_VAULT_FACE_OFFSET EQU 5768
 GAME3D_MESH_SHARD_VAULT_FACE_COUNT EQU 14
 
 GAME3D_MESH_SHARD_FURNACE_INDEX EQU 10
-GAME3D_MESH_SHARD_FURNACE_VERTEX_OFFSET EQU 4402
+GAME3D_MESH_SHARD_FURNACE_VERTEX_OFFSET EQU 5866
 GAME3D_MESH_SHARD_FURNACE_VERTEX_COUNT EQU 10
-GAME3D_MESH_SHARD_FURNACE_FACE_OFFSET EQU 4462
+GAME3D_MESH_SHARD_FURNACE_FACE_OFFSET EQU 5926
 GAME3D_MESH_SHARD_FURNACE_FACE_COUNT EQU 14
 
 GAME3D_MESH_SHARD_LOCK_INDEX EQU 11
-GAME3D_MESH_SHARD_LOCK_VERTEX_OFFSET EQU 4560
+GAME3D_MESH_SHARD_LOCK_VERTEX_OFFSET EQU 6024
 GAME3D_MESH_SHARD_LOCK_VERTEX_COUNT EQU 10
-GAME3D_MESH_SHARD_LOCK_FACE_OFFSET EQU 4620
+GAME3D_MESH_SHARD_LOCK_FACE_OFFSET EQU 6084
 GAME3D_MESH_SHARD_LOCK_FACE_COUNT EQU 14
 
 GAME3D_MESH_BEACON_EXIT_INDEX EQU 12
-GAME3D_MESH_BEACON_EXIT_VERTEX_OFFSET EQU 4718
+GAME3D_MESH_BEACON_EXIT_VERTEX_OFFSET EQU 6182
 GAME3D_MESH_BEACON_EXIT_VERTEX_COUNT EQU 9
-GAME3D_MESH_BEACON_EXIT_FACE_OFFSET EQU 4772
+GAME3D_MESH_BEACON_EXIT_FACE_OFFSET EQU 6236
 GAME3D_MESH_BEACON_EXIT_FACE_COUNT EQU 12
 
 GAME3D_MESH_BEACON_FOCUS_INDEX EQU 13
-GAME3D_MESH_BEACON_FOCUS_VERTEX_OFFSET EQU 4856
+GAME3D_MESH_BEACON_FOCUS_VERTEX_OFFSET EQU 6320
 GAME3D_MESH_BEACON_FOCUS_VERTEX_COUNT EQU 9
-GAME3D_MESH_BEACON_FOCUS_FACE_OFFSET EQU 4910
+GAME3D_MESH_BEACON_FOCUS_FACE_OFFSET EQU 6374
 GAME3D_MESH_BEACON_FOCUS_FACE_COUNT EQU 12
 
 GAME3D_MESH_BEACON_SPOOF_INDEX EQU 14
-GAME3D_MESH_BEACON_SPOOF_VERTEX_OFFSET EQU 4994
+GAME3D_MESH_BEACON_SPOOF_VERTEX_OFFSET EQU 6458
 GAME3D_MESH_BEACON_SPOOF_VERTEX_COUNT EQU 9
-GAME3D_MESH_BEACON_SPOOF_FACE_OFFSET EQU 5048
+GAME3D_MESH_BEACON_SPOOF_FACE_OFFSET EQU 6512
 GAME3D_MESH_BEACON_SPOOF_FACE_COUNT EQU 12
 
 GAME3D_MESH_BEACON_THREAT_INDEX EQU 15
-GAME3D_MESH_BEACON_THREAT_VERTEX_OFFSET EQU 5132
+GAME3D_MESH_BEACON_THREAT_VERTEX_OFFSET EQU 6596
 GAME3D_MESH_BEACON_THREAT_VERTEX_COUNT EQU 9
-GAME3D_MESH_BEACON_THREAT_FACE_OFFSET EQU 5186
+GAME3D_MESH_BEACON_THREAT_FACE_OFFSET EQU 6650
 GAME3D_MESH_BEACON_THREAT_FACE_COUNT EQU 12
 
 GAME3D_MESH_LANDMARK_VAULT_INDEX EQU 16
-GAME3D_MESH_LANDMARK_VAULT_VERTEX_OFFSET EQU 5270
+GAME3D_MESH_LANDMARK_VAULT_VERTEX_OFFSET EQU 6734
 GAME3D_MESH_LANDMARK_VAULT_VERTEX_COUNT EQU 11
-GAME3D_MESH_LANDMARK_VAULT_FACE_OFFSET EQU 5336
+GAME3D_MESH_LANDMARK_VAULT_FACE_OFFSET EQU 6800
 GAME3D_MESH_LANDMARK_VAULT_FACE_COUNT EQU 14
 
 GAME3D_MESH_LANDMARK_FURNACE_INDEX EQU 17
-GAME3D_MESH_LANDMARK_FURNACE_VERTEX_OFFSET EQU 5434
+GAME3D_MESH_LANDMARK_FURNACE_VERTEX_OFFSET EQU 6898
 GAME3D_MESH_LANDMARK_FURNACE_VERTEX_COUNT EQU 12
-GAME3D_MESH_LANDMARK_FURNACE_FACE_OFFSET EQU 5506
+GAME3D_MESH_LANDMARK_FURNACE_FACE_OFFSET EQU 6970
 GAME3D_MESH_LANDMARK_FURNACE_FACE_COUNT EQU 16
 
 GAME3D_MESH_LANDMARK_LOCK_INDEX EQU 18
-GAME3D_MESH_LANDMARK_LOCK_VERTEX_OFFSET EQU 5618
+GAME3D_MESH_LANDMARK_LOCK_VERTEX_OFFSET EQU 7082
 GAME3D_MESH_LANDMARK_LOCK_VERTEX_COUNT EQU 11
-GAME3D_MESH_LANDMARK_LOCK_FACE_OFFSET EQU 5684
+GAME3D_MESH_LANDMARK_LOCK_FACE_OFFSET EQU 7148
 GAME3D_MESH_LANDMARK_LOCK_FACE_COUNT EQU 14
 
 GAME3D_MESH_PORTAL_ARCH_INDEX EQU 19
-GAME3D_MESH_PORTAL_ARCH_VERTEX_OFFSET EQU 5782
+GAME3D_MESH_PORTAL_ARCH_VERTEX_OFFSET EQU 7246
 GAME3D_MESH_PORTAL_ARCH_VERTEX_COUNT EQU 16
-GAME3D_MESH_PORTAL_ARCH_FACE_OFFSET EQU 5878
+GAME3D_MESH_PORTAL_ARCH_FACE_OFFSET EQU 7342
 GAME3D_MESH_PORTAL_ARCH_FACE_COUNT EQU 8
 
 GAME3D_MESH_SWITCH_PEDESTAL_INDEX EQU 20
-GAME3D_MESH_SWITCH_PEDESTAL_VERTEX_OFFSET EQU 5934
+GAME3D_MESH_SWITCH_PEDESTAL_VERTEX_OFFSET EQU 7398
 GAME3D_MESH_SWITCH_PEDESTAL_VERTEX_COUNT EQU 11
-GAME3D_MESH_SWITCH_PEDESTAL_FACE_OFFSET EQU 6000
+GAME3D_MESH_SWITCH_PEDESTAL_FACE_OFFSET EQU 7464
 GAME3D_MESH_SWITCH_PEDESTAL_FACE_COUNT EQU 14
 
 GAME3D_MESH_LAVA_VENT_INDEX EQU 21
-GAME3D_MESH_LAVA_VENT_VERTEX_OFFSET EQU 6098
+GAME3D_MESH_LAVA_VENT_VERTEX_OFFSET EQU 7562
 GAME3D_MESH_LAVA_VENT_VERTEX_COUNT EQU 9
-GAME3D_MESH_LAVA_VENT_FACE_OFFSET EQU 6152
+GAME3D_MESH_LAVA_VENT_FACE_OFFSET EQU 7616
 GAME3D_MESH_LAVA_VENT_FACE_COUNT EQU 12
 
 GAME3D_MESH_GEM_CLUSTER_INDEX EQU 22
-GAME3D_MESH_GEM_CLUSTER_VERTEX_OFFSET EQU 6236
+GAME3D_MESH_GEM_CLUSTER_VERTEX_OFFSET EQU 7700
 GAME3D_MESH_GEM_CLUSTER_VERTEX_COUNT EQU 9
-GAME3D_MESH_GEM_CLUSTER_FACE_OFFSET EQU 6290
+GAME3D_MESH_GEM_CLUSTER_FACE_OFFSET EQU 7754
 GAME3D_MESH_GEM_CLUSTER_FACE_COUNT EQU 12
 
 GAME3D_MESH_TREE_ROUND_INDEX EQU 23
-GAME3D_MESH_TREE_ROUND_VERTEX_OFFSET EQU 6374
+GAME3D_MESH_TREE_ROUND_VERTEX_OFFSET EQU 7838
 GAME3D_MESH_TREE_ROUND_VERTEX_COUNT EQU 13
-GAME3D_MESH_TREE_ROUND_FACE_OFFSET EQU 6452
+GAME3D_MESH_TREE_ROUND_FACE_OFFSET EQU 7916
 GAME3D_MESH_TREE_ROUND_FACE_COUNT EQU 12
 
 GAME3D_MESH_STONE_STACK_INDEX EQU 24
-GAME3D_MESH_STONE_STACK_VERTEX_OFFSET EQU 6536
+GAME3D_MESH_STONE_STACK_VERTEX_OFFSET EQU 8000
 GAME3D_MESH_STONE_STACK_VERTEX_COUNT EQU 12
-GAME3D_MESH_STONE_STACK_FACE_OFFSET EQU 6608
+GAME3D_MESH_STONE_STACK_FACE_OFFSET EQU 8072
 GAME3D_MESH_STONE_STACK_FACE_COUNT EQU 16
 
 GAME3D_MESH_BRIDGE_SPAN_INDEX EQU 25
-GAME3D_MESH_BRIDGE_SPAN_VERTEX_OFFSET EQU 6720
+GAME3D_MESH_BRIDGE_SPAN_VERTEX_OFFSET EQU 8184
 GAME3D_MESH_BRIDGE_SPAN_VERTEX_COUNT EQU 12
-GAME3D_MESH_BRIDGE_SPAN_FACE_OFFSET EQU 6792
+GAME3D_MESH_BRIDGE_SPAN_FACE_OFFSET EQU 8256
 GAME3D_MESH_BRIDGE_SPAN_FACE_COUNT EQU 12
 
 GAME3D_MESH_TOWER_TOY_INDEX EQU 26
-GAME3D_MESH_TOWER_TOY_VERTEX_OFFSET EQU 6876
+GAME3D_MESH_TOWER_TOY_VERTEX_OFFSET EQU 8340
 GAME3D_MESH_TOWER_TOY_VERTEX_COUNT EQU 13
-GAME3D_MESH_TOWER_TOY_FACE_OFFSET EQU 6954
+GAME3D_MESH_TOWER_TOY_FACE_OFFSET EQU 8418
 GAME3D_MESH_TOWER_TOY_FACE_COUNT EQU 20
 
 GAME3D_MESH_ENEMY_RUSHER_INDEX EQU 27
-GAME3D_MESH_ENEMY_RUSHER_VERTEX_OFFSET EQU 7094
+GAME3D_MESH_ENEMY_RUSHER_VERTEX_OFFSET EQU 8558
 GAME3D_MESH_ENEMY_RUSHER_VERTEX_COUNT EQU 9
-GAME3D_MESH_ENEMY_RUSHER_FACE_OFFSET EQU 7148
+GAME3D_MESH_ENEMY_RUSHER_FACE_OFFSET EQU 8612
 GAME3D_MESH_ENEMY_RUSHER_FACE_COUNT EQU 12
 
 GAME3D_MESH_ENEMY_RUSHER_ALT_INDEX EQU 28
-GAME3D_MESH_ENEMY_RUSHER_ALT_VERTEX_OFFSET EQU 7232
+GAME3D_MESH_ENEMY_RUSHER_ALT_VERTEX_OFFSET EQU 8696
 GAME3D_MESH_ENEMY_RUSHER_ALT_VERTEX_COUNT EQU 9
-GAME3D_MESH_ENEMY_RUSHER_ALT_FACE_OFFSET EQU 7286
+GAME3D_MESH_ENEMY_RUSHER_ALT_FACE_OFFSET EQU 8750
 GAME3D_MESH_ENEMY_RUSHER_ALT_FACE_COUNT EQU 12
 
 GAME3D_MESH_ENEMY_FLANKER_INDEX EQU 29
-GAME3D_MESH_ENEMY_FLANKER_VERTEX_OFFSET EQU 7370
+GAME3D_MESH_ENEMY_FLANKER_VERTEX_OFFSET EQU 8834
 GAME3D_MESH_ENEMY_FLANKER_VERTEX_COUNT EQU 9
-GAME3D_MESH_ENEMY_FLANKER_FACE_OFFSET EQU 7424
+GAME3D_MESH_ENEMY_FLANKER_FACE_OFFSET EQU 8888
 GAME3D_MESH_ENEMY_FLANKER_FACE_COUNT EQU 12
 
 GAME3D_MESH_ENEMY_FLANKER_ALT_INDEX EQU 30
-GAME3D_MESH_ENEMY_FLANKER_ALT_VERTEX_OFFSET EQU 7508
+GAME3D_MESH_ENEMY_FLANKER_ALT_VERTEX_OFFSET EQU 8972
 GAME3D_MESH_ENEMY_FLANKER_ALT_VERTEX_COUNT EQU 9
-GAME3D_MESH_ENEMY_FLANKER_ALT_FACE_OFFSET EQU 7562
+GAME3D_MESH_ENEMY_FLANKER_ALT_FACE_OFFSET EQU 9026
 GAME3D_MESH_ENEMY_FLANKER_ALT_FACE_COUNT EQU 12
 
 GAME3D_MESH_PLAYER_RUNNER_INDEX EQU 31
-GAME3D_MESH_PLAYER_RUNNER_VERTEX_OFFSET EQU 7646
+GAME3D_MESH_PLAYER_RUNNER_VERTEX_OFFSET EQU 9110
 GAME3D_MESH_PLAYER_RUNNER_VERTEX_COUNT EQU 11
-GAME3D_MESH_PLAYER_RUNNER_FACE_OFFSET EQU 7712
+GAME3D_MESH_PLAYER_RUNNER_FACE_OFFSET EQU 9176
 GAME3D_MESH_PLAYER_RUNNER_FACE_COUNT EQU 14
 
 GAME3D_MESH_PLAYER_RUNNER_LEAN_INDEX EQU 32
-GAME3D_MESH_PLAYER_RUNNER_LEAN_VERTEX_OFFSET EQU 7810
+GAME3D_MESH_PLAYER_RUNNER_LEAN_VERTEX_OFFSET EQU 9274
 GAME3D_MESH_PLAYER_RUNNER_LEAN_VERTEX_COUNT EQU 11
-GAME3D_MESH_PLAYER_RUNNER_LEAN_FACE_OFFSET EQU 7876
+GAME3D_MESH_PLAYER_RUNNER_LEAN_FACE_OFFSET EQU 9340
 GAME3D_MESH_PLAYER_RUNNER_LEAN_FACE_COUNT EQU 14
 
 GAME3D_MESH_WARDEN_INDEX EQU 33
-GAME3D_MESH_WARDEN_VERTEX_OFFSET EQU 7974
+GAME3D_MESH_WARDEN_VERTEX_OFFSET EQU 9438
 GAME3D_MESH_WARDEN_VERTEX_COUNT EQU 11
-GAME3D_MESH_WARDEN_FACE_OFFSET EQU 8040
+GAME3D_MESH_WARDEN_FACE_OFFSET EQU 9504
 GAME3D_MESH_WARDEN_FACE_COUNT EQU 14
 
 GAME3D_MESH_WARDEN_PRESSURE_INDEX EQU 34
-GAME3D_MESH_WARDEN_PRESSURE_VERTEX_OFFSET EQU 8138
+GAME3D_MESH_WARDEN_PRESSURE_VERTEX_OFFSET EQU 9602
 GAME3D_MESH_WARDEN_PRESSURE_VERTEX_COUNT EQU 11
-GAME3D_MESH_WARDEN_PRESSURE_FACE_OFFSET EQU 8204
+GAME3D_MESH_WARDEN_PRESSURE_FACE_OFFSET EQU 9668
 GAME3D_MESH_WARDEN_PRESSURE_FACE_COUNT EQU 14
 
 GAME3D_KIT_SECTOR1_INDEX EQU 0
@@ -345,20 +345,20 @@ GAME3D_KIT_SECTOR2_INDEX EQU 1
 GAME3D_KIT_SECTOR3_INDEX EQU 2
 
 SCENE3D_COUNT EQU 7
-SCENE3D_GROUP_COUNT EQU 28
-SCENE3D_MATERIAL_COUNT EQU 45
+SCENE3D_GROUP_COUNT EQU 34
+SCENE3D_MATERIAL_COUNT EQU 57
 GAME3D_MESH_COUNT EQU 35
 GAME3D_KIT_COUNT EQU 3
 
-scene3d_vertex_offset_table dw 0, 1282, 2146, 2298
-                            dw 2450, 2602, 2754
+scene3d_vertex_offset_table dw 0, 2090, 3610, 3762
+                            dw 3914, 4066, 4218
 
-scene3d_vertex_count_table db 132, 88, 16, 16, 16, 16, 16
+scene3d_vertex_count_table db 220, 160, 16, 16, 16, 16, 16
 
-scene3d_face_offset_table dw 144, 1426, 2170, 2322
-                          dw 2474, 2626, 2778
+scene3d_face_offset_table dw 192, 2282, 3634, 3786
+                          dw 3938, 4090, 4242
 
-scene3d_face_count_table db 70, 48, 8, 8, 8, 8, 8
+scene3d_face_count_table db 110, 80, 8, 8, 8, 8, 8
 
 scene3d_view_x_table dw 0, 0, 56, 56
                      dw 56, 0, 0
@@ -375,687 +375,149 @@ scene3d_view_h_table dw 200, 200, 64, 64
 scene3d_camera_x_table dw 0000h, 0000h, 0000h, 0000h
                        dw 0000h, 0000h, 0000h
 
-scene3d_camera_y_table dw 0126h, 00F3h, 00B3h, 00B3h
+scene3d_camera_y_table dw 0100h, 00F3h, 00B3h, 00B3h
                        dw 00C0h, 0100h, 0100h
 
-scene3d_camera_z_table dw 0F500h, 0F71Ah, 0FA66h, 0FA66h
+scene3d_camera_z_table dw 0F366h, 0F566h, 0FA66h, 0FA66h
                        dw 0FA33h, 0F900h, 0F900h
 
-scene3d_yaw_base_table db 253, 4, 249, 7, 0, 252, 4
+scene3d_yaw_base_table db 255, 2, 249, 7, 0, 252, 4
 
 scene3d_yaw_step_table db 0, 0, 0, 0, 0, 0, 0
 
-scene3d_pitch_base_table db 247, 249, 249, 250, 250, 247, 247
+scene3d_pitch_base_table db 248, 250, 249, 250, 250, 247, 247
 
 scene3d_pitch_step_table db 0, 0, 0, 0, 0, 0, 0
 
-scene3d_project_scale_table dw 118, 108, 98, 98
+scene3d_project_scale_table dw 124, 114, 98, 98
                             dw 102, 104, 104
 
-scene3d_timeline_length_table db 60, 48, 8, 8, 8, 24, 24
-scene3d_timeline_loop_table db 0, 48, 0, 0, 0, 0, 0
-scene3d_group_start_table db 0, 7, 13, 16, 19, 22, 25
-scene3d_group_count_table db 7, 6, 3, 3, 3, 3, 3
+scene3d_timeline_length_table db 96, 64, 8, 8, 8, 24, 24
+scene3d_timeline_loop_table db 0, 64, 0, 0, 0, 0, 0
+scene3d_group_start_table db 0, 11, 19, 22, 25, 28, 31
+scene3d_group_count_table db 11, 8, 3, 3, 3, 3, 3
 
-scene3d_group_vertex_offset_table dw 0, 256, 446, 598
-                                  dw 750, 902, 1092, 1282
-                                  dw 1538, 1690, 1842, 1956
-                                  dw 2070, 2146, 2184, 2260
-                                  dw 2298, 2336, 2412, 2450
-                                  dw 2488, 2564, 2602, 2640
-                                  dw 2716, 2754, 2792, 2868
+scene3d_group_vertex_offset_table dw 0, 304, 532, 722
+                                  dw 912, 1102, 1254, 1482
+                                  dw 1672, 1862, 1938, 2090
+                                  dw 2394, 2546, 2736, 2926
+                                  dw 3154, 3306, 3458, 3610
+                                  dw 3648, 3724, 3762, 3800
+                                  dw 3876, 3914, 3952, 4028
+                                  dw 4066, 4104, 4180, 4218
+                                  dw 4256, 4332
 
-scene3d_group_vertex_count_table db 24, 20, 16, 16, 16, 20, 20, 24
-                                 db 16, 16, 12, 12, 8, 4, 8, 4
-                                 db 4, 8, 4, 4, 8, 4, 4, 8
-                                 db 4, 4, 8, 4
+scene3d_group_vertex_count_table db 32, 24, 20, 20, 20, 16, 24, 20
+                                 db 20, 8, 16, 32, 16, 20, 20, 24
+                                 db 16, 16, 16, 4, 8, 4, 4, 8
+                                 db 4, 4, 8, 4, 4, 8, 4, 4
+                                 db 8, 4
 
-scene3d_group_face_offset_table dw 144, 376, 542, 694
-                                dw 846, 1022, 1212, 1426
-                                dw 1634, 1786, 1914, 2028
-                                dw 2118, 2170, 2232, 2284
-                                dw 2322, 2384, 2436, 2474
-                                dw 2536, 2588, 2626, 2688
-                                dw 2740, 2778, 2840, 2892
+scene3d_group_face_offset_table dw 192, 448, 652, 842
+                                dw 1032, 1198, 1398, 1602
+                                dw 1792, 1910, 2034, 2282
+                                dw 2490, 2666, 2856, 3070
+                                dw 3250, 3402, 3554, 3634
+                                dw 3696, 3748, 3786, 3848
+                                dw 3900, 3938, 4000, 4052
+                                dw 4090, 4152, 4204, 4242
+                                dw 4304, 4356
 
-scene3d_group_face_count_table db 16, 10, 8, 8, 8, 10, 10, 16
-                               db 8, 8, 6, 6, 4, 2, 4, 2
-                               db 2, 4, 2, 2, 4, 2, 2, 4
-                               db 2, 2, 4, 2
-scene3d_group_start_tick_table db 0, 0, 8, 10, 6, 18, 32, 0
-                               db 0, 0, 12, 8, 10, 0, 1, 3
-                               db 0, 1, 3, 0, 1, 3, 0, 2
-                               db 8, 0, 2, 8
-scene3d_group_end_tick_table db 59, 59, 59, 59, 59, 59, 59, 47
-                             db 47, 47, 47, 47, 47, 7, 7, 7
-                             db 7, 7, 7, 7, 7, 7, 23, 23
-                             db 23, 23, 23, 23
-scene3d_group_motion_ticks_table db 0, 0, 10, 10, 12, 14, 12, 0
-                                 db 8, 12, 8, 10, 8, 0, 3, 2
-                                 db 0, 3, 2, 0, 3, 2, 0, 8
-                                 db 6, 0, 8, 6
+scene3d_group_face_count_table db 16, 12, 10, 10, 10, 8, 12, 10
+                               db 10, 4, 8, 16, 8, 10, 10, 12
+                               db 8, 8, 8, 2, 4, 2, 2, 4
+                               db 2, 2, 4, 2, 2, 4, 2, 2
+                               db 4, 2
+scene3d_group_start_tick_table db 0, 0, 0, 10, 12, 12, 34, 20
+                               db 22, 26, 38, 0, 0, 0, 12, 8
+                               db 10, 14, 18, 0, 1, 3, 0, 1
+                               db 3, 0, 1, 3, 0, 2, 8, 0
+                               db 2, 8
+scene3d_group_end_tick_table db 95, 95, 95, 95, 95, 95, 95, 95
+                             db 95, 95, 95, 63, 63, 63, 63, 63
+                             db 63, 63, 63, 7, 7, 7, 7, 7
+                             db 7, 7, 7, 7, 23, 23, 23, 23
+                             db 23, 23
+scene3d_group_motion_ticks_table db 0, 0, 0, 12, 12, 10, 16, 16
+                                 db 16, 12, 14, 0, 0, 12, 8, 12
+                                 db 8, 8, 10, 0, 3, 2, 0, 3
+                                 db 2, 0, 3, 2, 0, 8, 6, 0
+                                 db 8, 6
 
-scene3d_group_offset_x_table dw 0000h, 0000h, 0FF66h, 009Ah
+scene3d_group_offset_x_table dw 0000h, 0000h, 0000h, 0FF5Ah
+                             dw 00A6h, 0000h, 0000h, 0FFDAh
+                             dw 0026h, 0000h, 0000h, 0000h
                              dw 0000h, 0000h, 0000h, 0000h
                              dw 0000h, 0000h, 0000h, 0000h
                              dw 0000h, 0000h, 0000h, 0000h
                              dw 0000h, 0000h, 0000h, 0000h
                              dw 0000h, 0000h, 0000h, 0000h
-                             dw 0000h, 0000h, 0000h, 0000h
-scene3d_group_offset_y_table dw 0000h, 0000h, 0FF0Dh, 0FF0Dh
-                             dw 0FF73h, 0FEA6h, 0FF8Dh, 0000h
-                             dw 0FFC8h, 0FFD2h, 0FFDAh, 0FFCDh
-                             dw 0FFE6h, 0000h, 0FFD2h, 0FFECh
-                             dw 0000h, 0FFD7h, 0FFF1h, 0000h
-                             dw 0FFC8h, 0FFECh, 0000h, 0FF9Ah
-                             dw 0FFD2h, 0000h, 0FF94h, 0FFD7h
-scene3d_group_offset_z_table dw 0000h, 0000h, 0073h, 0073h
-                             dw 00E6h, 00E6h, 008Dh, 0000h
-                             dw 004Dh, 002Eh, 0040h, 004Dh
-                             dw 002Eh, 0000h, 005Ah, 0033h
-                             dw 0000h, 0048h, 0029h, 0000h
-                             dw 0057h, 002Eh, 0000h, 00C0h
-                             dw 0048h, 0000h, 00CDh, 003Dh
-scene3d_group_offset_x_step_table dw 0000h, 0000h, 000Fh, 0FFF1h
+                             dw 0000h, 0000h
+scene3d_group_offset_y_table dw 0000h, 0000h, 0000h, 0FF00h
+                             dw 0FF00h, 0FF4Dh, 0FF80h, 0FEB3h
+                             dw 0FEB3h, 0FEE6h, 0FF9Fh, 0000h
+                             dw 0000h, 0FFD2h, 0FFDAh, 0FFCDh
+                             dw 0FFE6h, 0FFE6h, 0FFE1h, 0000h
+                             dw 0FFD2h, 0FFECh, 0000h, 0FFD7h
+                             dw 0FFF1h, 0000h, 0FFC8h, 0FFECh
+                             dw 0000h, 0FF9Ah, 0FFD2h, 0000h
+                             dw 0FF94h, 0FFD7h
+scene3d_group_offset_z_table dw 0000h, 0000h, 0000h, 0073h
+                             dw 0073h, 0048h, 00A6h, 00CDh
+                             dw 00CDh, 009Ah, 006Ch, 0000h
+                             dw 0000h, 0029h, 0040h, 0048h
+                             dw 002Eh, 0029h, 0029h, 0000h
+                             dw 005Ah, 0033h, 0000h, 0048h
+                             dw 0029h, 0000h, 0057h, 002Eh
+                             dw 0000h, 00C0h, 0048h, 0000h
+                             dw 00CDh, 003Dh
+scene3d_group_offset_x_step_table dw 0000h, 0000h, 0000h, 000Dh
+                                  dw 0FFF3h, 0000h, 0000h, 0005h
+                                  dw 0FFFBh, 0000h, 0000h, 0000h
                                   dw 0000h, 0000h, 0000h, 0000h
                                   dw 0000h, 0000h, 0000h, 0000h
                                   dw 0000h, 0000h, 0000h, 0000h
                                   dw 0000h, 0000h, 0000h, 0000h
                                   dw 0000h, 0000h, 0000h, 0000h
-                                  dw 0000h, 0000h, 0000h, 0000h
-scene3d_group_offset_y_step_table dw 0000h, 0000h, 0018h, 0018h
-                                  dw 000Dh, 0016h, 000Ah, 0000h
-                                  dw 0007h, 0004h, 0005h, 0004h
-                                  dw 0003h, 0000h, 000Dh, 000Ah
-                                  dw 0000h, 000Ah, 0008h, 0000h
-                                  dw 000Dh, 0008h, 0000h, 000Ah
-                                  dw 0006h, 0000h, 000Ah, 0006h
-scene3d_group_offset_z_step_table dw 0000h, 0000h, 0FFF4h, 0FFF4h
-                                  dw 0FFF3h, 0FFF2h, 0FFF8h, 0000h
-                                  dw 0FFFBh, 0FFFDh, 0FFFDh, 0FFFDh
-                                  dw 0FFFEh, 0000h, 0FFF3h, 0FFF8h
-                                  dw 0000h, 0FFF4h, 0FFFBh, 0000h
-                                  dw 0FFF4h, 0FFFBh, 0000h, 0FFF8h
-                                  dw 0FFFCh, 0000h, 0FFF8h, 0FFFCh
-scene3d_group_yaw_base_table db 0, 0, 253, 3, 0, 255, 0, 0
+                                  dw 0000h, 0000h
+scene3d_group_offset_y_step_table dw 0000h, 0000h, 0000h, 0014h
+                                  dw 0014h, 000Fh, 0008h, 0014h
+                                  dw 0014h, 0012h, 0008h, 0000h
+                                  dw 0000h, 0003h, 0005h, 0004h
+                                  dw 0003h, 0003h, 0003h, 0000h
+                                  dw 000Dh, 000Ah, 0000h, 000Ah
+                                  dw 0008h, 0000h, 000Dh, 0008h
+                                  dw 0000h, 000Ah, 0006h, 0000h
+                                  dw 000Ah, 0006h
+scene3d_group_offset_z_step_table dw 0000h, 0000h, 0000h, 0FFF8h
+                                  dw 0FFF8h, 0FFFBh, 0FFF8h, 0FFF6h
+                                  dw 0FFF6h, 0FFF8h, 0FFFBh, 0000h
+                                  dw 0000h, 0FFFEh, 0FFFDh, 0FFFDh
+                                  dw 0FFFEh, 0FFFEh, 0FFFEh, 0000h
+                                  dw 0FFF3h, 0FFF8h, 0000h, 0FFF4h
+                                  dw 0FFFBh, 0000h, 0FFF4h, 0FFFBh
+                                  dw 0000h, 0FFF8h, 0FFFCh, 0000h
+                                  dw 0FFF8h, 0FFFCh
+scene3d_group_yaw_base_table db 0, 0, 0, 253, 3, 0, 0, 254
+                             db 2, 0, 0, 0, 0, 0, 0, 0
+                             db 0, 0, 0, 0, 0, 0, 0, 3
                              db 0, 0, 0, 0, 0, 0, 0, 0
-                             db 0, 3, 0, 0, 0, 0, 0, 0
-                             db 0, 0, 0, 0
+                             db 0, 0
 scene3d_group_yaw_step_table db 0, 0, 0, 0, 0, 0, 0, 0
                              db 0, 0, 0, 0, 0, 0, 0, 0
                              db 0, 0, 0, 0, 0, 0, 0, 0
-                             db 0, 0, 0, 0
+                             db 0, 0, 0, 0, 0, 0, 0, 0
+                             db 0, 0
 
-scene3d_timeline_camera_x_table dw 0000h, 0000h, 0000h, 0000h
-                                dw 0000h, 0000h, 0000h, 0000h
-                                dw 0000h, 0000h, 0000h, 0000h
-                                dw 0000h, 0000h, 0000h, 0000h
-                                dw 0000h, 0000h, 0000h, 0000h
-                                dw 0000h, 0000h, 0000h, 0000h
-                                dw 0000h, 0000h, 0000h, 0000h
-                                dw 0000h, 0000h, 0000h, 0000h
-                                dw 0000h, 0000h, 0000h, 0000h
-                                dw 0000h, 0000h, 0000h, 0000h
-                                dw 0000h, 0000h, 0000h, 0000h
-                                dw 0000h, 0000h, 0000h, 0000h
-                                dw 0000h, 0000h, 0000h, 0000h
-                                dw 0000h, 0000h, 0000h, 0000h
-                                dw 0000h, 0000h, 0000h, 0000h
-                                dw 0000h, 0000h, 0000h, 0000h
-                                dw 0000h, 0000h, 0000h, 0000h
-                                dw 0000h, 0000h, 0000h, 0000h
-                                dw 0000h, 0000h, 0000h, 0000h
-                                dw 0000h, 0000h, 0000h, 0000h
-                                dw 0000h, 0000h, 0000h, 0000h
-                                dw 0000h, 0000h, 0000h, 0000h
-                                dw 0000h, 0000h, 0000h, 0000h
-                                dw 0000h, 0000h, 0000h, 0000h
-                                dw 0000h, 0000h, 0000h, 0000h
-                                dw 0000h, 0000h, 0000h, 0000h
-                                dw 0000h, 0000h, 0000h, 0000h
-                                dw 0000h, 0000h, 0000h, 0000h
-                                dw 0000h, 0000h, 0000h, 0000h
-                                dw 0000h, 0000h, 0000h, 0000h
-                                dw 0000h, 0000h, 0000h, 0000h
-                                dw 0000h, 0000h, 0000h, 0000h
-                                dw 0000h, 0000h, 0000h, 0000h
-                                dw 0000h, 0000h, 0000h, 0000h
-                                dw 0000h, 0000h, 0000h, 0000h
-                                dw 0000h, 0000h, 0000h, 0000h
-                                dw 0000h, 0000h, 0000h, 0000h
-                                dw 0000h, 0000h, 0000h, 0000h
-                                dw 0000h, 0000h, 0000h, 0000h
-                                dw 0000h, 0000h, 0000h, 0000h
-                                dw 0000h, 0000h, 0000h, 0000h
-                                dw 0000h, 0000h, 0000h, 0000h
-                                dw 0000h, 0000h, 0000h, 0000h
-                                dw 0000h, 0000h, 0000h, 0000h
-                                dw 0000h, 0000h, 0000h, 0000h
-                                dw 0000h, 0000h, 0000h, 0000h
-                                dw 0000h, 0000h, 0000h, 0000h
-                                dw 0000h, 0000h, 0000h, 0000h
-                                dw 0000h, 0000h, 0000h, 0000h
-                                dw 0000h, 0000h, 0000h, 0000h
-                                dw 0000h, 0000h, 0000h, 0000h
-                                dw 0000h, 0000h, 0000h, 0000h
-                                dw 0000h, 0000h, 0000h, 0000h
-                                dw 0000h, 0000h, 0000h, 0000h
-                                dw 0000h, 0000h, 0000h, 0000h
-                                dw 0000h, 0000h, 0000h, 0000h
-                                dw 0000h, 0000h, 0000h, 0000h
-                                dw 0000h, 0000h, 0000h, 0000h
-                                dw 0000h, 0000h, 0000h, 0000h
-                                dw 0000h, 0000h, 0000h, 0000h
-                                dw 0000h, 0000h, 0000h, 0000h
-                                dw 0000h, 0000h, 0000h, 0000h
-                                dw 0000h, 0000h, 0000h, 0000h
-                                dw 0000h, 0000h, 0000h, 0000h
-                                dw 0000h, 0000h, 0000h, 0000h
-                                dw 0000h, 0000h, 0000h, 0000h
-                                dw 0000h, 0000h, 0000h, 0000h
-                                dw 0000h, 0000h, 0000h, 0000h
-                                dw 0000h, 0000h, 0000h, 0000h
-                                dw 0000h, 0000h, 0000h, 0000h
-                                dw 0000h, 0000h, 0000h, 0000h
-                                dw 0000h, 0000h, 0000h, 0000h
-                                dw 0000h, 0000h, 0000h, 0000h
-                                dw 0000h, 0000h, 0000h, 0000h
-                                dw 0000h, 0000h, 0000h, 0000h
-                                dw 0000h, 0000h, 0000h, 0000h
-                                dw 0000h, 0000h, 0000h, 0000h
-                                dw 0000h, 0000h, 0000h, 0000h
-                                dw 0000h, 0000h, 0000h, 0000h
-                                dw 0000h, 0000h, 0000h, 0000h
-                                dw 0000h, 0000h, 0000h, 0000h
-                                dw 0000h, 0000h, 0000h, 0000h
-                                dw 0000h, 0000h, 0000h, 0000h
-                                dw 0000h, 0000h, 0000h, 0000h
-                                dw 0000h, 0000h, 0000h, 0000h
-                                dw 0000h, 0000h, 0000h, 0000h
-                                dw 0000h, 0000h, 0000h, 0000h
-                                dw 0000h, 0000h, 0000h, 0000h
-                                dw 0000h, 0000h, 0000h, 0000h
-                                dw 0000h, 0000h, 0000h, 0000h
-                                dw 0000h, 0000h, 0000h, 0000h
-                                dw 0000h, 0000h, 0000h, 0000h
-                                dw 0000h, 0000h, 0000h, 0000h
-                                dw 0000h, 0000h, 0000h, 0000h
-                                dw 0000h, 0000h, 0000h, 0000h
-                                dw 0000h, 0000h, 0000h, 0000h
-                                dw 0000h, 0000h, 0000h, 0000h
-                                dw 0000h, 0000h, 0000h, 0000h
-                                dw 0000h, 0000h, 0000h, 0000h
-                                dw 0000h, 0000h, 0000h, 0000h
-                                dw 0000h, 0000h, 0000h, 0000h
-                                dw 0000h, 0000h, 0000h, 0000h
-                                dw 0000h, 0000h, 0000h, 0000h
-                                dw 0000h, 0000h, 0000h, 0000h
-                                dw 0000h, 0000h, 0000h, 0000h
-                                dw 0000h, 0000h, 0000h, 0000h
-                                dw 0000h, 0000h, 0000h, 0000h
-                                dw 0000h, 0000h, 0000h, 0000h
-                                dw 0000h, 0000h, 0000h, 0000h
-                                dw 0000h, 0000h, 0000h, 0000h
-                                dw 0000h, 0000h, 0000h, 0000h
-                                dw 0000h, 0000h, 0000h, 0000h
-scene3d_timeline_camera_y_table dw 0126h, 0126h, 0126h, 0126h
-                                dw 0126h, 0126h, 0126h, 0126h
-                                dw 0126h, 0126h, 0126h, 0126h
-                                dw 0126h, 0126h, 0126h, 0126h
-                                dw 0126h, 0126h, 0126h, 0126h
-                                dw 0126h, 0126h, 0126h, 0126h
-                                dw 0126h, 0126h, 0126h, 0126h
-                                dw 0126h, 0126h, 0126h, 0126h
-                                dw 0126h, 0126h, 0126h, 0126h
-                                dw 0126h, 0126h, 0126h, 0126h
-                                dw 0126h, 0126h, 0126h, 0126h
-                                dw 0126h, 0126h, 0126h, 0126h
-                                dw 0126h, 0126h, 0126h, 0126h
-                                dw 0126h, 0126h, 0126h, 0126h
-                                dw 0126h, 0126h, 0126h, 0126h
-                                dw 0126h, 0126h, 0126h, 0126h
-                                dw 00F3h, 00F3h, 00F3h, 00F3h
-                                dw 00F3h, 00F3h, 00F3h, 00F3h
-                                dw 00F3h, 00F3h, 00F3h, 00F3h
-                                dw 00F3h, 00F3h, 00F3h, 00F3h
-                                dw 00F3h, 00F3h, 00F3h, 00F3h
-                                dw 00F3h, 00F3h, 00F3h, 00F3h
-                                dw 00F3h, 00F3h, 00F3h, 00F3h
-                                dw 00F3h, 00F3h, 00F3h, 00F3h
-                                dw 00F3h, 00F3h, 00F3h, 00F3h
-                                dw 00F3h, 00F3h, 00F3h, 00F3h
-                                dw 00F3h, 00F3h, 00F3h, 00F3h
-                                dw 00F3h, 00F3h, 00F3h, 00F3h
-                                dw 00F3h, 00F3h, 00F3h, 00F3h
-                                dw 00F3h, 00F3h, 00F3h, 00F3h
-                                dw 00F3h, 00F3h, 00F3h, 00F3h
-                                dw 00F3h, 00F3h, 00F3h, 00F3h
-                                dw 00B3h, 00B3h, 00B3h, 00B3h
-                                dw 00B3h, 00B3h, 00B3h, 00B3h
-                                dw 00B3h, 00B3h, 00B3h, 00B3h
-                                dw 00B3h, 00B3h, 00B3h, 00B3h
-                                dw 00B3h, 00B3h, 00B3h, 00B3h
-                                dw 00B3h, 00B3h, 00B3h, 00B3h
-                                dw 00B3h, 00B3h, 00B3h, 00B3h
-                                dw 00B3h, 00B3h, 00B3h, 00B3h
-                                dw 00B3h, 00B3h, 00B3h, 00B3h
-                                dw 00B3h, 00B3h, 00B3h, 00B3h
-                                dw 00B3h, 00B3h, 00B3h, 00B3h
-                                dw 00B3h, 00B3h, 00B3h, 00B3h
-                                dw 00B3h, 00B3h, 00B3h, 00B3h
-                                dw 00B3h, 00B3h, 00B3h, 00B3h
-                                dw 00B3h, 00B3h, 00B3h, 00B3h
-                                dw 00B3h, 00B3h, 00B3h, 00B3h
-                                dw 00B3h, 00B3h, 00B3h, 00B3h
-                                dw 00B3h, 00B3h, 00B3h, 00B3h
-                                dw 00B3h, 00B3h, 00B3h, 00B3h
-                                dw 00B3h, 00B3h, 00B3h, 00B3h
-                                dw 00B3h, 00B3h, 00B3h, 00B3h
-                                dw 00B3h, 00B3h, 00B3h, 00B3h
-                                dw 00B3h, 00B3h, 00B3h, 00B3h
-                                dw 00B3h, 00B3h, 00B3h, 00B3h
-                                dw 00B3h, 00B3h, 00B3h, 00B3h
-                                dw 00B3h, 00B3h, 00B3h, 00B3h
-                                dw 00B3h, 00B3h, 00B3h, 00B3h
-                                dw 00B3h, 00B3h, 00B3h, 00B3h
-                                dw 00B3h, 00B3h, 00B3h, 00B3h
-                                dw 00B3h, 00B3h, 00B3h, 00B3h
-                                dw 00B3h, 00B3h, 00B3h, 00B3h
-                                dw 00B3h, 00B3h, 00B3h, 00B3h
-                                dw 00C0h, 00C0h, 00C0h, 00C0h
-                                dw 00C0h, 00C0h, 00C0h, 00C0h
-                                dw 00C0h, 00C0h, 00C0h, 00C0h
-                                dw 00C0h, 00C0h, 00C0h, 00C0h
-                                dw 00C0h, 00C0h, 00C0h, 00C0h
-                                dw 00C0h, 00C0h, 00C0h, 00C0h
-                                dw 00C0h, 00C0h, 00C0h, 00C0h
-                                dw 00C0h, 00C0h, 00C0h, 00C0h
-                                dw 00C0h, 00C0h, 00C0h, 00C0h
-                                dw 00C0h, 00C0h, 00C0h, 00C0h
-                                dw 00C0h, 00C0h, 00C0h, 00C0h
-                                dw 00C0h, 00C0h, 00C0h, 00C0h
-                                dw 00C0h, 00C0h, 00C0h, 00C0h
-                                dw 00C0h, 00C0h, 00C0h, 00C0h
-                                dw 00C0h, 00C0h, 00C0h, 00C0h
-                                dw 00C0h, 00C0h, 00C0h, 00C0h
-                                dw 0100h, 0100h, 0100h, 0100h
-                                dw 0100h, 0100h, 0100h, 0100h
-                                dw 0100h, 0100h, 0100h, 0100h
-                                dw 0100h, 0100h, 0100h, 0100h
-                                dw 0100h, 0100h, 0100h, 0100h
-                                dw 0100h, 0100h, 0100h, 0100h
-                                dw 0100h, 0100h, 0100h, 0100h
-                                dw 0100h, 0100h, 0100h, 0100h
-                                dw 0100h, 0100h, 0100h, 0100h
-                                dw 0100h, 0100h, 0100h, 0100h
-                                dw 0100h, 0100h, 0100h, 0100h
-                                dw 0100h, 0100h, 0100h, 0100h
-                                dw 0100h, 0100h, 0100h, 0100h
-                                dw 0100h, 0100h, 0100h, 0100h
-                                dw 0100h, 0100h, 0100h, 0100h
-                                dw 0100h, 0100h, 0100h, 0100h
-                                dw 0100h, 0100h, 0100h, 0100h
-                                dw 0100h, 0100h, 0100h, 0100h
-                                dw 0100h, 0100h, 0100h, 0100h
-                                dw 0100h, 0100h, 0100h, 0100h
-                                dw 0100h, 0100h, 0100h, 0100h
-                                dw 0100h, 0100h, 0100h, 0100h
-                                dw 0100h, 0100h, 0100h, 0100h
-                                dw 0100h, 0100h, 0100h, 0100h
-                                dw 0100h, 0100h, 0100h, 0100h
-                                dw 0100h, 0100h, 0100h, 0100h
-                                dw 0100h, 0100h, 0100h, 0100h
-                                dw 0100h, 0100h, 0100h, 0100h
-                                dw 0100h, 0100h, 0100h, 0100h
-                                dw 0100h, 0100h, 0100h, 0100h
-                                dw 0100h, 0100h, 0100h, 0100h
-                                dw 0100h, 0100h, 0100h, 0100h
-scene3d_timeline_camera_z_table dw 0F500h, 0F500h, 0F500h, 0F500h
-                                dw 0F500h, 0F500h, 0F500h, 0F500h
-                                dw 0F500h, 0F500h, 0F500h, 0F500h
-                                dw 0F500h, 0F500h, 0F500h, 0F500h
-                                dw 0F500h, 0F500h, 0F500h, 0F500h
-                                dw 0F500h, 0F500h, 0F500h, 0F500h
-                                dw 0F500h, 0F500h, 0F500h, 0F500h
-                                dw 0F500h, 0F500h, 0F500h, 0F500h
-                                dw 0F500h, 0F500h, 0F500h, 0F500h
-                                dw 0F500h, 0F500h, 0F500h, 0F500h
-                                dw 0F500h, 0F500h, 0F500h, 0F500h
-                                dw 0F500h, 0F500h, 0F500h, 0F500h
-                                dw 0F500h, 0F500h, 0F500h, 0F500h
-                                dw 0F500h, 0F500h, 0F500h, 0F500h
-                                dw 0F500h, 0F500h, 0F500h, 0F500h
-                                dw 0F500h, 0F500h, 0F500h, 0F500h
-                                dw 0F71Ah, 0F71Ah, 0F71Ah, 0F71Ah
-                                dw 0F71Ah, 0F71Ah, 0F71Ah, 0F71Ah
-                                dw 0F71Ah, 0F71Ah, 0F71Ah, 0F71Ah
-                                dw 0F71Ah, 0F71Ah, 0F71Ah, 0F71Ah
-                                dw 0F71Ah, 0F71Ah, 0F71Ah, 0F71Ah
-                                dw 0F71Ah, 0F71Ah, 0F71Ah, 0F71Ah
-                                dw 0F71Ah, 0F71Ah, 0F71Ah, 0F71Ah
-                                dw 0F71Ah, 0F71Ah, 0F71Ah, 0F71Ah
-                                dw 0F71Ah, 0F71Ah, 0F71Ah, 0F71Ah
-                                dw 0F71Ah, 0F71Ah, 0F71Ah, 0F71Ah
-                                dw 0F71Ah, 0F71Ah, 0F71Ah, 0F71Ah
-                                dw 0F71Ah, 0F71Ah, 0F71Ah, 0F71Ah
-                                dw 0F71Ah, 0F71Ah, 0F71Ah, 0F71Ah
-                                dw 0F71Ah, 0F71Ah, 0F71Ah, 0F71Ah
-                                dw 0F71Ah, 0F71Ah, 0F71Ah, 0F71Ah
-                                dw 0F71Ah, 0F71Ah, 0F71Ah, 0F71Ah
-                                dw 0FA66h, 0FA66h, 0FA66h, 0FA66h
-                                dw 0FA66h, 0FA66h, 0FA66h, 0FA66h
-                                dw 0FA66h, 0FA66h, 0FA66h, 0FA66h
-                                dw 0FA66h, 0FA66h, 0FA66h, 0FA66h
-                                dw 0FA66h, 0FA66h, 0FA66h, 0FA66h
-                                dw 0FA66h, 0FA66h, 0FA66h, 0FA66h
-                                dw 0FA66h, 0FA66h, 0FA66h, 0FA66h
-                                dw 0FA66h, 0FA66h, 0FA66h, 0FA66h
-                                dw 0FA66h, 0FA66h, 0FA66h, 0FA66h
-                                dw 0FA66h, 0FA66h, 0FA66h, 0FA66h
-                                dw 0FA66h, 0FA66h, 0FA66h, 0FA66h
-                                dw 0FA66h, 0FA66h, 0FA66h, 0FA66h
-                                dw 0FA66h, 0FA66h, 0FA66h, 0FA66h
-                                dw 0FA66h, 0FA66h, 0FA66h, 0FA66h
-                                dw 0FA66h, 0FA66h, 0FA66h, 0FA66h
-                                dw 0FA66h, 0FA66h, 0FA66h, 0FA66h
-                                dw 0FA66h, 0FA66h, 0FA66h, 0FA66h
-                                dw 0FA66h, 0FA66h, 0FA66h, 0FA66h
-                                dw 0FA66h, 0FA66h, 0FA66h, 0FA66h
-                                dw 0FA66h, 0FA66h, 0FA66h, 0FA66h
-                                dw 0FA66h, 0FA66h, 0FA66h, 0FA66h
-                                dw 0FA66h, 0FA66h, 0FA66h, 0FA66h
-                                dw 0FA66h, 0FA66h, 0FA66h, 0FA66h
-                                dw 0FA66h, 0FA66h, 0FA66h, 0FA66h
-                                dw 0FA66h, 0FA66h, 0FA66h, 0FA66h
-                                dw 0FA66h, 0FA66h, 0FA66h, 0FA66h
-                                dw 0FA66h, 0FA66h, 0FA66h, 0FA66h
-                                dw 0FA66h, 0FA66h, 0FA66h, 0FA66h
-                                dw 0FA66h, 0FA66h, 0FA66h, 0FA66h
-                                dw 0FA66h, 0FA66h, 0FA66h, 0FA66h
-                                dw 0FA66h, 0FA66h, 0FA66h, 0FA66h
-                                dw 0FA66h, 0FA66h, 0FA66h, 0FA66h
-                                dw 0FA33h, 0FA33h, 0FA33h, 0FA33h
-                                dw 0FA33h, 0FA33h, 0FA33h, 0FA33h
-                                dw 0FA33h, 0FA33h, 0FA33h, 0FA33h
-                                dw 0FA33h, 0FA33h, 0FA33h, 0FA33h
-                                dw 0FA33h, 0FA33h, 0FA33h, 0FA33h
-                                dw 0FA33h, 0FA33h, 0FA33h, 0FA33h
-                                dw 0FA33h, 0FA33h, 0FA33h, 0FA33h
-                                dw 0FA33h, 0FA33h, 0FA33h, 0FA33h
-                                dw 0FA33h, 0FA33h, 0FA33h, 0FA33h
-                                dw 0FA33h, 0FA33h, 0FA33h, 0FA33h
-                                dw 0FA33h, 0FA33h, 0FA33h, 0FA33h
-                                dw 0FA33h, 0FA33h, 0FA33h, 0FA33h
-                                dw 0FA33h, 0FA33h, 0FA33h, 0FA33h
-                                dw 0FA33h, 0FA33h, 0FA33h, 0FA33h
-                                dw 0FA33h, 0FA33h, 0FA33h, 0FA33h
-                                dw 0FA33h, 0FA33h, 0FA33h, 0FA33h
-                                dw 0F900h, 0F900h, 0F900h, 0F900h
-                                dw 0F900h, 0F900h, 0F900h, 0F900h
-                                dw 0F900h, 0F900h, 0F900h, 0F900h
-                                dw 0F900h, 0F900h, 0F900h, 0F900h
-                                dw 0F900h, 0F900h, 0F900h, 0F900h
-                                dw 0F900h, 0F900h, 0F900h, 0F900h
-                                dw 0F900h, 0F900h, 0F900h, 0F900h
-                                dw 0F900h, 0F900h, 0F900h, 0F900h
-                                dw 0F900h, 0F900h, 0F900h, 0F900h
-                                dw 0F900h, 0F900h, 0F900h, 0F900h
-                                dw 0F900h, 0F900h, 0F900h, 0F900h
-                                dw 0F900h, 0F900h, 0F900h, 0F900h
-                                dw 0F900h, 0F900h, 0F900h, 0F900h
-                                dw 0F900h, 0F900h, 0F900h, 0F900h
-                                dw 0F900h, 0F900h, 0F900h, 0F900h
-                                dw 0F900h, 0F900h, 0F900h, 0F900h
-                                dw 0F900h, 0F900h, 0F900h, 0F900h
-                                dw 0F900h, 0F900h, 0F900h, 0F900h
-                                dw 0F900h, 0F900h, 0F900h, 0F900h
-                                dw 0F900h, 0F900h, 0F900h, 0F900h
-                                dw 0F900h, 0F900h, 0F900h, 0F900h
-                                dw 0F900h, 0F900h, 0F900h, 0F900h
-                                dw 0F900h, 0F900h, 0F900h, 0F900h
-                                dw 0F900h, 0F900h, 0F900h, 0F900h
-                                dw 0F900h, 0F900h, 0F900h, 0F900h
-                                dw 0F900h, 0F900h, 0F900h, 0F900h
-                                dw 0F900h, 0F900h, 0F900h, 0F900h
-                                dw 0F900h, 0F900h, 0F900h, 0F900h
-                                dw 0F900h, 0F900h, 0F900h, 0F900h
-                                dw 0F900h, 0F900h, 0F900h, 0F900h
-                                dw 0F900h, 0F900h, 0F900h, 0F900h
-                                dw 0F900h, 0F900h, 0F900h, 0F900h
-scene3d_timeline_project_scale_table dw 118, 118, 118, 118
-                                     dw 118, 118, 118, 118
-                                     dw 118, 118, 118, 118
-                                     dw 118, 118, 118, 118
-                                     dw 118, 118, 118, 118
-                                     dw 118, 118, 118, 118
-                                     dw 118, 118, 118, 118
-                                     dw 118, 118, 118, 118
-                                     dw 118, 118, 118, 118
-                                     dw 118, 118, 118, 118
-                                     dw 118, 118, 118, 118
-                                     dw 118, 118, 118, 118
-                                     dw 118, 118, 118, 118
-                                     dw 118, 118, 118, 118
-                                     dw 118, 118, 118, 118
-                                     dw 118, 118, 118, 118
-                                     dw 108, 108, 108, 108
-                                     dw 108, 108, 108, 108
-                                     dw 108, 108, 108, 108
-                                     dw 108, 108, 108, 108
-                                     dw 108, 108, 108, 108
-                                     dw 108, 108, 108, 108
-                                     dw 108, 108, 108, 108
-                                     dw 108, 108, 108, 108
-                                     dw 108, 108, 108, 108
-                                     dw 108, 108, 108, 108
-                                     dw 108, 108, 108, 108
-                                     dw 108, 108, 108, 108
-                                     dw 108, 108, 108, 108
-                                     dw 108, 108, 108, 108
-                                     dw 108, 108, 108, 108
-                                     dw 108, 108, 108, 108
-                                     dw 98, 98, 98, 98
-                                     dw 98, 98, 98, 98
-                                     dw 98, 98, 98, 98
-                                     dw 98, 98, 98, 98
-                                     dw 98, 98, 98, 98
-                                     dw 98, 98, 98, 98
-                                     dw 98, 98, 98, 98
-                                     dw 98, 98, 98, 98
-                                     dw 98, 98, 98, 98
-                                     dw 98, 98, 98, 98
-                                     dw 98, 98, 98, 98
-                                     dw 98, 98, 98, 98
-                                     dw 98, 98, 98, 98
-                                     dw 98, 98, 98, 98
-                                     dw 98, 98, 98, 98
-                                     dw 98, 98, 98, 98
-                                     dw 98, 98, 98, 98
-                                     dw 98, 98, 98, 98
-                                     dw 98, 98, 98, 98
-                                     dw 98, 98, 98, 98
-                                     dw 98, 98, 98, 98
-                                     dw 98, 98, 98, 98
-                                     dw 98, 98, 98, 98
-                                     dw 98, 98, 98, 98
-                                     dw 98, 98, 98, 98
-                                     dw 98, 98, 98, 98
-                                     dw 98, 98, 98, 98
-                                     dw 98, 98, 98, 98
-                                     dw 98, 98, 98, 98
-                                     dw 98, 98, 98, 98
-                                     dw 98, 98, 98, 98
-                                     dw 98, 98, 98, 98
-                                     dw 102, 102, 102, 102
-                                     dw 102, 102, 102, 102
-                                     dw 102, 102, 102, 102
-                                     dw 102, 102, 102, 102
-                                     dw 102, 102, 102, 102
-                                     dw 102, 102, 102, 102
-                                     dw 102, 102, 102, 102
-                                     dw 102, 102, 102, 102
-                                     dw 102, 102, 102, 102
-                                     dw 102, 102, 102, 102
-                                     dw 102, 102, 102, 102
-                                     dw 102, 102, 102, 102
-                                     dw 102, 102, 102, 102
-                                     dw 102, 102, 102, 102
-                                     dw 102, 102, 102, 102
-                                     dw 102, 102, 102, 102
-                                     dw 104, 104, 104, 104
-                                     dw 104, 104, 104, 104
-                                     dw 104, 104, 104, 104
-                                     dw 104, 104, 104, 104
-                                     dw 104, 104, 104, 104
-                                     dw 104, 104, 104, 104
-                                     dw 104, 104, 104, 104
-                                     dw 104, 104, 104, 104
-                                     dw 104, 104, 104, 104
-                                     dw 104, 104, 104, 104
-                                     dw 104, 104, 104, 104
-                                     dw 104, 104, 104, 104
-                                     dw 104, 104, 104, 104
-                                     dw 104, 104, 104, 104
-                                     dw 104, 104, 104, 104
-                                     dw 104, 104, 104, 104
-                                     dw 104, 104, 104, 104
-                                     dw 104, 104, 104, 104
-                                     dw 104, 104, 104, 104
-                                     dw 104, 104, 104, 104
-                                     dw 104, 104, 104, 104
-                                     dw 104, 104, 104, 104
-                                     dw 104, 104, 104, 104
-                                     dw 104, 104, 104, 104
-                                     dw 104, 104, 104, 104
-                                     dw 104, 104, 104, 104
-                                     dw 104, 104, 104, 104
-                                     dw 104, 104, 104, 104
-                                     dw 104, 104, 104, 104
-                                     dw 104, 104, 104, 104
-                                     dw 104, 104, 104, 104
-                                     dw 104, 104, 104, 104
-scene3d_timeline_yaw_table db 253, 253, 253, 253, 253, 253, 253, 253
-                           db 253, 253, 253, 253, 253, 253, 253, 253
-                           db 253, 253, 253, 253, 253, 253, 253, 253
-                           db 253, 253, 253, 253, 253, 253, 253, 253
-                           db 253, 253, 253, 253, 253, 253, 253, 253
-                           db 253, 253, 253, 253, 253, 253, 253, 253
-                           db 253, 253, 253, 253, 253, 253, 253, 253
-                           db 253, 253, 253, 253, 253, 253, 253, 253
-                           db 4, 4, 4, 4, 4, 4, 4, 4
-                           db 4, 4, 4, 4, 4, 4, 4, 4
-                           db 4, 4, 4, 4, 4, 4, 4, 4
-                           db 4, 4, 4, 4, 4, 4, 4, 4
-                           db 4, 4, 4, 4, 4, 4, 4, 4
-                           db 4, 4, 4, 4, 4, 4, 4, 4
-                           db 4, 4, 4, 4, 4, 4, 4, 4
-                           db 4, 4, 4, 4, 4, 4, 4, 4
-                           db 249, 249, 249, 249, 249, 249, 249, 249
-                           db 249, 249, 249, 249, 249, 249, 249, 249
-                           db 249, 249, 249, 249, 249, 249, 249, 249
-                           db 249, 249, 249, 249, 249, 249, 249, 249
-                           db 249, 249, 249, 249, 249, 249, 249, 249
-                           db 249, 249, 249, 249, 249, 249, 249, 249
-                           db 249, 249, 249, 249, 249, 249, 249, 249
-                           db 249, 249, 249, 249, 249, 249, 249, 249
-                           db 7, 7, 7, 7, 7, 7, 7, 7
-                           db 7, 7, 7, 7, 7, 7, 7, 7
-                           db 7, 7, 7, 7, 7, 7, 7, 7
-                           db 7, 7, 7, 7, 7, 7, 7, 7
-                           db 7, 7, 7, 7, 7, 7, 7, 7
-                           db 7, 7, 7, 7, 7, 7, 7, 7
-                           db 7, 7, 7, 7, 7, 7, 7, 7
-                           db 7, 7, 7, 7, 7, 7, 7, 7
-                           db 0, 0, 0, 0, 0, 0, 0, 0
-                           db 0, 0, 0, 0, 0, 0, 0, 0
-                           db 0, 0, 0, 0, 0, 0, 0, 0
-                           db 0, 0, 0, 0, 0, 0, 0, 0
-                           db 0, 0, 0, 0, 0, 0, 0, 0
-                           db 0, 0, 0, 0, 0, 0, 0, 0
-                           db 0, 0, 0, 0, 0, 0, 0, 0
-                           db 0, 0, 0, 0, 0, 0, 0, 0
-                           db 252, 252, 252, 252, 252, 252, 252, 252
-                           db 252, 252, 252, 252, 252, 252, 252, 252
-                           db 252, 252, 252, 252, 252, 252, 252, 252
-                           db 252, 252, 252, 252, 252, 252, 252, 252
-                           db 252, 252, 252, 252, 252, 252, 252, 252
-                           db 252, 252, 252, 252, 252, 252, 252, 252
-                           db 252, 252, 252, 252, 252, 252, 252, 252
-                           db 252, 252, 252, 252, 252, 252, 252, 252
-                           db 4, 4, 4, 4, 4, 4, 4, 4
-                           db 4, 4, 4, 4, 4, 4, 4, 4
-                           db 4, 4, 4, 4, 4, 4, 4, 4
-                           db 4, 4, 4, 4, 4, 4, 4, 4
-                           db 4, 4, 4, 4, 4, 4, 4, 4
-                           db 4, 4, 4, 4, 4, 4, 4, 4
-                           db 4, 4, 4, 4, 4, 4, 4, 4
-                           db 4, 4, 4, 4, 4, 4, 4, 4
-scene3d_timeline_pitch_table db 247, 247, 247, 247, 247, 247, 247, 247
-                             db 247, 247, 247, 247, 247, 247, 247, 247
-                             db 247, 247, 247, 247, 247, 247, 247, 247
-                             db 247, 247, 247, 247, 247, 247, 247, 247
-                             db 247, 247, 247, 247, 247, 247, 247, 247
-                             db 247, 247, 247, 247, 247, 247, 247, 247
-                             db 247, 247, 247, 247, 247, 247, 247, 247
-                             db 247, 247, 247, 247, 247, 247, 247, 247
-                             db 249, 249, 249, 249, 249, 249, 249, 249
-                             db 249, 249, 249, 249, 249, 249, 249, 249
-                             db 249, 249, 249, 249, 249, 249, 249, 249
-                             db 249, 249, 249, 249, 249, 249, 249, 249
-                             db 249, 249, 249, 249, 249, 249, 249, 249
-                             db 249, 249, 249, 249, 249, 249, 249, 249
-                             db 249, 249, 249, 249, 249, 249, 249, 249
-                             db 249, 249, 249, 249, 249, 249, 249, 249
-                             db 249, 249, 249, 249, 249, 249, 249, 249
-                             db 249, 249, 249, 249, 249, 249, 249, 249
-                             db 249, 249, 249, 249, 249, 249, 249, 249
-                             db 249, 249, 249, 249, 249, 249, 249, 249
-                             db 249, 249, 249, 249, 249, 249, 249, 249
-                             db 249, 249, 249, 249, 249, 249, 249, 249
-                             db 249, 249, 249, 249, 249, 249, 249, 249
-                             db 249, 249, 249, 249, 249, 249, 249, 249
-                             db 250, 250, 250, 250, 250, 250, 250, 250
-                             db 250, 250, 250, 250, 250, 250, 250, 250
-                             db 250, 250, 250, 250, 250, 250, 250, 250
-                             db 250, 250, 250, 250, 250, 250, 250, 250
-                             db 250, 250, 250, 250, 250, 250, 250, 250
-                             db 250, 250, 250, 250, 250, 250, 250, 250
-                             db 250, 250, 250, 250, 250, 250, 250, 250
-                             db 250, 250, 250, 250, 250, 250, 250, 250
-                             db 250, 250, 250, 250, 250, 250, 250, 250
-                             db 250, 250, 250, 250, 250, 250, 250, 250
-                             db 250, 250, 250, 250, 250, 250, 250, 250
-                             db 250, 250, 250, 250, 250, 250, 250, 250
-                             db 250, 250, 250, 250, 250, 250, 250, 250
-                             db 250, 250, 250, 250, 250, 250, 250, 250
-                             db 250, 250, 250, 250, 250, 250, 250, 250
-                             db 250, 250, 250, 250, 250, 250, 250, 250
-                             db 247, 247, 247, 247, 247, 247, 247, 247
-                             db 247, 247, 247, 247, 247, 247, 247, 247
-                             db 247, 247, 247, 247, 247, 247, 247, 247
-                             db 247, 247, 247, 247, 247, 247, 247, 247
-                             db 247, 247, 247, 247, 247, 247, 247, 247
-                             db 247, 247, 247, 247, 247, 247, 247, 247
-                             db 247, 247, 247, 247, 247, 247, 247, 247
-                             db 247, 247, 247, 247, 247, 247, 247, 247
-                             db 247, 247, 247, 247, 247, 247, 247, 247
-                             db 247, 247, 247, 247, 247, 247, 247, 247
-                             db 247, 247, 247, 247, 247, 247, 247, 247
-                             db 247, 247, 247, 247, 247, 247, 247, 247
-                             db 247, 247, 247, 247, 247, 247, 247, 247
-                             db 247, 247, 247, 247, 247, 247, 247, 247
-                             db 247, 247, 247, 247, 247, 247, 247, 247
-                             db 247, 247, 247, 247, 247, 247, 247, 247
-
-game3d_mesh_vertex_offset_table dw 2906, 3058, 3210, 3362
-                                dw 3518, 3674, 3830, 3968
-                                dw 4106, 4244, 4402, 4560
-                                dw 4718, 4856, 4994, 5132
-                                dw 5270, 5434, 5618, 5782
-                                dw 5934, 6098, 6236, 6374
-                                dw 6536, 6720, 6876, 7094
-                                dw 7232, 7370, 7508, 7646
-                                dw 7810, 7974, 8138
+game3d_mesh_vertex_offset_table dw 4370, 4522, 4674, 4826
+                                dw 4982, 5138, 5294, 5432
+                                dw 5570, 5708, 5866, 6024
+                                dw 6182, 6320, 6458, 6596
+                                dw 6734, 6898, 7082, 7246
+                                dw 7398, 7562, 7700, 7838
+                                dw 8000, 8184, 8340, 8558
+                                dw 8696, 8834, 8972, 9110
+                                dw 9274, 9438, 9602
 
 game3d_mesh_vertex_count_table db 16, 16, 16, 12, 12, 12, 9, 9
                                db 9, 10, 10, 10, 9, 9, 9, 9
@@ -1063,15 +525,15 @@ game3d_mesh_vertex_count_table db 16, 16, 16, 12, 12, 12, 9, 9
                                db 12, 12, 13, 9, 9, 9, 9, 11
                                db 11, 11, 11
 
-game3d_mesh_face_offset_table dw 3002, 3154, 3306, 3434
-                              dw 3590, 3746, 3884, 4022
-                              dw 4160, 4304, 4462, 4620
-                              dw 4772, 4910, 5048, 5186
-                              dw 5336, 5506, 5684, 5878
-                              dw 6000, 6152, 6290, 6452
-                              dw 6608, 6792, 6954, 7148
-                              dw 7286, 7424, 7562, 7712
-                              dw 7876, 8040, 8204
+game3d_mesh_face_offset_table dw 4466, 4618, 4770, 4898
+                              dw 5054, 5210, 5348, 5486
+                              dw 5624, 5768, 5926, 6084
+                              dw 6236, 6374, 6512, 6650
+                              dw 6800, 6970, 7148, 7342
+                              dw 7464, 7616, 7754, 7916
+                              dw 8072, 8256, 8418, 8612
+                              dw 8750, 8888, 9026, 9176
+                              dw 9340, 9504, 9668
 
 game3d_mesh_face_count_table db 8, 8, 8, 12, 12, 12, 12, 12
                              db 12, 14, 14, 14, 12, 12, 12, 12
@@ -1081,13 +543,13 @@ game3d_mesh_face_count_table db 8, 8, 8, 12, 12, 12, 12, 12
 
 game3d_kit_floor_base_color_table db 13, 13, 3
 game3d_kit_floor_base_dither_table db 8, 14, 4
-game3d_kit_floor_base_texture_table db 4, 255, 255
+game3d_kit_floor_base_texture_table db 6, 255, 255
 game3d_kit_floor_trim_color_table db 8, 8, 17
 game3d_kit_floor_trim_dither_table db 7, 7, 10
 game3d_kit_floor_trim_texture_table db 0, 255, 255
 game3d_kit_wall_base_color_table db 7, 10, 3
 game3d_kit_wall_base_dither_table db 6, 8, 10
-game3d_kit_wall_base_texture_table db 11, 255, 255
+game3d_kit_wall_base_texture_table db 20, 255, 255
 game3d_kit_wall_trim_color_table db 7, 8, 10
 game3d_kit_wall_trim_dither_table db 6, 7, 9
 game3d_kit_wall_trim_texture_table db 255, 255, 255
@@ -1099,10 +561,10 @@ game3d_kit_lane_dither_table db 6, 7, 7
 game3d_kit_lane_texture_table db 255, 255, 255
 game3d_kit_cliff_color_table db 7, 10, 3
 game3d_kit_cliff_dither_table db 6, 8, 10
-game3d_kit_cliff_texture_table db 11, 255, 255
+game3d_kit_cliff_texture_table db 20, 255, 255
 game3d_kit_shelf_color_table db 13, 13, 13
 game3d_kit_shelf_dither_table db 8, 14, 14
-game3d_kit_shelf_texture_table db 4, 255, 255
+game3d_kit_shelf_texture_table db 6, 255, 255
 game3d_kit_bridge_color_table db 7, 8, 17
 game3d_kit_bridge_dither_table db 6, 7, 7
 game3d_kit_bridge_texture_table db 255, 255, 255

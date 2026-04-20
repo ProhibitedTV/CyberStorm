@@ -8,7 +8,7 @@
 
 | Built for | Boots from | Video | Runtime |
 | --- | --- | --- | --- |
-| BIOS x86 + Oracle VirtualBox | Raw HDD image (`.img`) | VBE `640x480x8` present path over a `320x200` compatibility surface | i386-targeted boot chain + legacy 16-bit stage-two runtime |
+| BIOS x86 + Oracle VirtualBox | Raw HDD image (`.img`) | VBE `640x480x16` present path over a `320x200` compatibility surface, with legacy VGA fallback | i386-targeted boot chain + legacy 16-bit stage-two runtime |
 
 ## Key Features
 
@@ -35,10 +35,10 @@
 
 The README gallery is intentionally small. The build maintains three verified public slots so the page stays curated instead of turning into a screenshot dump, and it preserves the last verified set when local capture is unavailable.
 
-| Title / Identity | Realm Beauty | Gameplay Action |
+| Splash / Identity | Realm Beauty | Gameplay Action |
 | --- | --- | --- |
-| ![CyberStorm title shot](build/readme-shot-1.png) | ![CyberStorm gameplay shot](build/readme-shot-2.png) | ![CyberStorm payoff shot](build/readme-shot-3.png) |
-| The first shot should immediately communicate "bootable bare-metal game" through the title. | The middle shot should sell the realm silhouette, horizon, and toy-like prop language. | The last shot should show the runner, foes, and objective state in one readable action frame. |
+| ![CyberStorm splash shot](build/readme-shot-1.png) | ![CyberStorm gameplay shot](build/readme-shot-2.png) | ![CyberStorm payoff shot](build/readme-shot-3.png) |
+| The first shot should be the BitRiver splash lockup so the project’s first impression is also the gallery’s first impression. | The middle shot should sell the realm silhouette, horizon, and toy-like prop language. | The last shot should show the runner, foes, and objective state in one readable action frame. |
 
 The gallery now comes only from the verified showcase manifest under [build/showcase/](build/showcase), not from ad hoc filename heuristics or incidental screenshots.
 

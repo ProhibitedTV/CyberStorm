@@ -451,6 +451,44 @@ function Invoke-DirectGameplayCapture {
     }
 }
 
+function Invoke-SplashTitleCapture {
+    param(
+        [string]$ArtifactDir,
+        [int]$CaptureTick
+    )
+
+    $shotPath = Join-Path $ArtifactDir 'showcase-title.png'
+    $rawShotPath = Join-Path $ArtifactDir ("showcase-title-splash-tick-{0}.png" -f $CaptureTick)
+    $logPath = Join-Path $ArtifactDir ("showcase-title-splash-tick-{0}.log" -f $CaptureTick)
+    $waitSeconds = Get-CaptureWaitSeconds -Demo ([pscustomobject]@{ CaptureTicks = $CaptureTick })
+
+    Stop-VmIfRunning -Name $VmName
+    Ensure-VmRegistered -Name $VmName
+    Stop-VmIfRunning -Name $VmName
+    Invoke-ChildBuild -ExtraArguments @()
+    Invoke-DeployVm -Name $VmName
+    Start-HeadlessVm -Name $VmName
+    Start-Sleep -Seconds $waitSeconds
+    Invoke-VmScreenshot -Name $VmName -OutputPath $rawShotPath
+    Copy-Item -LiteralPath $rawShotPath -Destination $shotPath -Force
+    if (-not (Test-Path -LiteralPath $vboxLogPath)) {
+        throw ("VBox log was not found after splash title boot: {0}" -f $vboxLogPath)
+    }
+
+    Copy-Item -LiteralPath $vboxLogPath -Destination $logPath -Force
+    return [pscustomobject]@{
+        Role = 'title'
+        Name = 'BITRIVER SPLASH LOCKUP'
+        ScreenshotPath = $shotPath
+        RawScreenshotPath = $rawShotPath
+        LogPath = $logPath
+        WaitSeconds = $waitSeconds
+        CaptureTick = $CaptureTick
+        Source = 'release BitRiver splash lockup'
+        SourceId = ("release-splash:bitriver-lockup@tick{0}" -f $CaptureTick)
+    }
+}
+
 Assert-PathExists -Path $BuildScriptPath -Label 'build script'
 Assert-PathExists -Path $DeployScriptPath -Label 'deploy script'
 Assert-PathExists -Path $VmSmokeScriptPath -Label 'vm smoke script'
@@ -469,6 +507,8 @@ $geometry = @{
     MarkerW = Get-AsmEquValue -SourcePath $ConstantsSourcePath -Name 'VERIFY_MARKER_W'
     MarkerH = Get-AsmEquValue -SourcePath $ConstantsSourcePath -Name 'VERIFY_MARKER_H'
 }
+$splashRevealUiTick = Get-AsmEquValue -SourcePath $ConstantsSourcePath -Name 'SPLASH_REVEAL_UI'
+$splashTitleCaptureTick = [Math]::Max(0, ($splashRevealUiTick - 6))
 $showcaseCapturePlan = @()
 $showcaseCapturePlanByRole = @{}
 
@@ -519,15 +559,26 @@ try {
     $vmSmokeReport = Join-Path $buildDir 'cyberstorm-vm-smoke-report.txt'
     $vmSmokeResult = & $VmSmokeScriptPath -ReportPath $vmSmokeReport
     $artifactPaths.Add($vmSmokeResult.ReportPath)
-    $titleSource = Join-Path $buildDir 'vm-smoke\cyberstorm-vm-smoke-title.png'
-    $titleTarget = Join-Path $artifactDir 'showcase-title.png'
-    Copy-Item -LiteralPath $titleSource -Destination $titleTarget -Force
-    Assert-ShowcaseBitmap -ImagePath $titleTarget -Role 'title' -Geometry $geometry
-    $artifactPaths.Add($titleTarget)
+    $detailLines.Add('Prerequisite: vm smoke')
+    $detailLines.Add(("  Report: {0}" -f $vmSmokeResult.ReportPath))
+    foreach ($summaryLine in @($vmSmokeResult.SummaryLines)) {
+        $detailLines.Add(("  {0}" -f $summaryLine))
+    }
+    $detailLines.Add('')
+
+    $titleCapture = Invoke-SplashTitleCapture -ArtifactDir $artifactDir -CaptureTick $splashTitleCaptureTick
+    Assert-ShowcaseBitmap -ImagePath $titleCapture.ScreenshotPath -Role 'title' -Geometry $geometry
+    $artifactPaths.Add($titleCapture.ScreenshotPath)
+    $artifactPaths.Add($titleCapture.RawScreenshotPath)
+    $artifactPaths.Add($titleCapture.LogPath)
     $detailLines.Add('Role: title')
-    $detailLines.Add(("  Source: release VM smoke title frame"))
-    $detailLines.Add(("  Source id: vm-smoke:title-frame"))
-    $detailLines.Add(("  Screenshot: {0}" -f $titleTarget))
+    $detailLines.Add(("  Source: {0}" -f $titleCapture.Source))
+    $detailLines.Add(("  Source id: {0}" -f $titleCapture.SourceId))
+    $detailLines.Add(("  Capture tick: {0}" -f $titleCapture.CaptureTick))
+    $detailLines.Add(("  Wait: {0}s" -f $titleCapture.WaitSeconds))
+    $detailLines.Add(("  Screenshot: {0}" -f $titleCapture.ScreenshotPath))
+    $detailLines.Add(("  Raw screenshot: {0}" -f $titleCapture.RawScreenshotPath))
+    $detailLines.Add(("  VBox log: {0}" -f $titleCapture.LogPath))
     $detailLines.Add('')
 
     $beautyPlan = $showcaseCapturePlanByRole['beauty']
@@ -566,7 +617,7 @@ try {
         -FailureReason $null `
         -ReportPath $ReportPath `
         -Slots @(
-            (New-ShowcaseGallerySlotRecord -Slot 'title' -ReadmeSlot 'readme-shot-1.png' -SourceArtifactPath $titleTarget -SourceId 'vm-smoke:title-frame' -CaptureTime $captureTime -Freshness 'fresh' -FailureReason $null),
+            (New-ShowcaseGallerySlotRecord -Slot 'title' -ReadmeSlot 'readme-shot-1.png' -SourceArtifactPath $titleCapture.ScreenshotPath -SourceId $titleCapture.SourceId -CaptureTime $captureTime -Freshness 'fresh' -FailureReason $null),
             (New-ShowcaseGallerySlotRecord -Slot 'beauty' -ReadmeSlot 'readme-shot-2.png' -SourceArtifactPath $beautyCapture.ScreenshotPath -SourceId $beautyPlan.DemoId -CaptureTime $captureTime -Freshness 'fresh' -FailureReason $null),
             (New-ShowcaseGallerySlotRecord -Slot 'action' -ReadmeSlot 'readme-shot-3.png' -SourceArtifactPath $actionCapture.ScreenshotPath -SourceId $actionPlan.DemoId -CaptureTime $captureTime -Freshness 'fresh' -FailureReason $null)
         )
@@ -578,12 +629,12 @@ try {
     $summaryLines.Add('Status: PASS')
     $summaryLines.Add(("Gallery freshness: {0}" -f $galleryFreshness))
     $summaryLines.Add(("Gallery manifest: {0}" -f $manifestPath))
-    $summaryLines.Add(("title: {0} <- vm-smoke:title-frame" -f $titleTarget))
+    $summaryLines.Add(("title: {0} <- {1}" -f $titleCapture.ScreenshotPath, $titleCapture.SourceId))
     $summaryLines.Add(("beauty: {0} <- {1}" -f $beautyCapture.ScreenshotPath, $beautyPlan.DemoId))
     $summaryLines.Add(("action: {0} <- {1}" -f $actionCapture.ScreenshotPath, $actionPlan.DemoId))
 
     $detailLines.Add('README roles')
-    $detailLines.Add(("  readme-shot-1.png <- {0}" -f $titleTarget))
+    $detailLines.Add(("  readme-shot-1.png <- {0}" -f $titleCapture.ScreenshotPath))
     $detailLines.Add(("  readme-shot-2.png <- {0}" -f $beautyCapture.ScreenshotPath))
     $detailLines.Add(("  readme-shot-3.png <- {0}" -f $actionCapture.ScreenshotPath))
 } catch {

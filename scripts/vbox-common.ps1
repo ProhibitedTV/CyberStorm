@@ -8,7 +8,7 @@ function Test-VBoxBootstrapFailureMessage {
         return $false
     }
 
-    return ($Message -match 'CO_E_SERVER_EXEC_FAILURE|Failed to create the VirtualBox object|RPC server is unavailable')
+    return ($Message -match 'CO_E_SERVER_EXEC_FAILURE|Failed to create the VirtualBox object|RPC server is unavailable|VBoxManage timed out')
 }
 
 function Test-VBoxEnvironmentFailureMessage {
@@ -21,7 +21,7 @@ function Test-VBoxEnvironmentFailureMessage {
         return $false
     }
 
-    return ($Message -match 'CO_E_SERVER_EXEC_FAILURE|Failed to create the VirtualBox object|RPC server is unavailable|VBoxManage\.exe was not found|VM ''.+'' never reached a capture-ready running state|VM screenshot was not created|VBox log was not found after|Deploy script failed for VM|Could not find a registered machine named|VBOX_E_OBJECT_NOT_FOUND')
+    return ($Message -match 'CO_E_SERVER_EXEC_FAILURE|Failed to create the VirtualBox object|RPC server is unavailable|VBoxManage timed out|VBoxManage\.exe was not found|VM ''.+'' never reached a capture-ready running state|VM screenshot was not created|VBox log was not found after|Deploy script failed for VM|Could not find a registered machine named|VBOX_E_OBJECT_NOT_FOUND')
 }
 
 function Get-VBoxFailureKind {
@@ -37,6 +37,28 @@ function Get-VBoxFailureKind {
     return 'CONTENT'
 }
 
+function ConvertTo-VBoxArgumentString {
+    param([string[]]$Arguments)
+
+    $escapedArguments = foreach ($argument in @($Arguments)) {
+        if ($null -eq $argument -or $argument.Length -eq 0) {
+            '""'
+            continue
+        }
+
+        if ($argument -notmatch '[\s"]') {
+            $argument
+            continue
+        }
+
+        $escaped = $argument -replace '(\\*)"', '$1$1\"'
+        $escaped = $escaped -replace '(\\+)$', '$1$1'
+        '"' + $escaped + '"'
+    }
+
+    return [string]::Join(' ', $escapedArguments)
+}
+
 function Invoke-VBoxManage {
     param(
         [string[]]$Arguments,
@@ -45,17 +67,58 @@ function Invoke-VBoxManage {
     )
 
     $capturedLines = New-Object 'System.Collections.Generic.List[string]'
-    $previousErrorActionPreference = $ErrorActionPreference
-    $ErrorActionPreference = 'Continue'
+    $process = $null
+    $stdoutTask = $null
+    $stderrTask = $null
+    $timedOut = $false
+    $exitCode = $null
+
     try {
-        & $vbox @Arguments 2>&1 | ForEach-Object {
-            $capturedLines.Add($_.ToString())
+        $startInfo = New-Object System.Diagnostics.ProcessStartInfo
+        $startInfo.FileName = $vbox
+        $startInfo.Arguments = ConvertTo-VBoxArgumentString -Arguments $Arguments
+        $startInfo.UseShellExecute = $false
+        $startInfo.RedirectStandardOutput = $true
+        $startInfo.RedirectStandardError = $true
+        $startInfo.CreateNoWindow = $true
+
+        $process = New-Object System.Diagnostics.Process
+        $process.StartInfo = $startInfo
+        $null = $process.Start()
+        $stdoutTask = $process.StandardOutput.ReadToEndAsync()
+        $stderrTask = $process.StandardError.ReadToEndAsync()
+
+        if (-not $process.WaitForExit($TimeoutSeconds * 1000)) {
+            $timedOut = $true
+            try {
+                $process.Kill()
+            } catch {
+            }
+            $process.WaitForExit()
         }
+
+        $stdoutText = $stdoutTask.GetAwaiter().GetResult()
+        $stderrText = $stderrTask.GetAwaiter().GetResult()
+        foreach ($line in @($stdoutText -split "\r?\n")) {
+            if (-not [string]::IsNullOrWhiteSpace($line)) {
+                $capturedLines.Add($line)
+            }
+        }
+        foreach ($line in @($stderrText -split "\r?\n")) {
+            if (-not [string]::IsNullOrWhiteSpace($line)) {
+                $capturedLines.Add($line)
+            }
+        }
+        $exitCode = $process.ExitCode
     } finally {
-        $ErrorActionPreference = $previousErrorActionPreference
+        if ($process) {
+            $process.Dispose()
+        }
     }
 
-    if ($LASTEXITCODE -eq 0) {
+    if ($timedOut) {
+        $capturedLines.Insert(0, ("VBoxManage timed out after {0}s: {1}" -f $TimeoutSeconds, ($Arguments -join ' ')))
+    } elseif ($null -ne $exitCode -and $exitCode -eq 0) {
         return $capturedLines.ToArray()
     }
 
@@ -75,10 +138,53 @@ function Invoke-VBoxManage {
     throw ("VBoxManage failed: {0}`n{1}" -f ($Arguments -join ' '), $message)
 }
 
+function Get-VBoxMachineInfoLines {
+    param(
+        [string]$Name,
+        [int]$Attempt = 0
+    )
+
+    $capturedLines = New-Object 'System.Collections.Generic.List[string]'
+    $message = $null
+
+    try {
+        $outputLines = & $vbox showvminfo $Name --machinereadable 2>&1
+        $exitCode = $LASTEXITCODE
+        foreach ($line in @($outputLines)) {
+            $lineText = [string]$line
+            if (-not [string]::IsNullOrWhiteSpace($lineText)) {
+                $capturedLines.Add($lineText)
+            }
+        }
+
+        if ($exitCode -eq 0) {
+            return $capturedLines.ToArray()
+        }
+
+        $message = $capturedLines -join [Environment]::NewLine
+    } catch {
+        $message = $_.Exception.Message
+    }
+
+    if ($Attempt -lt 3 -and (Test-VBoxBootstrapFailureMessage -Message $message)) {
+        $previousErrorActionPreference = $ErrorActionPreference
+        $ErrorActionPreference = 'Continue'
+        try {
+            & taskkill /F /IM VBoxSVC.exe /IM VBoxHeadless.exe /IM VirtualBoxVM.exe *>$null
+        } finally {
+            $ErrorActionPreference = $previousErrorActionPreference
+        }
+        Start-Sleep -Seconds (2 + ($Attempt * 3))
+        return Get-VBoxMachineInfoLines -Name $Name -Attempt ($Attempt + 1)
+    }
+
+    throw ("VBoxManage failed: showvminfo {0} --machinereadable`n{1}" -f $Name, $message)
+}
+
 function Get-VmState {
     param([string]$Name)
 
-    $infoLines = Invoke-VBoxManage -Arguments @('showvminfo', $Name, '--machinereadable') -TimeoutSeconds 20
+    $infoLines = Get-VBoxMachineInfoLines -Name $Name
     $stateLine = $infoLines | Where-Object { $_ -match '^VMState=' } | Select-Object -First 1
     if ($stateLine -and $stateLine -match '^VMState="?([^"]+)"?$') {
         return $Matches[1]
@@ -170,10 +276,10 @@ function Invoke-DeployVm {
 function Test-VmNeedsEnhancedRedeploy {
     param([string]$Name)
 
-    $infoLines = Invoke-VBoxManage -Arguments @('showvminfo', $Name) -TimeoutSeconds 20
+    $infoLines = Get-VBoxMachineInfoLines -Name $Name
     $infoText = $infoLines -join [Environment]::NewLine
 
-    if ($infoText -match 'Boot Device 1:\s+Floppy') {
+    if ($infoText -match 'boot1="floppy"') {
         return $true
     }
 
@@ -192,7 +298,7 @@ function Ensure-VmRegistered {
     param([string]$Name)
 
     try {
-        Invoke-VBoxManage -Arguments @('showvminfo', $Name, '--machinereadable') -TimeoutSeconds 20 | Out-Null
+        Get-VBoxMachineInfoLines -Name $Name | Out-Null
     } catch {
         if ($_.Exception.Message -match 'Could not find a registered machine named|VBOX_E_OBJECT_NOT_FOUND') {
             Invoke-DeployVm -Name $Name

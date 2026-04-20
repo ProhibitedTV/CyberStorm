@@ -31,7 +31,7 @@ Practical consequences:
 | `7800:0000` | Presentation bank | Read-only scene-kit payload for splash, title, attract/demo, sector-entry, and end screens. |
 | `8000:0000` | Geometry bank | Read-only low-poly scene, prop, actor, and gameplay-kit payload for the 3D renderer. |
 | `9000:0000` | Backbuffer | 64,000-byte linear framebuffer used before presenting to VGA. |
-| VBE LFB (physical) | Enhanced present target | Final `640x480x8` output target when the bootstrap VBE handoff succeeds. |
+| VBE LFB (physical) | Enhanced present target | Final `640x480x16` output target when the bootstrap VBE handoff succeeds; the legacy VGA presenter remains the compatibility fallback. |
 
 Register assumptions that matter:
 

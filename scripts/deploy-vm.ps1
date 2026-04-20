@@ -12,6 +12,7 @@ $vbox = 'C:\Program Files\Oracle\VirtualBox\VBoxManage.exe'
 $base = Join-Path $root 'deploy\virtualbox'
 $diskImage = Join-Path $root 'build\cyberstorm.img'
 $vmDiskImage = Join-Path $base ("{0}.vdi" -f $VmName)
+$vmFolder = Join-Path $base $VmName
 
 . (Join-Path $PSScriptRoot 'vbox-common.ps1')
 
@@ -27,8 +28,8 @@ New-Item -ItemType Directory -Force -Path $base | Out-Null
 
 $vmExists = $false
 try {
-    Invoke-VBoxManage -Arguments @('showvminfo', $VmName) 2>$null | Out-Null
-    $vmExists = ($LASTEXITCODE -eq 0)
+    Get-VBoxMachineInfoLines -Name $VmName | Out-Null
+    $vmExists = $true
 } catch {
     $vmExists = $false
 }
@@ -41,6 +42,10 @@ if (Test-Path -LiteralPath $vmDiskImage) {
     Remove-Item -LiteralPath $vmDiskImage -Force
 }
 
+if (Test-Path -LiteralPath $vmFolder) {
+    Remove-Item -LiteralPath $vmFolder -Recurse -Force
+}
+
 Invoke-VBoxManage -Arguments @('convertfromraw', $diskImage, $vmDiskImage, '--format', 'VDI') | Out-Null
 
 Invoke-VBoxManage -Arguments @('createvm', '--name', $VmName, '--basefolder', $base, '--ostype', 'Other', '--register')
@@ -50,7 +55,7 @@ Invoke-VBoxManage -Arguments @(
     'modifyvm', $VmName,
     '--memory', '64',
     '--vram', '16',
-    '--graphicscontroller', 'vboxvga',
+    '--graphicscontroller', 'vboxsvga',
     '--monitorcount', '1',
     '--accelerate3d', 'off',
     '--boot1', 'disk',
@@ -66,4 +71,4 @@ Invoke-VBoxManage -Arguments @(
 )
 Invoke-VBoxManage -Arguments @('storagectl', $VmName, '--name', 'IDE', '--add', 'ide')
 Invoke-VBoxManage -Arguments @('storageattach', $VmName, '--storagectl', 'IDE', '--port', '0', '--device', '0', '--type', 'hdd', '--medium', $vmDiskImage)
-Invoke-VBoxManage -Arguments @('showvminfo', $VmName)
+Get-VBoxMachineInfoLines -Name $VmName

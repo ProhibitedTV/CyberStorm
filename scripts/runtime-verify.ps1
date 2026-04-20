@@ -215,6 +215,37 @@ function Get-LogicalBitmapPixel {
     return (Get-BitmapPixel -Bitmap $Bitmap -X $scaledX -Y $scaledY)
 }
 
+function Get-MinColorDistanceNearLogicalPoint {
+    param(
+        [System.Drawing.Bitmap]$Bitmap,
+        [double]$LogicalX,
+        [double]$LogicalY,
+        [int]$ScreenW,
+        [int]$ScreenH,
+        $Reference,
+        [int]$Radius = 6
+    )
+
+    $centerX = [int][Math]::Floor(((($LogicalX + 0.5) * $Bitmap.Width) / $ScreenW))
+    $centerY = [int][Math]::Floor(((($LogicalY + 0.5) * $Bitmap.Height) / $ScreenH))
+    $minX = [Math]::Max(0, $centerX - $Radius)
+    $maxX = [Math]::Min($Bitmap.Width - 1, $centerX + $Radius)
+    $minY = [Math]::Max(0, $centerY - $Radius)
+    $maxY = [Math]::Min($Bitmap.Height - 1, $centerY + $Radius)
+    $best = [double]::PositiveInfinity
+
+    for ($y = $minY; $y -le $maxY; $y++) {
+        for ($x = $minX; $x -le $maxX; $x++) {
+            $distance = Get-ColorDistance -Color (Get-BitmapPixel -Bitmap $Bitmap -X $x -Y $y) -Reference $Reference
+            if ($distance -lt $best) {
+                $best = $distance
+            }
+        }
+    }
+
+    return $best
+}
+
 function Get-StatusFromBitmap {
     param(
         [System.Drawing.Bitmap]$Bitmap,
@@ -226,25 +257,56 @@ function Get-StatusFromBitmap {
         [int]$ScreenH
     )
 
+    $borderRef = New-RgbRef 63 63 63
     $passRef = New-RgbRef 12 52 58
     $failRef = New-RgbRef 63 18 18
-    $passDistance = [double]::PositiveInfinity
-    $failDistance = [double]::PositiveInfinity
-    for ($logicalY = $MarkerY; $logicalY -lt ($MarkerY + $MarkerH); $logicalY++) {
-        for ($logicalX = $MarkerX; $logicalX -lt ($MarkerX + $MarkerW); $logicalX++) {
-            $sample = Get-LogicalBitmapPixel `
+    $whiteThreshold = 14000
+    $whiteHits = 0
+    foreach ($borderPoint in @(
+        @{ X = $MarkerX + 2; Y = $MarkerY + 1 },
+        @{ X = $MarkerX + $MarkerW - 3; Y = $MarkerY + 1 },
+        @{ X = $MarkerX + 1; Y = $MarkerY + $MarkerH - 3 }
+    )) {
+        if ((Get-MinColorDistanceNearLogicalPoint `
                 -Bitmap $Bitmap `
-                -LogicalX $logicalX `
-                -LogicalY $logicalY `
+                -LogicalX $borderPoint.X `
+                -LogicalY $borderPoint.Y `
                 -ScreenW $ScreenW `
-                -ScreenH $ScreenH
-            $passDistance = [Math]::Min($passDistance, (Get-ColorDistance -Color $sample -Reference $passRef))
-            $failDistance = [Math]::Min($failDistance, (Get-ColorDistance -Color $sample -Reference $failRef))
+                -ScreenH $ScreenH `
+                -Reference $borderRef `
+                -Radius 8) -le $whiteThreshold) {
+            $whiteHits++
         }
     }
+
+    if ($whiteHits -lt 2) {
+        return [pscustomobject]@{
+            Status = 'UNKNOWN'
+            PassDistance = -1
+            FailDistance = -1
+            ClosestDistance = -1
+        }
+    }
+
+    $passDistance = Get-MinColorDistanceNearLogicalPoint `
+        -Bitmap $Bitmap `
+        -LogicalX ($MarkerX + ($MarkerW / 2.0)) `
+        -LogicalY ($MarkerY + ($MarkerH / 2.0)) `
+        -ScreenW $ScreenW `
+        -ScreenH $ScreenH `
+        -Reference $passRef `
+        -Radius 8
+    $failDistance = Get-MinColorDistanceNearLogicalPoint `
+        -Bitmap $Bitmap `
+        -LogicalX ($MarkerX + ($MarkerW / 2.0)) `
+        -LogicalY ($MarkerY + ($MarkerH / 2.0)) `
+        -ScreenW $ScreenW `
+        -ScreenH $ScreenH `
+        -Reference $failRef `
+        -Radius 8
     $closestDistance = [Math]::Min($passDistance, $failDistance)
     $status = 'UNKNOWN'
-    if ($closestDistance -le 20000) {
+    if ($closestDistance -le 14000) {
         if ($passDistance -le $failDistance) {
             $status = 'PASS'
         } else {
@@ -275,13 +337,25 @@ function Get-SignatureFromBitmap {
     $offRef = New-RgbRef 8 14 22
     $value = 0
     for ($bitIndex = 0; $bitIndex -lt 16; $bitIndex++) {
-        $sample = Get-LogicalBitmapPixel `
+        $logicalX = $StartX + ($bitIndex * $BitPitch) + ($BitSize / 2.0)
+        $logicalY = $StartY + ($BitSize / 2.0)
+        $onDistance = Get-MinColorDistanceNearLogicalPoint `
             -Bitmap $Bitmap `
-            -LogicalX ($StartX + ($bitIndex * $BitPitch) + ($BitSize / 2.0)) `
-            -LogicalY ($StartY + ($BitSize / 2.0)) `
+            -LogicalX $logicalX `
+            -LogicalY $logicalY `
             -ScreenW $ScreenW `
-            -ScreenH $ScreenH
-        $isSet = (Get-ColorDistance -Color $sample -Reference $onRef) -lt (Get-ColorDistance -Color $sample -Reference $offRef)
+            -ScreenH $ScreenH `
+            -Reference $onRef `
+            -Radius 6
+        $offDistance = Get-MinColorDistanceNearLogicalPoint `
+            -Bitmap $Bitmap `
+            -LogicalX $logicalX `
+            -LogicalY $logicalY `
+            -ScreenW $ScreenW `
+            -ScreenH $ScreenH `
+            -Reference $offRef `
+            -Radius 6
+        $isSet = $onDistance -lt $offDistance
         if ($isSet) {
             $value = $value -bor (0x8000 -shr $bitIndex)
         }

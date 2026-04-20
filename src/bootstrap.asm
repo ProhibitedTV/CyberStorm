@@ -7,15 +7,23 @@ include boot_config.inc
 include generated_bank_layout.inc
 
 BOOTSTRAP_SEG equ 0800h
+BOOTSTRAP_PHYS equ 08000h
 STAGE2_SEG    equ 1000h
+STACK_SEG     equ 8800h
+STACK_TOP     equ 7FFEh
 TEXT_MODE_80X25 equ 0003h
-ENHANCED_VBE_MODE equ 0101h
+; Prefer the standard 640x480x16 linear mode when the BIOS exposes it. If the
+; guest VBE BIOS declines the enhanced handoff, stage two falls back to the
+; existing VGA presenter instead of aborting the boot flow.
+ENHANCED_VBE_MODE equ 0111h
 ENHANCED_VBE_LINEAR_FLAG equ 4000h
 CODE_BANK_SEG equ 6000h
 TEXTURE_BANK_SEG equ 6800h
 MAP_BANK_SEG equ 7000h
 PRESENT_BANK_SEG equ 7800h
 GEOMETRY_BANK_SEG equ 8000h
+BOOT_DISK_HEADS equ 16
+BOOT_DISK_SECTORS_PER_TRACK equ 63
 
 HANDOFF_OFFSET     equ 0400h
 HANDOFF_SIG0       equ 4252h
@@ -40,16 +48,21 @@ start:
     mov ax, cs
     mov ds, ax
     mov es, ax
+    mov ax, STACK_SEG
     mov ss, ax
-    mov sp, 0FFFEh
+    mov sp, STACK_TOP
     sti
     cld
 
+    cmp dl, 80h
+    jae bootstrap_drive_ready
+    mov dl, 80h
+bootstrap_drive_ready:
     mov [boot_drive], dl
     call clear_handoff_block
     call load_stage2_and_banks
     call setup_vbe_mode
-    call enter_unreal_mode
+    call enable_a20_fast_gate
     call write_handoff_block
 
     mov dl, [boot_drive]
@@ -122,10 +135,16 @@ load_payload_done:
     ret
 
 read_lba_payload:
-    ; Read CX sectors starting at LBA AX into segment DX:0000 using BIOS EDD.
+    ; Read CX sectors starting at LBA AX into segment DX:0000 using BIOS CHS
+    ; reads. The enhanced HDD image is tiny enough to stay within the BIOS
+    ; translated geometry exposed by VirtualBox, and this path avoids relying
+    ; on an AH=42 extension call that the guest BIOS is rejecting in practice.
     push bx
+    push bp
+    push si
     push di
-    mov bx, ax
+    mov si, ax
+    mov bp, dx
     mov ax, cs
     mov ds, ax
 
@@ -133,44 +152,71 @@ read_lba_payload_chunk:
     or cx, cx
     jz read_lba_payload_done
 
-    mov di, cx
-    cmp di, 127
+    mov ax, si
+    xor dx, dx
+    mov bx, BOOT_DISK_SECTORS_PER_TRACK * BOOT_DISK_HEADS
+    div bx
+    mov word ptr [chs_cylinder], ax
+    mov ax, dx
+    xor dx, dx
+    mov bx, BOOT_DISK_SECTORS_PER_TRACK
+    div bx
+    mov byte ptr [chs_sector], dl
+    mov byte ptr [chs_head], al
+
+    mov ax, BOOT_DISK_SECTORS_PER_TRACK
+    sub al, byte ptr [chs_sector]
+    xor ah, ah
+    mov di, ax
+    cmp di, cx
     jbe read_lba_payload_chunk_ready
-    mov di, 127
+    mov di, cx
 
 read_lba_payload_chunk_ready:
-    mov word ptr [payload_dap + 2], di
-    mov word ptr [payload_dap + 4], 0000h
-    mov word ptr [payload_dap + 6], dx
-    mov word ptr [payload_dap + 8], bx
-    mov word ptr [payload_dap + 10], 0000h
-    mov word ptr [payload_dap + 12], 0000h
-    mov word ptr [payload_dap + 14], 0000h
-    mov ah, 42h
-    lea si, payload_dap
+    push cx
+    mov ax, bp
+    mov es, ax
+    xor bx, bx
+    mov ax, di
+    mov ah, 02h
+    mov dx, word ptr [chs_cylinder]
+    mov ch, dl
+    mov cl, byte ptr [chs_sector]
+    inc cl
+    mov dl, dh
+    and dl, 03h
+    shl dl, 6
+    or cl, dl
+    mov dh, byte ptr [chs_head]
     mov dl, [boot_drive]
     int 13h
     jc read_lba_payload_fail
 
+    pop cx
     mov ax, cs
     mov ds, ax
     sub cx, di
-    add bx, di
+    add si, di
     mov ax, di
     shl ax, 5
-    add dx, ax
+    add bp, ax
     jmp read_lba_payload_chunk
 
 read_lba_payload_fail:
+    pop cx
     mov ax, cs
     mov ds, ax
     pop di
+    pop si
+    pop bp
     pop bx
     ret
 
 read_lba_payload_done:
     clc
     pop di
+    pop si
+    pop bp
     pop bx
     ret
 
@@ -183,58 +229,62 @@ setup_vbe_mode:
     push es
 
     mov ax, cs
+    mov ds, ax
     mov es, ax
-    lea di, vbe_mode_info
+    lea di, vbe_info_buffer
     mov ax, 4F01h
     mov cx, ENHANCED_VBE_MODE
     int 10h
     cmp ax, 004Fh
-    jne setup_vbe_fail
+    jne setup_vbe_legacy
 
-    mov ax, word ptr vbe_mode_info[0]
+    mov ax, word ptr vbe_info_buffer[0]
     test ax, 0001h
-    jz setup_vbe_fail
+    jz setup_vbe_legacy
+    test ax, 0010h
+    jz setup_vbe_legacy
     test ax, 0080h
-    jz setup_vbe_lfb_fail
-    cmp word ptr vbe_mode_info[12], 640
-    jne setup_vbe_fail
-    cmp word ptr vbe_mode_info[14], 480
-    jne setup_vbe_fail
-    cmp byte ptr vbe_mode_info[25], 8
-    jne setup_vbe_fail
-    mov al, byte ptr vbe_mode_info[27]
-    cmp al, 4
-    jne setup_vbe_fail
+    jz setup_vbe_legacy
+    cmp word ptr vbe_info_buffer[12], 640
+    jne setup_vbe_legacy
+    cmp word ptr vbe_info_buffer[14], 480
+    jne setup_vbe_legacy
+    cmp byte ptr vbe_info_buffer[25], 16
+    jne setup_vbe_legacy
+    mov al, byte ptr vbe_info_buffer[27]
+    cmp al, 6
+    jne setup_vbe_legacy
+    mov eax, dword ptr vbe_info_buffer[40]
+    test eax, eax
+    jz setup_vbe_legacy
 
     mov ax, 4F02h
-    mov bx, ENHANCED_VBE_MODE + ENHANCED_VBE_LINEAR_FLAG
+    mov bx, ENHANCED_VBE_MODE
+    or bx, ENHANCED_VBE_LINEAR_FLAG
     int 10h
     cmp ax, 004Fh
-    jne setup_vbe_lfb_fail
+    jne setup_vbe_legacy
 
     mov ax, cs
     mov ds, ax
-    mov ax, word ptr vbe_mode_info[16]
+    mov ax, word ptr vbe_info_buffer[16]
     mov [handoff_pitch], ax
-    mov ax, word ptr vbe_mode_info[12]
+    mov ax, word ptr vbe_info_buffer[12]
     mov [handoff_width], ax
-    mov ax, word ptr vbe_mode_info[14]
+    mov ax, word ptr vbe_info_buffer[14]
     mov [handoff_height], ax
-    mov eax, dword ptr vbe_mode_info[40]
+    mov eax, dword ptr vbe_info_buffer[40]
     mov dword ptr [handoff_lfb], eax
     mov word ptr [handoff_flags], HANDOFF_FLAG_VBE
     mov word ptr [handoff_mode], ENHANCED_VBE_MODE
     jmp setup_vbe_done
 
-setup_vbe_lfb_fail:
-    lea si, text_vbe_lfb_error
-    jmp setup_vbe_panic
-
-setup_vbe_fail:
-    lea si, text_vbe_error
-
-setup_vbe_panic:
-    call fatal_error
+setup_vbe_legacy:
+    mov ax, cs
+    mov ds, ax
+    mov word ptr [handoff_flags], 0
+    mov word ptr [handoff_mode], 0
+    mov dword ptr [handoff_lfb], 0
 
 setup_vbe_done:
     pop es
@@ -246,6 +296,23 @@ setup_vbe_done:
     ret
 
 enter_unreal_mode:
+    mov ax, cs
+    mov ds, ax
+
+    xor eax, eax
+    mov ax, cs
+    shl eax, 4
+    mov word ptr [gdt_code + 2], ax
+    shr eax, 16
+    mov byte ptr [gdt_code + 4], al
+    mov byte ptr [gdt_code + 7], ah
+
+    xor eax, eax
+    mov ax, cs
+    shl eax, 4
+    add eax, OFFSET gdt_start
+    mov dword ptr [gdt_descriptor + 2], eax
+
     cli
     in al, 92h
     or al, 02h
@@ -265,7 +332,6 @@ protected_entry:
     mov es, ax
     mov fs, ax
     mov gs, ax
-    mov ss, ax
 
     mov eax, cr0
     and eax, 0FFFFFFFEh
@@ -278,9 +344,20 @@ real_mode_entry:
     mov ax, cs
     mov ds, ax
     mov es, ax
+    mov ax, STACK_SEG
     mov ss, ax
-    mov sp, 0FFFEh
+    mov sp, STACK_TOP
     sti
+    ret
+
+enable_a20_fast_gate:
+    push ax
+    cli
+    in al, 92h
+    or al, 02h
+    out 92h, al
+    sti
+    pop ax
     ret
 
 write_handoff_block:
@@ -333,12 +410,9 @@ fatal_spin:
     jmp fatal_spin
 
 db 0
-payload_dap db 10h, 00h
-            dw 0
-            dw 0000h
-            dw 0000h
-            dd 0
-            dd 0
+chs_cylinder dw 0
+chs_head db 0
+chs_sector db 0
 
 boot_drive db 0
 handoff_flags  dw 0
@@ -352,15 +426,15 @@ even
 gdt_start label byte
 gdt_null dq 0
 gdt_code dw 0FFFFh, 0000h
-         db 00h, 09Ah, 08Fh, 00h
+         db 00h, 09Ah, 00h, 00h
 gdt_data dw 0FFFFh, 0000h
          db 00h, 092h, 08Fh, 00h
 gdt_end label byte
 gdt_descriptor dw gdt_end - gdt_start - 1
-               dd OFFSET gdt_start
+               dd 0
 
 even
-vbe_mode_info db 256 dup (0)
+vbe_info_buffer db 256 dup (0)
 
 text_stage2_error db 'CYBERSTORM STAGE2 LOAD ERROR', 0
 text_code_bank_error db 'CYBERSTORM CODE BANK ERROR', 0
@@ -368,7 +442,5 @@ text_texture_bank_error db 'CYBERSTORM TEXTURE BANK ERROR', 0
 text_map_bank_error db 'CYBERSTORM MAP BANK ERROR', 0
 text_presentation_bank_error db 'CYBERSTORM PRESENTATION BANK ERROR', 0
 text_geometry_bank_error db 'CYBERSTORM GEOMETRY BANK ERROR', 0
-text_vbe_error db 'CYBERSTORM VBE 640X480X8 REQUIRED', 0
-text_vbe_lfb_error db 'CYBERSTORM VBE LFB REQUIRED', 0
 
 end start

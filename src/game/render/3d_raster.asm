@@ -163,18 +163,12 @@ scene3d_draw_fixed_span_right_ready:
     xor bx, bx
     mov bl, [scene3d_temp_texture]
     mov cx, bx
-    and bx, 3
-    shl bx, 1
-    shl bx, 1
-    shl bx, 1
-    shl bx, 1
-    shl bx, 1
+    and bx, TEXTURE_ATLAS_TILE_COL_MASK
+    shl bx, 5
     mov bp, bx
     mov bx, cx
-    shr bx, 1
-    shr bx, 1
-    mov cl, 12
-    shl bx, cl
+    shr bx, TEXTURE_ATLAS_TILE_ROW_SHIFT
+    shl bx, TEXTURE_ATLAS_TILE_OFFSET_SHIFT
     add bp, bx
     mov bx, TEXTURE_BANK_SEG
     mov ds, bx
@@ -205,13 +199,7 @@ scene3d_draw_textured_fixed_span_loop:
     mov bl, dl
     and bl, 31
     xor bh, bh
-    shl bx, 1
-    shl bx, 1
-    shl bx, 1
-    shl bx, 1
-    shl bx, 1
-    shl bx, 1
-    shl bx, 1
+    shl bx, TEXTURE_ATLAS_TEXEL_ROW_SHIFT
     mov cl, al
     and cl, 31
     xor ch, ch
@@ -835,15 +823,12 @@ scene3d_draw_textured_span_right_ready:
     mov al, [scene3d_temp_texture]
     mov bx, ax
     mov ax, bx
-    and ax, 3
-    mov cl, 5
-    shl ax, cl
+    and ax, TEXTURE_ATLAS_TILE_COL_MASK
+    shl ax, 5
     mov [scene3d_temp_l], ax
     mov ax, bx
-    shr ax, 1
-    shr ax, 1
-    mov cl, 12
-    shl ax, cl
+    shr ax, TEXTURE_ATLAS_TILE_ROW_SHIFT
+    shl ax, TEXTURE_ATLAS_TILE_OFFSET_SHIFT
     add [scene3d_temp_l], ax
 
     mov ax, TEXTURE_BANK_SEG
@@ -858,13 +843,7 @@ scene3d_draw_textured_span_loop:
     xor ah, ah
     mov bl, al
     xor bh, bh
-    shl bx, 1
-    shl bx, 1
-    shl bx, 1
-    shl bx, 1
-    shl bx, 1
-    shl bx, 1
-    shl bx, 1
+    shl bx, TEXTURE_ATLAS_TEXEL_ROW_SHIFT
     mov al, dh
     and al, 31
     xor ah, ah

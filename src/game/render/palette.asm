@@ -4,21 +4,18 @@ PALETTE_GATE_STRIDE equ 3
 init_palette:
     push ax
     push cx
-    push dx
     push si
-    mov dx, 03C8h
     xor al, al
-    out dx, al
-    inc dx
     mov si, offset palette_data
-    mov cx, PALETTE_BYTES
+    mov cx, PALETTE_BYTES / 3
 
 init_palette_loop:
-    lodsb
-    out dx, al
+    push cx
+    call set_palette_entry
+    inc al
+    pop cx
     loop init_palette_loop
     pop si
-    pop dx
     pop cx
     pop ax
     ret
@@ -152,17 +149,42 @@ palette_event_done:
     ret
 
 set_palette_entry:
+    push ax
+    push bx
     push cx
     push dx
+    xor bh, bh
+    mov bl, al
     mov dx, 03C8h
     out dx, al
     inc dx
-    mov cx, 3
-
-set_palette_entry_loop:
     lodsb
     out dx, al
-    loop set_palette_entry_loop
+    mov cl, al
+    lodsb
+    out dx, al
+    mov ch, al
+    lodsb
+    out dx, al
+    mov ah, al
+
+    movzx ax, cl
+    shr ax, 1
+    shl ax, 11
+    mov dx, ax
+
+    movzx ax, ch
+    shl ax, 5
+    or dx, ax
+
+    movzx ax, ah
+    shr ax, 1
+    or dx, ax
+
+    shl bx, 1
+    mov [palette_rgb565_table + bx], dx
     pop dx
     pop cx
+    pop bx
+    pop ax
     ret

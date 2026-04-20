@@ -195,7 +195,7 @@ function Get-SmokeSentinelStatus {
         }
     }
 
-    $minimumMatches = [Math]::Max(1, [int][Math]::Floor(($Geometry.W * $Geometry.H) / 3))
+    $minimumMatches = [Math]::Max(4, [int][Math]::Floor(($Geometry.W * $Geometry.H) / 6))
     return [pscustomobject]@{
         Visible = ($matchingPixels -ge $minimumMatches)
         MatchingPixels = $matchingPixels

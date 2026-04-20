@@ -41,6 +41,7 @@ palette_data db 0,0,0
              db 50,12,18
              db 18,60,56
 PALETTE_BYTES equ ($ - palette_data)
+palette_rgb565_table dw 256 dup (0)
 
 ; Only the environment-facing DAC entries breathe at runtime. Player/enemy/UI
 ; colors stay stable so the board remains easy to read while sectors feel live.

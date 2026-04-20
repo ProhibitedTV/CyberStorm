@@ -306,28 +306,33 @@ scene3d_setup_scene_camera:
     mov [scene3d_center_y], ax
 
     shr bx, 1
-    mov al, bl
-    mov bl, SCENE3D_TIMELINE_TICKS
-    mul bl
-    xor bx, bx
-    mov bl, [scene3d_timeline_tick]
-    add ax, bx
-    mov si, ax
+    mov si, bx
     shl si, 1
 
-    mov ax, cs:[scene3d_timeline_camera_x_table + si]
+    mov ax, cs:[scene3d_camera_x_table + si]
     mov [scene3d_cam_x], ax
-    mov ax, cs:[scene3d_timeline_camera_y_table + si]
+    mov ax, cs:[scene3d_camera_y_table + si]
     mov [scene3d_cam_y], ax
-    mov ax, cs:[scene3d_timeline_camera_z_table + si]
+    mov ax, cs:[scene3d_camera_z_table + si]
     mov [scene3d_cam_z], ax
-    mov ax, cs:[scene3d_timeline_project_scale_table + si]
+    mov ax, cs:[scene3d_project_scale_table + si]
     mov [scene3d_project_scale], ax
 
-    shr si, 1
-    mov al, cs:[scene3d_timeline_yaw_table + si]
+    xor si, si
+    mov al, [scene3d_timeline_tick]
+    xor ah, ah
+    mov si, ax
+
+    mov al, cs:[scene3d_yaw_step_table + bx]
+    cbw
+    imul si
+    add al, cs:[scene3d_yaw_base_table + bx]
     mov [scene3d_yaw_angle], al
-    mov al, cs:[scene3d_timeline_pitch_table + si]
+
+    mov al, cs:[scene3d_pitch_step_table + bx]
+    cbw
+    imul si
+    add al, cs:[scene3d_pitch_base_table + bx]
     mov [scene3d_pitch_angle], al
 
     pop si

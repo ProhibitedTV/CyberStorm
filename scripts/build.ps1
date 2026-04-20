@@ -2846,7 +2846,7 @@ function Write-GeneratedTextureBank {
         [string]$ReportPath
     )
 
-    $atlasW = 128
+    $atlasW = 256
     $atlasH = 128
     $effectW = 64
     $effectH = 64
@@ -2990,6 +2990,9 @@ function Write-GeneratedTextureBank {
         BinaryPath = $BinaryPath
         ReportPath = $ReportPath
         TotalBytes = $bankPayload.Length
+        AtlasWidth = $atlasW
+        AtlasHeight = $atlasH
+        TextureCapacity = ($tilesPerRow * [int]($atlasH / $tileSize))
         TextureCount = $uniqueEntries.Count
         Summary = ($summary -join ' | ')
         BankPayloadBytes = $bankPayload
@@ -3116,6 +3119,7 @@ function Write-GeneratedGeometryInclude {
     $payload = New-Object 'System.Collections.Generic.List[byte]'
     $sceneSummary = New-Object 'System.Collections.Generic.List[string]'
     $sceneFaceSummary = New-Object 'System.Collections.Generic.List[string]'
+    $sceneReportMap = @{}
     $meshSummary = New-Object 'System.Collections.Generic.List[string]'
     $kitSummary = New-Object 'System.Collections.Generic.List[string]'
     $sceneVertexOffsets = New-Object 'System.Collections.Generic.List[string]'
@@ -3153,12 +3157,6 @@ function Write-GeneratedGeometryInclude {
     $sceneGroupOffsetZSteps = New-Object 'System.Collections.Generic.List[string]'
     $sceneGroupYawBases = New-Object 'System.Collections.Generic.List[string]'
     $sceneGroupYawSteps = New-Object 'System.Collections.Generic.List[string]'
-    $timelineCameraXs = New-Object 'System.Collections.Generic.List[string]'
-    $timelineCameraYs = New-Object 'System.Collections.Generic.List[string]'
-    $timelineCameraZs = New-Object 'System.Collections.Generic.List[string]'
-    $timelineProjectScales = New-Object 'System.Collections.Generic.List[string]'
-    $timelineYaws = New-Object 'System.Collections.Generic.List[string]'
-    $timelinePitches = New-Object 'System.Collections.Generic.List[string]'
     $meshVertexOffsets = New-Object 'System.Collections.Generic.List[string]'
     $meshVertexCounts = New-Object 'System.Collections.Generic.List[string]'
     $meshFaceOffsets = New-Object 'System.Collections.Generic.List[string]'
@@ -3400,25 +3398,13 @@ function Write-GeneratedGeometryInclude {
         }
 
         $timelineLength = if ($scene.ContainsKey('TimelineTicks')) { [int]$scene['TimelineTicks'] } else { 64 }
-        if ($timelineLength -lt 1 -or $timelineLength -gt 64) {
-            throw ("Scene '{0}' in {1} must keep TimelineTicks in the 1..64 range. Found {2}." -f $sceneKey, $SourcePath, $timelineLength)
+        if ($timelineLength -lt 1 -or $timelineLength -gt 255) {
+            throw ("Scene '{0}' in {1} must keep TimelineTicks in the 1..255 range. Found {2}." -f $sceneKey, $SourcePath, $timelineLength)
         }
 
         $loopTicks = if ($scene.ContainsKey('LoopTicks')) { [int]$scene['LoopTicks'] } else { 0 }
         if ($loopTicks -lt 0 -or $loopTicks -gt $timelineLength) {
             throw ("Scene '{0}' in {1} must keep LoopTicks in the 0..{2} range. Found {3}." -f $sceneKey, $SourcePath, $timelineLength, $loopTicks)
-        }
-
-        $signedYawStep = if ($yawStep -gt 127) { $yawStep - 256 } else { $yawStep }
-        $signedPitchStep = if ($pitchStep -gt 127) { $pitchStep - 256 } else { $pitchStep }
-        for ($sampleIndex = 0; $sampleIndex -lt 64; $sampleIndex++) {
-            $effectiveTick = if ($loopTicks -gt 0) { $sampleIndex % $loopTicks } else { [Math]::Min($sampleIndex, ($timelineLength - 1)) }
-            $timelineCameraXs.Add((Format-Hex16Literal $cameraX))
-            $timelineCameraYs.Add((Format-Hex16Literal $cameraY))
-            $timelineCameraZs.Add((Format-Hex16Literal $cameraZ))
-            $timelineProjectScales.Add($projectScale.ToString())
-            $timelineYaws.Add((($yawBase + ($effectiveTick * $signedYawStep)) -band 0xFF).ToString())
-            $timelinePitches.Add((($pitchBase + ($effectiveTick * $signedPitchStep)) -band 0xFF).ToString())
         }
 
         if ($scene.ContainsKey('Groups')) {
@@ -3451,6 +3437,8 @@ function Write-GeneratedGeometryInclude {
         $sceneFaceOffset = 0
         $sceneVertexCount = 0
         $sceneTriangleCount = 0
+        $sceneMaterialKeys = New-Object 'System.Collections.Generic.HashSet[string]' ([System.StringComparer]::OrdinalIgnoreCase)
+        $sceneTextureKeys = New-Object 'System.Collections.Generic.HashSet[string]' ([System.StringComparer]::OrdinalIgnoreCase)
         for ($groupIndex = 0; $groupIndex -lt $sceneGroups.Count; $groupIndex++) {
             $group = $sceneGroups[$groupIndex]
             if (-not ($group -is [System.Collections.IDictionary])) {
@@ -3462,6 +3450,23 @@ function Write-GeneratedGeometryInclude {
             $groupFaces = @($group['Faces'])
             if ($groupVertices.Count -eq 0 -or $groupFaces.Count -eq 0) {
                 throw ("Geometry scene '{0}' group '{1}' in {2} must define Vertices and Faces." -f $sceneKey, $groupKey, $SourcePath)
+            }
+
+            foreach ($groupFace in $groupFaces) {
+                $groupMaterialKey = ([string]$groupFace['Material']).Trim().ToLowerInvariant()
+                if (-not $materialMap.ContainsKey($groupMaterialKey)) {
+                    throw ("Geometry scene '{0}' group '{1}' in {2} referenced unknown material '{3}'." -f $sceneKey, $groupKey, $SourcePath, $groupMaterialKey)
+                }
+
+                $null = $sceneMaterialKeys.Add($groupMaterialKey)
+                $groupMaterialEntry = $materialMap[$groupMaterialKey]
+                $groupTextureKeyOverride = if ($groupFace.ContainsKey('TextureKey')) { ([string]$groupFace['TextureKey']).Trim().ToLowerInvariant() } else { '' }
+                $groupTextureKey = if ([string]::IsNullOrWhiteSpace($groupTextureKeyOverride)) { [string]$groupMaterialEntry.TextureKey } else { $groupTextureKeyOverride }
+                $groupShadeModeOverride = if ($groupFace.ContainsKey('ShadeMode')) { ([string]$groupFace['ShadeMode']).Trim().ToLowerInvariant() } else { '' }
+                $groupShadeMode = if ([string]::IsNullOrWhiteSpace($groupShadeModeOverride)) { [string]$groupMaterialEntry.ShadeMode } else { $groupShadeModeOverride }
+                if ($groupShadeMode -eq 'affine' -and -not [string]::IsNullOrWhiteSpace($groupTextureKey)) {
+                    $null = $sceneTextureKeys.Add($groupTextureKey)
+                }
             }
 
             $packedGroup = & $appendGeometry -OwnerKind 'Geometry scene group' -OwnerKey ("{0}/{1}" -f $sceneKey, $groupKey) -Vertices $groupVertices -Faces $groupFaces
@@ -3555,6 +3560,7 @@ function Write-GeneratedGeometryInclude {
         $loopSuffix = if ($loopTicks -gt 0) { "/loop $loopTicks" } else { '' }
         $sceneSummary.Add(("{0}: {1} groups, {2} ticks{3}, {4} verts, {5} tris, view {6}x{7}+{8},{9}" -f $sceneKey, $sceneGroups.Count, $timelineLength, $loopSuffix, $sceneVertexCount, $sceneTriangleCount, $viewW, $viewH, $viewX, $viewY))
         $sceneFaceSummary.Add(("{0}={1}t/{2}g" -f $sceneKey, $sceneTriangleCount, $sceneGroups.Count))
+        $sceneReportMap[$sceneKey] = ("{0} groups, {1} ticks{2}, {3} tris, {4} materials, {5} textures" -f $sceneGroups.Count, $timelineLength, $loopSuffix, $sceneTriangleCount, $sceneMaterialKeys.Count, $sceneTextureKeys.Count)
         $sceneCount += 1
         $totalTriangles += $sceneTriangleCount
     }
@@ -3938,13 +3944,6 @@ function Write-GeneratedGeometryInclude {
     Add-AsmDataLines -Lines $lines -Label 'scene3d_group_yaw_base_table' -Directive 'db' -Values $sceneGroupYawBases.ToArray() -ValuesPerLine 8
     Add-AsmDataLines -Lines $lines -Label 'scene3d_group_yaw_step_table' -Directive 'db' -Values $sceneGroupYawSteps.ToArray() -ValuesPerLine 8
     $lines.Add('')
-    Add-AsmDataLines -Lines $lines -Label 'scene3d_timeline_camera_x_table' -Directive 'dw' -Values $timelineCameraXs.ToArray() -ValuesPerLine 4
-    Add-AsmDataLines -Lines $lines -Label 'scene3d_timeline_camera_y_table' -Directive 'dw' -Values $timelineCameraYs.ToArray() -ValuesPerLine 4
-    Add-AsmDataLines -Lines $lines -Label 'scene3d_timeline_camera_z_table' -Directive 'dw' -Values $timelineCameraZs.ToArray() -ValuesPerLine 4
-    Add-AsmDataLines -Lines $lines -Label 'scene3d_timeline_project_scale_table' -Directive 'dw' -Values $timelineProjectScales.ToArray() -ValuesPerLine 4
-    Add-AsmDataLines -Lines $lines -Label 'scene3d_timeline_yaw_table' -Directive 'db' -Values $timelineYaws.ToArray() -ValuesPerLine 8
-    Add-AsmDataLines -Lines $lines -Label 'scene3d_timeline_pitch_table' -Directive 'db' -Values $timelinePitches.ToArray() -ValuesPerLine 8
-    $lines.Add('')
     Add-AsmDataLines -Lines $lines -Label 'game3d_mesh_vertex_offset_table' -Directive 'dw' -Values $meshVertexOffsets.ToArray() -ValuesPerLine 4
     $lines.Add('')
     Add-AsmDataLines -Lines $lines -Label 'game3d_mesh_vertex_count_table' -Directive 'db' -Values $meshVertexCounts.ToArray() -ValuesPerLine 8
@@ -4042,6 +4041,7 @@ function Write-GeneratedGeometryInclude {
         TriangleCount = $totalTriangles
         SceneSummary = ($sceneSummary -join ', ')
         FaceSummary = ($sceneFaceSummary -join ', ')
+        SceneReportMap = $sceneReportMap
         MeshSummary = ($meshSummary -join ', ')
         KitSummary = ($kitSummary -join ' | ')
         TexturedMaterialCount = $texturedMaterials.Count
@@ -5050,7 +5050,7 @@ $audioSummaryLines = @(
 $renderSummaryLines = @(
     ("Scene renderer: {0}" -f $sceneRenderModeName)
     ("Gameplay renderer: {0}" -f $gameplayRenderModeName)
-    'Primary output: BIOS HDD boot + VBE 640x480x8 LFB present; gameplay logic still renders through the 320x200 compatibility surface.'
+    'Primary output: BIOS HDD boot + VBE 640x480x16 LFB present when available, with legacy VGA fallback; gameplay logic still renders through the 320x200 compatibility surface.'
     ("3D render stage: {0}" -f $debugRenderStageValue)
     'Debug switches: -DebugRender2D uses the oracle path, -DebugRenderReference forces stage-two MASM kernels, and -DebugRenderMachine (or legacy -DebugRender3D) enables the banked raw machine-code rail.'
 )
@@ -5203,6 +5203,7 @@ $generatedContentLines = @(
     ("Machine-code tables: {0}" -f $generatedMachineCode.TableSummary)
     ("Texture bank report: {0}" -f $generatedTextureBank.ReportPath)
     ("Texture bank bytes: {0}" -f $generatedTextureBank.TotalBytes)
+    ("Texture atlas: {0}x{1} ({2}/{3} used)" -f $generatedTextureBank.AtlasWidth, $generatedTextureBank.AtlasHeight, $generatedTextureBank.TextureCount, $generatedTextureBank.TextureCapacity)
     ("Texture atlas entries: {0}" -f $generatedTextureBank.TextureCount)
     ("Texture atlas summary: {0}" -f $generatedTextureBank.Summary)
     ("Presentation source: {0}" -f $generatedPresentation.SourcePath)
@@ -5219,6 +5220,8 @@ $generatedContentLines = @(
     ("Geometry bank bytes: {0}" -f $generatedGeometry.TotalBytes)
     ("Geometry triangles: {0}" -f $generatedGeometry.TriangleCount)
     ("Geometry summary: {0}" -f $generatedGeometry.SceneSummary)
+    ("Frontend splash stats: {0}" -f $generatedGeometry.SceneReportMap['splash'])
+    ("Frontend title stats: {0}" -f $generatedGeometry.SceneReportMap['title'])
     ("Geometry mesh summary: {0}" -f $generatedGeometry.MeshSummary)
     ("Geometry gameplay kit summary: {0}" -f $generatedGeometry.KitSummary)
     ("Geometry textured materials: {0}" -f $generatedGeometry.TexturedMaterialCount)
@@ -5587,7 +5590,7 @@ foreach ($runtimeVerifyLine in $runtimeVerifyLines) {
 }
 
 $showcaseArtifacts = @()
-$showcaseSourceSelection = 'Selection: the public gallery uses verified title, beauty, and action slots sourced from the VM smoke title frame plus the configured AdventureRealm beauty/action anchors in assets/sectors.psd1.'
+$showcaseSourceSelection = 'Selection: the public gallery uses verified title, beauty, and action slots sourced from the BitRiver splash lockup plus the configured AdventureRealm beauty/action anchors in assets/sectors.psd1.'
 $showcaseSyncStatus = 'skipped'
 $showcaseSyncReason = 'Verified showcase capture was skipped for this build.'
 $showcaseFailure = $null

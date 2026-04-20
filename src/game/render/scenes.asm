@@ -99,9 +99,11 @@ render_present:
     mov es, ax
 IF DEBUG_SMOKE_SENTINEL
     mov bx, SMOKE_SENTINEL_X
-    xor dx, dx
+    mov dx, SMOKE_SENTINEL_Y
+    mov cx, SMOKE_SENTINEL_W
+    mov bp, SMOKE_SENTINEL_H
     mov al, SMOKE_SENTINEL_COLOR
-    call put_pixel
+    call fill_rect
 ENDIF
     call present_frame
     ret
@@ -502,10 +504,10 @@ draw_splash_brand_stack:
 
 splash_brand_lockup_ready:
     mov [scene3d_temp_s], ax
-    mov bx, 98
-    mov dx, 62
+    mov bx, 116
+    mov dx, 60
     add dx, [scene3d_temp_s]
-    mov cx, 124
+    mov cx, 88
     mov bp, 1
     test byte ptr [anim_phase], 1
     jz splash_brand_rule_dim
@@ -518,74 +520,50 @@ splash_brand_rule_dim:
 splash_brand_rule_ready:
     call fill_rect
 
-    mov bx, 92
-    mov dx, 62
-    add dx, [scene3d_temp_s]
-    mov cx, 2
-    mov bp, 18
-    mov al, PAL_AMBER
-    call fill_rect
-
-    mov bx, 226
-    mov dx, 62
-    add dx, [scene3d_temp_s]
-    mov cx, 2
-    mov bp, 18
-    mov al, PAL_AMBER
-    call fill_rect
-
     mov bx, 101
-    mov dx, 68
+    mov dx, 66
     add dx, [scene3d_temp_s]
     mov si, offset splash_brand
     mov ah, PAL_PANEL2
     call draw_text_big
 
     mov bx, 100
-    mov dx, 67
+    mov dx, 65
     add dx, [scene3d_temp_s]
     mov si, offset splash_brand
     mov ah, PAL_WHITE
     call draw_text_big
 
-    mov bx, 96
-    mov dx, 84
-    add dx, [scene3d_temp_s]
-    mov cx, 128
-    mov bp, 1
-    mov al, PAL_WHITE
-    call fill_rect
-
     cmp byte ptr [splash_ticks], SPLASH_REVEAL_WORDMARK
     jb splash_brand_stack_done
 
-    mov bx, 108
-    mov dx, 88
+    mov bx, 121
+    mov dx, 83
     add dx, [scene3d_temp_s]
-    mov cx, 12
+    mov cx, 18
     mov bp, 1
     mov al, PAL_CYAN
     call fill_rect
 
-    mov bx, 200
-    mov dx, 88
+    mov bx, 181
+    mov dx, 83
     add dx, [scene3d_temp_s]
-    mov cx, 12
+    mov cx, 18
     mov bp, 1
     mov al, PAL_CYAN
     call fill_rect
 
     mov bx, 128
-    mov dx, 86
+    mov dx, 81
     add dx, [scene3d_temp_s]
     mov si, offset splash_subtitle
     mov ah, PAL_WHITE
     call draw_text_small
 
-    mov bx, 118
-    mov dx, 94
+    mov bx, 124
+    mov dx, 90
     add dx, [scene3d_temp_s]
-    mov cx, 84
+    mov cx, 72
     mov bp, 1
     mov al, PAL_AMBER
     call fill_rect
@@ -1473,6 +1451,13 @@ draw_verify_scene_common:
     mov dx, VERIFY_MARKER_Y
     mov cx, VERIFY_MARKER_W
     mov bp, VERIFY_MARKER_H
+    mov al, PAL_WHITE
+    call draw_rect_outline
+
+    mov bx, VERIFY_MARKER_X + 2
+    mov dx, VERIFY_MARKER_Y + 2
+    mov cx, VERIFY_MARKER_W - 4
+    mov bp, VERIFY_MARKER_H - 4
     call get_verify_scene_accent_color
     call fill_rect
 

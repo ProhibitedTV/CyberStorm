@@ -1,4 +1,4 @@
-Microsoft (R) Macro Assembler Version 14.40.33812.0	    04/20/26 14:18:40
+Microsoft (R) Macro Assembler Version 14.40.33812.0	    04/21/26 21:53:48
 C:\Users\RhythmicCarnage\Desktop\CyberStorm\src\bootstrap.asm  Page 1 - 1
 
 
@@ -23,24 +23,24 @@ C:\Users\RhythmicCarnage\Desktop\CyberStorm\src\bootstrap.asm  Page 1 - 1
  = 0400			      C CODE_BANK_PADDED_BYTES EQU 1024
 			      C 
  = 007F			      C TEXTURE_BANK_LBA EQU 127
- = 0048			      C TEXTURE_BANK_SECTORS EQU 72
- = 9000			      C TEXTURE_BANK_BYTES EQU 36864
- = 9000			      C TEXTURE_BANK_PADDED_BYTES EQU 36864
+ = 0068			      C TEXTURE_BANK_SECTORS EQU 104
+ = D000			      C TEXTURE_BANK_BYTES EQU 53248
+ = D000			      C TEXTURE_BANK_PADDED_BYTES EQU 53248
 			      C 
- = 00C7			      C MAP_BANK_LBA EQU 199
+ = 00E7			      C MAP_BANK_LBA EQU 231
  = 000E			      C MAP_BANK_SECTORS EQU 14
- = 1A07			      C MAP_BANK_BYTES EQU 6663
+ = 1A3A			      C MAP_BANK_BYTES EQU 6714
  = 1C00			      C MAP_BANK_PADDED_BYTES EQU 7168
 			      C 
- = 00D5			      C PRESENT_BANK_LBA EQU 213
+ = 00F5			      C PRESENT_BANK_LBA EQU 245
  = 0027			      C PRESENT_BANK_SECTORS EQU 39
  = 4E00			      C PRESENT_BANK_BYTES EQU 19968
  = 4E00			      C PRESENT_BANK_PADDED_BYTES EQU 19968
 			      C 
- = 00FC			      C GEOMETRY_BANK_LBA EQU 252
- = 0014			      C GEOMETRY_BANK_SECTORS EQU 20
- = 2626			      C GEOMETRY_BANK_BYTES EQU 9766
- = 2800			      C GEOMETRY_BANK_PADDED_BYTES EQU 10240
+ = 011C			      C GEOMETRY_BANK_LBA EQU 284
+ = 001A			      C GEOMETRY_BANK_SECTORS EQU 26
+ = 334A			      C GEOMETRY_BANK_BYTES EQU 13130
+ = 3400			      C GEOMETRY_BANK_PADDED_BYTES EQU 13312
 			      C 
 				
  = 0800				BOOTSTRAP_SEG equ 0800h
@@ -136,25 +136,25 @@ C:\Users\RhythmicCarnage\Desktop\CyberStorm\src\bootstrap.asm  Page 1 - 1
  0069  E8 0041			    call load_payload_or_fail
 				
  006C  B8 007F			    mov ax, TEXTURE_BANK_LBA
- 006F  B9 0048			    mov cx, TEXTURE_BANK_SECTORS
+ 006F  B9 0068			    mov cx, TEXTURE_BANK_SECTORS
  0072  BA 6800			    mov dx, TEXTURE_BANK_SEG
  0075  8D 36 0478 R		    lea si, text_texture_bank_error
  0079  E8 0031			    call load_payload_or_fail
 				
- 007C  B8 00C7			    mov ax, MAP_BANK_LBA
+ 007C  B8 00E7			    mov ax, MAP_BANK_LBA
  007F  B9 000E			    mov cx, MAP_BANK_SECTORS
  0082  BA 7000			    mov dx, MAP_BANK_SEG
  0085  8D 36 0496 R		    lea si, text_map_bank_error
  0089  E8 0021			    call load_payload_or_fail
 				
- 008C  B8 00D5			    mov ax, PRESENT_BANK_LBA
+ 008C  B8 00F5			    mov ax, PRESENT_BANK_LBA
  008F  B9 0027			    mov cx, PRESENT_BANK_SECTORS
  0092  BA 7800			    mov dx, PRESENT_BANK_SEG
  0095  8D 36 04B0 R		    lea si, text_presentation_bank_error
  0099  E8 0011			    call load_payload_or_fail
 				
- 009C  B8 00FC			    mov ax, GEOMETRY_BANK_LBA
- 009F  B9 0014			    mov cx, GEOMETRY_BANK_SECTORS
+ 009C  B8 011C			    mov ax, GEOMETRY_BANK_LBA
+ 009F  B9 001A			    mov cx, GEOMETRY_BANK_SECTORS
  00A2  BA 8000			    mov dx, GEOMETRY_BANK_SEG
  00A5  8D 36 04D3 R		    lea si, text_geometry_bank_error
  00A9  E8 0001			    call load_payload_or_fail
@@ -519,7 +519,7 @@ C:\Users\RhythmicCarnage\Desktop\CyberStorm\src\bootstrap.asm  Page 1 - 1
 				
 				end start
 C:\Users\RhythmicCarnage\Desktop\CyberStorm\src\bootstrap.asm(446) : warning A4023:with /coff switch, leading underscore required for start address : start
-Microsoft (R) Macro Assembler Version 14.40.33812.0	    04/20/26 14:18:40
+Microsoft (R) Macro Assembler Version 14.40.33812.0	    04/21/26 21:53:48
 C:\Users\RhythmicCarnage\Desktop\CyberStorm\src\bootstrap.asm  Symbols 2 - 1
 
 
@@ -561,10 +561,10 @@ ENHANCED_VBE_MODE  . . . . . . .	Number	 0111h
 FLAT_CODE_SEL  . . . . . . . . .	Number	 0008h	 
 FLAT_DATA_SEL  . . . . . . . . .	Number	 0010h	 
 GAME_SECTORS . . . . . . . . . .	Number	 0079h	 
-GEOMETRY_BANK_BYTES  . . . . . .	Number	 2626h	 
-GEOMETRY_BANK_LBA  . . . . . . .	Number	 00FCh	 
-GEOMETRY_BANK_PADDED_BYTES . . .	Number	 2800h	 
-GEOMETRY_BANK_SECTORS  . . . . .	Number	 0014h	 
+GEOMETRY_BANK_BYTES  . . . . . .	Number	 334Ah	 
+GEOMETRY_BANK_LBA  . . . . . . .	Number	 011Ch	 
+GEOMETRY_BANK_PADDED_BYTES . . .	Number	 3400h	 
+GEOMETRY_BANK_SECTORS  . . . . .	Number	 001Ah	 
 GEOMETRY_BANK_SEG  . . . . . . .	Number	 8000h	 
 HANDOFF_FLAGS_OFF  . . . . . . .	Number	 0006h	 
 HANDOFF_FLAG_VBE . . . . . . . .	Number	 0001h	 
@@ -580,13 +580,13 @@ HANDOFF_SIG1 . . . . . . . . . .	Number	 5645h
 HANDOFF_VERSION_OFF  . . . . . .	Number	 0004h	 
 HANDOFF_VERSION  . . . . . . . .	Number	 0001h	 
 HANDOFF_WIDTH_OFF  . . . . . . .	Number	 000Ah	 
-MAP_BANK_BYTES . . . . . . . . .	Number	 1A07h	 
-MAP_BANK_LBA . . . . . . . . . .	Number	 00C7h	 
+MAP_BANK_BYTES . . . . . . . . .	Number	 1A3Ah	 
+MAP_BANK_LBA . . . . . . . . . .	Number	 00E7h	 
 MAP_BANK_PADDED_BYTES  . . . . .	Number	 1C00h	 
 MAP_BANK_SECTORS . . . . . . . .	Number	 000Eh	 
 MAP_BANK_SEG . . . . . . . . . .	Number	 7000h	 
 PRESENT_BANK_BYTES . . . . . . .	Number	 4E00h	 
-PRESENT_BANK_LBA . . . . . . . .	Number	 00D5h	 
+PRESENT_BANK_LBA . . . . . . . .	Number	 00F5h	 
 PRESENT_BANK_PADDED_BYTES  . . .	Number	 4E00h	 
 PRESENT_BANK_SECTORS . . . . . .	Number	 0027h	 
 PRESENT_BANK_SEG . . . . . . . .	Number	 7800h	 
@@ -594,10 +594,10 @@ STACK_SEG  . . . . . . . . . . .	Number	 8800h
 STACK_TOP  . . . . . . . . . . .	Number	 7FFEh	 
 STAGE2_LBA . . . . . . . . . . .	Number	 0004h	 
 STAGE2_SEG . . . . . . . . . . .	Number	 1000h	 
-TEXTURE_BANK_BYTES . . . . . . .	Number	 9000h	 
+TEXTURE_BANK_BYTES . . . . . . .	Number	 D000h	 
 TEXTURE_BANK_LBA . . . . . . . .	Number	 007Fh	 
-TEXTURE_BANK_PADDED_BYTES  . . .	Number	 9000h	 
-TEXTURE_BANK_SECTORS . . . . . .	Number	 0048h	 
+TEXTURE_BANK_PADDED_BYTES  . . .	Number	 D000h	 
+TEXTURE_BANK_SECTORS . . . . . .	Number	 0068h	 
 TEXTURE_BANK_SEG . . . . . . . .	Number	 6800h	 
 TEXT_MODE_80X25  . . . . . . . .	Number	 0003h	 
 boot_drive . . . . . . . . . . .	Byte	 0312	  _TEXT	

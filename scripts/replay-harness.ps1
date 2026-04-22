@@ -244,7 +244,7 @@ function Get-GameplayKitDefinitions {
         throw ("Geometry source must define a 'GameplayKits' array: {0}" -f $SourcePath)
     }
 
-    $expectedKitKeys = @('sector1', 'sector2', 'sector3')
+    $expectedKitKeys = @('sector1', 'sector2', 'sector3', 'sector4')
     $shotModeKeys = @('BaseChase', 'MoveSettle', 'SectorEntry', 'EnemyReveal', 'Interaction', 'WardenPressure', 'EndBeat')
     $definitions = New-Object 'System.Collections.Generic.List[object]'
     $kits = @($geometryData.GameplayKits)

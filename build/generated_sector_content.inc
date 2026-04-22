@@ -4,9 +4,9 @@
 
 
 ; Campaign district tables
-campaign_district_title_table dw 3780, 4551, 5254, 5963
-campaign_district_intro_table dw 3796, 4568, 5270, 5974
-campaign_district_map_ptr_table dw 3898, 4678, 5387, 6085
+campaign_district_title_table dw 3780, 4557, 5275, 5999
+campaign_district_intro_table dw 3796, 4574, 5291, 6010
+campaign_district_map_ptr_table dw 3898, 4684, 5408, 6121
 campaign_district_start_x_table db 4, 2, 2, 2
 campaign_district_start_y_table db 12, 13, 13, 13
 campaign_district_exit_x_table db 24, 24, 24, 23
@@ -18,32 +18,35 @@ campaign_district_switch_count_table db 1, 2, 2, 2
 campaign_district_key_count_table db 1, 1, 1, 1
 campaign_district_hazard_count_table db 1, 2, 2, 3
 campaign_district_enemy_count_table db 3, 3, 3, 3
-campaign_district_prop_count_table db 10, 7, 7, 7
+campaign_district_prop_count_table db 12, 12, 12, 12
 campaign_district_chunk_count_table db 10, 6, 6, 6
-campaign_district_gem_ptr_table dw 4318, 5098, 5807, 6505
-campaign_district_switch_ptr_table dw 4366, 5130, 5839, 6537
-campaign_district_key_ptr_table dw 4368, 5134, 5843, 6541
-campaign_district_hazard_ptr_table dw 4370, 5136, 5845, 6543
-campaign_district_enemy_ptr_table dw 4372, 5140, 5849, 6549
-campaign_district_chunk_min_x_ptr_table dw 4381, 5149, 5858, 6558
-campaign_district_chunk_max_x_ptr_table dw 4391, 5155, 5864, 6564
-campaign_district_chunk_min_y_ptr_table dw 4401, 5161, 5870, 6570
-campaign_district_chunk_max_y_ptr_table dw 4411, 5167, 5876, 6576
-campaign_district_chunk_base_height_ptr_table dw 4421, 5173, 5882, 6582
-campaign_district_chunk_shelf_height_ptr_table dw 4441, 5185, 5894, 6594
-campaign_district_chunk_ramp_dir_ptr_table dw 4461, 5197, 5906, 6606
-campaign_district_chunk_cliff_side_ptr_table dw 4471, 5203, 5912, 6612
-campaign_district_chunk_bridge_span_ptr_table dw 4481, 5209, 5918, 6618
-campaign_district_chunk_landmark_x_ptr_table dw 4491, 5215, 5924, 6624
-campaign_district_chunk_landmark_y_ptr_table dw 4501, 5221, 5930, 6630
-campaign_district_chunk_prop_budget_ptr_table dw 4511, 5227, 5936, 6636
-campaign_district_prop_x_ptr_table dw 4521, 5233, 5942, 6642
-campaign_district_prop_y_ptr_table dw 4531, 5240, 5949, 6649
+campaign_district_gem_ptr_table dw 4318, 5104, 5828, 6541
+campaign_district_switch_ptr_table dw 4366, 5136, 5860, 6573
+campaign_district_key_ptr_table dw 4368, 5140, 5864, 6577
+campaign_district_hazard_ptr_table dw 4370, 5142, 5866, 6579
+campaign_district_enemy_ptr_table dw 4372, 5146, 5870, 6585
+campaign_district_chunk_min_x_ptr_table dw 4381, 5155, 5879, 6594
+campaign_district_chunk_max_x_ptr_table dw 4391, 5161, 5885, 6600
+campaign_district_chunk_min_y_ptr_table dw 4401, 5167, 5891, 6606
+campaign_district_chunk_max_y_ptr_table dw 4411, 5173, 5897, 6612
+campaign_district_chunk_base_height_ptr_table dw 4421, 5179, 5903, 6618
+campaign_district_chunk_shelf_height_ptr_table dw 4441, 5191, 5915, 6630
+campaign_district_chunk_ramp_dir_ptr_table dw 4461, 5203, 5927, 6642
+campaign_district_chunk_cliff_side_ptr_table dw 4471, 5209, 5933, 6648
+campaign_district_chunk_bridge_span_ptr_table dw 4481, 5215, 5939, 6654
+campaign_district_chunk_landmark_x_ptr_table dw 4491, 5221, 5945, 6660
+campaign_district_chunk_landmark_y_ptr_table dw 4501, 5227, 5951, 6666
+campaign_district_chunk_prop_budget_ptr_table dw 4511, 5233, 5957, 6672
+campaign_district_prop_x_ptr_table dw 4521, 5239, 5963, 6678
+campaign_district_prop_y_ptr_table dw 4533, 5251, 5975, 6690
 campaign_district_prop_mesh_ptr_table dw offset campaign_district_0_prop_mesh_table, offset campaign_district_1_prop_mesh_table, offset campaign_district_2_prop_mesh_table, offset campaign_district_3_prop_mesh_table
-campaign_district_prop_yaw_ptr_table dw 4541, 5247, 5956, 6656
+campaign_district_prop_yaw_ptr_table dw 4545, 5263, 5987, 6702
 
-campaign_district_0_prop_mesh_table db GAME3D_MESH_STONE_STACK_INDEX, GAME3D_MESH_TOWER_TOY_INDEX, GAME3D_MESH_BRIDGE_SPAN_INDEX, GAME3D_MESH_BRIDGE_SPAN_INDEX, GAME3D_MESH_STONE_STACK_INDEX, GAME3D_MESH_SWITCH_PEDESTAL_INDEX, GAME3D_MESH_PORTAL_ARCH_INDEX, GAME3D_MESH_TOWER_TOY_INDEX
-                                    db GAME3D_MESH_STONE_STACK_INDEX, GAME3D_MESH_TOWER_TOY_INDEX
-campaign_district_1_prop_mesh_table db GAME3D_MESH_STONE_STACK_INDEX, GAME3D_MESH_SWITCH_PEDESTAL_INDEX, GAME3D_MESH_SWITCH_PEDESTAL_INDEX, GAME3D_MESH_BRIDGE_SPAN_INDEX, GAME3D_MESH_TOWER_TOY_INDEX, GAME3D_MESH_PORTAL_ARCH_INDEX, GAME3D_MESH_STONE_STACK_INDEX
-campaign_district_2_prop_mesh_table db GAME3D_MESH_STONE_STACK_INDEX, GAME3D_MESH_SWITCH_PEDESTAL_INDEX, GAME3D_MESH_SWITCH_PEDESTAL_INDEX, GAME3D_MESH_TOWER_TOY_INDEX, GAME3D_MESH_STONE_STACK_INDEX, GAME3D_MESH_PORTAL_ARCH_INDEX, GAME3D_MESH_BRIDGE_SPAN_INDEX
-campaign_district_3_prop_mesh_table db GAME3D_MESH_STONE_STACK_INDEX, GAME3D_MESH_SWITCH_PEDESTAL_INDEX, GAME3D_MESH_SWITCH_PEDESTAL_INDEX, GAME3D_MESH_TOWER_TOY_INDEX, GAME3D_MESH_PORTAL_ARCH_INDEX, GAME3D_MESH_BRIDGE_SPAN_INDEX, GAME3D_MESH_STONE_STACK_INDEX
+campaign_district_0_prop_mesh_table db GAME3D_MESH_CABLE_FRAME_INDEX, GAME3D_MESH_STORM_GATE_MASS_INDEX, GAME3D_MESH_TRANSFER_FRAME_INDEX, GAME3D_MESH_CATWALK_RIB_INDEX, GAME3D_MESH_LANDMARK_RELAY_GANTRY_INDEX, GAME3D_MESH_TERMINAL_SUBGRID_INDEX, GAME3D_MESH_GATE_SUBGRID_INDEX, GAME3D_MESH_STORM_GATE_MASS_INDEX
+                                    db GAME3D_MESH_CABLE_FRAME_INDEX, GAME3D_MESH_LANDMARK_RELAY_GANTRY_INDEX, GAME3D_MESH_TRANSFER_FRAME_INDEX, GAME3D_MESH_CATWALK_RIB_INDEX
+campaign_district_1_prop_mesh_table db GAME3D_MESH_TRANSFER_FRAME_INDEX, GAME3D_MESH_CATWALK_RIB_INDEX, GAME3D_MESH_CATWALK_RIB_INDEX, GAME3D_MESH_TRANSFER_FRAME_INDEX, GAME3D_MESH_LANDMARK_SWITCHFRAME_INDEX, GAME3D_MESH_GATE_SWITCHYARD_INDEX, GAME3D_MESH_TRANSFER_FRAME_INDEX, GAME3D_MESH_CABLE_FRAME_INDEX
+                                    db GAME3D_MESH_TRANSFER_FRAME_INDEX, GAME3D_MESH_CATWALK_RIB_INDEX, GAME3D_MESH_LANDMARK_SWITCHFRAME_INDEX, GAME3D_MESH_CABLE_FRAME_INDEX
+campaign_district_2_prop_mesh_table db GAME3D_MESH_VENT_STACK_INDEX, GAME3D_MESH_TERMINAL_FURNACE_INDEX, GAME3D_MESH_TERMINAL_FURNACE_INDEX, GAME3D_MESH_VENT_STACK_INDEX, GAME3D_MESH_LANDMARK_FURNACE_INDEX, GAME3D_MESH_GATE_FURNACE_INDEX, GAME3D_MESH_CATWALK_RIB_INDEX, GAME3D_MESH_CATWALK_RIB_INDEX
+                                    db GAME3D_MESH_TRANSFER_FRAME_INDEX, GAME3D_MESH_VENT_STACK_INDEX, GAME3D_MESH_TRANSFER_FRAME_INDEX, GAME3D_MESH_CATWALK_RIB_INDEX
+campaign_district_3_prop_mesh_table db GAME3D_MESH_VAULT_BUTTRESS_INDEX, GAME3D_MESH_TERMINAL_VAULT_INDEX, GAME3D_MESH_TERMINAL_VAULT_INDEX, GAME3D_MESH_LANDMARK_VAULT_INDEX, GAME3D_MESH_GATE_VAULT_INDEX, GAME3D_MESH_VAULT_BUTTRESS_INDEX, GAME3D_MESH_UPLINK_SPINE_INDEX, GAME3D_MESH_VAULT_BUTTRESS_INDEX
+                                    db GAME3D_MESH_UPLINK_SPINE_INDEX, GAME3D_MESH_UPLINK_SPINE_INDEX, GAME3D_MESH_VAULT_BUTTRESS_INDEX, GAME3D_MESH_VAULT_BUTTRESS_INDEX

@@ -4499,10 +4499,10 @@ game3d_draw_shadow_at_projected_point:
     push si
     mov si, ax
     call game3d_get_scale_for_depth
-    mov cl, 4
+    mov cl, 5
     cmp al, 2
     jne game3d_shadow_size_ready
-    mov cl, 6
+    mov cl, 7
 
 game3d_shadow_size_ready:
     xor ax, ax

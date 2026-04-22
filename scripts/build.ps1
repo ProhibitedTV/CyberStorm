@@ -2847,7 +2847,7 @@ function Write-GeneratedTextureBank {
     )
 
     $atlasW = 256
-    $atlasH = 128
+    $atlasH = 192
     $effectW = 64
     $effectH = 64
     $tileSize = 32
@@ -2882,8 +2882,9 @@ function Write-GeneratedTextureBank {
         })
     }
 
-    if ($uniqueEntries.Count -gt ($tilesPerRow * $tilesPerRow)) {
-        throw ("Texture atlas supports at most {0} unique texture keys, but geometry referenced {1}." -f ($tilesPerRow * $tilesPerRow), $uniqueEntries.Count)
+    $textureCapacity = ($tilesPerRow * [int]($atlasH / $tileSize))
+    if ($uniqueEntries.Count -gt $textureCapacity) {
+        throw ("Texture atlas supports at most {0} unique texture keys, but geometry referenced {1}." -f $textureCapacity, $uniqueEntries.Count)
     }
 
     $summary = New-Object 'System.Collections.Generic.List[string]'
@@ -2903,20 +2904,31 @@ function Write-GeneratedTextureBank {
                         if ((($x % 6) -eq 0) -or (($y % 6) -eq 0)) { $color = $dither }
                         elseif (((($x * 5) + ($y * 3)) % 17) -lt 2) { $color = [byte](($base + 1) -band 0xFF) }
                     }
-                    'metal|steel|brush|panel' {
+                    'metal|steel|brush|panel|truss|catwalk|duct|slot|under' {
                         if (((($x * 3) + $y) % 9) -lt 3) { $color = $dither }
                         elseif ((($x + ($y * 2)) % 13) -eq 0) { $color = [byte](($base + 1) -band 0xFF) }
                     }
-                    'concrete|noir' {
+                    'concrete|noir|damp|rib' {
                         if (((($x * 7) + ($y * 11)) % 19) -lt 5) { $color = $dither }
                         elseif (((($x * 5) + ($y * 2)) % 23) -eq 0) { $color = [byte](($base + 1) -band 0xFF) }
+                    }
+                    'grime|oil' {
+                        if (((($x * 5) + ($y * 7)) % 16) -lt 5) { $color = $dither }
+                        elseif (((($x * 2) + ($y * 3)) % 19) -eq 0) { $color = [byte](($base + 1) -band 0xFF) }
                     }
                     'hazard' {
                         if (((($x + $y) % 10) -lt 4) -or (((($x -shl 1) + $y) % 17) -eq 0)) { $color = $dither }
                     }
-                    'emissive|strip|rail' {
+                    'emissive|strip|rail|relay|uplink' {
                         if ((($x % 8) -lt 2) -or (($y % 12) -eq 0)) { $color = $dither }
                         elseif (((($x * 3) + $y) % 21) -eq 0) { $color = [byte](($base + 1) -band 0xFF) }
+                    }
+                    'furnace|slag' {
+                        if (((($x * 5) + ($y * 3)) % 9) -lt 4) { $color = $dither } else { $color = [byte](($base + 1) -band 0xFF) }
+                    }
+                    'vault|seal|cold' {
+                        if (((($x * 2) + ($y * 5)) % 15) -lt 4) { $color = $dither }
+                        elseif ((($x + ($y * 2)) % 17) -eq 0) { $color = [byte](($base + 1) -band 0xFF) }
                     }
                     'logo|glass' {
                         if (((($x * 2) + ($y * 3)) % 15) -lt 4) { $color = $dither }
@@ -2992,7 +3004,7 @@ function Write-GeneratedTextureBank {
         TotalBytes = $bankPayload.Length
         AtlasWidth = $atlasW
         AtlasHeight = $atlasH
-        TextureCapacity = ($tilesPerRow * [int]($atlasH / $tileSize))
+        TextureCapacity = $textureCapacity
         TextureCount = $uniqueEntries.Count
         Summary = ($summary -join ' | ')
         BankPayloadBytes = $bankPayload
@@ -3017,7 +3029,7 @@ function Write-GeneratedGeometryInclude {
     }
 
     $expectedSceneKeys = @('splash', 'title', 'sector1', 'sector2', 'sector3', 'win', 'lose')
-    $expectedKitKeys = @('sector1', 'sector2', 'sector3')
+    $expectedKitKeys = @('sector1', 'sector2', 'sector3', 'sector4')
     $materials = @($geometryData['Materials'])
     $scenes = @($geometryData['Scenes'])
     $kits = @($geometryData['GameplayKits'])
@@ -4213,6 +4225,288 @@ function Get-GameplayGeometryBudgetSummary {
     }
 }
 
+function Get-CampaignGameplayArtSummary {
+    param(
+        [string]$SectorSourcePath,
+        [string]$GeometrySourcePath,
+        [System.Collections.IDictionary]$MeshTriangleMap,
+        [int]$ExpectedMapWidth,
+        [int]$ExpectedMapHeight,
+        [int]$FaceBudget,
+        [int]$OptionalFaceBudget
+    )
+
+    $sectorData = Import-StructuredDataFile -SourcePath $SectorSourcePath -Label 'sector source'
+    $geometryData = Import-StructuredDataFile -SourcePath $GeometrySourcePath -Label 'geometry source'
+    if (-not $sectorData.ContainsKey('Campaign')) {
+        return [pscustomobject]@{
+            SummaryLines = @()
+            MaterialSummaryLines = @()
+            WarningLines = @()
+        }
+    }
+
+    $campaignData = $sectorData['Campaign']
+    if ($null -eq $campaignData -or -not ($campaignData -is [System.Collections.IDictionary]) -or -not $campaignData.ContainsKey('Districts')) {
+        return [pscustomobject]@{
+            SummaryLines = @()
+            MaterialSummaryLines = @()
+            WarningLines = @()
+        }
+    }
+
+    $kits = @($geometryData['GameplayKits'])
+    $materials = @($geometryData['Materials'])
+    $meshes = @($geometryData['Meshes'])
+    $districts = @($campaignData['Districts'])
+    $kitMap = @{}
+    $meshMaterialMap = @{}
+    foreach ($kit in $kits) {
+        $kitKey = ([string]$kit['Key']).Trim().ToLowerInvariant()
+        if (-not [string]::IsNullOrWhiteSpace($kitKey)) {
+            $kitMap[$kitKey] = $kit
+        }
+    }
+
+    $materialMap = @{}
+    foreach ($material in $materials) {
+        $materialKey = ([string]$material['Key']).Trim().ToLowerInvariant()
+        if (-not [string]::IsNullOrWhiteSpace($materialKey)) {
+            $materialMap[$materialKey] = $material
+        }
+    }
+
+    foreach ($mesh in $meshes) {
+        $meshKey = ([string]$mesh['Key']).Trim().ToLowerInvariant()
+        if ([string]::IsNullOrWhiteSpace($meshKey)) {
+            continue
+        }
+
+        $meshMaterials = New-Object 'System.Collections.Generic.HashSet[string]' ([System.StringComparer]::OrdinalIgnoreCase)
+        foreach ($face in @($mesh['Faces'])) {
+            $faceMaterial = ([string]$face['Material']).Trim().ToLowerInvariant()
+            if (-not [string]::IsNullOrWhiteSpace($faceMaterial)) {
+                $null = $meshMaterials.Add($faceMaterial)
+            }
+        }
+
+        $meshMaterialMap[$meshKey] = @($meshMaterials | Sort-Object)
+    }
+
+    $summaryLines = New-Object 'System.Collections.Generic.List[string]'
+    $materialSummaryLines = New-Object 'System.Collections.Generic.List[string]'
+    $warningLines = New-Object 'System.Collections.Generic.List[string]'
+
+    for ($districtIndex = 0; $districtIndex -lt $districts.Count; $districtIndex++) {
+        $district = $districts[$districtIndex]
+        $districtId = ([string]$district['Id']).Trim().ToLowerInvariant()
+        $kitKey = ("sector{0}" -f ($districtIndex + 1))
+        if (-not $kitMap.ContainsKey($kitKey)) {
+            $warningLines.Add(("Campaign district '{0}' could not resolve gameplay kit '{1}'." -f $districtId, $kitKey))
+            continue
+        }
+
+        $kit = $kitMap[$kitKey]
+        $rows = @($district['Rows'] | ForEach-Object { [string]$_ })
+        if ($rows.Count -ne $ExpectedMapHeight) {
+            $warningLines.Add(("Campaign district '{0}' authored {1} rows, expected {2} for art budgeting." -f $districtId, $rows.Count, $ExpectedMapHeight))
+            continue
+        }
+
+        $objectiveCounts = $district['ObjectiveCounts']
+        $relayCount = if ($null -ne $objectiveCounts -and $objectiveCounts.ContainsKey('RelayCount')) { [int]$objectiveCounts['RelayCount'] } else { 0 }
+        $chunks = @($district['Chunks'])
+        $props = @($district['Props'])
+        $playMinY = 1
+        $playMaxY = $ExpectedMapHeight - 2
+        $playRowCount = $playMaxY - $playMinY + 1
+        $exitToken = [string]$district['Exit']
+        $exitParts = @($exitToken.Split(','))
+        $exitColumn = if ($exitParts.Count -ge 1) { [int]$exitParts[0] } else { $ExpectedMapWidth - 4 }
+        $floorTrimRuns = 0
+        for ($y = $playMinY; $y -lt $playMaxY; $y++) {
+            if ((($y + $districtIndex) % 2) -eq 0) {
+                $floorTrimRuns += 1
+            }
+        }
+
+        $northRuns = 0
+        $southRuns = 0
+        for ($y = 0; $y -lt $ExpectedMapHeight; $y++) {
+            $northInside = $false
+            $southInside = $false
+            for ($x = 0; $x -lt $ExpectedMapWidth; $x++) {
+                $isWall = $rows[$y][$x] -eq '#'
+                $northVisible = $isWall -and ($y -eq 0 -or $rows[$y - 1][$x] -ne '#')
+                $southVisible = $isWall -and ($y -eq ($ExpectedMapHeight - 1) -or $rows[$y + 1][$x] -ne '#')
+                if ($northVisible) {
+                    if (-not $northInside) {
+                        $northRuns += 1
+                        $northInside = $true
+                    }
+                } else {
+                    $northInside = $false
+                }
+
+                if ($southVisible) {
+                    if (-not $southInside) {
+                        $southRuns += 1
+                        $southInside = $true
+                    }
+                } else {
+                    $southInside = $false
+                }
+            }
+        }
+
+        $westRuns = 0
+        $eastRuns = 0
+        for ($x = 0; $x -lt $ExpectedMapWidth; $x++) {
+            $westInside = $false
+            $eastInside = $false
+            for ($y = 0; $y -lt $ExpectedMapHeight; $y++) {
+                $isWall = $rows[$y][$x] -eq '#'
+                $westVisible = $isWall -and ($x -eq 0 -or $rows[$y][$x - 1] -ne '#')
+                $eastVisible = $isWall -and ($x -eq ($ExpectedMapWidth - 1) -or $rows[$y][$x + 1] -ne '#')
+                if ($westVisible) {
+                    if (-not $westInside) {
+                        $westRuns += 1
+                        $westInside = $true
+                    }
+                } else {
+                    $westInside = $false
+                }
+
+                if ($eastVisible) {
+                    if (-not $eastInside) {
+                        $eastRuns += 1
+                        $eastInside = $true
+                    }
+                } else {
+                    $eastInside = $false
+                }
+            }
+        }
+
+        $gateLaneRuns = 0
+        $laneBudget = 0
+        $laneRow = 0
+        while ($laneRow -lt $ExpectedMapHeight -and $laneBudget -lt 5) {
+            if ($rows[$laneRow][$exitColumn] -eq '#') {
+                $laneRow += 1
+                continue
+            }
+
+            $runLength = 0
+            while ($laneRow -lt $ExpectedMapHeight -and $laneBudget -lt 5 -and $rows[$laneRow][$exitColumn] -ne '#') {
+                $laneRow += 1
+                $laneBudget += 1
+                $runLength += 1
+            }
+
+            if ($runLength -gt 0) {
+                $gateLaneRuns += 1
+            }
+        }
+
+        $baseEssentialFaces = 2 + ($playRowCount * 2) + ($gateLaneRuns * 2) + 4 + (($relayCount * 2) * 4)
+        $variantFaceMap = [ordered]@{
+            nw = ($baseEssentialFaces + (($northRuns + $westRuns) * 2) + [Math]::Min($OptionalFaceBudget, ($floorTrimRuns * 2) + (($northRuns + $westRuns) * 2)))
+            sw = ($baseEssentialFaces + (($southRuns + $westRuns) * 2) + [Math]::Min($OptionalFaceBudget, ($floorTrimRuns * 2) + (($southRuns + $westRuns) * 2)))
+            ne = ($baseEssentialFaces + (($northRuns + $eastRuns) * 2) + [Math]::Min($OptionalFaceBudget, ($floorTrimRuns * 2) + (($northRuns + $eastRuns) * 2)))
+            se = ($baseEssentialFaces + (($southRuns + $eastRuns) * 2) + [Math]::Min($OptionalFaceBudget, ($floorTrimRuns * 2) + (($southRuns + $eastRuns) * 2)))
+        }
+        $structuralFaces = ($variantFaceMap.Values | Measure-Object -Maximum).Maximum
+        $peakViews = @($variantFaceMap.GetEnumerator() | Where-Object { $_.Value -eq $structuralFaces } | ForEach-Object { $_.Key }) -join '+'
+        $headroom = $FaceBudget - $structuralFaces
+
+        $staticPropTris = 0
+        $materialSet = New-Object 'System.Collections.Generic.HashSet[string]' ([System.StringComparer]::OrdinalIgnoreCase)
+        foreach ($materialKey in @(
+            [string]$kit['FloorBase'],
+            [string]$kit['FloorTrim'],
+            [string]$kit['WallBase'],
+            [string]$kit['WallTrim'],
+            [string]$kit['WallCap'],
+            [string]$kit['Lane'],
+            [string]$kit['TerrainProfile']['CliffMaterial'],
+            [string]$kit['TerrainProfile']['ShelfMaterial'],
+            [string]$kit['TerrainProfile']['BridgeMaterial']
+        )) {
+            $resolvedMaterialKey = $materialKey.Trim().ToLowerInvariant()
+            if (-not [string]::IsNullOrWhiteSpace($resolvedMaterialKey)) {
+                $null = $materialSet.Add($resolvedMaterialKey)
+            }
+        }
+
+        $landmarkMeshKey = ([string]$kit['Landmark']['Mesh']).Trim().ToLowerInvariant()
+        $landmarkMeshTris = if ($MeshTriangleMap.ContainsKey($landmarkMeshKey)) { [int]$MeshTriangleMap[$landmarkMeshKey] * $chunks.Count } else { 0 }
+        foreach ($meshKey in @(
+            $landmarkMeshKey,
+            ([string]$kit['GateMesh']).Trim().ToLowerInvariant(),
+            ([string]$kit['TerminalMesh']).Trim().ToLowerInvariant(),
+            ([string]$kit['SurgeMesh']).Trim().ToLowerInvariant(),
+            ([string]$kit['ShardMesh']).Trim().ToLowerInvariant()
+        )) {
+            if ([string]::IsNullOrWhiteSpace($meshKey) -or -not $meshMaterialMap.ContainsKey($meshKey)) {
+                continue
+            }
+
+            foreach ($meshMaterialKey in @($meshMaterialMap[$meshKey])) {
+                $null = $materialSet.Add([string]$meshMaterialKey)
+            }
+        }
+
+        foreach ($prop in $props) {
+            $propMeshKey = ([string]$prop['Mesh']).Trim().ToLowerInvariant()
+            if ($MeshTriangleMap.ContainsKey($propMeshKey)) {
+                $staticPropTris += [int]$MeshTriangleMap[$propMeshKey]
+            }
+
+            if ($meshMaterialMap.ContainsKey($propMeshKey)) {
+                foreach ($meshMaterialKey in @($meshMaterialMap[$propMeshKey])) {
+                    $null = $materialSet.Add([string]$meshMaterialKey)
+                }
+            }
+        }
+
+        $districtMaterialKeys = @($materialSet | Sort-Object)
+        $summaryLines.Add(("{0}: structural {1}/{2} (headroom {3}, peak {4}, trim cap {5}), props {6} tris, landmarks {7} tris" -f $districtId, $structuralFaces, $FaceBudget, $headroom, $peakViews, $OptionalFaceBudget, $staticPropTris, $landmarkMeshTris))
+        $materialSummaryLines.Add(("{0}: {1} materials ({2})" -f $districtId, $districtMaterialKeys.Count, ($districtMaterialKeys -join ', ')))
+
+        if ($structuralFaces -gt $FaceBudget) {
+            $warningLines.Add(("Campaign district '{0}' reaches {1} structural faces, exceeding the runtime face budget of {2}." -f $districtId, $structuralFaces, $FaceBudget))
+        }
+    }
+
+    return [pscustomobject]@{
+        SummaryLines = $summaryLines.ToArray()
+        MaterialSummaryLines = $materialSummaryLines.ToArray()
+        WarningLines = $warningLines.ToArray()
+    }
+}
+
+function Get-AdventureShowcaseCaptureSummary {
+    param(
+        [string]$SectorSourcePath
+    )
+
+    $sectorData = Import-StructuredDataFile -SourcePath $SectorSourcePath -Label 'sector source'
+    if (-not $sectorData.ContainsKey('AdventureRealm')) {
+        return 'none'
+    }
+
+    $adventureData = $sectorData['AdventureRealm']
+    if ($null -eq $adventureData -or -not ($adventureData -is [System.Collections.IDictionary]) -or -not $adventureData.ContainsKey('CaptureAnchors')) {
+        return 'none'
+    }
+
+    $captureAnchors = $adventureData['CaptureAnchors']
+    $beauty = if ($captureAnchors.ContainsKey('Beauty')) { [string]$captureAnchors['Beauty'] } else { 'n/a' }
+    $action = if ($captureAnchors.ContainsKey('Action')) { [string]$captureAnchors['Action'] } else { 'n/a' }
+    return ("beauty={0}, action={1}" -f $beauty, $action)
+}
+
 function Write-GeneratedArtInclude {
     param(
         [string]$SourcePath,
@@ -5148,6 +5442,15 @@ $gameplayGeometryBudget = Get-GameplayGeometryBudgetSummary `
     -ShardCount $shardCount `
     -FaceBudget $game3dFaceBudget `
     -OptionalFaceBudget $game3dOptionalFaceBudget
+$campaignGameplayArt = Get-CampaignGameplayArtSummary `
+    -SectorSourcePath $sectorSourcePath `
+    -GeometrySourcePath $geometrySourcePath `
+    -MeshTriangleMap $generatedGeometry.MeshTriangleMap `
+    -ExpectedMapWidth $expectedMapWidth `
+    -ExpectedMapHeight $expectedMapHeight `
+    -FaceBudget $game3dFaceBudget `
+    -OptionalFaceBudget $game3dOptionalFaceBudget
+$adventureShowcaseCapture = Get-AdventureShowcaseCaptureSummary -SectorSourcePath $sectorSourcePath
 $generatedDemos = Write-GeneratedDemoInclude `
     -SourcePath $demoSourcePath `
     -OutputPath $generatedDemosPath `
@@ -5204,6 +5507,7 @@ $generatedContentLines = @(
     ("Texture bank report: {0}" -f $generatedTextureBank.ReportPath)
     ("Texture bank bytes: {0}" -f $generatedTextureBank.TotalBytes)
     ("Texture atlas: {0}x{1} ({2}/{3} used)" -f $generatedTextureBank.AtlasWidth, $generatedTextureBank.AtlasHeight, $generatedTextureBank.TextureCount, $generatedTextureBank.TextureCapacity)
+    ("Gameplay texture atlas: {0}x{1} ({2}/{3} used)" -f $generatedTextureBank.AtlasWidth, $generatedTextureBank.AtlasHeight, $generatedTextureBank.TextureCount, $generatedTextureBank.TextureCapacity)
     ("Texture atlas entries: {0}" -f $generatedTextureBank.TextureCount)
     ("Texture atlas summary: {0}" -f $generatedTextureBank.Summary)
     ("Presentation source: {0}" -f $generatedPresentation.SourcePath)
@@ -5232,6 +5536,8 @@ $generatedContentLines = @(
     ("Gameplay camera: quadrant-aware chase presets with authored projection, structure depth, horizon bands, and atmosphere")
     ("Gameplay viewport: {0}x{1} at {2},{3}" -f $game3dViewW, $game3dViewH, $game3dViewX, $game3dViewY)
     ("Gameplay room structural headroom: {0}" -f ($gameplayGeometryBudget.SummaryLines -join ' | '))
+    ("Gameplay campaign art: {0}" -f $(if ($campaignGameplayArt.SummaryLines.Count -gt 0) { $campaignGameplayArt.SummaryLines -join ' | ' } else { 'none' }))
+    ("Gameplay district materials: {0}" -f $(if ($campaignGameplayArt.MaterialSummaryLines.Count -gt 0) { $campaignGameplayArt.MaterialSummaryLines -join ' | ' } else { 'none' }))
     ("Sector source: {0}" -f $generatedSectors.SourcePath)
     ("Sector include: {0}" -f $generatedSectors.SectorOutputPath)
     ("Maps include: {0}" -f $generatedSectors.MapsOutputPath)
@@ -5247,6 +5553,7 @@ $generatedContentLines = @(
     ("Campaign beats: {0}" -f $generatedSectors.AdventureRouteSummary)
     ("Campaign chunks: {0}" -f $generatedSectors.AdventureChunkSummary)
     ("Campaign capture: {0}" -f $generatedSectors.AdventureCaptureSummary)
+    ("Gameplay showcase slots: title=splash-lockup, {0}" -f $adventureShowcaseCapture)
     ("Demo source: {0}" -f $generatedDemos.SourcePath)
     ("Demo include: {0}" -f $generatedDemos.OutputPath)
     ("Demos: {0}" -f $generatedDemos.DemoCount)
@@ -5454,6 +5761,9 @@ if ($null -ne $balanceHarness.WarningLines -and @($balanceHarness.WarningLines).
 }
 if ($null -ne $gameplayGeometryBudget.WarningLines -and @($gameplayGeometryBudget.WarningLines).Count -gt 0) {
     $warnings = @($warnings) + @($gameplayGeometryBudget.WarningLines)
+}
+if ($null -ne $campaignGameplayArt.WarningLines -and @($campaignGameplayArt.WarningLines).Count -gt 0) {
+    $warnings = @($warnings) + @($campaignGameplayArt.WarningLines)
 }
 
 $diskImage = New-Object byte[] $layout.FloppyBytes

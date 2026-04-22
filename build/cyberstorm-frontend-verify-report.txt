@@ -1,4 +1,48 @@
 CyberStorm Frontend Verification Report
-Generated: 2026-04-21 21:53:53 -06:00
-Status: skipped
-Run scripts/build.ps1 -FrontendVerify or scripts/frontend-verify.ps1 to exercise the frontend trust verification lane.
+Generated: 2026-04-22 09:47:17 -06:00
+Constants source: C:\Users\RhythmicCarnage\Desktop\CyberStorm\scripts\..\src\game\constants.inc
+Status: PASS
+
+
+Scenario: SPLASH TO TITLE
+  Id: splash-to-title
+  Status: PASS
+  Wait: 12s
+  Expected terminal: STATE_7
+  Observed terminal: STATE_7
+  Expected signature: 0x1C07
+  Observed signature: 0x1C07
+  Screenshot: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\frontend-verify\frontend-verify-splash-to-title-pass.png
+  VBox log: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\frontend-verify\frontend-verify-splash-to-title-pass.log
+
+Scenario: TITLE TO START
+  Id: title-to-start
+  Status: PASS
+  Wait: 10s
+  Expected terminal: STATE_7 + guard
+  Observed terminal: STATE_7 + guard
+  Expected signature: 0xFE07
+  Observed signature: 0xFE07
+  Screenshot: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\frontend-verify\frontend-verify-title-to-start-pass.png
+  VBox log: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\frontend-verify\frontend-verify-title-to-start-pass.log
+
+Scenario: TITLE TO ATTRACT
+  Id: title-to-attract
+  Status: PASS
+  Wait: 12s
+  Expected terminal: STATE_7 + demo + guard
+  Observed terminal: STATE_7 + demo + guard
+  Expected signature: 0xFF07
+  Observed signature: 0xFF07
+  Screenshot: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\frontend-verify\frontend-verify-title-to-attract-pass.png
+  VBox log: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\frontend-verify\frontend-verify-title-to-attract-pass.log
+
+Forced mismatch scenario
+  Scenario: SPLASH TO TITLE
+  Status: FAIL
+  Expected terminal: STATE_7
+  Observed terminal: STATE_7
+  Expected signature: 0x1C07
+  Observed signature: 0x1C07
+  Screenshot: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\frontend-verify\frontend-verify-splash-to-title-fail.png
+  VBox log: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\frontend-verify\frontend-verify-splash-to-title-fail.log

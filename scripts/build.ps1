@@ -5886,12 +5886,14 @@ if ($RuntimeVerify.IsPresent) {
     $runtimeVerifyLines = @(
         'Status: skipped (use -RuntimeVerify to boot debug-only replay verification demos in VirtualBox).'
     )
-    Set-Content -LiteralPath $runtimeVerifyReportPath -Encoding ascii -Value @(
-        'CyberStorm Runtime Verification Report'
-        ("Generated: {0}" -f (Get-Date -Format 'yyyy-MM-dd HH:mm:ss K'))
-        'Status: skipped'
-        'Run scripts/build.ps1 -RuntimeVerify or scripts/runtime-verify.ps1 to exercise the closed-loop replay verification lane.'
-    )
+    if (-not (Test-Path -LiteralPath $runtimeVerifyReportPath)) {
+        Set-Content -LiteralPath $runtimeVerifyReportPath -Encoding ascii -Value @(
+            'CyberStorm Runtime Verification Report'
+            ("Generated: {0}" -f (Get-Date -Format 'yyyy-MM-dd HH:mm:ss K'))
+            'Status: skipped'
+            'Run scripts/build.ps1 -RuntimeVerify or scripts/runtime-verify.ps1 to exercise the closed-loop replay verification lane.'
+        )
+    }
 }
 
 Write-Section -Title 'Runtime Verify'

@@ -107,7 +107,7 @@ function Ensure-VmRegistered {
     param([string]$Name)
 
     try {
-        Invoke-VBoxManage -Arguments @('showvminfo', $Name, '--machinereadable') -TimeoutSeconds 20 | Out-Null
+        Get-VBoxMachineInfoLines -Name $Name | Out-Null
     } catch {
         if ($_.Exception.Message -match 'Could not find a registered machine named|VBOX_E_OBJECT_NOT_FOUND') {
             Invoke-DeployVm -Name $Name
@@ -115,6 +115,10 @@ function Ensure-VmRegistered {
         }
 
         throw
+    }
+
+    if (Test-VmNeedsEnhancedRedeploy -Name $Name) {
+        Invoke-DeployVm -Name $Name
     }
 }
 
@@ -265,7 +269,8 @@ function Get-StatusFromBitmap {
     foreach ($borderPoint in @(
         @{ X = $MarkerX + 2; Y = $MarkerY + 1 },
         @{ X = $MarkerX + $MarkerW - 3; Y = $MarkerY + 1 },
-        @{ X = $MarkerX + 1; Y = $MarkerY + $MarkerH - 3 }
+        @{ X = $MarkerX + 1; Y = $MarkerY + $MarkerH - 3 },
+        @{ X = $MarkerX + $MarkerW - 3; Y = $MarkerY + $MarkerH - 3 }
     )) {
         if ((Get-MinColorDistanceNearLogicalPoint `
                 -Bitmap $Bitmap `
@@ -279,7 +284,7 @@ function Get-StatusFromBitmap {
         }
     }
 
-    if ($whiteHits -lt 2) {
+    if ($whiteHits -lt 3) {
         return [pscustomobject]@{
             Status = 'UNKNOWN'
             PassDistance = -1
@@ -346,7 +351,7 @@ function Get-SignatureFromBitmap {
             -ScreenW $ScreenW `
             -ScreenH $ScreenH `
             -Reference $onRef `
-            -Radius 6
+            -Radius 3
         $offDistance = Get-MinColorDistanceNearLogicalPoint `
             -Bitmap $Bitmap `
             -LogicalX $logicalX `
@@ -354,7 +359,7 @@ function Get-SignatureFromBitmap {
             -ScreenW $ScreenW `
             -ScreenH $ScreenH `
             -Reference $offRef `
-            -Radius 6
+            -Radius 3
         $isSet = $onDistance -lt $offDistance
         if ($isSet) {
             $value = $value -bor (0x8000 -shr $bitIndex)
@@ -376,8 +381,7 @@ function Get-RuntimeVerifyFailureReason {
         0 { return 'NONE' }
         1 { return 'TIMEOUT' }
         2 { return 'EARLY END' }
-        3 { return 'DIVERGED' }
-        default { return ("UNKNOWN({0})" -f (Format-Hex16 $Code)) }
+        default { return 'DIVERGED' }
     }
 }
 
@@ -588,7 +592,30 @@ function Invoke-RuntimeVerifyRun {
                     -BitPitch $Geometry.BitPitch `
                     -ScreenW $Geometry.ScreenW `
                     -ScreenH $Geometry.ScreenH
+                if (($statusSample.Status -eq 'FAIL') -and ($failureReasonCode -eq 0) -and ($expectedSignature -ne $observedSignature)) {
+                    $failureReasonCode = 3
+                }
                 $failureReason = Get-RuntimeVerifyFailureReason -Code $failureReasonCode
+                $sceneConfirmed = (($expectedSignature -ne 0) -and ($observedSignature -ne 0))
+                if ($sceneConfirmed) {
+                    if ($statusSample.Status -eq 'PASS') {
+                        $sceneConfirmed = ($expectedSignature -eq $observedSignature)
+                    } else {
+                        $sceneConfirmed = ($failureReason -ne 'NONE')
+                    }
+                }
+                if (-not $sceneConfirmed) {
+                    $statusSample = [pscustomobject]@{
+                        Status = 'UNKNOWN'
+                        PassDistance = [int]$statusSample.PassDistance
+                        FailDistance = [int]$statusSample.FailDistance
+                        ClosestDistance = [int]$statusSample.ClosestDistance
+                    }
+                    $expectedSignature = 0
+                    $observedSignature = 0
+                    $failureReasonCode = 0
+                    $failureReason = 'NONE'
+                }
             }
         } finally {
             $bitmap.Dispose()
@@ -776,9 +803,16 @@ try {
     }
 
     $statusMismatches = @($runtimeResults | Where-Object { -not $_.StatusMatched })
-    if ($statusMismatches.Count -eq 1) {
+    if ($statusMismatches.Count -gt 0) {
         $focusedRepro = ("powershell -ExecutionPolicy Bypass -File .\scripts\runtime-verify.ps1 -DemoFilter {0}" -f $statusMismatches[0].Id)
         $lines.Add('')
+        $lines.Add('First failing demo')
+        $lines.Add(("  Id: {0}" -f $statusMismatches[0].Id))
+        $lines.Add(("  Name: {0}" -f $statusMismatches[0].Name))
+        $lines.Add(("  Reason: {0}" -f $statusMismatches[0].FailureReason))
+        $lines.Add(("  Expected/Observed: {0} / {1}" -f $statusMismatches[0].ExpectedSignature, $statusMismatches[0].ObservedSignature))
+        $lines.Add(("  Screenshot: {0}" -f $statusMismatches[0].ScreenshotPath))
+        $lines.Add(("  VBox log: {0}" -f $statusMismatches[0].LogPath))
         $lines.Add('Focused repro')
         $lines.Add(("  {0}" -f $focusedRepro))
         $summaryLines.Add(("Focused repro: {0}" -f $focusedRepro))
@@ -786,9 +820,7 @@ try {
 
     if ($statusMismatches.Count -gt 0) {
         $summary = @($statusMismatches | ForEach-Object { "{0} expected {1} but observed {2} ({3})" -f $_.Id, $_.ExpectedStatus, $_.Status, $_.FailureReason })
-        if ($statusMismatches.Count -eq 1) {
-            $summary += ("Focused repro: powershell -ExecutionPolicy Bypass -File .\scripts\runtime-verify.ps1 -DemoFilter {0}" -f $statusMismatches[0].Id)
-        }
+        $summary += ("Focused repro: powershell -ExecutionPolicy Bypass -File .\scripts\runtime-verify.ps1 -DemoFilter {0}" -f $statusMismatches[0].Id)
         throw ("Runtime verify status mismatches detected.`n{0}" -f ($summary -join [Environment]::NewLine))
     }
 

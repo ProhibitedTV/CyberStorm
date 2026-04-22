@@ -173,6 +173,7 @@ function Get-RequiredConstants {
         'GAME3D_YAW_EAST',
         'GAME3D_YAW_NORTH',
         'GAME3D_YAW_WEST',
+        'CAMPAIGN_DISTRICT_COUNT',
         'ADVENTURE_TURN_STEP',
         'ADVENTURE_MOVE_SPEED',
         'ADVENTURE_BACK_SPEED',
@@ -185,6 +186,8 @@ function Get-RequiredConstants {
         'ADVENTURE_ENEMY_STEP_TICKS',
         'ADVENTURE_HAZARD_COOLDOWN',
         'ADVENTURE_INTRO_TICKS',
+        'START_PULSES',
+        'MAX_PULSES',
         'ENEMY_RUSHER',
         'ENEMY_FLANKER',
         'ENEMY_WARDEN',
@@ -670,6 +673,21 @@ function Get-AdventureHeadingIdFromYaw {
     return $Constants.GAME3D_HEADING_SOUTH
 }
 
+function Get-StartPulseCountForSector {
+    param(
+        $Constants,
+        [int]$Sector
+    )
+
+    $sectorId = [Math]::Max(1, [Math]::Min([int]$Sector, [int]$Constants.CAMPAIGN_DISTRICT_COUNT))
+    $pulseCount = [int]$Constants.START_PULSES
+    if ($sectorId -gt 1) {
+        $pulseCount += ($sectorId - 1)
+    }
+
+    return [Math]::Min($pulseCount, [int]$Constants.MAX_PULSES)
+}
+
 function Build-RuntimeStateFromExpected {
     param(
         $Demo,
@@ -689,11 +707,13 @@ function Build-RuntimeStateFromExpected {
     $shotReason = if ($Expected.ContainsKey('ShotReason')) { Get-ShotReasonId -Constants $Constants -ShotReasonName ([string]$Expected.ShotReason) } else { $Constants.GAME3D_SHOT_REASON_NONE }
     $frameVariant = if ($Expected.ContainsKey('ShotFrameVariant')) { Get-FrameVariantId -Constants $Constants -FrameVariantName ([string]$Expected.ShotFrameVariant) } else { Get-DefaultFrameVariant -Constants $Constants -ShotModeId $shotMode }
     $portalState = if ($Expected.ContainsKey('Portal')) { ([string]$Expected.Portal).ToUpperInvariant() } else { 'LOCKED' }
+    $sector = if ($Expected.ContainsKey('Sector')) { [int]$Expected.Sector } else { [int]$Demo.StartSector }
+    $pulseCount = if ($Expected.ContainsKey('Pulses')) { [int]$Expected.Pulses } else { Get-StartPulseCountForSector -Constants $Constants -Sector $sector }
 
     return [pscustomobject]@{
         Name = [string]$Demo.Name
         StateId = (Get-StateId -Constants $Constants -StateName ([string]$Expected.State))
-        Sector = if ($Expected.ContainsKey('Sector')) { [int]$Expected.Sector } else { [int]$Demo.StartSector }
+        Sector = $sector
         TemplateIndex = if ($Expected.ContainsKey('TemplateIndex')) { [int]$Expected.TemplateIndex } else { 0 }
         Player = $player
         HeadingId = (Get-HeadingId -Constants $Constants -HeadingName $headingName)
@@ -702,8 +722,8 @@ function Build-RuntimeStateFromExpected {
         ShotReason = $shotReason
         ShotSubject = $shotSubject
         ShotFrameVariant = $frameVariant
-        ShieldCount = if ($Expected.ContainsKey('Shields')) { [int]$Expected.Shields } else { 5 }
-        PulseCount = if ($Expected.ContainsKey('Pulses')) { [int]$Expected.Pulses } else { 0 }
+        ShieldCount = if ($Expected.ContainsKey('Shields')) { [int]$Expected.Shields } else { [int]$Constants.START_SHIELDS }
+        PulseCount = $pulseCount
         DataCount = if ($Expected.ContainsKey('Data')) { [int]$Expected.Data } else { 0 }
         ObjectivesDone = if ($Expected.ContainsKey('Objectives')) { [int]$Expected.Objectives } else { 0 }
         ObjectivesTotal = if ($Expected.ContainsKey('ObjectivesTotal')) { [int]$Expected.ObjectivesTotal } else { [int]$AdventureRealm.ObjectivesTotal }
@@ -1111,6 +1131,7 @@ function New-AdventureRuntimeState {
         $AdventureRealm
     )
 
+    $sector = if ($Demo.PSObject.Properties.Name -contains 'StartSector') { [int]$Demo.StartSector } else { 1 }
     $map = New-AdventureMap -Constants $Constants -AdventureRealm $AdventureRealm
     $player = [pscustomobject]@{
         X = [int]$AdventureRealm.Start.X
@@ -1130,7 +1151,7 @@ function New-AdventureRuntimeState {
     $state = [pscustomobject]@{
         Name = [string]$Demo.Name
         StateId = $Constants.STATE_PLAYING
-        Sector = if ($Demo.PSObject.Properties.Name -contains 'StartSector') { [int]$Demo.StartSector } else { 1 }
+        Sector = $sector
         TemplateIndex = 0
         Player = $player
         Yaw = $Constants.GAME3D_YAW_EAST
@@ -1144,7 +1165,7 @@ function New-AdventureRuntimeState {
         }
         ShotFrameVariant = $Constants.GAME3D_FRAME_VARIANT_NONE
         ShieldCount = $Constants.START_SHIELDS
-        PulseCount = 0
+        PulseCount = (Get-StartPulseCountForSector -Constants $Constants -Sector $sector)
         DataCount = 0
         ObjectivesDone = 0
         ObjectivesTotal = [int]$AdventureRealm.ObjectivesTotal

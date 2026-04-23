@@ -37,6 +37,16 @@ function Get-VBoxFailureKind {
     return 'CONTENT'
 }
 
+function Restart-VBoxBootstrapServices {
+    $previousErrorActionPreference = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try {
+        & taskkill /F /IM VBoxSVC.exe /IM VBoxHeadless.exe /IM VirtualBoxVM.exe *>$null
+    } finally {
+        $ErrorActionPreference = $previousErrorActionPreference
+    }
+}
+
 function ConvertTo-VBoxArgumentString {
     param([string[]]$Arguments)
 
@@ -124,13 +134,7 @@ function Invoke-VBoxManage {
 
     $message = $capturedLines -join [Environment]::NewLine
     if ($Attempt -lt 3 -and (Test-VBoxBootstrapFailureMessage -Message $message)) {
-        $previousErrorActionPreference = $ErrorActionPreference
-        $ErrorActionPreference = 'Continue'
-        try {
-            & taskkill /F /IM VBoxSVC.exe /IM VBoxHeadless.exe /IM VirtualBoxVM.exe *>$null
-        } finally {
-            $ErrorActionPreference = $previousErrorActionPreference
-        }
+        Restart-VBoxBootstrapServices
         Start-Sleep -Seconds (2 + ($Attempt * 3))
         return Invoke-VBoxManage -Arguments $Arguments -Attempt ($Attempt + 1) -TimeoutSeconds $TimeoutSeconds
     }
@@ -138,53 +142,38 @@ function Invoke-VBoxManage {
     throw ("VBoxManage failed: {0}`n{1}" -f ($Arguments -join ' '), $message)
 }
 
+function Invoke-VBoxPreflight {
+    param(
+        [string]$Context = 'vbox preflight'
+    )
+
+    try {
+        Invoke-VBoxManage -Arguments @('list', 'vms') -TimeoutSeconds 20 | Out-Null
+    } catch {
+        throw ("VBox preflight failed ({0})`n{1}" -f $Context, $_.Exception.Message)
+    }
+}
+
 function Get-VBoxMachineInfoLines {
     param(
         [string]$Name,
-        [int]$Attempt = 0
+        [string]$Context = 'showvminfo'
     )
 
-    $capturedLines = New-Object 'System.Collections.Generic.List[string]'
-    $message = $null
-
     try {
-        $outputLines = & $vbox showvminfo $Name --machinereadable 2>&1
-        $exitCode = $LASTEXITCODE
-        foreach ($line in @($outputLines)) {
-            $lineText = [string]$line
-            if (-not [string]::IsNullOrWhiteSpace($lineText)) {
-                $capturedLines.Add($lineText)
-            }
-        }
-
-        if ($exitCode -eq 0) {
-            return $capturedLines.ToArray()
-        }
-
-        $message = $capturedLines -join [Environment]::NewLine
+        return (Invoke-VBoxManage -Arguments @('showvminfo', $Name, '--machinereadable') -TimeoutSeconds 20)
     } catch {
-        $message = $_.Exception.Message
+        throw ("VBox substep failed ({0})`n{1}" -f $Context, $_.Exception.Message)
     }
-
-    if ($Attempt -lt 3 -and (Test-VBoxBootstrapFailureMessage -Message $message)) {
-        $previousErrorActionPreference = $ErrorActionPreference
-        $ErrorActionPreference = 'Continue'
-        try {
-            & taskkill /F /IM VBoxSVC.exe /IM VBoxHeadless.exe /IM VirtualBoxVM.exe *>$null
-        } finally {
-            $ErrorActionPreference = $previousErrorActionPreference
-        }
-        Start-Sleep -Seconds (2 + ($Attempt * 3))
-        return Get-VBoxMachineInfoLines -Name $Name -Attempt ($Attempt + 1)
-    }
-
-    throw ("VBoxManage failed: showvminfo {0} --machinereadable`n{1}" -f $Name, $message)
 }
 
 function Get-VmState {
-    param([string]$Name)
+    param(
+        [string]$Name,
+        [string]$Context = 'vm state probe'
+    )
 
-    $infoLines = Get-VBoxMachineInfoLines -Name $Name
+    $infoLines = Get-VBoxMachineInfoLines -Name $Name -Context $Context
     $stateLine = $infoLines | Where-Object { $_ -match '^VMState=' } | Select-Object -First 1
     if ($stateLine -and $stateLine -match '^VMState="?([^"]+)"?$') {
         return $Matches[1]
@@ -194,10 +183,13 @@ function Get-VmState {
 }
 
 function Ensure-VmReadyForCapture {
-    param([string]$Name)
+    param(
+        [string]$Name,
+        [string]$Context = 'capture-ready probe'
+    )
 
     for ($attempt = 0; $attempt -lt 10; $attempt++) {
-        $state = Get-VmState -Name $Name
+        $state = Get-VmState -Name $Name -Context ("{0} (attempt {1})" -f $Context, ($attempt + 1))
         if ($state -eq 'running') {
             return
         }
@@ -215,7 +207,8 @@ function Ensure-VmReadyForCapture {
 function Invoke-VmScreenshot {
     param(
         [string]$Name,
-        [string]$OutputPath
+        [string]$OutputPath,
+        [string]$Context = 'vm screenshot'
     )
 
     if (Test-Path -LiteralPath $OutputPath) {
@@ -224,7 +217,7 @@ function Invoke-VmScreenshot {
 
     for ($attempt = 0; $attempt -lt 5; $attempt++) {
         try {
-            Ensure-VmReadyForCapture -Name $Name
+            Ensure-VmReadyForCapture -Name $Name -Context ("{0} capture-ready probe" -f $Context)
             Invoke-VBoxManage -Arguments @('controlvm', $Name, 'screenshotpng', $OutputPath) -TimeoutSeconds 45 | Out-Null
         } catch {
             if ($attempt -ge 4) {
@@ -258,9 +251,16 @@ function Stop-VmIfRunning {
 }
 
 function Start-HeadlessVm {
-    param([string]$Name)
+    param(
+        [string]$Name,
+        [string]$Context = 'startvm'
+    )
 
-    Invoke-VBoxManage -Arguments @('startvm', $Name, '--type', 'headless') | Out-Null
+    try {
+        Invoke-VBoxManage -Arguments @('startvm', $Name, '--type', 'headless') | Out-Null
+    } catch {
+        throw ("VBox substep failed ({0})`n{1}" -f $Context, $_.Exception.Message)
+    }
     Start-Sleep -Seconds 2
 }
 
@@ -274,9 +274,12 @@ function Invoke-DeployVm {
 }
 
 function Test-VmNeedsEnhancedRedeploy {
-    param([string]$Name)
+    param(
+        [string]$Name,
+        [string]$Context = 'redeploy probe'
+    )
 
-    $infoLines = Get-VBoxMachineInfoLines -Name $Name
+    $infoLines = Get-VBoxMachineInfoLines -Name $Name -Context $Context
     $infoText = $infoLines -join [Environment]::NewLine
 
     if ($infoText -match 'boot1="floppy"') {
@@ -295,10 +298,15 @@ function Test-VmNeedsEnhancedRedeploy {
 }
 
 function Ensure-VmRegistered {
-    param([string]$Name)
+    param(
+        [string]$Name,
+        [string]$Context = 'vm registration'
+    )
+
+    Invoke-VBoxPreflight -Context $Context
 
     try {
-        Get-VBoxMachineInfoLines -Name $Name | Out-Null
+        Get-VBoxMachineInfoLines -Name $Name -Context ("{0} showvminfo" -f $Context) | Out-Null
     } catch {
         if ($_.Exception.Message -match 'Could not find a registered machine named|VBOX_E_OBJECT_NOT_FOUND') {
             Invoke-DeployVm -Name $Name
@@ -308,7 +316,7 @@ function Ensure-VmRegistered {
         throw
     }
 
-    if (Test-VmNeedsEnhancedRedeploy -Name $Name) {
+    if (Test-VmNeedsEnhancedRedeploy -Name $Name -Context ("{0} redeploy probe" -f $Context)) {
         Invoke-DeployVm -Name $Name
     }
 }

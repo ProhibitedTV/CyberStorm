@@ -557,7 +557,7 @@ IF DEBUG_RENDER_SENTINELS
     mov al, PAL_CYAN2
     call draw_debug_render_sentinel_vga
     mov bx, 246
-    mov dx, 178
+    mov dx, GAME_HUD_MESSAGE_Y + 2
     mov al, PAL_CYAN2
     call draw_debug_render_sentinel_backbuffer
 ENDIF
@@ -568,7 +568,7 @@ IF DEBUG_RENDER_SENTINELS
     mov al, PAL_WHITE
     call draw_debug_render_sentinel_vga
     mov bx, 254
-    mov dx, 178
+    mov dx, GAME_HUD_MESSAGE_Y + 2
     mov al, PAL_WHITE
     call draw_debug_render_sentinel_backbuffer
 ENDIF
@@ -579,7 +579,7 @@ IF DEBUG_RENDER_SENTINELS
     mov al, PAL_AMBER
     call draw_debug_render_sentinel_vga
     mov bx, 262
-    mov dx, 178
+    mov dx, GAME_HUD_MESSAGE_Y + 2
     mov al, PAL_AMBER
     call draw_debug_render_sentinel_backbuffer
 ENDIF
@@ -2215,9 +2215,6 @@ game3d_compile_east_done:
     ret
 
 game3d_compile_gate_lane_strips:
-IF DEBUG_LEGACY_GAMEPLAY EQ 0
-    ret
-ENDIF
     xor dh, dh
     xor ch, ch
 
@@ -2278,7 +2275,7 @@ game3d_lane_emit_run:
     mov ax, [scene3d_temp_w]
     cmp ax, [scene3d_temp_v]
     jbe game3d_lane_row_loop
-    call game3d_get_lane_material
+    call game3d_get_accent_material
     mov [scene3d_temp_color], al
     mov [scene3d_temp_dither], ah
     mov byte ptr [scene3d_temp_face], GAME3D_FACE_FLAG_FRAME
@@ -2700,7 +2697,7 @@ game3d_far_south_band:
     mov [scene3d_temp_w], ax
 
 game3d_far_band_ready:
-    call game3d_get_wall_cap_material
+    call game3d_get_far_mass_material
     mov [scene3d_temp_color], al
     mov [scene3d_temp_dither], ah
     mov byte ptr [scene3d_temp_face], GAME3D_FACE_FLAG_WALL or GAME3D_FACE_FLAG_TRIM
@@ -2925,7 +2922,7 @@ game3d_emit_shot_ceiling_beam:
     mov ax, [scene3d_temp_s]
     add ax, [scene3d_temp_l]
     mov [scene3d_temp_w], ax
-    call game3d_get_wall_cap_material
+    call game3d_get_ceiling_material
     mov [scene3d_temp_color], al
     mov [scene3d_temp_dither], ah
     mov byte ptr [scene3d_temp_face], GAME3D_FACE_FLAG_FRAME or GAME3D_FACE_FLAG_TRIM
@@ -2979,7 +2976,7 @@ game3d_compile_shot_far_mass_south:
     mov [scene3d_temp_w], ax
 
 game3d_compile_shot_far_mass_ready:
-    call game3d_get_wall_cap_material
+    call game3d_get_soffit_material
     mov [scene3d_temp_color], al
     mov [scene3d_temp_dither], ah
     mov byte ptr [scene3d_temp_face], GAME3D_FACE_FLAG_WALL or GAME3D_FACE_FLAG_TRIM
@@ -3059,7 +3056,7 @@ game3d_emit_floor_trim_run:
     mov ax, [scene3d_temp_w]
     cmp ax, [scene3d_temp_v]
     jbe game3d_floor_trim_done
-    call game3d_get_floor_trim_material
+    call game3d_get_lane_trim_material
     mov [scene3d_temp_color], al
     mov [scene3d_temp_dither], ah
     mov byte ptr [scene3d_temp_face], GAME3D_FACE_FLAG_TRIM
@@ -3496,25 +3493,11 @@ game3d_get_floor_trim_material:
     ret
 
 game3d_get_floor_far_material:
-    push bx
-    call game3d_get_kit_index
-    xor ah, ah
-    mov bx, ax
-    mov al, cs:[game3d_kit_backdrop_near_color_table + bx]
-    mov ah, cs:[game3d_kit_backdrop_mid_color_table + bx]
-    mov byte ptr [scene3d_temp_texture], SCENE3D_TEXTURE_NONE
-    pop bx
+    call game3d_get_lane_trim_material
     ret
 
 game3d_get_wall_far_material:
-    push bx
-    call game3d_get_kit_index
-    xor ah, ah
-    mov bx, ax
-    mov al, cs:[game3d_kit_backdrop_mid_color_table + bx]
-    mov ah, cs:[game3d_kit_backdrop_far_color_table + bx]
-    mov byte ptr [scene3d_temp_texture], SCENE3D_TEXTURE_NONE
-    pop bx
+    call game3d_get_far_mass_material
     ret
 
 game3d_get_wall_base_material:
@@ -3561,6 +3544,66 @@ game3d_get_lane_material:
     mov al, cs:[game3d_kit_lane_color_table + bx]
     mov ah, cs:[game3d_kit_lane_dither_table + bx]
     mov dl, cs:[game3d_kit_lane_texture_table + bx]
+    mov [scene3d_temp_texture], dl
+    pop bx
+    ret
+
+game3d_get_ceiling_material:
+    push bx
+    call game3d_get_kit_index
+    xor ah, ah
+    mov bx, ax
+    mov al, cs:[game3d_kit_ceiling_color_table + bx]
+    mov ah, cs:[game3d_kit_ceiling_dither_table + bx]
+    mov dl, cs:[game3d_kit_ceiling_texture_table + bx]
+    mov [scene3d_temp_texture], dl
+    pop bx
+    ret
+
+game3d_get_soffit_material:
+    push bx
+    call game3d_get_kit_index
+    xor ah, ah
+    mov bx, ax
+    mov al, cs:[game3d_kit_soffit_color_table + bx]
+    mov ah, cs:[game3d_kit_soffit_dither_table + bx]
+    mov dl, cs:[game3d_kit_soffit_texture_table + bx]
+    mov [scene3d_temp_texture], dl
+    pop bx
+    ret
+
+game3d_get_lane_trim_material:
+    push bx
+    call game3d_get_kit_index
+    xor ah, ah
+    mov bx, ax
+    mov al, cs:[game3d_kit_lane_trim_color_table + bx]
+    mov ah, cs:[game3d_kit_lane_trim_dither_table + bx]
+    mov dl, cs:[game3d_kit_lane_trim_texture_table + bx]
+    mov [scene3d_temp_texture], dl
+    pop bx
+    ret
+
+game3d_get_far_mass_material:
+    push bx
+    call game3d_get_kit_index
+    xor ah, ah
+    mov bx, ax
+    mov al, cs:[game3d_kit_far_mass_color_table + bx]
+    mov ah, cs:[game3d_kit_far_mass_dither_table + bx]
+    mov dl, cs:[game3d_kit_far_mass_texture_table + bx]
+    mov [scene3d_temp_texture], dl
+    pop bx
+    ret
+
+game3d_get_accent_material:
+    push bx
+    call game3d_get_kit_index
+    xor ah, ah
+    mov bx, ax
+    mov al, cs:[game3d_kit_accent_color_table + bx]
+    mov ah, cs:[game3d_kit_accent_dither_table + bx]
+    mov dl, cs:[game3d_kit_accent_texture_table + bx]
     mov [scene3d_temp_texture], dl
     pop bx
     ret
@@ -3829,6 +3872,26 @@ game3d_get_wobble_strength:
     xor ah, ah
     mov bx, ax
     mov al, cs:[game3d_kit_wobble_strength_table + bx]
+    pop bx
+    ret
+
+game3d_get_fog_near_depth:
+    push bx
+    call game3d_get_kit_index
+    xor ah, ah
+    mov bx, ax
+    shl bx, 1
+    mov ax, cs:[game3d_kit_fog_near_table + bx]
+    pop bx
+    ret
+
+game3d_get_fog_far_depth:
+    push bx
+    call game3d_get_kit_index
+    xor ah, ah
+    mov bx, ax
+    shl bx, 1
+    mov ax, cs:[game3d_kit_fog_far_table + bx]
     pop bx
     ret
 
@@ -4499,10 +4562,10 @@ game3d_draw_shadow_at_projected_point:
     push si
     mov si, ax
     call game3d_get_scale_for_depth
-    mov cl, 5
+    mov cl, 6
     cmp al, 2
     jne game3d_shadow_size_ready
-    mov cl, 7
+    mov cl, 8
 
 game3d_shadow_size_ready:
     xor ax, ax
@@ -4513,8 +4576,8 @@ game3d_shadow_size_ready:
     shl ax, 1
     inc ax
     mov cx, ax
-    mov bp, 3
-    mov al, PAL_PANEL2
+    mov bp, 4
+    mov al, PAL_PANEL
     call fill_rect
     pop si
     pop bp
@@ -5771,10 +5834,12 @@ game3d_apply_room_face_palette:
 
     xor bh, bh
     shl bx, 1
-    mov ax, [scene3d_face_depth + bx]
-    cmp ax, GAME3D_FACE_DEPTH_FAR
+    mov dx, [scene3d_face_depth + bx]
+    call game3d_get_fog_far_depth
+    cmp dx, ax
     jg game3d_room_face_far
-    cmp ax, GAME3D_FACE_DEPTH_MID
+    call game3d_get_fog_near_depth
+    cmp dx, ax
     jg game3d_room_face_mid
     jmp game3d_room_face_palette_done
 

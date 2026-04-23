@@ -360,12 +360,12 @@
                 )
                 Chunks = @(
                     @{ Id = 'dock-west'; Zone = 'dock-ramp'; Bounds = '2,10,7,13'; Role = 'start-lane'; BaseHeight = 0; ShelfHeight = 0; RampDir = 'none'; CliffSide = 'north'; BridgeSpan = 'none'; LandmarkAnchor = '24,2'; PropBudget = 2 }
-                    @{ Id = 'dock-east'; Zone = 'dock-ramp'; Bounds = '8,10,12,13'; Role = 'intro-turn'; BaseHeight = 0; ShelfHeight = 64; RampDir = 'east'; CliffSide = 'north'; BridgeSpan = 'none'; LandmarkAnchor = '18,6'; PropBudget = 2 }
-                    @{ Id = 'relay-bend'; Zone = 'relay-loop'; Bounds = '10,8,16,11'; Role = 'route-read'; BaseHeight = 64; ShelfHeight = 96; RampDir = 'north'; CliffSide = 'east'; BridgeSpan = 'none'; LandmarkAnchor = '18,4'; PropBudget = 2 }
+                    @{ Id = 'dock-east'; Zone = 'dock-ramp'; Bounds = '8,10,12,13'; Role = 'intro-turn'; BaseHeight = 0; ShelfHeight = 64; RampDir = 'east'; CliffSide = 'north'; BridgeSpan = 'none'; LandmarkAnchor = '18,6'; PropBudget = 3 }
+                    @{ Id = 'relay-bend'; Zone = 'relay-loop'; Bounds = '10,8,16,11'; Role = 'route-read'; BaseHeight = 64; ShelfHeight = 96; RampDir = 'north'; CliffSide = 'east'; BridgeSpan = 'none'; LandmarkAnchor = '18,4'; PropBudget = 3 }
                     @{ Id = 'charge-teach'; Zone = 'charge-bridge'; Bounds = '6,11,12,13'; Role = 'dash-lesson'; BaseHeight = 64; ShelfHeight = 112; RampDir = 'north'; CliffSide = 'south'; BridgeSpan = 'east-west'; LandmarkAnchor = '10,12'; PropBudget = 2 }
                     @{ Id = 'vault-climb'; Zone = 'vault-terrace'; Bounds = '14,5,18,8'; Role = 'climb'; BaseHeight = 112; ShelfHeight = 176; RampDir = 'east'; CliffSide = 'north'; BridgeSpan = 'none'; LandmarkAnchor = '18,5'; PropBudget = 2 }
                     @{ Id = 'vault-key'; Zone = 'vault-terrace'; Bounds = '18,3,22,5'; Role = 'key-reveal'; BaseHeight = 176; ShelfHeight = 208; RampDir = 'north'; CliffSide = 'west'; BridgeSpan = 'none'; LandmarkAnchor = '18,4'; PropBudget = 3 }
-                    @{ Id = 'return-ramp'; Zone = 'return-span'; Bounds = '18,7,22,10'; Role = 'glide-setup'; BaseHeight = 128; ShelfHeight = 176; RampDir = 'west'; CliffSide = 'south'; BridgeSpan = 'none'; LandmarkAnchor = '23,3'; PropBudget = 2 }
+                    @{ Id = 'return-ramp'; Zone = 'return-span'; Bounds = '18,7,22,10'; Role = 'glide-setup'; BaseHeight = 128; ShelfHeight = 176; RampDir = 'west'; CliffSide = 'south'; BridgeSpan = 'none'; LandmarkAnchor = '23,3'; PropBudget = 3 }
                     @{ Id = 'return-lane'; Zone = 'return-span'; Bounds = '22,7,25,10'; Role = 'return-pressure'; BaseHeight = 96; ShelfHeight = 128; RampDir = 'east'; CliffSide = 'south'; BridgeSpan = 'none'; LandmarkAnchor = '23,2'; PropBudget = 2 }
                     @{ Id = 'gate-front'; Zone = 'storm-gate'; Bounds = '21,1,23,4'; Role = 'gate-read'; BaseHeight = 96; ShelfHeight = 144; RampDir = 'north'; CliffSide = 'west'; BridgeSpan = 'none'; LandmarkAnchor = '23,2'; PropBudget = 3 }
                     @{ Id = 'gate-arch'; Zone = 'storm-gate'; Bounds = '23,1,25,3'; Role = 'finish'; BaseHeight = 144; ShelfHeight = 176; RampDir = 'none'; CliffSide = 'south'; BridgeSpan = 'none'; LandmarkAnchor = '24,2'; PropBudget = 3 }
@@ -476,9 +476,9 @@
                 )
                 Chunks = @(
                     @{ Id = 'dock-lane'; Zone = 'rail-dock'; Bounds = '1,11,8,13'; Role = 'start-lane'; BaseHeight = 0; ShelfHeight = 32; RampDir = 'east'; CliffSide = 'north'; BridgeSpan = 'none'; LandmarkAnchor = '24,1'; PropBudget = 2 }
-                    @{ Id = 'crosslane-core'; Zone = 'crosslane'; Bounds = '8,7,15,10'; Role = 'crossfire'; BaseHeight = 32; ShelfHeight = 96; RampDir = 'north'; CliffSide = 'east'; BridgeSpan = 'east-west'; LandmarkAnchor = '16,7'; PropBudget = 2 }
+                    @{ Id = 'crosslane-core'; Zone = 'crosslane'; Bounds = '8,7,15,10'; Role = 'crossfire'; BaseHeight = 32; ShelfHeight = 96; RampDir = 'north'; CliffSide = 'east'; BridgeSpan = 'east-west'; LandmarkAnchor = '16,7'; PropBudget = 3 }
                     @{ Id = 'hinge-yard'; Zone = 'hinge-yard'; Bounds = '15,7,22,10'; Role = 'route-choice'; BaseHeight = 64; ShelfHeight = 128; RampDir = 'west'; CliffSide = 'south'; BridgeSpan = 'none'; LandmarkAnchor = '20,9'; PropBudget = 2 }
-                    @{ Id = 'upper-switch'; Zone = 'upper-switch'; Bounds = '8,1,20,6'; Role = 'switchback'; BaseHeight = 96; ShelfHeight = 160; RampDir = 'north'; CliffSide = 'west'; BridgeSpan = 'north-south'; LandmarkAnchor = '18,3'; PropBudget = 2 }
+                    @{ Id = 'upper-switch'; Zone = 'upper-switch'; Bounds = '8,1,20,6'; Role = 'switchback'; BaseHeight = 96; ShelfHeight = 160; RampDir = 'north'; CliffSide = 'west'; BridgeSpan = 'north-south'; LandmarkAnchor = '18,3'; PropBudget = 3 }
                     @{ Id = 'spur-run'; Zone = 'spur-run'; Bounds = '20,9,25,13'; Role = 'return-run'; BaseHeight = 64; ShelfHeight = 112; RampDir = 'east'; CliffSide = 'south'; BridgeSpan = 'none'; LandmarkAnchor = '22,11'; PropBudget = 2 }
                     @{ Id = 'breach-lock'; Zone = 'breach-lock'; Bounds = '21,1,25,4'; Role = 'finish'; BaseHeight = 128; ShelfHeight = 176; RampDir = 'north'; CliffSide = 'west'; BridgeSpan = 'none'; LandmarkAnchor = '24,1'; PropBudget = 3 }
                 )
@@ -582,9 +582,9 @@
                 )
                 Chunks = @(
                     @{ Id = 'coolant-dock'; Zone = 'coolant-dock'; Bounds = '1,11,8,13'; Role = 'start-lane'; BaseHeight = 0; ShelfHeight = 32; RampDir = 'east'; CliffSide = 'north'; BridgeSpan = 'none'; LandmarkAnchor = '24,1'; PropBudget = 2 }
-                    @{ Id = 'ember-loop'; Zone = 'ember-loop'; Bounds = '8,7,15,10'; Role = 'hazard-lesson'; BaseHeight = 32; ShelfHeight = 96; RampDir = 'north'; CliffSide = 'east'; BridgeSpan = 'none'; LandmarkAnchor = '14,5'; PropBudget = 2 }
+                    @{ Id = 'ember-loop'; Zone = 'ember-loop'; Bounds = '8,7,15,10'; Role = 'hazard-lesson'; BaseHeight = 32; ShelfHeight = 96; RampDir = 'north'; CliffSide = 'east'; BridgeSpan = 'none'; LandmarkAnchor = '14,5'; PropBudget = 3 }
                     @{ Id = 'heat-spine'; Zone = 'heat-spine'; Bounds = '15,7,22,10'; Role = 'pressure-lane'; BaseHeight = 64; ShelfHeight = 128; RampDir = 'west'; CliffSide = 'south'; BridgeSpan = 'east-west'; LandmarkAnchor = '20,9'; PropBudget = 2 }
-                    @{ Id = 'smelter-rise'; Zone = 'smelter-rise'; Bounds = '8,1,20,6'; Role = 'catwalk-climb'; BaseHeight = 96; ShelfHeight = 176; RampDir = 'north'; CliffSide = 'west'; BridgeSpan = 'north-south'; LandmarkAnchor = '20,3'; PropBudget = 2 }
+                    @{ Id = 'smelter-rise'; Zone = 'smelter-rise'; Bounds = '8,1,20,6'; Role = 'catwalk-climb'; BaseHeight = 96; ShelfHeight = 176; RampDir = 'north'; CliffSide = 'west'; BridgeSpan = 'north-south'; LandmarkAnchor = '20,3'; PropBudget = 3 }
                     @{ Id = 'slag-return'; Zone = 'slag-return'; Bounds = '20,9,25,13'; Role = 'return-run'; BaseHeight = 64; ShelfHeight = 112; RampDir = 'east'; CliffSide = 'south'; BridgeSpan = 'none'; LandmarkAnchor = '23,11'; PropBudget = 2 }
                     @{ Id = 'forge-gate'; Zone = 'forge-gate'; Bounds = '21,1,25,4'; Role = 'finish'; BaseHeight = 144; ShelfHeight = 192; RampDir = 'north'; CliffSide = 'west'; BridgeSpan = 'none'; LandmarkAnchor = '24,1'; PropBudget = 3 }
                 )
@@ -688,9 +688,9 @@
                 )
                 Chunks = @(
                     @{ Id = 'vault-dock'; Zone = 'vault-dock'; Bounds = '1,11,8,13'; Role = 'start-lane'; BaseHeight = 0; ShelfHeight = 32; RampDir = 'east'; CliffSide = 'north'; BridgeSpan = 'none'; LandmarkAnchor = '23,1'; PropBudget = 2 }
-                    @{ Id = 'corridor-spine'; Zone = 'corridor-spine'; Bounds = '8,7,16,10'; Role = 'main-corridor'; BaseHeight = 32; ShelfHeight = 96; RampDir = 'north'; CliffSide = 'east'; BridgeSpan = 'none'; LandmarkAnchor = '15,9'; PropBudget = 2 }
+                    @{ Id = 'corridor-spine'; Zone = 'corridor-spine'; Bounds = '8,7,16,10'; Role = 'main-corridor'; BaseHeight = 32; ShelfHeight = 96; RampDir = 'north'; CliffSide = 'east'; BridgeSpan = 'none'; LandmarkAnchor = '15,9'; PropBudget = 3 }
                     @{ Id = 'seal-run'; Zone = 'seal-run'; Bounds = '16,7,22,10'; Role = 'lockdown'; BaseHeight = 64; ShelfHeight = 128; RampDir = 'west'; CliffSide = 'south'; BridgeSpan = 'east-west'; LandmarkAnchor = '21,7'; PropBudget = 2 }
-                    @{ Id = 'warden-rise'; Zone = 'warden-rise'; Bounds = '8,1,20,6'; Role = 'warden-overlook'; BaseHeight = 112; ShelfHeight = 192; RampDir = 'north'; CliffSide = 'west'; BridgeSpan = 'north-south'; LandmarkAnchor = '19,3'; PropBudget = 3 }
+                    @{ Id = 'warden-rise'; Zone = 'warden-rise'; Bounds = '8,1,20,6'; Role = 'warden-overlook'; BaseHeight = 112; ShelfHeight = 192; RampDir = 'north'; CliffSide = 'west'; BridgeSpan = 'north-south'; LandmarkAnchor = '19,3'; PropBudget = 4 }
                     @{ Id = 'key-branch'; Zone = 'key-branch'; Bounds = '18,1,23,6'; Role = 'key-route'; BaseHeight = 160; ShelfHeight = 208; RampDir = 'east'; CliffSide = 'south'; BridgeSpan = 'none'; LandmarkAnchor = '21,3'; PropBudget = 2 }
                     @{ Id = 'final-breach'; Zone = 'final-breach'; Bounds = '21,1,25,4'; Role = 'finish'; BaseHeight = 176; ShelfHeight = 224; RampDir = 'north'; CliffSide = 'west'; BridgeSpan = 'none'; LandmarkAnchor = '23,1'; PropBudget = 3 }
                 )
@@ -812,8 +812,8 @@
             @{ From = 'glide-return'; To = 'portal-plaza'; Subject = 'portal-arch'; Summary = 'The final glide points directly back into the portal silhouette.' }
         )
         CaptureAnchors = @{
-            Beauty = 'vault-attract-a'
-            Action = 'thermal-attract-b'
+            Beauty = 'switchyard-attract-a'
+            Action = 'vault-attract-b'
         }
         Key = @(
             '18,4'

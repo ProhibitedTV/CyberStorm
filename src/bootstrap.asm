@@ -17,11 +17,12 @@ TEXT_MODE_80X25 equ 0003h
 ; existing VGA presenter instead of aborting the boot flow.
 ENHANCED_VBE_MODE equ 0111h
 ENHANCED_VBE_LINEAR_FLAG equ 4000h
-CODE_BANK_SEG equ 6000h
-TEXTURE_BANK_SEG equ 6800h
-MAP_BANK_SEG equ 7000h
-PRESENT_BANK_SEG equ 7800h
-GEOMETRY_BANK_SEG equ 8000h
+CODE_BANK_SEG equ 2000h
+MAP_BANK_SEG equ 2800h
+PRESENT_BANK_SEG equ 3000h
+GEOMETRY_BANK_SEG equ 3800h
+TEXTURE_BANK_SEG equ 4000h
+TEXTURE_BANK_B_SEG equ 5000h
 BOOT_DISK_HEADS equ 16
 BOOT_DISK_SECTORS_PER_TRACK equ 63
 
@@ -102,6 +103,12 @@ load_stage2_and_banks:
     mov cx, TEXTURE_BANK_SECTORS
     mov dx, TEXTURE_BANK_SEG
     lea si, text_texture_bank_error
+    call load_payload_or_fail
+
+    mov ax, TEXTURE_BANK_B_LBA
+    mov cx, TEXTURE_BANK_B_SECTORS
+    mov dx, TEXTURE_BANK_B_SEG
+    lea si, text_texture_bank_b_error
     call load_payload_or_fail
 
     mov ax, MAP_BANK_LBA
@@ -439,6 +446,7 @@ vbe_info_buffer db 256 dup (0)
 text_stage2_error db 'CYBERSTORM STAGE2 LOAD ERROR', 0
 text_code_bank_error db 'CYBERSTORM CODE BANK ERROR', 0
 text_texture_bank_error db 'CYBERSTORM TEXTURE BANK ERROR', 0
+text_texture_bank_b_error db 'CYBERSTORM TEXTURE BANK B ERROR', 0
 text_map_bank_error db 'CYBERSTORM MAP BANK ERROR', 0
 text_presentation_bank_error db 'CYBERSTORM PRESENTATION BANK ERROR', 0
 text_geometry_bank_error db 'CYBERSTORM GEOMETRY BANK ERROR', 0

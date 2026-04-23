@@ -376,7 +376,7 @@ function Invoke-DemoCapture {
     $logPath = Join-Path $ArtifactDir ("showcase-{0}-{1}.log" -f $reportRole, $demoId)
 
     Stop-VmIfRunning -Name $VmName
-    Ensure-VmRegistered -Name $VmName
+    Ensure-VmRegistered -Name $VmName -Context ("showcase demo registration ({0})" -f $demoId)
     Stop-VmIfRunning -Name $VmName
     Invoke-ChildBuild -ExtraArguments @(
         '-DebugBuild',
@@ -385,9 +385,9 @@ function Invoke-DemoCapture {
         $DemoIndex.ToString()
     )
     Invoke-DeployVm -Name $VmName
-    Start-HeadlessVm -Name $VmName
+    Start-HeadlessVm -Name $VmName -Context ("showcase demo startvm ({0})" -f $demoId)
     Start-Sleep -Seconds (Get-CaptureWaitSeconds -Demo $Demo)
-    Invoke-VmScreenshot -Name $VmName -OutputPath $rawShotPath
+    Invoke-VmScreenshot -Name $VmName -OutputPath $rawShotPath -Context ("showcase demo screenshot ({0})" -f $demoId)
     Copy-Item -LiteralPath $rawShotPath -Destination $shotPath -Force
     if (-not (Test-Path -LiteralPath $vboxLogPath)) {
         throw ("VBox log was not found after showcase demo boot: {0}" -f $vboxLogPath)
@@ -417,7 +417,7 @@ function Invoke-DirectGameplayCapture {
     $logPath = Join-Path $ArtifactDir ("showcase-{0}-direct.log" -f $Role)
 
     Stop-VmIfRunning -Name $VmName
-    Ensure-VmRegistered -Name $VmName
+    Ensure-VmRegistered -Name $VmName -Context ("showcase direct registration ({0})" -f $Role)
     Stop-VmIfRunning -Name $VmName
     Invoke-ChildBuild -ExtraArguments @(
         '-DebugBuild',
@@ -431,9 +431,9 @@ function Invoke-DirectGameplayCapture {
         '4660'
     )
     Invoke-DeployVm -Name $VmName
-    Start-HeadlessVm -Name $VmName
+    Start-HeadlessVm -Name $VmName -Context ("showcase direct startvm ({0})" -f $Role)
     Start-Sleep -Seconds $waitSeconds
-    Invoke-VmScreenshot -Name $VmName -OutputPath $rawShotPath
+    Invoke-VmScreenshot -Name $VmName -OutputPath $rawShotPath -Context ("showcase direct screenshot ({0})" -f $Role)
     Copy-Item -LiteralPath $rawShotPath -Destination $shotPath -Force
     if (-not (Test-Path -LiteralPath $vboxLogPath)) {
         throw ("VBox log was not found after direct gameplay boot: {0}" -f $vboxLogPath)
@@ -463,13 +463,13 @@ function Invoke-SplashTitleCapture {
     $waitSeconds = Get-CaptureWaitSeconds -Demo ([pscustomobject]@{ CaptureTicks = $CaptureTick })
 
     Stop-VmIfRunning -Name $VmName
-    Ensure-VmRegistered -Name $VmName
+    Ensure-VmRegistered -Name $VmName -Context 'showcase splash registration'
     Stop-VmIfRunning -Name $VmName
     Invoke-ChildBuild -ExtraArguments @()
     Invoke-DeployVm -Name $VmName
-    Start-HeadlessVm -Name $VmName
+    Start-HeadlessVm -Name $VmName -Context 'showcase splash startvm'
     Start-Sleep -Seconds $waitSeconds
-    Invoke-VmScreenshot -Name $VmName -OutputPath $rawShotPath
+    Invoke-VmScreenshot -Name $VmName -OutputPath $rawShotPath -Context 'showcase splash screenshot'
     Copy-Item -LiteralPath $rawShotPath -Destination $shotPath -Force
     if (-not (Test-Path -LiteralPath $vboxLogPath)) {
         throw ("VBox log was not found after splash title boot: {0}" -f $vboxLogPath)
@@ -531,7 +531,7 @@ try {
         $showcaseCapturePlanByRole[[string]$capturePlanEntry.Role] = $capturePlanEntry
     }
 
-    Ensure-VmRegistered -Name $VmName
+    Ensure-VmRegistered -Name $VmName -Context 'showcase session bootstrap'
     $runtimeVerifyReport = Join-Path $buildDir 'cyberstorm-runtime-verify-report.txt'
     $runtimeVerifyArgs = @(
         '-Assembler', $Assembler,

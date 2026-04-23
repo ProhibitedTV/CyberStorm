@@ -214,7 +214,7 @@ function Capture-SmokeWindow {
     $lastSample = $null
     $maxCaptureAttempts = 3
     for ($attempt = 1; $attempt -le $maxCaptureAttempts; $attempt++) {
-        Invoke-VmScreenshot -Name $VmName -OutputPath $OutputPath
+        Invoke-VmScreenshot -Name $VmName -OutputPath $OutputPath -Context ("vm smoke screenshot ({0})" -f $Label.ToLowerInvariant())
         if (-not (Test-Path -LiteralPath $OutputPath)) {
             throw ("{0} screenshot was not created: {1}" -f $Label, $OutputPath)
         }
@@ -278,6 +278,17 @@ $geometry = @{
     G = Get-AsmEquValue -SourcePath $ConstantsSourcePath -Name 'SMOKE_SENTINEL_G'
     B = Get-AsmEquValue -SourcePath $ConstantsSourcePath -Name 'SMOKE_SENTINEL_B'
 }
+$gameplayGeometry = @{
+    ScreenW = Get-AsmEquValue -SourcePath $ConstantsSourcePath -Name 'SCREEN_W'
+    ScreenH = Get-AsmEquValue -SourcePath $ConstantsSourcePath -Name 'GAMEPLAY_SCREEN_H'
+    X = $geometry.X
+    Y = $geometry.Y
+    W = $geometry.W
+    H = $geometry.H
+    R = $geometry.R
+    G = $geometry.G
+    B = $geometry.B
+}
 $startupCaptureSeconds = 2
 $titleCaptureSeconds = [Math]::Min(($WaitSeconds - 2), 6)
 if ($titleCaptureSeconds -le $startupCaptureSeconds) {
@@ -290,14 +301,14 @@ $caughtException = $null
 
 try {
     Stop-VmIfRunning -Name $VmName
-    Ensure-VmRegistered -Name $VmName
+    Ensure-VmRegistered -Name $VmName -Context 'vm smoke registration'
     Stop-VmIfRunning -Name $VmName
 
     Invoke-ChildBuild -ExtraArguments @('-DebugRenderSentinels')
     $restoreRelease = $true
     Invoke-DeployVm -Name $VmName
 
-    Start-HeadlessVm -Name $VmName
+    Start-HeadlessVm -Name $VmName -Context 'vm smoke startvm'
     Start-Sleep -Seconds $startupCaptureSeconds
     $startupCapture = Capture-SmokeWindow -Label 'Startup' -OutputPath $startupScreenshotPath -Geometry $geometry
 
@@ -323,7 +334,7 @@ try {
         throw 'VBox log never reached the hard-disk boot path.'
     }
 
-    $attractCapture = Capture-SmokeWindow -Label 'Attract' -OutputPath $screenshotPath -Geometry $geometry
+    $attractCapture = Capture-SmokeWindow -Label 'Attract' -OutputPath $screenshotPath -Geometry $gameplayGeometry
 
     Copy-Item -LiteralPath $vboxLogPath -Destination $logCopyPath -Force
     $logLines = Get-Content -LiteralPath $logCopyPath

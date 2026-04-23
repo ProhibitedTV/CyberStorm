@@ -48,6 +48,12 @@ draw_rect_outline:
 fill_rect:
     cmp byte ptr [machine_kernel_active], 0
     je fill_rect_reference
+    cmp dx, GAMEPLAY_BACKBUFFER_SPLIT_Y
+    jae fill_rect_reference
+    mov ax, dx
+    add ax, bp
+    cmp ax, GAMEPLAY_BACKBUFFER_SPLIT_Y
+    ja fill_rect_reference
     push ax
     push bx
     push cx
@@ -81,17 +87,14 @@ fill_rect_reference:
     push di
     push bp
     mov si, cx
-    call compute_offset
 
 fill_rect_row:
     or bp, bp
     jz fill_rect_done
-    push di
+    call compute_offset
     mov cx, si
     rep stosb
-    pop di
-    add di, SCREEN_W
-    sub di, si
+    inc dx
     dec bp
     jmp fill_rect_row
 
@@ -116,15 +119,32 @@ put_pixel:
     pop bx
     ret
 
+get_backbuffer_row_ptr:
+    push bx
+    push cx
+    mov ax, BACKBUFFER_SEG
+    mov cx, dx
+    cmp cx, GAMEPLAY_BACKBUFFER_SPLIT_Y
+    jb get_backbuffer_row_ptr_ready
+    mov ax, BACKBUFFER_HIGH_SEG
+    sub cx, GAMEPLAY_BACKBUFFER_SPLIT_Y
+
+get_backbuffer_row_ptr_ready:
+    mov di, cx
+    shl di, 6
+    mov bx, cx
+    shl bx, 8
+    add di, bx
+    pop cx
+    pop bx
+    ret
+
 compute_offset:
-    ; Map (bx, dx) onto the current linear framebuffer selected in ES.
+    ; Map (bx, dx) onto the active gameplay-aware backbuffer row and select the
+    ; correct backing segment before returning ES:DI.
     push ax
-    mov ax, dx
-    shl ax, 6
-    mov di, ax
-    mov ax, dx
-    shl ax, 8
-    add di, ax
+    call get_backbuffer_row_ptr
+    mov es, ax
     add di, bx
     pop ax
     ret

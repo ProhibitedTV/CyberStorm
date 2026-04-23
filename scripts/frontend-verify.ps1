@@ -341,11 +341,11 @@ function Invoke-FrontendVerifyRun {
     }
 
     Stop-VmIfRunning -Name $VmName
-    Ensure-VmRegistered -Name $VmName
+    Ensure-VmRegistered -Name $VmName -Context ("frontend verify registration ({0})" -f $Scenario.Id)
     Stop-VmIfRunning -Name $VmName
     Invoke-ChildBuild -ExtraArguments $buildArgs
     Invoke-DeployVm -Name $VmName
-    Start-HeadlessVm -Name $VmName
+    Start-HeadlessVm -Name $VmName -Context ("frontend verify startvm ({0})" -f $Scenario.Id)
     $maxCaptureAttempts = 4
     $retryDelaySeconds = 2
     $totalWaitSeconds = $Scenario.WaitSeconds
@@ -360,7 +360,7 @@ function Invoke-FrontendVerifyRun {
             $totalWaitSeconds += $retryDelaySeconds
         }
 
-        Invoke-VBoxManage -Arguments @('controlvm', $VmName, 'screenshotpng', $shotPath) | Out-Null
+        Invoke-VmScreenshot -Name $VmName -OutputPath $shotPath -Context ("frontend verify screenshot ({0})" -f $Scenario.Id)
         if (-not (Test-Path -LiteralPath $vboxLogPath)) {
             throw ("VBox log was not found after frontend verification boot: {0}" -f $vboxLogPath)
         }
@@ -477,7 +477,7 @@ $caughtException = $null
 $restoreRelease = $true
 
 try {
-    Ensure-VmRegistered -Name $VmName
+    Ensure-VmRegistered -Name $VmName -Context 'frontend verify session bootstrap'
     foreach ($scenario in $scenarios) {
         $result = Invoke-FrontendVerifyRun -Scenario $scenario -ArtifactDir $artifactDir -Geometry $geometry -StateNames $stateNames
         $artifactPaths.Add($result.ScreenshotPath)

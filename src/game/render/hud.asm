@@ -28,6 +28,16 @@ ENDIF
 IF DEBUG_OVERLAY
     call render_debug_overlay
 ENDIF
+IF DEBUG_SMOKE_SENTINEL
+    mov bx, SMOKE_SENTINEL_X
+    mov dx, SMOKE_SENTINEL_Y
+    mov cx, SMOKE_SENTINEL_W
+    mov bp, SMOKE_SENTINEL_H
+    mov al, SMOKE_SENTINEL_COLOR
+    ; Gameplay frames can take a different presenter path than frontend scenes,
+    ; so stamp the smoke marker directly into the gameplay backbuffer too.
+    call fill_rect_reference
+ENDIF
 IF DEBUG_RENDER_SENTINELS
     mov bx, 16
     mov dx, 16
@@ -38,52 +48,52 @@ ENDIF
 
 draw_game_panels:
     mov bx, 8
-    mov dx, 6
+    mov dx, GAME_HUD_TOP_PANEL_Y
     mov cx, 304
-    mov bp, 14
+    mov bp, GAME_HUD_TOP_PANEL_H
     mov al, PAL_PANEL
     call fill_rect
 
     mov bx, 8
     mov dx, 24
     mov cx, 304
-    mov bp, 152
+    mov bp, GAME3D_VIEW_H
     mov al, PAL_PANEL
     call fill_rect
 
     mov bx, 8
-    mov dx, 176
+    mov dx, GAME_HUD_BOTTOM_PANEL_Y
     mov cx, 304
-    mov bp, 16
+    mov bp, GAME_HUD_BOTTOM_PANEL_H
     mov al, PAL_PANEL
     call fill_rect
 
     call get_sector_accent_color
     mov bx, 6
-    mov dx, 4
+    mov dx, GAME_HUD_TOP_OUTLINE_Y
     mov cx, 308
     mov bp, 18
     call draw_rect_outline
 
     mov bx, 6
-    mov dx, 22
+    mov dx, GAME_HUD_VIEW_OUTLINE_Y
     mov cx, 308
-    mov bp, 156
+    mov bp, GAME3D_VIEW_H + 4
     call draw_rect_outline
 
     mov bx, 6
-    mov dx, 174
+    mov dx, GAME_HUD_BOTTOM_OUTLINE_Y
     mov cx, 308
     mov bp, 20
     call draw_rect_outline
 
     mov bx, 8
-    mov dx, 23
+    mov dx, GAME_HUD_VIEW_DIVIDER_Y
     mov cx, 304
     mov bp, 1
     call fill_rect
 
-    mov dx, 175
+    mov dx, GAME_HUD_BOTTOM_RULE_Y
     call fill_rect
     ret
 
@@ -138,19 +148,19 @@ ENDIF
     call draw_demo_status
 
     mov bx, 188
-    mov dx, 175
+    mov dx, GAME_HUD_STATUS_LABEL_Y
     mov si, offset shield_text
     mov ah, PAL_WHITE
     call draw_text_small
 
     mov bx, 188
-    mov dx, 183
+    mov dx, GAME_HUD_STATUS_SECONDARY_Y
     mov si, offset pulse_text
     mov ah, PAL_WHITE
     call draw_text_small
 
     mov bx, 266
-    mov dx, 175
+    mov dx, GAME_HUD_STATUS_LABEL_Y
     mov si, offset gate_text
     mov ah, PAL_WHITE
     call draw_text_small
@@ -162,13 +172,13 @@ ENDIF
     call draw_message_banner
     call get_message_text_ptr
     mov bx, 18
-    mov dx, 176
+    mov dx, GAME_HUD_MESSAGE_Y
     call get_message_text_color
     mov ah, al
     call draw_text_small
 
     mov bx, 18
-    mov dx, 184
+    mov dx, GAME_HUD_CONTROLS_Y
     cmp byte ptr [demo_active], 0
     je game_status_controls_normal
     mov si, offset demo_takeover_text
@@ -246,13 +256,13 @@ render_adventure_status:
     call draw_digit_small
 
     mov bx, 18
-    mov dx, 175
+    mov dx, GAME_HUD_STATUS_LABEL_Y
     mov si, offset portal_text
     mov ah, PAL_WHITE
     call draw_text_small
 
     mov bx, 52
-    mov dx, 175
+    mov dx, GAME_HUD_STATUS_LABEL_Y
     mov si, offset portal_locked_text
     mov bl, [exit_x]
     mov bh, [exit_y]
@@ -265,19 +275,19 @@ render_adventure_status:
 
 adventure_status_portal_ready:
     mov bx, 52
-    mov dx, 175
+    mov dx, GAME_HUD_STATUS_LABEL_Y
     call draw_text_small
 
     call draw_message_banner
     call get_message_text_ptr
     mov bx, 18
-    mov dx, 184
+    mov dx, GAME_HUD_CONTROLS_Y
     call get_message_text_color
     mov ah, al
     call draw_text_small
 
     mov bx, 118
-    mov dx, 184
+    mov dx, GAME_HUD_CONTROLS_Y
     mov si, offset adventure_controls_text
     call get_sector_accent_color
     mov ah, al
@@ -459,7 +469,7 @@ sector_title_vault:
 
 draw_shield_meter:
     mov bx, 224
-    mov dx, 175
+    mov dx, GAME_HUD_STATUS_LABEL_Y
     mov cx, 5
     xor di, di
 
@@ -521,7 +531,7 @@ shield_meter_next:
 
 draw_pulse_meter:
     mov bx, 224
-    mov dx, 183
+    mov dx, GAME_HUD_STATUS_SECONDARY_Y
     mov cx, 5
     xor di, di
 
@@ -588,13 +598,13 @@ pulse_meter_next:
 
 draw_gate_meter:
     mov bx, 264
-    mov dx, 184
+    mov dx, GAME_HUD_GATE_METER_Y
     mov cx, 36
     mov bp, 4
     mov al, PAL_PANEL2
     call fill_rect
     mov bx, 264
-    mov dx, 184
+    mov dx, GAME_HUD_GATE_METER_Y
     mov cx, 36
     mov bp, 4
     test byte ptr [anim_phase], 1
@@ -610,7 +620,7 @@ gate_meter_locked_ready:
     cmp byte ptr [data_count], SHARD_COUNT
     jne gate_meter_partial
     mov bx, 264
-    mov dx, 184
+    mov dx, GAME_HUD_GATE_METER_Y
     mov cx, 36
     mov bp, 4
     test byte ptr [anim_phase], 1
@@ -631,7 +641,7 @@ gate_meter_partial:
     mov cx, ax
     jcxz gate_meter_done
     mov bx, 264
-    mov dx, 184
+    mov dx, GAME_HUD_GATE_METER_Y
     mov bp, 4
     cmp byte ptr [feedback_timer], 0
     je gate_meter_partial_ready
@@ -671,7 +681,7 @@ draw_message_banner:
     cmp byte ptr [feedback_timer], 0
     je message_banner_done
     mov bx, 16
-    mov dx, 174
+    mov dx, GAME_HUD_BANNER_Y
     mov cx, 164
     mov bp, 8
     call get_message_banner_color
@@ -701,7 +711,7 @@ banner_glint_sound:
     add bx, 24
 
 banner_glint_ready:
-    mov dx, 175
+    mov dx, GAME_HUD_BANNER_GLINT_Y
     mov cx, 14
     mov bp, 1
     mov al, PAL_WHITE

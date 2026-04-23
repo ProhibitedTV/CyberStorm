@@ -94,6 +94,15 @@ refresh_vbe_flat_fs_real:
     ret
 
 present_frame_vbe:
+    cmp byte ptr [game_state], STATE_PLAYING
+    jne present_frame_vbe_generic
+    cmp word ptr [video_output_w], ENHANCED_SCREEN_W
+    jne present_frame_vbe_generic
+    cmp word ptr [video_output_h], ENHANCED_SCREEN_H
+    jne present_frame_vbe_generic
+    jmp present_frame_vbe_gameplay
+
+present_frame_vbe_generic:
     push eax
     push ebx
     push ecx
@@ -146,6 +155,74 @@ present_frame_vbe_same_source:
     pop edi
     pop esi
     pop edx
+    pop ecx
+    pop ebx
+    pop eax
+    ret
+
+present_frame_vbe_gameplay:
+    push eax
+    push ebx
+    push ecx
+    push edx
+    push esi
+    push edi
+    push ds
+    call refresh_vbe_flat_fs
+    call wait_for_vblank
+    mov edi, dword ptr [video_lfb_addr]
+    xor bx, bx
+    mov cx, GAMEPLAY_SCREEN_H
+
+present_frame_vbe_gameplay_row:
+    push cx
+    push bx
+    mov dx, bx
+    call get_backbuffer_row_ptr
+    mov ds, ax
+    mov si, di
+    call present_frame_vbe_emit_row_2x
+    mov dx, bx
+    call get_backbuffer_row_ptr
+    mov ds, ax
+    mov si, di
+    call present_frame_vbe_emit_row_2x
+    pop bx
+    inc bx
+    pop cx
+    loop present_frame_vbe_gameplay_row
+
+    pop ds
+    pop edi
+    pop esi
+    pop edx
+    pop ecx
+    pop ebx
+    pop eax
+    ret
+
+present_frame_vbe_emit_row_2x:
+    push eax
+    push ebx
+    push ecx
+
+    mov cx, SCREEN_W
+
+present_frame_vbe_emit_row_2x_pixel:
+    xor bx, bx
+    mov bl, [si]
+    inc si
+    shl bx, 1
+    mov ax, [palette_rgb565_table + bx]
+    mov word ptr fs:[edi], ax
+    mov word ptr fs:[edi + 2], ax
+    add edi, 4
+    loop present_frame_vbe_emit_row_2x_pixel
+
+    movzx eax, word ptr [video_pitch]
+    sub eax, SCREEN_W * 4
+    add edi, eax
+
     pop ecx
     pop ebx
     pop eax

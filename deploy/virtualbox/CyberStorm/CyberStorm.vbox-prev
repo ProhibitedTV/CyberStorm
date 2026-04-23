@@ -8,40 +8,21 @@
 ** Written by VirtualBox 7.2.6 (r172322)
 -->
 <VirtualBox xmlns="http://www.virtualbox.org/" version="1.19-windows">
-  <Machine uuid="{d1c7e74d-be58-4d8a-becf-84a4c2bb6e80}" name="CyberStorm" OSType="Other" snapshotFolder="Snapshots" lastStateChange="2026-04-22T15:49:55Z">
-    <MediaRegistry>
-      <HardDisks>
-        <HardDisk uuid="{7220bbbd-d9fd-4bf8-a71a-3cab7e0d6a9f}" location="C:/Users/RhythmicCarnage/Desktop/CyberStorm/deploy/virtualbox/CyberStorm.vdi" format="VDI" type="Normal"/>
-      </HardDisks>
-    </MediaRegistry>
+  <Machine uuid="{a8803921-669b-4512-b48d-56a25d45067b}" name="CyberStorm" OSType="Other" snapshotFolder="Snapshots" lastStateChange="2026-04-23T21:04:06Z">
     <Hardware>
-      <Memory RAMSize="64"/>
-      <Boot>
-        <Order position="1" device="HardDisk"/>
-        <Order position="2" device="None"/>
-        <Order position="3" device="None"/>
-        <Order position="4" device="None"/>
-      </Boot>
-      <Display controller="VBoxSVGA" VRAMSize="16"/>
+      <Memory RAMSize="1024"/>
       <Firmware/>
       <BIOS>
         <SmbiosUuidLittleEndian enabled="true"/>
         <AutoSerialNumGen enabled="true"/>
       </BIOS>
       <Network>
-        <Adapter slot="0" enabled="true" MACAddress="080027AC22F7">
+        <Adapter slot="0" enabled="true" MACAddress="0800272B5429">
           <NAT/>
         </Adapter>
       </Network>
-      <AudioAdapter controller="SB16" useDefault="true" driver="WAS" enabled="true" enabledOut="true"/>
+      <AudioAdapter useDefault="true" driver="WAS" enabled="true"/>
       <Clipboard/>
-      <StorageControllers>
-        <StorageController name="IDE" type="PIIX4" PortCount="2" useHostIOCache="true" Bootable="true">
-          <AttachedDevice type="HardDisk" hotpluggable="false" port="0" device="0">
-            <Image uuid="{7220bbbd-d9fd-4bf8-a71a-3cab7e0d6a9f}"/>
-          </AttachedDevice>
-        </StorageController>
-      </StorageControllers>
       <CPU>
         <HardwareVirtExLargePages enabled="true"/>
         <PAE enabled="false"/>

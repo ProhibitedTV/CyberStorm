@@ -94,34 +94,6 @@ function Get-AsmEquValue {
 }
 
 
-function Invoke-DeployVm {
-    param([string]$Name)
-
-    & powershell -ExecutionPolicy Bypass -File $DeployScriptPath -VmName $Name | Out-Null
-    if ($LASTEXITCODE -ne 0) {
-        throw ("Deploy script failed for VM '{0}'." -f $Name)
-    }
-}
-
-function Ensure-VmRegistered {
-    param([string]$Name)
-
-    try {
-        Get-VBoxMachineInfoLines -Name $Name | Out-Null
-    } catch {
-        if ($_.Exception.Message -match 'Could not find a registered machine named|VBOX_E_OBJECT_NOT_FOUND') {
-            Invoke-DeployVm -Name $Name
-            return
-        }
-
-        throw
-    }
-
-    if (Test-VmNeedsEnhancedRedeploy -Name $Name) {
-        Invoke-DeployVm -Name $Name
-    }
-}
-
 function Get-StepRepeatCount {
     param(
         $Step,
@@ -385,6 +357,49 @@ function Get-RuntimeVerifyFailureReason {
     }
 }
 
+function Get-GameStateName {
+    param([int]$Code)
+
+    switch ($Code -band 0xFF) {
+        0 { return 'TITLE' }
+        1 { return 'PLAYING' }
+        2 { return 'WIN' }
+        3 { return 'LOSE' }
+        4 { return 'SPLASH' }
+        5 { return 'VERIFY_PASS' }
+        6 { return 'VERIFY_FAIL' }
+        default { return ("STATE_{0}" -f ($Code -band 0xFF)) }
+    }
+}
+
+function Convert-RuntimeVerifyDiagnostics {
+    param(
+        [int]$ActionWord,
+        [int]$ScriptWord,
+        [int]$ProgressWord,
+        [int]$FlagsWord
+    )
+
+    $packedState = (($FlagsWord -shr 8) -band 0xFF)
+    $gameState = (($packedState -shr 4) -band 0x0F)
+
+    return [pscustomobject]@{
+        ActionCode = ($ActionWord -band 0x00FF)
+        ActionTicks = (($ActionWord -shr 8) -band 0x00FF)
+        ScriptPointer = ($ScriptWord -band 0xFFFF)
+        StateTicks = ($ProgressWord -band 0x00FF)
+        VerifyActionIndex = (($ProgressWord -shr 8) -band 0x00FF)
+        VerifyActionPending = ($FlagsWord -band 0x00FF)
+        DemoActive = ($packedState -band 0x0F)
+        GameState = $gameState
+        GameStateName = (Get-GameStateName -Code $gameState)
+        RawAction = (Format-Hex16 $ActionWord)
+        RawScriptPointer = (Format-Hex16 $ScriptWord)
+        RawProgress = (Format-Hex16 $ProgressWord)
+        RawFlags = (Format-Hex16 $FlagsWord)
+    }
+}
+
 function Get-RenderLabel {
     param(
         [string]$Mode,
@@ -498,7 +513,7 @@ function Invoke-RuntimeVerifyRun {
         [string]$ReplayReportPath
     )
 
-    $suffix = if ($CorruptExpectation.IsPresent) { 'fail' } else { 'pass' }
+    $suffix = if ($CorruptExpectation.IsPresent) { 'expect-fail' } else { 'expect-pass' }
     $demoId = [string]$Demo.Id
     $renderLabel = Get-RenderLabel -Mode $RenderMode -Stage $RenderStage
     $shotPath = Join-Path $ArtifactDir ("runtime-verify-{0}-{1}-{2}.png" -f $renderLabel, $demoId, $suffix)
@@ -526,7 +541,7 @@ function Invoke-RuntimeVerifyRun {
     }
 
     Stop-VmIfRunning -Name $VmName
-    Ensure-VmRegistered -Name $VmName
+    Ensure-VmRegistered -Name $VmName -Context ("runtime verify registration ({0})" -f $demoId)
     Stop-VmIfRunning -Name $VmName
     Invoke-ChildBuild -ExtraArguments $buildArgs
     Invoke-DeployVm -Name $VmName
@@ -542,8 +557,12 @@ function Invoke-RuntimeVerifyRun {
     $failureReasonCode = 0
     $failureReason = 'NONE'
     $markerResolved = $false
+    $diagActionWord = 0
+    $diagScriptWord = 0
+    $diagProgressWord = 0
+    $diagFlagsWord = 0
 
-    Start-HeadlessVm -Name $VmName
+    Start-HeadlessVm -Name $VmName -Context ("runtime verify startvm ({0})" -f $demoId)
     Start-Sleep -Seconds $initialWaitSeconds
     for ($attempt = 1; $attempt -le $maxCaptureAttempts; $attempt++) {
         if ($attempt -gt 1) {
@@ -551,7 +570,7 @@ function Invoke-RuntimeVerifyRun {
             $totalWaitSeconds += $retryDelaySeconds
         }
 
-        Invoke-VmScreenshot -Name $VmName -OutputPath $shotPath
+        Invoke-VmScreenshot -Name $VmName -OutputPath $shotPath -Context ("runtime verify screenshot ({0})" -f $demoId)
         if (-not (Test-Path -LiteralPath $vboxLogPath)) {
             throw ("VBox log was not found after runtime verification boot: {0}" -f $vboxLogPath)
         }
@@ -592,6 +611,38 @@ function Invoke-RuntimeVerifyRun {
                     -BitPitch $Geometry.BitPitch `
                     -ScreenW $Geometry.ScreenW `
                     -ScreenH $Geometry.ScreenH
+                $diagActionWord = Get-SignatureFromBitmap `
+                    -Bitmap $bitmap `
+                    -StartX $Geometry.BitsX `
+                    -StartY $Geometry.DiagActionBitsY `
+                    -BitSize $Geometry.BitSize `
+                    -BitPitch $Geometry.BitPitch `
+                    -ScreenW $Geometry.ScreenW `
+                    -ScreenH $Geometry.ScreenH
+                $diagScriptWord = Get-SignatureFromBitmap `
+                    -Bitmap $bitmap `
+                    -StartX $Geometry.BitsX `
+                    -StartY $Geometry.DiagScriptBitsY `
+                    -BitSize $Geometry.BitSize `
+                    -BitPitch $Geometry.BitPitch `
+                    -ScreenW $Geometry.ScreenW `
+                    -ScreenH $Geometry.ScreenH
+                $diagProgressWord = Get-SignatureFromBitmap `
+                    -Bitmap $bitmap `
+                    -StartX $Geometry.BitsX `
+                    -StartY $Geometry.DiagProgressBitsY `
+                    -BitSize $Geometry.BitSize `
+                    -BitPitch $Geometry.BitPitch `
+                    -ScreenW $Geometry.ScreenW `
+                    -ScreenH $Geometry.ScreenH
+                $diagFlagsWord = Get-SignatureFromBitmap `
+                    -Bitmap $bitmap `
+                    -StartX $Geometry.BitsX `
+                    -StartY $Geometry.DiagFlagsBitsY `
+                    -BitSize $Geometry.BitSize `
+                    -BitPitch $Geometry.BitPitch `
+                    -ScreenW $Geometry.ScreenW `
+                    -ScreenH $Geometry.ScreenH
                 if (($statusSample.Status -eq 'FAIL') -and ($failureReasonCode -eq 0) -and ($expectedSignature -ne $observedSignature)) {
                     $failureReasonCode = 3
                 }
@@ -615,6 +666,10 @@ function Invoke-RuntimeVerifyRun {
                     $observedSignature = 0
                     $failureReasonCode = 0
                     $failureReason = 'NONE'
+                    $diagActionWord = 0
+                    $diagScriptWord = 0
+                    $diagProgressWord = 0
+                    $diagFlagsWord = 0
                 }
             }
         } finally {
@@ -639,6 +694,11 @@ function Invoke-RuntimeVerifyRun {
     }
 
     $status = [string]$statusSample.Status
+    $diagnostics = Convert-RuntimeVerifyDiagnostics `
+        -ActionWord $diagActionWord `
+        -ScriptWord $diagScriptWord `
+        -ProgressWord $diagProgressWord `
+        -FlagsWord $diagFlagsWord
 
     return [pscustomobject]@{
         Name = [string]$Demo.Name
@@ -656,6 +716,7 @@ function Invoke-RuntimeVerifyRun {
         FailDistance = [int]$statusSample.FailDistance
         ExpectedSignature = (Format-Hex16 $expectedSignature)
         ObservedSignature = (Format-Hex16 $observedSignature)
+        Diagnostics = $diagnostics
         ScreenshotPath = $shotPath
         LogPath = $logPath
         WaitSeconds = $totalWaitSeconds
@@ -682,6 +743,10 @@ $geometry = @{
     ExpectBitsY = Get-AsmEquValue -SourcePath $ConstantsSourcePath -Name 'VERIFY_EXPECT_BITS_Y'
     ObsBitsY = Get-AsmEquValue -SourcePath $ConstantsSourcePath -Name 'VERIFY_OBS_BITS_Y'
     ReasonBitsY = Get-AsmEquValue -SourcePath $ConstantsSourcePath -Name 'VERIFY_REASON_BITS_Y'
+    DiagActionBitsY = Get-AsmEquValue -SourcePath $ConstantsSourcePath -Name 'VERIFY_DIAG_ACTION_BITS_Y'
+    DiagScriptBitsY = Get-AsmEquValue -SourcePath $ConstantsSourcePath -Name 'VERIFY_DIAG_SCRIPT_BITS_Y'
+    DiagProgressBitsY = Get-AsmEquValue -SourcePath $ConstantsSourcePath -Name 'VERIFY_DIAG_PROGRESS_BITS_Y'
+    DiagFlagsBitsY = Get-AsmEquValue -SourcePath $ConstantsSourcePath -Name 'VERIFY_DIAG_FLAGS_BITS_Y'
     BitSize = Get-AsmEquValue -SourcePath $ConstantsSourcePath -Name 'VERIFY_BIT_SIZE'
     BitPitch = Get-AsmEquValue -SourcePath $ConstantsSourcePath -Name 'VERIFY_BIT_PITCH'
 }
@@ -739,7 +804,7 @@ $restoreRelease = $true
 
 try {
     try {
-        Ensure-VmRegistered -Name $VmName
+        Ensure-VmRegistered -Name $VmName -Context 'runtime verify session bootstrap'
         foreach ($runtimeDemo in $runtimeDemos) {
             $result = Invoke-RuntimeVerifyRun -Demo $runtimeDemo.Demo -DemoIndex ([int]$runtimeDemo.DemoIndex) -ArtifactDir $artifactDir -Geometry $geometry -RenderMode $RenderMode -RenderStage $RenderStage -ReplayReportPath $replayReportPath
             $runtimeResults.Add($result)
@@ -763,6 +828,15 @@ try {
             $lines.Add(("  Observed signature: {0}" -f $result.ObservedSignature))
             $lines.Add(("  Screenshot: {0}" -f $result.ScreenshotPath))
             $lines.Add(("  VBox log: {0}" -f $result.LogPath))
+            $lines.Add(("  Demo action code: {0}" -f (Format-Hex16 $result.Diagnostics.ActionCode)))
+            $lines.Add(("  Demo action ticks: {0}" -f $result.Diagnostics.ActionTicks))
+            $lines.Add(("  Demo script ptr: {0}" -f $result.Diagnostics.RawScriptPointer))
+            $lines.Add(("  State ticks: {0}" -f $result.Diagnostics.StateTicks))
+            $lines.Add(("  Verify action index: {0}" -f $result.Diagnostics.VerifyActionIndex))
+            $lines.Add(("  Verify action pending: {0}" -f $result.Diagnostics.VerifyActionPending))
+            $lines.Add(("  Demo active: {0}" -f $result.Diagnostics.DemoActive))
+            $lines.Add(("  Game state: {0} ({1})" -f $result.Diagnostics.GameStateName, $result.Diagnostics.GameState))
+            $lines.Add(("  Diagnostic words: {0} {1} {2} {3}" -f $result.Diagnostics.RawAction, $result.Diagnostics.RawScriptPointer, $result.Diagnostics.RawProgress, $result.Diagnostics.RawFlags))
             if ($result.HostReplayBlock.Count -gt 0) {
                 $lines.Add('  Host diagnostics:')
                 foreach ($hostLine in $result.HostReplayBlock) {

@@ -26,9 +26,11 @@ if (-not (Test-Path $diskImage)) {
 
 New-Item -ItemType Directory -Force -Path $base | Out-Null
 
+Invoke-VBoxPreflight -Context 'deploy vm preflight'
+
 $vmExists = $false
 try {
-    Get-VBoxMachineInfoLines -Name $VmName | Out-Null
+    Get-VBoxMachineInfoLines -Name $VmName -Context 'deploy vm initial showvminfo' | Out-Null
     $vmExists = $true
 } catch {
     $vmExists = $false
@@ -71,4 +73,4 @@ Invoke-VBoxManage -Arguments @(
 )
 Invoke-VBoxManage -Arguments @('storagectl', $VmName, '--name', 'IDE', '--add', 'ide')
 Invoke-VBoxManage -Arguments @('storageattach', $VmName, '--storagectl', 'IDE', '--port', '0', '--device', '0', '--type', 'hdd', '--medium', $vmDiskImage)
-Get-VBoxMachineInfoLines -Name $VmName
+Get-VBoxMachineInfoLines -Name $VmName -Context 'deploy vm final showvminfo'

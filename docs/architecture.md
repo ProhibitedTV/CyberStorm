@@ -30,13 +30,14 @@ Practical consequences:
 | `7000:0000` | Map bank | Read-only authored map payload loaded by stage two after boot. |
 | `7800:0000` | Presentation bank | Read-only scene-kit payload for splash, title, attract/demo, sector-entry, and end screens. |
 | `8000:0000` | Geometry bank | Read-only low-poly scene, prop, actor, and gameplay-kit payload for the 3D renderer. |
-| `9000:0000` | Backbuffer | 64,000-byte linear framebuffer used before presenting to VGA. |
+| `8600:0000` | Gameplay backbuffer high rows | Extra `320x40` gameplay rows used when the live run renders to the taller `320x240` surface. |
+| `9000:0000` | Backbuffer | Primary `320x200` framebuffer plus the low rows for all frontend scenes and legacy VGA presentation. |
 | VBE LFB (physical) | Enhanced present target | Final `640x480x16` output target when the bootstrap VBE handoff succeeds; the legacy VGA presenter remains the compatibility fallback. |
 
 Register assumptions that matter:
 
 - `DS = CS` before any stage-two code touches globals.
-- `ES = BACKBUFFER_SEG` for most rendering helpers.
+- `ES` usually starts the frame at `BACKBUFFER_SEG`, but gameplay row-address helpers may switch to `BACKBUFFER_HIGH_SEG` for rows `200..239`.
 - String operations assume `DF = 0`.
 - The default runtime leaves BIOS keyboard services installed and polls `INT 16h` once per frame.
 
@@ -111,8 +112,8 @@ Render flow:
 
 - [src/game/render/scenes.asm](../src/game/render/scenes.asm) selects the scene for the current `game_state`.
 - In the default release build, splash/title/sector-entry/end scenes go through the grouped flat-shaded 3D path, and gameplay now uses the room-mesh 3D renderer with a chase-style camera plus sector-specific viewport mood fills. `DEBUG_SCENE_RENDER_MODE = 0` plus `DEBUG_GAMEPLAY_RENDER_MODE = 0` keep the older 2D scene/gameplay implementation available as a compile-time oracle.
-- The frame always renders into `BACKBUFFER_SEG`.
-- [src/game/render/framebuffer.asm](../src/game/render/framebuffer.asm) waits for vertical blank, then copies the backbuffer to `A000:0000`.
+- Frontend scenes render into the primary `320x200` backbuffer, while live gameplay now renders into a split `320x240` surface backed by `BACKBUFFER_SEG` plus `BACKBUFFER_HIGH_SEG`.
+- [src/game/render/framebuffer.asm](../src/game/render/framebuffer.asm) waits for vertical blank, then either downscales the gameplay frame to legacy VGA or presents the exact-2x gameplay image through the VBE lane.
 - Primitive draw helpers compute offsets into whatever segment is currently loaded into `ES`.
 
 ## 6. Map, Tile, And Entity Conventions
@@ -302,8 +303,8 @@ That signature is computed after every consumed demo action and compared against
 
 Its contract is:
 
-- use the release VM smoke lane's title-frame capture for the branding shot
-- use the configured AdventureRealm beauty/action anchors from `assets\sectors.psd1` for the public gameplay captures (currently `subgrid-attract-a` / `subgrid-attract-b`)
+- use the verified splash lockup for the branding shot
+- use the configured AdventureRealm beauty/action anchors from `assets\sectors.psd1` for the public gameplay captures (currently `switchyard-attract-a` / `vault-attract-b`)
 - write stable captures under `build\showcase\`
 - publish a machine-readable verified-gallery manifest under `build\showcase\`
 - let `build.ps1` refresh the README slots from that manifest when capture succeeds, or preserve the last verified gallery when capture is unavailable

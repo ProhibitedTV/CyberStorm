@@ -2843,18 +2843,17 @@ function Write-GeneratedTextureBank {
     param(
         [object[]]$TextureEntries,
         [string]$BinaryPath,
+        [string]$BinaryPathB,
         [string]$ReportPath
     )
 
     $atlasW = 256
-    $atlasH = 192
+    $atlasH = 256
     $effectW = 64
     $effectH = 64
     $tileSize = 32
     $tilesPerRow = [int]($atlasW / $tileSize)
-
-    $atlas = New-Object byte[] ($atlasW * $atlasH)
-    $effects = New-Object byte[] ($effectW * $effectH)
+    $tilesPerColumn = [int]($atlasH / $tileSize)
 
     $uniqueEntries = New-Object 'System.Collections.Generic.List[object]'
     $seen = New-Object 'System.Collections.Generic.HashSet[string]' ([System.StringComparer]::OrdinalIgnoreCase)
@@ -2868,8 +2867,20 @@ function Write-GeneratedTextureBank {
             continue
         }
 
-        if ($seen.Add($key)) {
-            $uniqueEntries.Add($entry)
+        $page = if ($entry.PSObject.Properties.Name -contains 'TexturePage') { ([string]$entry.TexturePage).Trim().ToUpperInvariant() } else { 'A' }
+        if ([string]::IsNullOrWhiteSpace($page)) {
+            $page = 'A'
+        }
+
+        $entryId = ("{0}:{1}" -f $page, $key)
+        if ($seen.Add($entryId)) {
+            $uniqueEntries.Add([pscustomobject]@{
+                TextureKey = $key
+                Base = [int]$entry.Base
+                Dither = [int]$entry.Dither
+                ShadeMode = [string]$entry.ShadeMode
+                TexturePage = $page
+            })
         }
     }
 
@@ -2879,135 +2890,215 @@ function Write-GeneratedTextureBank {
             Base = 7
             Dither = 6
             ShadeMode = 'affine'
+            TexturePage = 'A'
         })
     }
 
-    $textureCapacity = ($tilesPerRow * [int]($atlasH / $tileSize))
-    if ($uniqueEntries.Count -gt $textureCapacity) {
-        throw ("Texture atlas supports at most {0} unique texture keys, but geometry referenced {1}." -f $textureCapacity, $uniqueEntries.Count)
-    }
+    $buildTexturePage = {
+        param(
+            [string]$PageLabel,
+            [object[]]$Entries,
+            [bool]$ReserveEffects
+        )
 
-    $summary = New-Object 'System.Collections.Generic.List[string]'
-    for ($textureIndex = 0; $textureIndex -lt $uniqueEntries.Count; $textureIndex++) {
-        $entry = $uniqueEntries[$textureIndex]
-        $tileX = ($textureIndex % $tilesPerRow) * $tileSize
-        $tileY = [int][Math]::Floor($textureIndex / $tilesPerRow) * $tileSize
-        $base = [byte]([int]$entry.Base -band 0xFF)
-        $dither = [byte]([int]$entry.Dither -band 0xFF)
-        $key = ([string]$entry.TextureKey).Trim().ToLowerInvariant()
+        $atlas = New-Object byte[] ($atlasW * $atlasH)
+        $effects = New-Object byte[] ($effectW * $effectH)
+        $reservedEffectTiles = if ($ReserveEffects) {
+            @(
+                @{ Col = 6; Row = 0 }
+                @{ Col = 7; Row = 0 }
+                @{ Col = 6; Row = 1 }
+                @{ Col = 7; Row = 1 }
+            )
+        } else {
+            @()
+        }
 
-        for ($y = 0; $y -lt $tileSize; $y++) {
-            for ($x = 0; $x -lt $tileSize; $x++) {
-                $color = $base
-                switch -Regex ($key) {
-                    'grate|grid' {
-                        if ((($x % 6) -eq 0) -or (($y % 6) -eq 0)) { $color = $dither }
-                        elseif (((($x * 5) + ($y * 3)) % 17) -lt 2) { $color = [byte](($base + 1) -band 0xFF) }
-                    }
-                    'metal|steel|brush|panel|truss|catwalk|duct|slot|under' {
-                        if (((($x * 3) + $y) % 9) -lt 3) { $color = $dither }
-                        elseif ((($x + ($y * 2)) % 13) -eq 0) { $color = [byte](($base + 1) -band 0xFF) }
-                    }
-                    'concrete|noir|damp|rib' {
-                        if (((($x * 7) + ($y * 11)) % 19) -lt 5) { $color = $dither }
-                        elseif (((($x * 5) + ($y * 2)) % 23) -eq 0) { $color = [byte](($base + 1) -band 0xFF) }
-                    }
-                    'grime|oil' {
-                        if (((($x * 5) + ($y * 7)) % 16) -lt 5) { $color = $dither }
-                        elseif (((($x * 2) + ($y * 3)) % 19) -eq 0) { $color = [byte](($base + 1) -band 0xFF) }
-                    }
-                    'hazard' {
-                        if (((($x + $y) % 10) -lt 4) -or (((($x -shl 1) + $y) % 17) -eq 0)) { $color = $dither }
-                    }
-                    'emissive|strip|rail|relay|uplink' {
-                        if ((($x % 8) -lt 2) -or (($y % 12) -eq 0)) { $color = $dither }
-                        elseif (((($x * 3) + $y) % 21) -eq 0) { $color = [byte](($base + 1) -band 0xFF) }
-                    }
-                    'furnace|slag' {
-                        if (((($x * 5) + ($y * 3)) % 9) -lt 4) { $color = $dither } else { $color = [byte](($base + 1) -band 0xFF) }
-                    }
-                    'vault|seal|cold' {
-                        if (((($x * 2) + ($y * 5)) % 15) -lt 4) { $color = $dither }
-                        elseif ((($x + ($y * 2)) % 17) -eq 0) { $color = [byte](($base + 1) -band 0xFF) }
-                    }
-                    'logo|glass' {
-                        if (((($x * 2) + ($y * 3)) % 15) -lt 4) { $color = $dither }
-                        elseif ((($x + $y) % 11) -eq 0) { $color = [byte](($base + 1) -band 0xFF) }
-                    }
-                    'grass|meadow' {
-                        if ((($x + $y) % 7) -eq 0) { $color = $dither }
-                        elseif (($y % 8) -eq 0) { $color = [byte](($base + 1) -band 0xFF) }
-                    }
-                    'stone|cliff|tower|portal' {
-                        if (((($x * 3) + ($y * 5)) % 11) -lt 4) { $color = $dither }
-                    }
-                    'bridge|wood|bark|trunk' {
-                        if (($x % 6) -lt 2) { $color = $dither }
-                    }
-                    'banner|warm' {
-                        if (($x % 8) -lt 3) { $color = $dither }
-                    }
-                    'lava|hot' {
-                        if (((($x * 5) + ($y * 3)) % 9) -lt 4) { $color = $dither } else { $color = [byte](($base + 1) -band 0xFF) }
-                    }
-                    'leaf|canopy' {
-                        if (((($x * $x) + ($y * 3)) % 13) -lt 5) { $color = $dither }
-                    }
-                    'gem' {
-                        if ((($x + $y) % 6) -lt 2) { $color = $dither } else { $color = [byte](($base + 1) -band 0xFF) }
-                    }
-                    default {
-                        if ((($x + $y) % 4) -eq 0) { $color = $dither }
+        $availableTileOrigins = New-Object 'System.Collections.Generic.List[object]'
+        for ($tileRow = 0; $tileRow -lt $tilesPerColumn; $tileRow++) {
+            for ($tileCol = 0; $tileCol -lt $tilesPerRow; $tileCol++) {
+                $reservedTile = $false
+                foreach ($effectTile in $reservedEffectTiles) {
+                    if ($effectTile.Col -eq $tileCol -and $effectTile.Row -eq $tileRow) {
+                        $reservedTile = $true
+                        break
                     }
                 }
 
-                $atlas[(($tileY + $y) * $atlasW) + $tileX + $x] = $color
+                if (-not $reservedTile) {
+                    $availableTileOrigins.Add([pscustomobject]@{
+                        X = $tileCol * $tileSize
+                        Y = $tileRow * $tileSize
+                    })
+                }
             }
         }
 
-        $summary.Add(("{0}@{1},{2}" -f $key, $tileX, $tileY))
-    }
+        $textureCapacity = $availableTileOrigins.Count
+        if (@($Entries).Count -gt $textureCapacity) {
+            throw ("Texture page {0} supports at most {1} unique texture keys, but geometry referenced {2}." -f $PageLabel, $textureCapacity, @($Entries).Count)
+        }
 
-    for ($y = 0; $y -lt $effectH; $y++) {
-        for ($x = 0; $x -lt $effectW; $x++) {
-            $color = if (((($x - 32) * ($x - 32)) + (($y - 32) * ($y - 32))) -lt 400) { 7 } else { 0 }
-            if ((($x + $y) % 5) -eq 0) {
-                $color = 8
+        $summary = New-Object 'System.Collections.Generic.List[string]'
+        $keySummary = New-Object 'System.Collections.Generic.List[string]'
+        for ($textureIndex = 0; $textureIndex -lt @($Entries).Count; $textureIndex++) {
+            $entry = $Entries[$textureIndex]
+            $tileOrigin = $availableTileOrigins[$textureIndex]
+            $tileX = [int]$tileOrigin.X
+            $tileY = [int]$tileOrigin.Y
+            $base = [byte]([int]$entry.Base -band 0xFF)
+            $dither = [byte]([int]$entry.Dither -band 0xFF)
+            $key = ([string]$entry.TextureKey).Trim().ToLowerInvariant()
+            $keySummary.Add($key)
+
+            for ($y = 0; $y -lt $tileSize; $y++) {
+                for ($x = 0; $x -lt $tileSize; $x++) {
+                    $color = $base
+                    switch -Regex ($key) {
+                        'grate|grid' {
+                            if ((($x % 6) -eq 0) -or (($y % 6) -eq 0)) { $color = $dither }
+                            elseif (((($x * 5) + ($y * 3)) % 17) -lt 2) { $color = [byte](($base + 1) -band 0xFF) }
+                        }
+                        'metal|steel|brush|panel|truss|catwalk|duct|slot|under|hinge|trench|skyline|occluder' {
+                            if (((($x * 3) + $y) % 9) -lt 3) { $color = $dither }
+                            elseif ((($x + ($y * 2)) % 13) -eq 0) { $color = [byte](($base + 1) -band 0xFF) }
+                        }
+                        'concrete|noir|damp|rib' {
+                            if (((($x * 7) + ($y * 11)) % 19) -lt 5) { $color = $dither }
+                            elseif (((($x * 5) + ($y * 2)) % 23) -eq 0) { $color = [byte](($base + 1) -band 0xFF) }
+                        }
+                        'grime|oil|soot|shadow' {
+                            if (((($x * 5) + ($y * 7)) % 16) -lt 5) { $color = $dither }
+                            elseif (((($x * 2) + ($y * 3)) % 19) -eq 0) { $color = [byte](($base + 1) -band 0xFF) }
+                        }
+                        'hazard' {
+                            if (((($x + $y) % 10) -lt 4) -or (((($x -shl 1) + $y) % 17) -eq 0)) { $color = $dither }
+                        }
+                        'emissive|strip|rail|relay|uplink' {
+                            if ((($x % 8) -lt 2) -or (($y % 12) -eq 0)) { $color = $dither }
+                            elseif (((($x * 3) + $y) % 21) -eq 0) { $color = [byte](($base + 1) -band 0xFF) }
+                        }
+                        'furnace|slag|hot' {
+                            if (((($x * 5) + ($y * 3)) % 9) -lt 4) { $color = $dither } else { $color = [byte](($base + 1) -band 0xFF) }
+                        }
+                        'vault|seal|cold' {
+                            if (((($x * 2) + ($y * 5)) % 15) -lt 4) { $color = $dither }
+                            elseif ((($x + ($y * 2)) % 17) -eq 0) { $color = [byte](($base + 1) -band 0xFF) }
+                        }
+                        'logo|glass' {
+                            if (((($x * 2) + ($y * 3)) % 15) -lt 4) { $color = $dither }
+                            elseif ((($x + $y) % 11) -eq 0) { $color = [byte](($base + 1) -band 0xFF) }
+                        }
+                        'grass|meadow' {
+                            if ((($x + $y) % 7) -eq 0) { $color = $dither }
+                            elseif (($y % 8) -eq 0) { $color = [byte](($base + 1) -band 0xFF) }
+                        }
+                        'stone|cliff|tower|portal' {
+                            if (((($x * 3) + ($y * 5)) % 11) -lt 4) { $color = $dither }
+                        }
+                        'bridge|wood|bark|trunk' {
+                            if (($x % 6) -lt 2) { $color = $dither }
+                        }
+                        'banner|warm' {
+                            if (($x % 8) -lt 3) { $color = $dither }
+                        }
+                        'leaf|canopy' {
+                            if (((($x * $x) + ($y * 3)) % 13) -lt 5) { $color = $dither }
+                        }
+                        'gem' {
+                            if ((($x + $y) % 6) -lt 2) { $color = $dither } else { $color = [byte](($base + 1) -band 0xFF) }
+                        }
+                        default {
+                            if ((($x + $y) % 4) -eq 0) { $color = $dither }
+                        }
+                    }
+
+                    $atlas[(($tileY + $y) * $atlasW) + $tileX + $x] = $color
+                }
             }
 
-            $effects[($y * $effectW) + $x] = [byte]$color
+            $summary.Add(("{0}@{1},{2}" -f $key, $tileX, $tileY))
+        }
+
+        if ($ReserveEffects) {
+            for ($y = 0; $y -lt $effectH; $y++) {
+                for ($x = 0; $x -lt $effectW; $x++) {
+                    $color = if (((($x - 32) * ($x - 32)) + (($y - 32) * ($y - 32))) -lt 400) { 7 } else { 0 }
+                    if ((($x + $y) % 5) -eq 0) {
+                        $color = 8
+                    }
+
+                    $effects[($y * $effectW) + $x] = [byte]$color
+                }
+            }
+
+            for ($effectY = 0; $effectY -lt $effectH; $effectY++) {
+                for ($effectX = 0; $effectX -lt $effectW; $effectX++) {
+                    $destX = 192 + $effectX
+                    $destY = $effectY
+                    $atlas[($destY * $atlasW) + $destX] = $effects[($effectY * $effectW) + $effectX]
+                }
+            }
+        }
+
+        return [pscustomobject]@{
+            Label = $PageLabel
+            AtlasBytes = $atlas
+            TextureCount = @($Entries).Count
+            TextureCapacity = $textureCapacity
+            Summary = if ($summary.Count -gt 0) { $summary -join ' | ' } else { 'none' }
+            TextureKeys = @($keySummary.ToArray())
         }
     }
 
-    $bankPayload = New-Object byte[] ($atlas.Length + $effects.Length)
-    [Array]::Copy($atlas, 0, $bankPayload, 0, $atlas.Length)
-    [Array]::Copy($effects, 0, $bankPayload, $atlas.Length, $effects.Length)
+    $pageAEntries = @($uniqueEntries | Where-Object { $_.TexturePage -ne 'B' })
+    $pageBEntries = @($uniqueEntries | Where-Object { $_.TexturePage -eq 'B' })
+    $pageA = & $buildTexturePage -PageLabel 'A' -Entries $pageAEntries -ReserveEffects $true
+    $pageB = & $buildTexturePage -PageLabel 'B' -Entries $pageBEntries -ReserveEffects $false
 
     $reportLines = @(
         'CyberStorm Texture Bank Report'
         ("Generated: {0}" -f (Get-Date -Format 'yyyy-MM-dd HH:mm:ss K'))
         ("Atlas: {0}x{1}" -f $atlasW, $atlasH)
-        ("Effects page: {0}x{1}" -f $effectW, $effectH)
-        ("Texture entries: {0}" -f $uniqueEntries.Count)
-        ("Summary: {0}" -f ($summary -join ' | '))
-        ("SHA256: {0}" -f (Get-ByteArraySha256Hex -Bytes $bankPayload))
+        ("Texture entries: {0} total" -f $uniqueEntries.Count)
+        ("Page A: {0}/{1} used" -f $pageA.TextureCount, $pageA.TextureCapacity)
+        ("Page A summary: {0}" -f $pageA.Summary)
+        ("Page A SHA256: {0}" -f (Get-ByteArraySha256Hex -Bytes $pageA.AtlasBytes))
+        ("Page A effects page: {0}x{1} packed into atlas reserve at 192,0" -f $effectW, $effectH)
+        ("Page B: {0}/{1} used" -f $pageB.TextureCount, $pageB.TextureCapacity)
+        ("Page B summary: {0}" -f $pageB.Summary)
+        ("Page B SHA256: {0}" -f (Get-ByteArraySha256Hex -Bytes $pageB.AtlasBytes))
     )
 
-    [IO.File]::WriteAllBytes($BinaryPath, $bankPayload)
+    [IO.File]::WriteAllBytes($BinaryPath, $pageA.AtlasBytes)
+    [IO.File]::WriteAllBytes($BinaryPathB, $pageB.AtlasBytes)
     Set-Content -LiteralPath $ReportPath -Encoding ascii -Value $reportLines
-    Assert-PathExists -Path $BinaryPath -Label 'texture bank payload'
+    Assert-PathExists -Path $BinaryPath -Label 'texture bank A payload'
+    Assert-PathExists -Path $BinaryPathB -Label 'texture bank B payload'
     Assert-PathExists -Path $ReportPath -Label 'texture bank report'
 
     return [pscustomobject]@{
         BinaryPath = $BinaryPath
+        BinaryPathB = $BinaryPathB
         ReportPath = $ReportPath
-        TotalBytes = $bankPayload.Length
+        TotalBytes = $pageA.AtlasBytes.Length + $pageB.AtlasBytes.Length
+        PageABytes = $pageA.AtlasBytes.Length
+        PageBBytes = $pageB.AtlasBytes.Length
         AtlasWidth = $atlasW
         AtlasHeight = $atlasH
-        TextureCapacity = $textureCapacity
+        TextureCapacity = $pageA.TextureCapacity + $pageB.TextureCapacity
         TextureCount = $uniqueEntries.Count
-        Summary = ($summary -join ' | ')
-        BankPayloadBytes = $bankPayload
+        PageATextureCapacity = $pageA.TextureCapacity
+        PageBTextureCapacity = $pageB.TextureCapacity
+        PageATextureCount = $pageA.TextureCount
+        PageBTextureCount = $pageB.TextureCount
+        PageASummary = $pageA.Summary
+        PageBSummary = $pageB.Summary
+        Summary = ("A[{0}] | B[{1}]" -f $pageA.Summary, $pageB.Summary)
+        PageATextureKeys = @($pageA.TextureKeys)
+        PageBTextureKeys = @($pageB.TextureKeys)
+        BankPayloadBytes = $pageA.AtlasBytes
+        BankPayloadBytesB = $pageB.AtlasBytes
     }
 }
 
@@ -3078,6 +3169,11 @@ function Write-GeneratedGeometryInclude {
             throw ("Geometry material '{0}' in {1} must use lowercase TextureKey slugs. Found '{2}'." -f $key, $SourcePath, $material['TextureKey'])
         }
 
+        $texturePage = if ($material.ContainsKey('TexturePage')) { ([string]$material['TexturePage']).Trim().ToUpperInvariant() } else { 'A' }
+        if ($texturePage -notin @('A', 'B')) {
+            throw ("Geometry material '{0}' in {1} must use TexturePage 'A' or 'B'. Found '{2}'." -f $key, $SourcePath, $texturePage)
+        }
+
         $shadeMode = if ($material.ContainsKey('ShadeMode')) { ([string]$material['ShadeMode']).Trim().ToLowerInvariant() } else { 'flat' }
         if ($shadeMode -notin @('flat', 'affine')) {
             throw ("Geometry material '{0}' in {1} must use ShadeMode 'flat' or 'affine'. Found '{2}'." -f $key, $SourcePath, $shadeMode)
@@ -3088,6 +3184,7 @@ function Write-GeneratedGeometryInclude {
             Base = $base
             Dither = $dither
             TextureKey = $textureKey
+            TexturePage = $texturePage
             ShadeMode = $shadeMode
         }
     }
@@ -3095,31 +3192,64 @@ function Write-GeneratedGeometryInclude {
     $texturedMaterials = @($materialMap.Values | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_.TextureKey) } | Sort-Object -Property TextureKey, Key)
     $textureIndexMap = @{}
     $orderedTextureEntries = New-Object 'System.Collections.Generic.List[object]'
+    $texturePageCounts = @{
+        A = 0
+        B = 0
+    }
     foreach ($textureMaterial in $texturedMaterials) {
         $orderedTextureKey = ([string]$textureMaterial.TextureKey).Trim().ToLowerInvariant()
-        if (-not $textureIndexMap.ContainsKey($orderedTextureKey)) {
-            $textureIndexMap[$orderedTextureKey] = $orderedTextureEntries.Count
-            $orderedTextureEntries.Add($textureMaterial)
+        $orderedTexturePage = ([string]$textureMaterial.TexturePage).Trim().ToUpperInvariant()
+        $orderedTextureId = ("{0}:{1}" -f $orderedTexturePage, $orderedTextureKey)
+        if (-not $textureIndexMap.ContainsKey($orderedTextureId)) {
+            $slotIndex = [int]$texturePageCounts[$orderedTexturePage]
+            if ($slotIndex -gt 63) {
+                throw ("Geometry texture page {0} in {1} exceeds the 64-tile per-page slot budget while packing '{2}'." -f $orderedTexturePage, $SourcePath, $orderedTextureKey)
+            }
+
+            $textureIndexMap[$orderedTextureId] = [pscustomobject]@{
+                Page = $orderedTexturePage
+                Slot = $slotIndex
+            }
+            $texturePageCounts[$orderedTexturePage] = $slotIndex + 1
+            $orderedTextureEntries.Add([pscustomobject]@{
+                TextureKey = $orderedTextureKey
+                Base = $textureMaterial.Base
+                Dither = $textureMaterial.Dither
+                ShadeMode = $textureMaterial.ShadeMode
+                TexturePage = $orderedTexturePage
+            })
         }
     }
 
     $resolveTextureIndex = {
         param(
             [string]$TextureKey,
-            [string]$ShadeMode
+            [string]$ShadeMode,
+            [string]$TexturePage
         )
 
         $resolvedTextureKey = ([string]$TextureKey).Trim().ToLowerInvariant()
         $resolvedShadeMode = ([string]$ShadeMode).Trim().ToLowerInvariant()
+        $resolvedTexturePage = ([string]$TexturePage).Trim().ToUpperInvariant()
+        if ([string]::IsNullOrWhiteSpace($resolvedTexturePage)) {
+            $resolvedTexturePage = 'A'
+        }
         if ([string]::IsNullOrWhiteSpace($resolvedTextureKey) -or $resolvedShadeMode -ne 'affine') {
             return 255
         }
 
-        if (-not $textureIndexMap.ContainsKey($resolvedTextureKey)) {
-            throw ("Geometry referenced texture key '{0}' in {1}, but no atlas entry was generated for it." -f $resolvedTextureKey, $SourcePath)
+        $resolvedTextureId = ("{0}:{1}" -f $resolvedTexturePage, $resolvedTextureKey)
+        if (-not $textureIndexMap.ContainsKey($resolvedTextureId)) {
+            throw ("Geometry referenced texture key '{0}' on texture page {1} in {2}, but no atlas entry was generated for it." -f $resolvedTextureKey, $resolvedTexturePage, $SourcePath)
         }
 
-        return [int]$textureIndexMap[$resolvedTextureKey]
+        $resolvedEntry = $textureIndexMap[$resolvedTextureId]
+        $encodedTextureIndex = [int]$resolvedEntry.Slot
+        if ($resolvedEntry.Page -eq 'B') {
+            $encodedTextureIndex += 64
+        }
+
+        return $encodedTextureIndex
     }
 
     $lines = New-Object 'System.Collections.Generic.List[string]'
@@ -3134,6 +3264,7 @@ function Write-GeneratedGeometryInclude {
     $sceneReportMap = @{}
     $meshSummary = New-Object 'System.Collections.Generic.List[string]'
     $kitSummary = New-Object 'System.Collections.Generic.List[string]'
+    $kitPageBSummary = New-Object 'System.Collections.Generic.List[string]'
     $sceneVertexOffsets = New-Object 'System.Collections.Generic.List[string]'
     $sceneVertexCounts = New-Object 'System.Collections.Generic.List[string]'
     $sceneFaceOffsets = New-Object 'System.Collections.Generic.List[string]'
@@ -3191,6 +3322,21 @@ function Write-GeneratedGeometryInclude {
     $kitLaneColor = New-Object 'System.Collections.Generic.List[string]'
     $kitLaneDither = New-Object 'System.Collections.Generic.List[string]'
     $kitLaneTexture = New-Object 'System.Collections.Generic.List[string]'
+    $kitCeilingColor = New-Object 'System.Collections.Generic.List[string]'
+    $kitCeilingDither = New-Object 'System.Collections.Generic.List[string]'
+    $kitCeilingTexture = New-Object 'System.Collections.Generic.List[string]'
+    $kitSoffitColor = New-Object 'System.Collections.Generic.List[string]'
+    $kitSoffitDither = New-Object 'System.Collections.Generic.List[string]'
+    $kitSoffitTexture = New-Object 'System.Collections.Generic.List[string]'
+    $kitLaneTrimColor = New-Object 'System.Collections.Generic.List[string]'
+    $kitLaneTrimDither = New-Object 'System.Collections.Generic.List[string]'
+    $kitLaneTrimTexture = New-Object 'System.Collections.Generic.List[string]'
+    $kitFarMassColor = New-Object 'System.Collections.Generic.List[string]'
+    $kitFarMassDither = New-Object 'System.Collections.Generic.List[string]'
+    $kitFarMassTexture = New-Object 'System.Collections.Generic.List[string]'
+    $kitAccentColor = New-Object 'System.Collections.Generic.List[string]'
+    $kitAccentDither = New-Object 'System.Collections.Generic.List[string]'
+    $kitAccentTexture = New-Object 'System.Collections.Generic.List[string]'
     $kitCliffColor = New-Object 'System.Collections.Generic.List[string]'
     $kitCliffDither = New-Object 'System.Collections.Generic.List[string]'
     $kitCliffTexture = New-Object 'System.Collections.Generic.List[string]'
@@ -3225,6 +3371,8 @@ function Write-GeneratedGeometryInclude {
     $kitHorizonBColor = New-Object 'System.Collections.Generic.List[string]'
     $kitHorizonY = New-Object 'System.Collections.Generic.List[string]'
     $kitWobbleStrength = New-Object 'System.Collections.Generic.List[string]'
+    $kitFogNear = New-Object 'System.Collections.Generic.List[string]'
+    $kitFogFar = New-Object 'System.Collections.Generic.List[string]'
     $shotRigModes = @('BaseChase', 'MoveSettle', 'SectorEntry', 'EnemyReveal', 'Interaction', 'WardenPressure', 'EndBeat')
     $kitShotHeight = New-Object 'System.Collections.Generic.List[string]'
     $kitShotDistance = New-Object 'System.Collections.Generic.List[string]'
@@ -3322,7 +3470,7 @@ function Write-GeneratedGeometryInclude {
             if ($faceShadeMode -notin @('flat', 'affine')) {
                 throw ("{0} '{1}' face {2} in {3} must use ShadeMode 'flat' or 'affine'. Found '{4}'." -f $OwnerKind, $OwnerKey, $faceIndex, $SourcePath, $faceShadeMode)
             }
-            $faceTextureIndex = & $resolveTextureIndex -TextureKey $faceTextureKey -ShadeMode $faceShadeMode
+            $faceTextureIndex = & $resolveTextureIndex -TextureKey $faceTextureKey -ShadeMode $faceShadeMode -TexturePage $materialEntry.TexturePage
 
             $fanBase = [int]$indices[0]
             if ($fanBase -lt 0 -or $fanBase -ge $Vertices.Count) {
@@ -3653,13 +3801,13 @@ function Write-GeneratedGeometryInclude {
         if (-not ($terrainProfile -is [System.Collections.IDictionary])) {
             throw ("Gameplay kit '{0}' in {1} must define a TerrainProfile block." -f $kitKey, $SourcePath)
         }
-        foreach ($terrainField in @('CliffMaterial', 'ShelfMaterial', 'BridgeMaterial', 'LandmarkLift')) {
+        foreach ($terrainField in @('CliffMaterial', 'ShelfMaterial', 'BridgeMaterial', 'CeilingMaterial', 'SoffitMaterial', 'LaneTrimMaterial', 'FarMassMaterial', 'AccentMaterial', 'LandmarkLift')) {
             if (-not $terrainProfile.ContainsKey($terrainField)) {
                 throw ("Gameplay kit '{0}' in {1} terrain profile is missing '{2}'." -f $kitKey, $SourcePath, $terrainField)
             }
         }
         $terrainMaterialRefs = @{}
-        foreach ($terrainField in @('CliffMaterial', 'ShelfMaterial', 'BridgeMaterial')) {
+        foreach ($terrainField in @('CliffMaterial', 'ShelfMaterial', 'BridgeMaterial', 'CeilingMaterial', 'SoffitMaterial', 'LaneTrimMaterial', 'FarMassMaterial', 'AccentMaterial')) {
             $terrainMaterialKey = ([string]$terrainProfile[$terrainField]).ToLowerInvariant()
             if ([string]::IsNullOrWhiteSpace($terrainMaterialKey) -or -not $materialMap.ContainsKey($terrainMaterialKey)) {
                 throw ("Gameplay kit '{0}' in {1} must reference a known material for TerrainProfile.{2}." -f $kitKey, $SourcePath, $terrainField)
@@ -3741,7 +3889,7 @@ function Write-GeneratedGeometryInclude {
             throw ("Gameplay kit '{0}' in {1} must define an Atmosphere block." -f $kitKey, $SourcePath)
         }
 
-        foreach ($atmosphereField in @('BackdropFar', 'BackdropMid', 'BackdropNear', 'HorizonA', 'HorizonB', 'HorizonY', 'WobbleStrength')) {
+        foreach ($atmosphereField in @('BackdropFar', 'BackdropMid', 'BackdropNear', 'HorizonA', 'HorizonB', 'HorizonY', 'WobbleStrength', 'FogNear', 'FogFar')) {
             if (-not $atmosphere.ContainsKey($atmosphereField)) {
                 throw ("Gameplay kit '{0}' in {1} atmosphere is missing '{2}'." -f $kitKey, $SourcePath, $atmosphereField)
             }
@@ -3790,6 +3938,14 @@ function Write-GeneratedGeometryInclude {
         if ($wobbleStrength -lt 0 -or $wobbleStrength -gt 3) {
             throw ("Gameplay kit '{0}' in {1} must keep Atmosphere.WobbleStrength in the 0..3 range. Found {2}." -f $kitKey, $SourcePath, $wobbleStrength)
         }
+        $fogNear = [int]$atmosphere['FogNear']
+        $fogFar = [int]$atmosphere['FogFar']
+        if ($fogNear -lt 256 -or $fogNear -gt 4096) {
+            throw ("Gameplay kit '{0}' in {1} must keep Atmosphere.FogNear in the 256..4096 range. Found {2}." -f $kitKey, $SourcePath, $fogNear)
+        }
+        if ($fogFar -le $fogNear -or $fogFar -gt 6144) {
+            throw ("Gameplay kit '{0}' in {1} must keep Atmosphere.FogFar greater than FogNear and <= 6144. Found {2}." -f $kitKey, $SourcePath, $fogFar)
+        }
 
         $backdropFar = ConvertTo-GeometryPaletteSymbol -Value $atmosphere['BackdropFar'] -Context ("Gameplay kit '{0}' BackdropFar" -f $kitKey)
         $backdropMid = ConvertTo-GeometryPaletteSymbol -Value $atmosphere['BackdropMid'] -Context ("Gameplay kit '{0}' BackdropMid" -f $kitKey)
@@ -3803,31 +3959,46 @@ function Write-GeneratedGeometryInclude {
 
         $kitFloorBaseColor.Add($materialRefs['FloorBase'].Base.ToString())
         $kitFloorBaseDither.Add($materialRefs['FloorBase'].Dither.ToString())
-        $kitFloorBaseTexture.Add((& $resolveTextureIndex -TextureKey $materialRefs['FloorBase'].TextureKey -ShadeMode $materialRefs['FloorBase'].ShadeMode).ToString())
+        $kitFloorBaseTexture.Add((& $resolveTextureIndex -TextureKey $materialRefs['FloorBase'].TextureKey -ShadeMode $materialRefs['FloorBase'].ShadeMode -TexturePage $materialRefs['FloorBase'].TexturePage).ToString())
         $kitFloorTrimColor.Add($materialRefs['FloorTrim'].Base.ToString())
         $kitFloorTrimDither.Add($materialRefs['FloorTrim'].Dither.ToString())
-        $kitFloorTrimTexture.Add((& $resolveTextureIndex -TextureKey $materialRefs['FloorTrim'].TextureKey -ShadeMode $materialRefs['FloorTrim'].ShadeMode).ToString())
+        $kitFloorTrimTexture.Add((& $resolveTextureIndex -TextureKey $materialRefs['FloorTrim'].TextureKey -ShadeMode $materialRefs['FloorTrim'].ShadeMode -TexturePage $materialRefs['FloorTrim'].TexturePage).ToString())
         $kitWallBaseColor.Add($materialRefs['WallBase'].Base.ToString())
         $kitWallBaseDither.Add($materialRefs['WallBase'].Dither.ToString())
-        $kitWallBaseTexture.Add((& $resolveTextureIndex -TextureKey $materialRefs['WallBase'].TextureKey -ShadeMode $materialRefs['WallBase'].ShadeMode).ToString())
+        $kitWallBaseTexture.Add((& $resolveTextureIndex -TextureKey $materialRefs['WallBase'].TextureKey -ShadeMode $materialRefs['WallBase'].ShadeMode -TexturePage $materialRefs['WallBase'].TexturePage).ToString())
         $kitWallTrimColor.Add($materialRefs['WallTrim'].Base.ToString())
         $kitWallTrimDither.Add($materialRefs['WallTrim'].Dither.ToString())
-        $kitWallTrimTexture.Add((& $resolveTextureIndex -TextureKey $materialRefs['WallTrim'].TextureKey -ShadeMode $materialRefs['WallTrim'].ShadeMode).ToString())
+        $kitWallTrimTexture.Add((& $resolveTextureIndex -TextureKey $materialRefs['WallTrim'].TextureKey -ShadeMode $materialRefs['WallTrim'].ShadeMode -TexturePage $materialRefs['WallTrim'].TexturePage).ToString())
         $kitWallCapColor.Add($materialRefs['WallCap'].Base.ToString())
         $kitWallCapDither.Add($materialRefs['WallCap'].Dither.ToString())
-        $kitWallCapTexture.Add((& $resolveTextureIndex -TextureKey $materialRefs['WallCap'].TextureKey -ShadeMode $materialRefs['WallCap'].ShadeMode).ToString())
+        $kitWallCapTexture.Add((& $resolveTextureIndex -TextureKey $materialRefs['WallCap'].TextureKey -ShadeMode $materialRefs['WallCap'].ShadeMode -TexturePage $materialRefs['WallCap'].TexturePage).ToString())
         $kitLaneColor.Add($materialRefs['Lane'].Base.ToString())
         $kitLaneDither.Add($materialRefs['Lane'].Dither.ToString())
-        $kitLaneTexture.Add((& $resolveTextureIndex -TextureKey $materialRefs['Lane'].TextureKey -ShadeMode $materialRefs['Lane'].ShadeMode).ToString())
+        $kitLaneTexture.Add((& $resolveTextureIndex -TextureKey $materialRefs['Lane'].TextureKey -ShadeMode $materialRefs['Lane'].ShadeMode -TexturePage $materialRefs['Lane'].TexturePage).ToString())
+        $kitCeilingColor.Add($terrainMaterialRefs['CeilingMaterial'].Base.ToString())
+        $kitCeilingDither.Add($terrainMaterialRefs['CeilingMaterial'].Dither.ToString())
+        $kitCeilingTexture.Add((& $resolveTextureIndex -TextureKey $terrainMaterialRefs['CeilingMaterial'].TextureKey -ShadeMode $terrainMaterialRefs['CeilingMaterial'].ShadeMode -TexturePage $terrainMaterialRefs['CeilingMaterial'].TexturePage).ToString())
+        $kitSoffitColor.Add($terrainMaterialRefs['SoffitMaterial'].Base.ToString())
+        $kitSoffitDither.Add($terrainMaterialRefs['SoffitMaterial'].Dither.ToString())
+        $kitSoffitTexture.Add((& $resolveTextureIndex -TextureKey $terrainMaterialRefs['SoffitMaterial'].TextureKey -ShadeMode $terrainMaterialRefs['SoffitMaterial'].ShadeMode -TexturePage $terrainMaterialRefs['SoffitMaterial'].TexturePage).ToString())
+        $kitLaneTrimColor.Add($terrainMaterialRefs['LaneTrimMaterial'].Base.ToString())
+        $kitLaneTrimDither.Add($terrainMaterialRefs['LaneTrimMaterial'].Dither.ToString())
+        $kitLaneTrimTexture.Add((& $resolveTextureIndex -TextureKey $terrainMaterialRefs['LaneTrimMaterial'].TextureKey -ShadeMode $terrainMaterialRefs['LaneTrimMaterial'].ShadeMode -TexturePage $terrainMaterialRefs['LaneTrimMaterial'].TexturePage).ToString())
+        $kitFarMassColor.Add($terrainMaterialRefs['FarMassMaterial'].Base.ToString())
+        $kitFarMassDither.Add($terrainMaterialRefs['FarMassMaterial'].Dither.ToString())
+        $kitFarMassTexture.Add((& $resolveTextureIndex -TextureKey $terrainMaterialRefs['FarMassMaterial'].TextureKey -ShadeMode $terrainMaterialRefs['FarMassMaterial'].ShadeMode -TexturePage $terrainMaterialRefs['FarMassMaterial'].TexturePage).ToString())
+        $kitAccentColor.Add($terrainMaterialRefs['AccentMaterial'].Base.ToString())
+        $kitAccentDither.Add($terrainMaterialRefs['AccentMaterial'].Dither.ToString())
+        $kitAccentTexture.Add((& $resolveTextureIndex -TextureKey $terrainMaterialRefs['AccentMaterial'].TextureKey -ShadeMode $terrainMaterialRefs['AccentMaterial'].ShadeMode -TexturePage $terrainMaterialRefs['AccentMaterial'].TexturePage).ToString())
         $kitCliffColor.Add($terrainMaterialRefs['CliffMaterial'].Base.ToString())
         $kitCliffDither.Add($terrainMaterialRefs['CliffMaterial'].Dither.ToString())
-        $kitCliffTexture.Add((& $resolveTextureIndex -TextureKey $terrainMaterialRefs['CliffMaterial'].TextureKey -ShadeMode $terrainMaterialRefs['CliffMaterial'].ShadeMode).ToString())
+        $kitCliffTexture.Add((& $resolveTextureIndex -TextureKey $terrainMaterialRefs['CliffMaterial'].TextureKey -ShadeMode $terrainMaterialRefs['CliffMaterial'].ShadeMode -TexturePage $terrainMaterialRefs['CliffMaterial'].TexturePage).ToString())
         $kitShelfColor.Add($terrainMaterialRefs['ShelfMaterial'].Base.ToString())
         $kitShelfDither.Add($terrainMaterialRefs['ShelfMaterial'].Dither.ToString())
-        $kitShelfTexture.Add((& $resolveTextureIndex -TextureKey $terrainMaterialRefs['ShelfMaterial'].TextureKey -ShadeMode $terrainMaterialRefs['ShelfMaterial'].ShadeMode).ToString())
+        $kitShelfTexture.Add((& $resolveTextureIndex -TextureKey $terrainMaterialRefs['ShelfMaterial'].TextureKey -ShadeMode $terrainMaterialRefs['ShelfMaterial'].ShadeMode -TexturePage $terrainMaterialRefs['ShelfMaterial'].TexturePage).ToString())
         $kitBridgeColor.Add($terrainMaterialRefs['BridgeMaterial'].Base.ToString())
         $kitBridgeDither.Add($terrainMaterialRefs['BridgeMaterial'].Dither.ToString())
-        $kitBridgeTexture.Add((& $resolveTextureIndex -TextureKey $terrainMaterialRefs['BridgeMaterial'].TextureKey -ShadeMode $terrainMaterialRefs['BridgeMaterial'].ShadeMode).ToString())
+        $kitBridgeTexture.Add((& $resolveTextureIndex -TextureKey $terrainMaterialRefs['BridgeMaterial'].TextureKey -ShadeMode $terrainMaterialRefs['BridgeMaterial'].ShadeMode -TexturePage $terrainMaterialRefs['BridgeMaterial'].TexturePage).ToString())
         $kitGateMesh.Add($meshRefs['GateMesh'].Index.ToString())
         $kitTerminalMesh.Add($meshRefs['TerminalMesh'].Index.ToString())
         $kitSurgeMesh.Add($meshRefs['SurgeMesh'].Index.ToString())
@@ -3853,6 +4024,8 @@ function Write-GeneratedGeometryInclude {
         $kitHorizonBColor.Add($horizonB)
         $kitHorizonY.Add($horizonY.ToString())
         $kitWobbleStrength.Add($wobbleStrength.ToString())
+        $kitFogNear.Add($fogNear.ToString())
+        $kitFogFar.Add($fogFar.ToString())
         foreach ($shotMode in $shotRigModes) {
             $shotRig = $shotRigs[$shotMode]
             $shotPitch = ConvertTo-GeometryAngleByte -Value $shotRig['PitchDegrees'] -Context ("Gameplay kit '{0}' {1} pitch" -f $kitKey, $shotMode)
@@ -3890,7 +4063,24 @@ function Write-GeneratedGeometryInclude {
         $kitLandmarkMesh.Add($meshMap[$landmarkMeshKey].Index.ToString())
         $kitLandmarkLift.Add((Format-Hex16Literal $landmarkLift))
 
-        $kitSummary.Add(("{0}: cam h={1} d={2} look={3}, proj p={4} s={5}, horizon={6}, terrain cliff={7} shelf={8} bridge={9}, landmark={10}, wobble={11}, props {12}|{13}|{14}|{15}" -f $kitKey, $camera['Height'], $camera['Distance'], $camera['LookAhead'], $projection['PitchDegrees'], $projectionScale, $horizonY, $terrainProfile['CliffMaterial'], $terrainProfile['ShelfMaterial'], $terrainProfile['BridgeMaterial'], $landmark['Mesh'], $wobbleStrength, $kit['GateMesh'], $kit['TerminalMesh'], $kit['SurgeMesh'], $kit['ShardMesh']))
+        $kitSummary.Add(("{0}: cam h={1} d={2} look={3}, proj p={4} s={5}, horizon={6}, fog {7}/{8}, terrain cliff={9} shelf={10} bridge={11} ceiling={12} soffit={13} lane={14} far={15} accent={16}, landmark={17}, wobble={18}, props {19}|{20}|{21}|{22}" -f $kitKey, $camera['Height'], $camera['Distance'], $camera['LookAhead'], $projection['PitchDegrees'], $projectionScale, $horizonY, $fogNear, $fogFar, $terrainProfile['CliffMaterial'], $terrainProfile['ShelfMaterial'], $terrainProfile['BridgeMaterial'], $terrainProfile['CeilingMaterial'], $terrainProfile['SoffitMaterial'], $terrainProfile['LaneTrimMaterial'], $terrainProfile['FarMassMaterial'], $terrainProfile['AccentMaterial'], $landmark['Mesh'], $wobbleStrength, $kit['GateMesh'], $kit['TerminalMesh'], $kit['SurgeMesh'], $kit['ShardMesh']))
+        $pageBMaterials = @(
+            [string]$terrainProfile['CeilingMaterial'],
+            [string]$terrainProfile['SoffitMaterial'],
+            [string]$terrainProfile['LaneTrimMaterial'],
+            [string]$terrainProfile['FarMassMaterial'],
+            [string]$terrainProfile['AccentMaterial'],
+            [string]$kit['FloorBase'],
+            [string]$kit['FloorTrim'],
+            [string]$kit['WallBase'],
+            [string]$kit['WallTrim'],
+            [string]$kit['WallCap'],
+            [string]$kit['Lane']
+        ) | Where-Object {
+            $resolvedKey = ([string]$_).Trim().ToLowerInvariant()
+            -not [string]::IsNullOrWhiteSpace($resolvedKey) -and $materialMap.ContainsKey($resolvedKey) -and [string]$materialMap[$resolvedKey].TexturePage -eq 'B'
+        } | ForEach-Object { ([string]$_).Trim().ToLowerInvariant() } | Sort-Object -Unique
+        $kitPageBSummary.Add(("{0}: {1}" -f $kitKey, $(if ($pageBMaterials.Count -gt 0) { $pageBMaterials -join ', ' } else { 'none' })))
     }
 
     $lines.Add(("SCENE3D_COUNT EQU {0}" -f $sceneCount))
@@ -3982,6 +4172,21 @@ function Write-GeneratedGeometryInclude {
     Add-AsmDataLines -Lines $lines -Label 'game3d_kit_lane_color_table' -Directive 'db' -Values $kitLaneColor.ToArray() -ValuesPerLine 8
     Add-AsmDataLines -Lines $lines -Label 'game3d_kit_lane_dither_table' -Directive 'db' -Values $kitLaneDither.ToArray() -ValuesPerLine 8
     Add-AsmDataLines -Lines $lines -Label 'game3d_kit_lane_texture_table' -Directive 'db' -Values $kitLaneTexture.ToArray() -ValuesPerLine 8
+    Add-AsmDataLines -Lines $lines -Label 'game3d_kit_ceiling_color_table' -Directive 'db' -Values $kitCeilingColor.ToArray() -ValuesPerLine 8
+    Add-AsmDataLines -Lines $lines -Label 'game3d_kit_ceiling_dither_table' -Directive 'db' -Values $kitCeilingDither.ToArray() -ValuesPerLine 8
+    Add-AsmDataLines -Lines $lines -Label 'game3d_kit_ceiling_texture_table' -Directive 'db' -Values $kitCeilingTexture.ToArray() -ValuesPerLine 8
+    Add-AsmDataLines -Lines $lines -Label 'game3d_kit_soffit_color_table' -Directive 'db' -Values $kitSoffitColor.ToArray() -ValuesPerLine 8
+    Add-AsmDataLines -Lines $lines -Label 'game3d_kit_soffit_dither_table' -Directive 'db' -Values $kitSoffitDither.ToArray() -ValuesPerLine 8
+    Add-AsmDataLines -Lines $lines -Label 'game3d_kit_soffit_texture_table' -Directive 'db' -Values $kitSoffitTexture.ToArray() -ValuesPerLine 8
+    Add-AsmDataLines -Lines $lines -Label 'game3d_kit_lane_trim_color_table' -Directive 'db' -Values $kitLaneTrimColor.ToArray() -ValuesPerLine 8
+    Add-AsmDataLines -Lines $lines -Label 'game3d_kit_lane_trim_dither_table' -Directive 'db' -Values $kitLaneTrimDither.ToArray() -ValuesPerLine 8
+    Add-AsmDataLines -Lines $lines -Label 'game3d_kit_lane_trim_texture_table' -Directive 'db' -Values $kitLaneTrimTexture.ToArray() -ValuesPerLine 8
+    Add-AsmDataLines -Lines $lines -Label 'game3d_kit_far_mass_color_table' -Directive 'db' -Values $kitFarMassColor.ToArray() -ValuesPerLine 8
+    Add-AsmDataLines -Lines $lines -Label 'game3d_kit_far_mass_dither_table' -Directive 'db' -Values $kitFarMassDither.ToArray() -ValuesPerLine 8
+    Add-AsmDataLines -Lines $lines -Label 'game3d_kit_far_mass_texture_table' -Directive 'db' -Values $kitFarMassTexture.ToArray() -ValuesPerLine 8
+    Add-AsmDataLines -Lines $lines -Label 'game3d_kit_accent_color_table' -Directive 'db' -Values $kitAccentColor.ToArray() -ValuesPerLine 8
+    Add-AsmDataLines -Lines $lines -Label 'game3d_kit_accent_dither_table' -Directive 'db' -Values $kitAccentDither.ToArray() -ValuesPerLine 8
+    Add-AsmDataLines -Lines $lines -Label 'game3d_kit_accent_texture_table' -Directive 'db' -Values $kitAccentTexture.ToArray() -ValuesPerLine 8
     Add-AsmDataLines -Lines $lines -Label 'game3d_kit_cliff_color_table' -Directive 'db' -Values $kitCliffColor.ToArray() -ValuesPerLine 8
     Add-AsmDataLines -Lines $lines -Label 'game3d_kit_cliff_dither_table' -Directive 'db' -Values $kitCliffDither.ToArray() -ValuesPerLine 8
     Add-AsmDataLines -Lines $lines -Label 'game3d_kit_cliff_texture_table' -Directive 'db' -Values $kitCliffTexture.ToArray() -ValuesPerLine 8
@@ -4016,6 +4221,8 @@ function Write-GeneratedGeometryInclude {
     Add-AsmDataLines -Lines $lines -Label 'game3d_kit_horizon_b_color_table' -Directive 'db' -Values $kitHorizonBColor.ToArray() -ValuesPerLine 8
     Add-AsmDataLines -Lines $lines -Label 'game3d_kit_horizon_y_table' -Directive 'db' -Values $kitHorizonY.ToArray() -ValuesPerLine 8
     Add-AsmDataLines -Lines $lines -Label 'game3d_kit_wobble_strength_table' -Directive 'db' -Values $kitWobbleStrength.ToArray() -ValuesPerLine 8
+    Add-AsmDataLines -Lines $lines -Label 'game3d_kit_fog_near_table' -Directive 'dw' -Values $kitFogNear.ToArray() -ValuesPerLine 4
+    Add-AsmDataLines -Lines $lines -Label 'game3d_kit_fog_far_table' -Directive 'dw' -Values $kitFogFar.ToArray() -ValuesPerLine 4
     Add-AsmDataLines -Lines $lines -Label 'game3d_kit_shot_height_table' -Directive 'dw' -Values $kitShotHeight.ToArray() -ValuesPerLine 4
     Add-AsmDataLines -Lines $lines -Label 'game3d_kit_shot_distance_table' -Directive 'dw' -Values $kitShotDistance.ToArray() -ValuesPerLine 4
     Add-AsmDataLines -Lines $lines -Label 'game3d_kit_shot_look_ahead_table' -Directive 'dw' -Values $kitShotLookAhead.ToArray() -ValuesPerLine 4
@@ -4056,8 +4263,11 @@ function Write-GeneratedGeometryInclude {
         SceneReportMap = $sceneReportMap
         MeshSummary = ($meshSummary -join ', ')
         KitSummary = ($kitSummary -join ' | ')
+        KitPageBSummary = ($kitPageBSummary -join ' | ')
         TexturedMaterialCount = $texturedMaterials.Count
-        TextureSummary = if ($texturedMaterials.Count -gt 0) { ((@($texturedMaterials | ForEach-Object { "{0}:{1}/{2}" -f $_.Key, $_.TextureKey, $_.ShadeMode }) -join ', ')) } else { 'none' }
+        TexturedMaterialPageACount = [int]$texturePageCounts['A']
+        TexturedMaterialPageBCount = [int]$texturePageCounts['B']
+        TextureSummary = if ($texturedMaterials.Count -gt 0) { ((@($texturedMaterials | ForEach-Object { "{0}:{1}/{2}@{3}" -f $_.Key, $_.TextureKey, $_.ShadeMode, $_.TexturePage }) -join ', ')) } else { 'none' }
         TextureEntries = @($orderedTextureEntries.ToArray())
         MeshTriangleMap = $meshTriangleMap
         BankPayloadBytes = $payload.ToArray()
@@ -4431,7 +4641,12 @@ function Get-CampaignGameplayArtSummary {
             [string]$kit['Lane'],
             [string]$kit['TerrainProfile']['CliffMaterial'],
             [string]$kit['TerrainProfile']['ShelfMaterial'],
-            [string]$kit['TerrainProfile']['BridgeMaterial']
+            [string]$kit['TerrainProfile']['BridgeMaterial'],
+            [string]$kit['TerrainProfile']['CeilingMaterial'],
+            [string]$kit['TerrainProfile']['SoffitMaterial'],
+            [string]$kit['TerrainProfile']['LaneTrimMaterial'],
+            [string]$kit['TerrainProfile']['FarMassMaterial'],
+            [string]$kit['TerrainProfile']['AccentMaterial']
         )) {
             $resolvedMaterialKey = $materialKey.Trim().ToLowerInvariant()
             if (-not [string]::IsNullOrWhiteSpace($resolvedMaterialKey)) {
@@ -5216,6 +5431,7 @@ $machineCodeReportPath = Join-Path $buildDir 'cyberstorm-machine-code-report.txt
 $textureBankReportPath = Join-Path $buildDir 'cyberstorm-texture-bank-report.txt'
 $codeBankBinPath = Join-Path $buildDir 'cyberstorm-code-bank.bin'
 $textureBankBinPath = Join-Path $buildDir 'cyberstorm-texture-bank.bin'
+$textureBankBBinPath = Join-Path $buildDir 'cyberstorm-texture-bank-b.bin'
 $mapBankBinPath = Join-Path $buildDir 'cyberstorm-map-bank.bin'
 $presentationBankBinPath = Join-Path $buildDir 'cyberstorm-presentation-bank.bin'
 $geometryBankBinPath = Join-Path $buildDir 'cyberstorm-geometry-bank.bin'
@@ -5288,8 +5504,8 @@ if ($render2DOverride) {
 } else {
     $sceneRenderModeValue = 1
     $sceneRenderModeName = 'SCENES_3D_REFERENCE'
-    $gameplayRenderModeValue = 1
-    $gameplayRenderModeName = 'GAMEPLAY_3D_REFERENCE'
+    $gameplayRenderModeValue = 2
+    $gameplayRenderModeName = 'GAMEPLAY_3D_MACHINE'
 }
 $debugConfigLines = @(
     '; generated by scripts/build.ps1'
@@ -5344,7 +5560,7 @@ $audioSummaryLines = @(
 $renderSummaryLines = @(
     ("Scene renderer: {0}" -f $sceneRenderModeName)
     ("Gameplay renderer: {0}" -f $gameplayRenderModeName)
-    'Primary output: BIOS HDD boot + VBE 640x480x16 LFB present when available, with legacy VGA fallback; gameplay logic still renders through the 320x200 compatibility surface.'
+    'Primary output: BIOS HDD boot + VBE 640x480x16 LFB present when available, with legacy VGA fallback; gameplay now renders to a 320x240 surface and presents at exact 2x when the enhanced path is active.'
     ("3D render stage: {0}" -f $debugRenderStageValue)
     'Debug switches: -DebugRender2D uses the oracle path, -DebugRenderReference forces stage-two MASM kernels, and -DebugRenderMachine (or legacy -DebugRender3D) enables the banked raw machine-code rail.'
 )
@@ -5413,6 +5629,7 @@ $generatedGeometry = Write-GeneratedGeometryInclude `
 $generatedTextureBank = Write-GeneratedTextureBank `
     -TextureEntries $generatedGeometry.TextureEntries `
     -BinaryPath $textureBankBinPath `
+    -BinaryPathB $textureBankBBinPath `
     -ReportPath $textureBankReportPath
 $generatedSectors = Write-GeneratedSectorIncludes `
     -SourcePath $sectorSourcePath `
@@ -5467,17 +5684,59 @@ if ($verifyCorruptDemoProvided -and ($debugVerifyCorruptDemoIndexValue -lt 0 -or
 $generatedMusic = Write-GeneratedMusicInclude -SourcePath $musicSourcePath -OutputPath $generatedMusicPath
 $codeBankLoadSegment = Get-AsmEquValue -SourcePath $constantsSourcePath -Name 'CODE_BANK_SEG'
 $textureBankLoadSegment = Get-AsmEquValue -SourcePath $constantsSourcePath -Name 'TEXTURE_BANK_SEG'
+$textureBankBLoadSegment = Get-AsmEquValue -SourcePath $constantsSourcePath -Name 'TEXTURE_BANK_B_SEG'
 $mapBankLoadSegment = Get-AsmEquValue -SourcePath $constantsSourcePath -Name 'MAP_BANK_SEG'
 $presentationBankLoadSegment = Get-AsmEquValue -SourcePath $constantsSourcePath -Name 'PRESENT_BANK_SEG'
 $geometryBankLoadSegment = Get-AsmEquValue -SourcePath $constantsSourcePath -Name 'GEOMETRY_BANK_SEG'
+$backbufferHighSegment = Get-AsmEquValue -SourcePath $constantsSourcePath -Name 'BACKBUFFER_HIGH_SEG'
+$runtimeStackSegment = Get-AsmEquValue -SourcePath $bootstrapAsm -Name 'STACK_SEG'
+$screenWidth = Get-AsmEquValue -SourcePath $constantsSourcePath -Name 'SCREEN_W'
+$screenHeight = Get-AsmEquValue -SourcePath $constantsSourcePath -Name 'SCREEN_H'
 $game3dViewX = Get-AsmEquValue -SourcePath $constantsSourcePath -Name 'GAME3D_VIEW_X'
 $game3dViewY = Get-AsmEquValue -SourcePath $constantsSourcePath -Name 'GAME3D_VIEW_Y'
 $game3dViewW = Get-AsmEquValue -SourcePath $constantsSourcePath -Name 'GAME3D_VIEW_W'
 $game3dViewH = Get-AsmEquValue -SourcePath $constantsSourcePath -Name 'GAME3D_VIEW_H'
+$gameplaySurfaceH = Get-AsmEquValue -SourcePath $constantsSourcePath -Name 'GAMEPLAY_SCREEN_H'
+$geometryBankLinearEnd = ([int]$geometryBankLoadSegment * 16) + [int]$generatedGeometry.TotalBytes
+$backbufferHighLinear = [int]$backbufferHighSegment * 16
+$backbufferHighLinearEnd = $backbufferHighLinear + ($screenWidth * ($gameplaySurfaceH - $screenHeight))
+$runtimeStackLinear = [int]$runtimeStackSegment * 16
+$stage2LinearEnd = ([int]$layout.Stage2LoadSegment * 16) + [int]$layout.Stage2LoadLimitBytes
+if ($geometryBankLinearEnd -gt $backbufferHighLinear) {
+    throw ("Geometry bank payload ends at linear 0x{0}, which overlaps the gameplay high-backbuffer segment at 0x{1}." -f ('{0:X5}' -f $geometryBankLinearEnd), ('{0:X5}' -f $backbufferHighLinear))
+}
+if ($backbufferHighLinearEnd -gt $runtimeStackLinear) {
+    throw ("Gameplay high-backbuffer range 0x{0}-0x{1} overlaps the inherited runtime stack segment at 0x{2}. Move BACKBUFFER_HIGH_SEG or STACK_SEG before shipping this build." -f ('{0:X5}' -f $backbufferHighLinear), ('{0:X5}' -f ($backbufferHighLinearEnd - 1)), ('{0:X5}' -f $runtimeStackLinear))
+}
+$assetBankMemoryLayout = @(
+    [pscustomobject]@{ Name = 'Code bank'; Start = ([int]$codeBankLoadSegment * 16); End = ([int]$codeBankLoadSegment * 16) + [int]$generatedMachineCode.TotalBytes },
+    [pscustomobject]@{ Name = 'Map bank'; Start = ([int]$mapBankLoadSegment * 16); End = ([int]$mapBankLoadSegment * 16) + [int]$generatedSectors.MapBytes },
+    [pscustomobject]@{ Name = 'Presentation bank'; Start = ([int]$presentationBankLoadSegment * 16); End = ([int]$presentationBankLoadSegment * 16) + [int]$generatedPresentation.TotalBytes },
+    [pscustomobject]@{ Name = 'Geometry bank'; Start = ([int]$geometryBankLoadSegment * 16); End = $geometryBankLinearEnd },
+    [pscustomobject]@{ Name = 'Texture bank A'; Start = ([int]$textureBankLoadSegment * 16); End = ([int]$textureBankLoadSegment * 16) + [int]$generatedTextureBank.PageABytes },
+    [pscustomobject]@{ Name = 'Texture bank B'; Start = ([int]$textureBankBLoadSegment * 16); End = ([int]$textureBankBLoadSegment * 16) + [int]$generatedTextureBank.PageBBytes }
+) | Sort-Object -Property Start
+foreach ($assetBankMemory in @($assetBankMemoryLayout)) {
+    if ($assetBankMemory.Start -lt $stage2LinearEnd) {
+        throw ("{0} begins at linear 0x{1}, which overlaps the reserved stage-two 64 KiB load window ending at 0x{2}." -f $assetBankMemory.Name, ('{0:X5}' -f $assetBankMemory.Start), ('{0:X5}' -f $stage2LinearEnd))
+    }
+    if ($assetBankMemory.End -gt $backbufferHighLinear) {
+        throw ("{0} ends at linear 0x{1}, which overlaps the gameplay high-backbuffer segment at 0x{2}." -f $assetBankMemory.Name, ('{0:X5}' -f $assetBankMemory.End), ('{0:X5}' -f $backbufferHighLinear))
+    }
+}
+for ($assetBankIndex = 0; $assetBankIndex -lt ($assetBankMemoryLayout.Count - 1); $assetBankIndex++) {
+    $currentBank = $assetBankMemoryLayout[$assetBankIndex]
+    $nextBank = $assetBankMemoryLayout[$assetBankIndex + 1]
+    if ($currentBank.End -gt $nextBank.Start) {
+        throw ("{0} range 0x{1}-0x{2} overlaps {3} at 0x{4}. Adjust the asset bank load segments before shipping this build." -f $currentBank.Name, ('{0:X5}' -f $currentBank.Start), ('{0:X5}' -f ($currentBank.End - 1)), $nextBank.Name, ('{0:X5}' -f $nextBank.Start))
+    }
+}
 [IO.File]::WriteAllBytes($codeBankBinPath, $generatedMachineCode.BankPayloadBytes)
 Assert-PathExists -Path $codeBankBinPath -Label 'generated code bank payload'
 [IO.File]::WriteAllBytes($textureBankBinPath, $generatedTextureBank.BankPayloadBytes)
-Assert-PathExists -Path $textureBankBinPath -Label 'generated texture bank payload'
+Assert-PathExists -Path $textureBankBinPath -Label 'generated texture bank A payload'
+[IO.File]::WriteAllBytes($textureBankBBinPath, $generatedTextureBank.BankPayloadBytesB)
+Assert-PathExists -Path $textureBankBBinPath -Label 'generated texture bank B payload'
 [IO.File]::WriteAllBytes($mapBankBinPath, $generatedSectors.MapPayloadBytes)
 Assert-PathExists -Path $mapBankBinPath -Label 'generated map bank payload'
 [IO.File]::WriteAllBytes($presentationBankBinPath, $generatedPresentation.BankPayloadBytes)
@@ -5492,7 +5751,7 @@ Write-Host ("Bitmaps : {0}" -f $generatedArt.AssetCount)
 Write-Host ("Bytes   : {0}" -f $generatedArt.TotalBytes)
 Write-Host ("Sizes   : {0}" -f $generatedArt.SizeSummary)
 Write-Host ("Code kernels: {0}, tables: {1}, code-bank bytes: {2}" -f $generatedMachineCode.KernelCount, $generatedMachineCode.TableCount, $generatedMachineCode.TotalBytes)
-Write-Host ("Texture bank: {0} entries, {1} bytes" -f $generatedTextureBank.TextureCount, $generatedTextureBank.TotalBytes)
+Write-Host ("Texture banks: {0} entries total, page A {1}/{2}, page B {3}/{4}, {5} bytes" -f $generatedTextureBank.TextureCount, $generatedTextureBank.PageATextureCount, $generatedTextureBank.PageATextureCapacity, $generatedTextureBank.PageBTextureCount, $generatedTextureBank.PageBTextureCapacity, $generatedTextureBank.TotalBytes)
 Write-Host ("Geometry scenes: {0}, groups: {1}, meshes: {2}, kits: {3}, tris: {4}" -f $generatedGeometry.SceneCount, $generatedGeometry.SceneGroupCount, $generatedGeometry.MeshCount, $generatedGeometry.KitCount, $generatedGeometry.TriangleCount)
 
 $generatedContentLines = @(
@@ -5506,10 +5765,12 @@ $generatedContentLines = @(
     ("Machine-code tables: {0}" -f $generatedMachineCode.TableSummary)
     ("Texture bank report: {0}" -f $generatedTextureBank.ReportPath)
     ("Texture bank bytes: {0}" -f $generatedTextureBank.TotalBytes)
-    ("Texture atlas: {0}x{1} ({2}/{3} used)" -f $generatedTextureBank.AtlasWidth, $generatedTextureBank.AtlasHeight, $generatedTextureBank.TextureCount, $generatedTextureBank.TextureCapacity)
-    ("Gameplay texture atlas: {0}x{1} ({2}/{3} used)" -f $generatedTextureBank.AtlasWidth, $generatedTextureBank.AtlasHeight, $generatedTextureBank.TextureCount, $generatedTextureBank.TextureCapacity)
+    ("Texture page A: {0}x{1} ({2}/{3} used)" -f $generatedTextureBank.AtlasWidth, $generatedTextureBank.AtlasHeight, $generatedTextureBank.PageATextureCount, $generatedTextureBank.PageATextureCapacity)
+    ("Texture page B: {0}x{1} ({2}/{3} used)" -f $generatedTextureBank.AtlasWidth, $generatedTextureBank.AtlasHeight, $generatedTextureBank.PageBTextureCount, $generatedTextureBank.PageBTextureCapacity)
+    ("Gameplay texture atlas: dual 256x256 pages (A shared/core, B gameplay-first)")
     ("Texture atlas entries: {0}" -f $generatedTextureBank.TextureCount)
-    ("Texture atlas summary: {0}" -f $generatedTextureBank.Summary)
+    ("Texture page A summary: {0}" -f $generatedTextureBank.PageASummary)
+    ("Texture page B summary: {0}" -f $generatedTextureBank.PageBSummary)
     ("Presentation source: {0}" -f $generatedPresentation.SourcePath)
     ("Presentation include: {0}" -f $generatedPresentation.OutputPath)
     ("Presentation assets: {0} ({1}x{2}, {3} bytes each, {4} bytes total)" -f $generatedPresentation.BannerCount, $expectedBannerWidth, $expectedBannerHeight, $generatedPresentation.BannerBytes, $generatedPresentation.TotalBytes)
@@ -5529,11 +5790,16 @@ $generatedContentLines = @(
     ("Geometry mesh summary: {0}" -f $generatedGeometry.MeshSummary)
     ("Geometry gameplay kit summary: {0}" -f $generatedGeometry.KitSummary)
     ("Geometry textured materials: {0}" -f $generatedGeometry.TexturedMaterialCount)
+    ("Geometry texture pages: page A {0}, page B {1}" -f $generatedGeometry.TexturedMaterialPageACount, $generatedGeometry.TexturedMaterialPageBCount)
     ("Geometry texture summary: {0}" -f $generatedGeometry.TextureSummary)
+    ("Gameplay kit page-B usage: {0}" -f $generatedGeometry.KitPageBSummary)
     ("Textured realm showcase path: {0}" -f $(if ($generatedGeometry.TexturedMaterialCount -gt 0) { 'active' } else { 'inactive' }))
     ("Frontend identity lane: splash/title now favor textured geometry, banked materials, and open-frame overlays")
     ("Frontend splash timing: pylons {0}, logo {1}, wordmark {2}, ui {3}" -f $splashRevealPylons, $splashRevealLogo, $splashRevealWordmark, $splashRevealUi)
-    ("Gameplay camera: quadrant-aware chase presets with authored projection, structure depth, horizon bands, and atmosphere")
+    ("Gameplay renderer default mode: {0}" -f $gameplayRenderModeName)
+    ("Gameplay camera: quadrant-aware chase presets with authored projection, structure depth, horizon bands, per-kit fog, and machine textured surfaces")
+    ("Gameplay surface: {0}x{1}" -f 320, $gameplaySurfaceH)
+    ("Gameplay present path: exact 2x VBE when active; legacy VGA path downsamples to 320x200")
     ("Gameplay viewport: {0}x{1} at {2},{3}" -f $game3dViewW, $game3dViewH, $game3dViewX, $game3dViewY)
     ("Gameplay room structural headroom: {0}" -f ($gameplayGeometryBudget.SummaryLines -join ' | '))
     ("Gameplay campaign art: {0}" -f $(if ($campaignGameplayArt.SummaryLines.Count -gt 0) { $campaignGameplayArt.SummaryLines -join ' | ' } else { 'none' }))
@@ -5619,12 +5885,20 @@ $assetBanksBase = @(
         Bytes = $generatedMachineCode.TotalBytes
     },
     [pscustomobject]@{
-        Name = 'Texture bank'
+        Name = 'Texture bank A'
         SymbolPrefix = 'TEXTURE_BANK'
         SourcePath = $geometrySourcePath
         BinaryPath = $textureBankBinPath
         LoadSegment = $textureBankLoadSegment
-        Bytes = $generatedTextureBank.TotalBytes
+        Bytes = $generatedTextureBank.PageABytes
+    },
+    [pscustomobject]@{
+        Name = 'Texture bank B'
+        SymbolPrefix = 'TEXTURE_BANK_B'
+        SourcePath = $geometrySourcePath
+        BinaryPath = $textureBankBBinPath
+        LoadSegment = $textureBankBLoadSegment
+        Bytes = $generatedTextureBank.PageBBytes
     },
     [pscustomobject]@{
         Name = 'Map bank'
@@ -5652,8 +5926,12 @@ $assetBanksBase = @(
     }
 )
 
+$provisionalStage2Sectors = 1
+$provisionalStage2StartLba = $layout.BootstrapStartLba + 1
+$resolvedAssetBanks = Resolve-AssetBankLayout -AssetBanks $assetBanksBase -Stage2Sectors $provisionalStage2Sectors -Stage2StartLba $provisionalStage2StartLba -Layout $layout
+Write-GeneratedBankLayoutInclude -OutputPath $generatedBankLayoutPath -AssetBanks $resolvedAssetBanks
+
 Write-Section -Title 'Stage Two'
-$resolvedAssetBanks = @()
 $gameBuild = Invoke-Assembler -SourcePath $gameAsm -ObjectPath $gameObj -ListPath $gameList -IncludePaths @($buildDir) -ToolPath $assemblerTool.Path -AssemblerName $assemblerTool.Name
 $gameFlat = Get-CoffFlatBinary -ObjectPath $gameObj
 $gameBin = $gameFlat.FlatBytes
@@ -5712,6 +5990,18 @@ Set-Content -LiteralPath $bootConfig -Encoding ascii -Value @(
     ("STAGE2_LBA EQU {0}" -f $layout.Stage2StartLba)
 )
 Assert-PathExists -Path $bootConfig -Label 'generated boot config'
+
+$gameBuild = Invoke-Assembler -SourcePath $gameAsm -ObjectPath $gameObj -ListPath $gameList -IncludePaths @($buildDir) -ToolPath $assemblerTool.Path -AssemblerName $assemblerTool.Name
+$gameFlat = Get-CoffFlatBinary -ObjectPath $gameObj
+$gameBin = $gameFlat.FlatBytes
+$finalGameSectorCount = [int][Math]::Ceiling($gameBin.Length / $layout.BootSectorBytes)
+Validate-Stage2Layout -Stage2Bytes $gameBin.Length -Stage2Sectors $finalGameSectorCount -Layout $layout
+if ($finalGameSectorCount -ne $gameSectorCount) {
+    throw ("Stage-two sector count changed from {0} to {1} after the final bank layout was generated. Rerun the stage-two/bootstrap stabilization logic for this build script change." -f $gameSectorCount, $finalGameSectorCount)
+}
+[IO.File]::WriteAllBytes($stage2BinPath, $gameBin)
+Write-Host ("Stage2 final : {0} bytes, {1} sectors" -f $gameBin.Length, $finalGameSectorCount)
+
 $bootstrapBuild = Invoke-Assembler -SourcePath $bootstrapAsm -ObjectPath $bootstrapObj -ListPath $bootstrapList -IncludePaths @($buildDir) -ToolPath $assemblerTool.Path -AssemblerName $assemblerTool.Name
 $bootstrapFlat = Get-CoffFlatBinary -ObjectPath $bootstrapObj
 $bootstrapBin = $bootstrapFlat.FlatBytes
@@ -5789,6 +6079,7 @@ $regressionHarness = & $regressionHarnessScript `
     -Stage2BinaryPath $stage2BinPath `
     -CodeBankBinaryPath $codeBankBinPath `
     -TextureBankBinaryPath $textureBankBinPath `
+    -TextureBankBBinaryPath $textureBankBBinPath `
     -MapBankBinaryPath $mapBankBinPath `
     -PresentationBankBinaryPath $presentationBankBinPath `
     -GeometryBankBinaryPath $geometryBankBinPath `
@@ -6037,7 +6328,7 @@ Write-BuildReport `
     -BootStartOffset $bootStartOffset `
     -StageStartOffset $stageStartOffset `
     -Warnings $warnings `
-    -ArtifactPaths @($generatedArtPath, $generatedPresentationPath, $generatedGeometryPath, $generatedMachineCodePath, $generatedSectorContentPath, $generatedMapsPath, $generatedDemosPath, $generatedRuntimeVerifyPath, $generatedMusicPath, $machineCodeReportPath, $textureBankReportPath, $replayReportPath, $balanceReportPath, $regressionReportPath, $frontendVerifyReportPath, $vmSmokeReportPath, $runtimeVerifyReportPath, $showcaseReportPath, $generatedBankLayoutPath, $codeBankBinPath, $textureBankBinPath, $mapBankBinPath, $presentationBankBinPath, $geometryBankBinPath, $bootBinPath, $bootstrapBinPath, $stage2BinPath, $bootList, $bootstrapList, $gameList, $bootConfig, $debugConfig, $audioConfig, $imgPath) + $publishedReadmeScreenshotArtifacts + @($reportPath, $screenshotSync.RotationStatePath, $screenshotSync.GalleryManifestPath) + $frontendVerifyArtifacts + $vmSmokeArtifacts + $runtimeVerifyArtifacts + $showcaseArtifacts `
+    -ArtifactPaths @($generatedArtPath, $generatedPresentationPath, $generatedGeometryPath, $generatedMachineCodePath, $generatedSectorContentPath, $generatedMapsPath, $generatedDemosPath, $generatedRuntimeVerifyPath, $generatedMusicPath, $machineCodeReportPath, $textureBankReportPath, $replayReportPath, $balanceReportPath, $regressionReportPath, $frontendVerifyReportPath, $vmSmokeReportPath, $runtimeVerifyReportPath, $showcaseReportPath, $generatedBankLayoutPath, $codeBankBinPath, $textureBankBinPath, $textureBankBBinPath, $mapBankBinPath, $presentationBankBinPath, $geometryBankBinPath, $bootBinPath, $bootstrapBinPath, $stage2BinPath, $bootList, $bootstrapList, $gameList, $bootConfig, $debugConfig, $audioConfig, $imgPath) + $publishedReadmeScreenshotArtifacts + @($reportPath, $screenshotSync.RotationStatePath, $screenshotSync.GalleryManifestPath) + $frontendVerifyArtifacts + $vmSmokeArtifacts + $runtimeVerifyArtifacts + $showcaseArtifacts `
     -Layout $layout
 
 Write-Section -Title 'Artifacts'
@@ -6063,6 +6354,7 @@ Write-Host ("Showcase {0}" -f $showcaseReportPath)
 Write-Host ("Banks   {0}" -f $generatedBankLayoutPath)
 Write-Host ("Bank    {0}" -f $codeBankBinPath)
 Write-Host ("Bank    {0}" -f $textureBankBinPath)
+Write-Host ("Bank    {0}" -f $textureBankBBinPath)
 Write-Host ("Bank    {0}" -f $mapBankBinPath)
 Write-Host ("Bank    {0}" -f $presentationBankBinPath)
 Write-Host ("Bank    {0}" -f $geometryBankBinPath)

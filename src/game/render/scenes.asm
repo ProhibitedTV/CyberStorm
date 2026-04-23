@@ -103,7 +103,9 @@ IF DEBUG_SMOKE_SENTINEL
     mov cx, SMOKE_SENTINEL_W
     mov bp, SMOKE_SENTINEL_H
     mov al, SMOKE_SENTINEL_COLOR
-    call fill_rect
+    ; Keep the smoke marker on the deterministic reference fill path so the
+    ; VM harness sees an exact solid block even when machine gameplay is active.
+    call fill_rect_reference
 ENDIF
     call present_frame
     ret
@@ -1597,6 +1599,29 @@ verify_scene_reason_bits_ready:
     mov bx, VERIFY_BITS_X
     mov dx, VERIFY_REASON_BITS_Y
     call draw_verify_word_bits
+
+    cmp byte ptr [verify_mode], VERIFY_MODE_FRONTEND
+    je verify_scene_prompt
+
+    mov ax, [verify_diag_action]
+    mov bx, VERIFY_BITS_X
+    mov dx, VERIFY_DIAG_ACTION_BITS_Y
+    call draw_verify_word_bits
+
+    mov ax, [verify_diag_script_ptr]
+    mov bx, VERIFY_BITS_X
+    mov dx, VERIFY_DIAG_SCRIPT_BITS_Y
+    call draw_verify_word_bits
+
+    mov ax, [verify_diag_progress]
+    mov bx, VERIFY_BITS_X
+    mov dx, VERIFY_DIAG_PROGRESS_BITS_Y
+    call draw_verify_word_bits
+
+    mov ax, [verify_diag_flags]
+    mov bx, VERIFY_BITS_X
+    mov dx, VERIFY_DIAG_FLAGS_BITS_Y
+    call draw_verify_word_bits
     jmp verify_scene_prompt
 
 verify_scene_body_frontend:
@@ -1613,14 +1638,14 @@ verify_scene_body_frontend_fail:
 
 verify_scene_prompt:
     mov bx, 78
-    mov dx, 154
+    mov dx, 184
     mov cx, 168
     mov bp, 12
     mov al, PAL_PANEL2
     call fill_rect
 
     mov bx, 76
-    mov dx, 152
+    mov dx, 182
     mov cx, 176
     mov bp, 16
     test byte ptr [anim_phase], 1
@@ -1635,7 +1660,7 @@ verify_scene_prompt_ready:
     call draw_rect_outline
 
     mov bx, 88
-    mov dx, 158
+    mov dx, 188
     mov si, offset verify_prompt
     test byte ptr [anim_phase], 1
     jz verify_scene_prompt_dim

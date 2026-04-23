@@ -6,6 +6,7 @@ param(
     [string]$Stage2BinaryPath = (Join-Path (Join-Path $PSScriptRoot '..') 'build\cyberstorm-stage2.bin'),
     [string]$CodeBankBinaryPath = (Join-Path (Join-Path $PSScriptRoot '..') 'build\cyberstorm-code-bank.bin'),
     [string]$TextureBankBinaryPath = (Join-Path (Join-Path $PSScriptRoot '..') 'build\cyberstorm-texture-bank.bin'),
+    [string]$TextureBankBBinaryPath = (Join-Path (Join-Path $PSScriptRoot '..') 'build\cyberstorm-texture-bank-b.bin'),
     [string]$MapBankBinaryPath = (Join-Path (Join-Path $PSScriptRoot '..') 'build\cyberstorm-map-bank.bin'),
     [string]$PresentationBankBinaryPath = (Join-Path (Join-Path $PSScriptRoot '..') 'build\cyberstorm-presentation-bank.bin'),
     [string]$GeometryBankBinaryPath = (Join-Path (Join-Path $PSScriptRoot '..') 'build\cyberstorm-geometry-bank.bin'),
@@ -187,6 +188,7 @@ Assert-PathExists -Path $BootstrapBinaryPath -Label 'bootstrap binary'
 Assert-PathExists -Path $Stage2BinaryPath -Label 'stage-two binary'
 Assert-PathExists -Path $CodeBankBinaryPath -Label 'code bank binary'
 Assert-PathExists -Path $TextureBankBinaryPath -Label 'texture bank binary'
+Assert-PathExists -Path $TextureBankBBinaryPath -Label 'texture bank B binary'
 Assert-PathExists -Path $MapBankBinaryPath -Label 'map bank binary'
 Assert-PathExists -Path $PresentationBankBinaryPath -Label 'presentation bank binary'
 Assert-PathExists -Path $GeometryBankBinaryPath -Label 'geometry bank binary'
@@ -200,6 +202,7 @@ $bootstrapBytes = [IO.File]::ReadAllBytes($BootstrapBinaryPath)
 $stage2Bytes = [IO.File]::ReadAllBytes($Stage2BinaryPath)
 $codeBankBytes = [IO.File]::ReadAllBytes($CodeBankBinaryPath)
 $textureBankBytes = [IO.File]::ReadAllBytes($TextureBankBinaryPath)
+$textureBankBBytes = [IO.File]::ReadAllBytes($TextureBankBBinaryPath)
 $mapBankBytes = [IO.File]::ReadAllBytes($MapBankBinaryPath)
 $presentationBankBytes = [IO.File]::ReadAllBytes($PresentationBankBinaryPath)
 $geometryBankBytes = [IO.File]::ReadAllBytes($GeometryBankBinaryPath)
@@ -239,7 +242,8 @@ if ($configuredStage2Lba -ne $expectedStage2Lba) {
 
 $bankDescriptors = @(
     [pscustomobject]@{ Name = 'Code bank'; Symbol = 'CODE_BANK'; Bytes = $codeBankBytes; Path = $CodeBankBinaryPath },
-    [pscustomobject]@{ Name = 'Texture bank'; Symbol = 'TEXTURE_BANK'; Bytes = $textureBankBytes; Path = $TextureBankBinaryPath },
+    [pscustomobject]@{ Name = 'Texture bank A'; Symbol = 'TEXTURE_BANK'; Bytes = $textureBankBytes; Path = $TextureBankBinaryPath },
+    [pscustomobject]@{ Name = 'Texture bank B'; Symbol = 'TEXTURE_BANK_B'; Bytes = $textureBankBBytes; Path = $TextureBankBBinaryPath },
     [pscustomobject]@{ Name = 'Map bank'; Symbol = 'MAP_BANK'; Bytes = $mapBankBytes; Path = $MapBankBinaryPath },
     [pscustomobject]@{ Name = 'Presentation bank'; Symbol = 'PRESENT_BANK'; Bytes = $presentationBankBytes; Path = $PresentationBankBinaryPath },
     [pscustomobject]@{ Name = 'Geometry bank'; Symbol = 'GEOMETRY_BANK'; Bytes = $geometryBankBytes; Path = $GeometryBankBinaryPath }

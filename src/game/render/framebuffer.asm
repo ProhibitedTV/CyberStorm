@@ -2,10 +2,23 @@ clear_backbuffer:
     push ax
     push cx
     push di
-    xor di, di
+    push es
     mov ax, PAL_BG0 + (PAL_BG0 shl 8)
+    push ax
+    mov ax, BACKBUFFER_SEG
+    mov es, ax
+    pop ax
+    xor di, di
     mov cx, SCREEN_WORDS
     rep stosw
+    push ax
+    mov ax, BACKBUFFER_HIGH_SEG
+    mov es, ax
+    pop ax
+    xor di, di
+    mov cx, GAMEPLAY_BACKBUFFER_HIGH_WORDS
+    rep stosw
+    pop es
     pop di
     pop cx
     pop ax
@@ -66,6 +79,8 @@ wait_vblank_start:
 present_frame:
     cmp byte ptr [video_output_mode], ENHANCED_OUTPUT_MODE_VBE
     je present_frame_vbe
+    cmp byte ptr [game_state], STATE_PLAYING
+    je present_frame_gameplay_vga
 
     push ax
     push cx
@@ -85,5 +100,57 @@ present_frame:
     pop di
     pop si
     pop cx
+    pop ax
+    ret
+
+present_frame_gameplay_vga:
+    push ax
+    push bx
+    push cx
+    push dx
+    push si
+    push di
+    push ds
+    call wait_for_vblank
+    mov ax, VGA_SEG
+    mov es, ax
+    xor bx, bx
+    xor dx, dx
+    xor di, di
+    mov cx, SCREEN_H
+
+present_frame_gameplay_vga_row:
+    push cx
+    push bx
+    push dx
+    push di
+    mov dx, bx
+    call get_backbuffer_row_ptr
+    mov ds, ax
+    mov si, di
+    pop di
+    mov cx, SCREEN_WORDS
+    rep movsw
+    pop dx
+    pop bx
+    add dx, GAMEPLAY_SCREEN_H
+
+present_frame_gameplay_vga_advance:
+    cmp dx, SCREEN_H
+    jb present_frame_gameplay_vga_next
+    sub dx, SCREEN_H
+    inc bx
+    jmp present_frame_gameplay_vga_advance
+
+present_frame_gameplay_vga_next:
+    pop cx
+    loop present_frame_gameplay_vga_row
+
+    pop ds
+    pop di
+    pop si
+    pop dx
+    pop cx
+    pop bx
     pop ax
     ret

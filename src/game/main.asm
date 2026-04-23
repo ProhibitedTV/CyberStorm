@@ -17,6 +17,13 @@ ENDIF
     mov byte ptr [state_ticks], 0
     mov byte ptr [scene_render_mode], DEBUG_SCENE_RENDER_MODE
     mov byte ptr [gameplay_render_mode], DEBUG_GAMEPLAY_RENDER_MODE
+    cmp byte ptr [gameplay_render_mode], GAMEPLAY_RENDER_MODE_3D_MACHINE
+    jne gameplay_render_mode_ready
+    cmp byte ptr [video_output_mode], ENHANCED_OUTPUT_MODE_VBE
+    je gameplay_render_mode_ready
+    mov byte ptr [gameplay_render_mode], GAMEPLAY_RENDER_MODE_3D_REFERENCE
+
+gameplay_render_mode_ready:
 
 IF DEBUG_FORCE_SEED
     mov word ptr [rng_state], DEBUG_SEED_VALUE
@@ -250,6 +257,14 @@ frontend_restart_checkpoint:
     jmp main_loop
 
 handle_verify_continue_input:
+IF DEBUG_RUNTIME_VERIFY
+    cmp byte ptr [verify_mode], VERIFY_MODE_FRONTEND
+    je verify_continue_interactive
+    call clear_pressed_latches
+    jmp main_loop
+
+verify_continue_interactive:
+ENDIF
     call frontend_continue_key_pending
     cmp al, 0
     jne verify_return_title
@@ -607,6 +622,10 @@ clear_runtime_verify_replay_state:
     xor ax, ax
     mov word ptr [verify_action_pending], ax
     mov word ptr [verify_result_demo_index], ax
+    mov word ptr [verify_diag_action], ax
+    mov word ptr [verify_diag_script_ptr], ax
+    mov word ptr [verify_diag_progress], ax
+    mov word ptr [verify_diag_flags], ax
     mov word ptr [verify_snapshot_heading], ax
     mov word ptr [verify_snapshot_cue_flags], ax
     mov word ptr [verify_snapshot_enemy_tick], ax
@@ -637,7 +656,43 @@ load_runtime_verify_expected_signature:
     mov [verify_expected_signature], ax
     ret
 
+capture_runtime_verify_diagnostics:
+    push ax
+    push bx
+
+    xor ax, ax
+    mov al, [demo_action_code]
+    mov ah, [demo_action_ticks]
+    mov [verify_diag_action], ax
+
+    mov ax, [demo_script_ptr]
+    mov [verify_diag_script_ptr], ax
+
+    mov al, [state_ticks]
+    mov ah, [verify_action_index]
+    mov [verify_diag_progress], ax
+
+    xor ax, ax
+    mov al, [verify_action_pending]
+    mov ah, [game_state]
+    shl ah, 1
+    shl ah, 1
+    shl ah, 1
+    shl ah, 1
+    mov bl, [demo_active]
+    and bl, 0Fh
+    or ah, bl
+    mov [verify_diag_flags], ax
+
+    pop bx
+    pop ax
+    ret
+
 commit_runtime_verify_fail:
+    push ax
+    call capture_runtime_verify_diagnostics
+    call reset_keyboard_state
+    pop ax
     mov [verify_fail_reason], al
     mov byte ptr [verify_action_pending], 0
     push ax
@@ -1322,6 +1377,8 @@ finalize_runtime_verify_demo:
     call load_runtime_verify_expected_signature
     cmp ax, [verify_observed_signature]
     jne verify_demo_fail
+    call capture_runtime_verify_diagnostics
+    call reset_keyboard_state
     mov byte ptr [verify_fail_reason], VERIFY_FAIL_REASON_NONE
     mov byte ptr [demo_active], 0
     mov byte ptr [game_state], STATE_VERIFY_PASS

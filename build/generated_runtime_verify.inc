@@ -7,9 +7,9 @@ VERIFY_DEMO_COUNT EQU 17
 verify_demo_checkpoint_count_table db 0, 0, 0, 0, 0, 0, 0, 0
                                    db 0, 0, 0, 0, 0, 0, 0, 0
                                    db 0
-verify_demo_final_signature_table dw 0EE07h, 0C7FAh, 884Ah, 89CAh, 9B13h, 2846h
-                                  dw 9C6Ah, 9C6Ah, 0CA57h, 0F2D7h, 0F2D7h, 0A6D6h
-                                  dw 75A3h, 0AFC6h, 8FA7h, 0C6E7h, 75A3h
+verify_demo_final_signature_table dw 0EEC7h, 0CABAh, 8A8Ah, 8B0Ah, 99D3h, 2A86h
+                                  dw 9E2Ah, 9E2Ah, 0CA97h, 0F417h, 0F417h, 0A496h
+                                  dw 74E3h, 0AD86h, 92E7h, 0C3A7h, 74E3h
 verify_demo_checkpoint_table dw 0, 0, 0, 0
                              dw 0, 0, 0, 0
                              dw 0, 0, 0, 0

@@ -450,7 +450,7 @@ GAME3D_KIT_SECTOR4_INDEX EQU 3
 
 SCENE3D_COUNT EQU 7
 SCENE3D_GROUP_COUNT EQU 34
-SCENE3D_MATERIAL_COUNT EQU 74
+SCENE3D_MATERIAL_COUNT EQU 88
 GAME3D_MESH_COUNT EQU 52
 GAME3D_KIT_COUNT EQU 4
 
@@ -657,46 +657,61 @@ game3d_mesh_face_count_table db 8, 8, 8, 12, 12, 12, 12, 12
                              db 12, 18, 16, 18, 12, 12, 12, 12
                              db 14, 14, 14, 14
 
-game3d_kit_floor_base_color_table db 11, 7, 3, 7
+game3d_kit_floor_base_color_table db 11, 3, 3, 7
 game3d_kit_floor_base_dither_table db 4, 10, 11, 12
-game3d_kit_floor_base_texture_table db 1, 35, 25, 42
+game3d_kit_floor_base_texture_table db 66, 64, 78, 93
 game3d_kit_floor_trim_color_table db 6, 8, 8, 7
-game3d_kit_floor_trim_dither_table db 3, 10, 9, 6
-game3d_kit_floor_trim_texture_table db 13, 16, 39, 30
+game3d_kit_floor_trim_dither_table db 3, 10, 9, 12
+game3d_kit_floor_trim_texture_table db 81, 74, 91, 94
 game3d_kit_wall_base_color_table db 3, 7, 10, 11
 game3d_kit_wall_base_dither_table db 11, 11, 4, 7
-game3d_kit_wall_base_texture_table db 5, 28, 24, 32
-game3d_kit_wall_trim_color_table db 7, 7, 8, 7
-game3d_kit_wall_trim_dither_table db 3, 3, 7, 12
-game3d_kit_wall_trim_texture_table db 37, 37, 14, 42
-game3d_kit_wall_cap_color_table db 6, 3, 3, 7
-game3d_kit_wall_cap_dither_table db 7, 4, 4, 6
-game3d_kit_wall_cap_texture_table db 6, 255, 255, 255
+game3d_kit_wall_base_texture_table db 67, 80, 77, 85
+game3d_kit_wall_trim_color_table db 7, 7, 11, 11
+game3d_kit_wall_trim_dither_table db 4, 4, 4, 7
+game3d_kit_wall_trim_texture_table db 65, 75, 69, 86
+game3d_kit_wall_cap_color_table db 6, 7, 10, 7
+game3d_kit_wall_cap_dither_table db 7, 11, 4, 6
+game3d_kit_wall_cap_texture_table db 84, 87, 72, 92
 game3d_kit_lane_color_table db 5, 8, 8, 5
 game3d_kit_lane_dither_table db 7, 7, 7, 7
-game3d_kit_lane_texture_table db 31, 14, 40, 8
-game3d_kit_cliff_color_table db 3, 7, 10, 11
-game3d_kit_cliff_dither_table db 11, 11, 4, 7
-game3d_kit_cliff_texture_table db 5, 28, 24, 32
-game3d_kit_shelf_color_table db 11, 7, 3, 7
+game3d_kit_lane_texture_table db 19, 9, 24, 71
+game3d_kit_ceiling_color_table db 7, 7, 11, 7
+game3d_kit_ceiling_dither_table db 3, 4, 5, 12
+game3d_kit_ceiling_texture_table db 89, 75, 76, 94
+game3d_kit_soffit_color_table db 11, 11, 11, 11
+game3d_kit_soffit_dither_table db 6, 6, 4, 7
+game3d_kit_soffit_texture_table db 82, 82, 69, 86
+game3d_kit_lane_trim_color_table db 6, 8, 8, 7
+game3d_kit_lane_trim_dither_table db 3, 10, 9, 6
+game3d_kit_lane_trim_texture_table db 73, 74, 91, 83
+game3d_kit_far_mass_color_table db 6, 7, 10, 7
+game3d_kit_far_mass_dither_table db 7, 11, 4, 6
+game3d_kit_far_mass_texture_table db 84, 87, 72, 92
+game3d_kit_accent_color_table db 6, 8, 8, 5
+game3d_kit_accent_dither_table db 7, 7, 9, 7
+game3d_kit_accent_texture_table db 70, 9, 90, 71
+game3d_kit_cliff_color_table db 11, 3, 10, 7
+game3d_kit_cliff_dither_table db 3, 11, 4, 12
+game3d_kit_cliff_texture_table db 68, 79, 72, 94
+game3d_kit_shelf_color_table db 11, 3, 3, 7
 game3d_kit_shelf_dither_table db 4, 10, 11, 12
-game3d_kit_shelf_texture_table db 1, 35, 25, 42
-game3d_kit_bridge_color_table db 7, 7, 7, 7
-game3d_kit_bridge_dither_table db 10, 3, 10, 6
-game3d_kit_bridge_texture_table db 35, 37, 35, 30
+game3d_kit_shelf_texture_table db 66, 64, 78, 93
+game3d_kit_bridge_color_table db 3, 7, 6, 11
+game3d_kit_bridge_dither_table db 10, 4, 3, 7
+game3d_kit_bridge_texture_table db 64, 75, 81, 86
 game3d_kit_gate_mesh_table db 27, 31, 1, 0
 game3d_kit_terminal_mesh_table db 28, 32, 4, 3
 game3d_kit_surge_mesh_table db 29, 33, 7, 6
 game3d_kit_shard_mesh_table db 30, 34, 10, 9
-game3d_kit_camera_height_table dw 0533h, 055Ah, 05CDh, 061Ah
-game3d_kit_camera_distance_table dw 07DAh, 070Dh, 0673h, 0633h
-game3d_kit_camera_look_ahead_table dw 00E6h, 00E1h, 00D2h, 00C8h
+game3d_kit_camera_height_table dw 055Ah, 0573h, 05F3h, 0633h
+game3d_kit_camera_distance_table dw 080Dh, 0740h, 06B3h, 0673h
+game3d_kit_camera_look_ahead_table dw 00ECh, 00ECh, 00DCh, 00D2h
 game3d_kit_heading_north_yaw_table db 96, 96, 96, 96
 game3d_kit_heading_east_yaw_table db 32, 32, 32, 32
 game3d_kit_heading_south_yaw_table db 224, 224, 224, 224
 game3d_kit_heading_west_yaw_table db 160, 160, 160, 160
-game3d_kit_projection_pitch_table db 246, 245, 245, 246
-game3d_kit_projection_scale_table dw 90, 94, 100, 104
+game3d_kit_projection_pitch_table db 247, 246, 245, 247
+game3d_kit_projection_scale_table dw 92, 96, 102, 106
 game3d_kit_near_occluder_inset_table dw 0066h, 0071h, 0061h, 005Ch
 game3d_kit_near_occluder_width_table dw 0052h, 0066h, 0071h, 0076h
 game3d_kit_near_occluder_height_table dw 017Bh, 01AEh, 01C8h, 01DCh
@@ -709,42 +724,44 @@ game3d_kit_horizon_a_color_table db PAL_WHITE, PAL_AMBER, PAL_AMBER, PAL_WHITE
 game3d_kit_horizon_b_color_table db PAL_CYAN, PAL_WHITE, PAL_RED, PAL_CYAN
 game3d_kit_horizon_y_table db 40, 35, 33, 30
 game3d_kit_wobble_strength_table db 1, 1, 2, 1
-game3d_kit_shot_height_table dw 0533h, 051Ah, 04CDh, 04F3h
-                             dw 050Dh, 04E6h, 048Dh, 055Ah
-                             dw 0526h, 04E6h, 050Dh, 051Ah
-                             dw 04F3h, 049Ah, 05CDh, 0566h
-                             dw 050Dh, 0526h, 0540h, 0500h
-                             dw 04B3h, 061Ah, 05A6h, 054Dh
-                             dw 055Ah, 0573h, 051Ah, 04CDh
-game3d_kit_shot_distance_table dw 07DAh, 06F3h, 089Ah, 060Dh
-                               dw 0633h, 05CDh, 055Ah, 070Dh
-                               dw 0640h, 0873h, 059Ah, 05DAh
-                               dw 055Ah, 04F3h, 0673h, 05E6h
-                               dw 081Ah, 054Dh, 0573h, 0500h
-                               dw 04A6h, 0633h, 05A6h, 07E6h
-                               dw 051Ah, 054Dh, 04DAh, 0480h
-game3d_kit_shot_look_ahead_table dw 00E6h, 010Dh, 0000h, 002Eh
-                                 dw 0024h, 001Fh, 0029h, 00E1h
+game3d_kit_fog_near_table dw 1760, 1880, 1960, 1840
+game3d_kit_fog_far_table dw 3080, 3200, 3320, 3040
+game3d_kit_shot_height_table dw 0585h, 0548h, 050Dh, 04F3h
+                             dw 050Dh, 0500h, 048Dh, 059Fh
+                             dw 055Ah, 0514h, 050Dh, 051Ah
+                             dw 050Dh, 049Ah, 061Ah, 05B8h
+                             dw 0548h, 0526h, 0540h, 051Ah
+                             dw 04B3h, 065Ch, 05ECh, 0585h
+                             dw 055Ah, 0573h, 052Eh, 04CDh
+game3d_kit_shot_distance_table dw 0848h, 0773h, 0926h, 060Dh
+                               dw 0633h, 05F3h, 055Ah, 0785h
+                               dw 069Fh, 08ECh, 059Ah, 05DAh
+                               dw 056Ch, 04F3h, 06ECh, 0648h
+                               dw 0894h, 054Dh, 0573h, 050Dh
+                               dw 04A6h, 06AEh, 060Dh, 0861h
+                               dw 051Ah, 054Dh, 04E1h, 0480h
+game3d_kit_shot_look_ahead_table dw 00F6h, 010Dh, 0000h, 002Eh
+                                 dw 0024h, 001Fh, 0029h, 00ECh
                                  dw 0114h, 0000h, 001Fh, 001Fh
-                                 dw 001Ah, 002Eh, 00D2h, 0105h
+                                 dw 001Ah, 002Eh, 00DCh, 0105h
                                  dw 0000h, 001Ah, 001Fh, 001Ah
-                                 dw 002Eh, 00C8h, 00FBh, 0000h
+                                 dw 002Eh, 00D2h, 00FBh, 0000h
                                  dw 0014h, 001Ah, 0014h, 0029h
-game3d_kit_shot_pitch_table db 246, 244, 247, 244, 243, 243, 242, 245
-                            db 244, 246, 243, 242, 242, 241, 245, 243
-                            db 245, 243, 242, 242, 241, 246, 245, 247
-                            db 244, 243, 243, 242
-game3d_kit_shot_project_scale_table dw 90, 96, 92, 100
-                                    dw 98, 102, 104, 94
-                                    dw 100, 90, 104, 102
-                                    dw 108, 112, 100, 104
-                                    dw 92, 108, 106, 112
-                                    dw 116, 104, 108, 94
-                                    dw 112, 110, 116, 118
-game3d_kit_shot_horizon_table db 40, 37, 39, 35, 35, 34, 33, 35
-                              db 32, 37, 31, 31, 29, 27, 32, 29
-                              db 34, 28, 28, 26, 25, 30, 28, 32
-                              db 27, 27, 25, 24
+game3d_kit_shot_pitch_table db 247, 245, 247, 244, 243, 244, 242, 247
+                            db 245, 247, 243, 242, 243, 241, 246, 244
+                            db 246, 243, 242, 243, 241, 247, 245, 247
+                            db 244, 243, 244, 242
+game3d_kit_shot_project_scale_table dw 94, 98, 96, 100
+                                    dw 98, 104, 104, 98
+                                    dw 102, 94, 104, 102
+                                    dw 108, 112, 104, 106
+                                    dw 96, 108, 106, 114
+                                    dw 116, 108, 110, 98
+                                    dw 112, 110, 118, 118
+game3d_kit_shot_horizon_table db 44, 40, 43, 35, 35, 38, 33, 40
+                              db 36, 38, 31, 31, 33, 27, 36, 33
+                              db 37, 28, 28, 30, 25, 34, 32, 36
+                              db 27, 27, 29, 24
 game3d_kit_shot_focus_bias_x_table dw 0000h, 0000h, 009Ah, 0000h
                                    dw 0000h, 001Ah, 001Fh, 0000h
                                    dw 0000h, 0FF61h, 001Fh, 0000h
@@ -752,12 +769,12 @@ game3d_kit_shot_focus_bias_x_table dw 0000h, 0000h, 009Ah, 0000h
                                    dw 0FF85h, 001Ah, 0000h, 002Eh
                                    dw 0014h, 0000h, 0000h, 00A9h
                                    dw 001Ah, 0000h, 0038h, 0014h
-game3d_kit_shot_focus_bias_z_table dw 0000h, 0029h, 0FF43h, 0000h
+game3d_kit_shot_focus_bias_z_table dw 0000h, 0033h, 0FF2Eh, 0000h
                                    dw 001Fh, 0FFECh, 000Fh, 0000h
-                                   dw 0033h, 0FF2Eh, 0000h, 002Eh
+                                   dw 0033h, 0FF1Ah, 0000h, 002Eh
                                    dw 0FFD2h, 001Ah, 0000h, 003Dh
-                                   dw 0FF38h, 0000h, 0033h, 0FFD2h
-                                   dw 0014h, 0000h, 002Eh, 0FF2Eh
+                                   dw 0FF1Fh, 0000h, 0033h, 0FFD2h
+                                   dw 0014h, 0000h, 002Eh, 0FF14h
                                    dw 0FFF6h, 0029h, 0FFC3h, 000Fh
 game3d_kit_frame_door_inset_table dw 0029h, 0033h, 0031h, 0033h
 game3d_kit_frame_door_width_table dw 0038h, 0048h, 0048h, 004Dh
@@ -765,10 +782,10 @@ game3d_kit_frame_door_height_table dw 0157h, 0185h, 019Ah, 01B3h
 game3d_kit_frame_rail_inset_table dw 009Ah, 008Fh, 008Ah, 008Fh
 game3d_kit_frame_rail_width_table dw 002Eh, 0038h, 0033h, 002Eh
 game3d_kit_frame_rail_height_table dw 00C3h, 00E1h, 00ECh, 00FBh
-game3d_kit_frame_ceiling_height_table dw 0171h, 019Ah, 01B3h, 01C3h
+game3d_kit_frame_ceiling_height_table dw 018Ah, 01B8h, 01D2h, 01E6h
 game3d_kit_frame_ceiling_thickness_table dw 003Dh, 0048h, 004Dh, 004Dh
 game3d_kit_frame_far_mass_inset_table dw 00E1h, 00CDh, 00BDh, 00B3h
-game3d_kit_frame_far_mass_width_table dw 025Ah, 02B8h, 02ECh, 0300h
-game3d_kit_frame_far_mass_height_table dw 013Dh, 017Bh, 01AEh, 01C3h
+game3d_kit_frame_far_mass_width_table dw 028Dh, 02B8h, 02ECh, 0300h
+game3d_kit_frame_far_mass_height_table dw 015Ch, 019Fh, 01D2h, 01ECh
 game3d_kit_landmark_mesh_table db 35, 36, 17, 16
 game3d_kit_landmark_lift_table dw 00C8h, 00D7h, 00E6h, 00F6h

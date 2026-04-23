@@ -162,6 +162,14 @@ scene3d_draw_fixed_span_right_ready:
 
     xor bx, bx
     mov bl, [scene3d_temp_texture]
+    mov cx, TEXTURE_BANK_SEG
+    test bl, SCENE3D_TEXTURE_PAGE_B_BIT
+    jz scene3d_draw_fixed_span_texture_page_ready
+    mov cx, TEXTURE_BANK_B_SEG
+
+scene3d_draw_fixed_span_texture_page_ready:
+    mov ds, cx
+    and bx, TEXTURE_ATLAS_TILE_INDEX_MASK
     mov cx, bx
     and bx, TEXTURE_ATLAS_TILE_COL_MASK
     shl bx, 5
@@ -170,8 +178,6 @@ scene3d_draw_fixed_span_right_ready:
     shr bx, TEXTURE_ATLAS_TILE_ROW_SHIFT
     shl bx, TEXTURE_ATLAS_TILE_OFFSET_SHIFT
     add bp, bx
-    mov bx, TEXTURE_BANK_SEG
-    mov ds, bx
     jmp scene3d_draw_textured_fixed_span_loop
 
 scene3d_draw_fixed_span_loop:
@@ -822,6 +828,14 @@ scene3d_draw_textured_span_right_ready:
     xor ax, ax
     mov al, [scene3d_temp_texture]
     mov bx, ax
+    mov dx, TEXTURE_BANK_SEG
+    test bl, SCENE3D_TEXTURE_PAGE_B_BIT
+    jz scene3d_draw_textured_span_texture_page_ready
+    mov dx, TEXTURE_BANK_B_SEG
+
+scene3d_draw_textured_span_texture_page_ready:
+    mov ds, dx
+    and bx, TEXTURE_ATLAS_TILE_INDEX_MASK
     mov ax, bx
     and ax, TEXTURE_ATLAS_TILE_COL_MASK
     shl ax, 5
@@ -831,8 +845,6 @@ scene3d_draw_textured_span_right_ready:
     shl ax, TEXTURE_ATLAS_TILE_OFFSET_SHIFT
     add [scene3d_temp_l], ax
 
-    mov ax, TEXTURE_BANK_SEG
-    mov ds, ax
     mov si, [scene3d_temp_u]
     mov dx, [scene3d_temp_v]
     mov cx, [scene3d_temp_w]

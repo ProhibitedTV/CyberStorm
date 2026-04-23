@@ -1,5 +1,5 @@
 CyberStorm Build Report
-Generated: 2026-04-22 09:50:40 -06:00
+Generated: 2026-04-23 15:06:42 -06:00
 
 Toolchain
   Assembler: MASM
@@ -21,8 +21,8 @@ Audio Policy
 
 Render Path
   Scene renderer: SCENES_3D_REFERENCE
-  Gameplay renderer: GAMEPLAY_3D_REFERENCE
-  Primary output: BIOS HDD boot + VBE 640x480x16 LFB present when available, with legacy VGA fallback; gameplay logic still renders through the 320x200 compatibility surface.
+  Gameplay renderer: GAMEPLAY_3D_MACHINE
+  Primary output: BIOS HDD boot + VBE 640x480x16 LFB present when available, with legacy VGA fallback; gameplay now renders to a 320x240 surface and presents at exact 2x when the enhanced path is active.
   3D render stage: 5
   Debug switches: -DebugRender2D uses the oracle path, -DebugRenderReference forces stage-two MASM kernels, and -DebugRenderMachine (or legacy -DebugRender3D) enables the banked raw machine-code rail.
 
@@ -39,12 +39,12 @@ Generated Geometry
   Scene count: 7
   Mesh count: 52
   Gameplay kit count: 4
-  Material count: 74
+  Material count: 88
   Bank bytes: 13130
   Triangle count: 926
   Scene summary: splash: 11 groups, 96 ticks, 220 verts, 110 tris, view 320x200+0,0, title: 8 groups, 64 ticks/loop 64, 160 verts, 80 tris, view 320x200+0,0, sector1: 3 groups, 8 ticks, 16 verts, 8 tris, view 152x64+56,42, sector2: 3 groups, 8 ticks, 16 verts, 8 tris, view 152x64+56,42, sector3: 3 groups, 8 ticks, 16 verts, 8 tris, view 152x64+56,42, win: 3 groups, 24 ticks, 16 verts, 8 tris, view 320x200+0,0, lose: 3 groups, 24 ticks, 16 verts, 8 tris, view 320x200+0,0
   Mesh summary: gate_vault:8 tris, gate_furnace:8 tris, gate_lock:8 tris, terminal_vault:12 tris, terminal_furnace:12 tris, terminal_lock:12 tris, surge_vault:12 tris, surge_furnace:12 tris, surge_lock:12 tris, shard_vault:14 tris, shard_furnace:14 tris, shard_lock:14 tris, beacon_exit:12 tris, beacon_focus:12 tris, beacon_spoof:12 tris, beacon_threat:12 tris, landmark_vault:14 tris, landmark_furnace:16 tris, landmark_lock:14 tris, portal_arch:8 tris, switch_pedestal:14 tris, lava_vent:12 tris, gem_cluster:12 tris, tree_round:12 tris, stone_stack:16 tris, bridge_span:12 tris, tower_toy:20 tris, gate_subgrid:14 tris, terminal_subgrid:20 tris, surge_subgrid:18 tris, shard_subgrid:20 tris, gate_switchyard:12 tris, terminal_switchyard:20 tris, surge_switchyard:18 tris, shard_switchyard:20 tris, landmark_relay_gantry:10 tris, landmark_switchframe:8 tris, storm_gate_mass:16 tris, cable_frame:8 tris, transfer_frame:8 tris, catwalk_rib:12 tris, vent_stack:18 tris, vault_buttress:16 tris, uplink_spine:18 tris, enemy_rusher:12 tris, enemy_rusher_alt:12 tris, enemy_flanker:12 tris, enemy_flanker_alt:12 tris, player_runner:14 tris, player_runner_lean:14 tris, warden:14 tris, warden_pressure:14 tris
-  Gameplay kit summary: sector1: cam h=5.2 d=7.85 look=0.9, proj p=-14 s=90, horizon=40, terrain cliff=concrete_rib shelf=concrete_damp bridge=steel_catwalk, landmark=landmark_relay_gantry, wobble=1, props gate_subgrid|terminal_subgrid|surge_subgrid|shard_subgrid | sector2: cam h=5.35 d=7.05 look=0.88, proj p=-15 s=94, horizon=35, terrain cliff=metal_slot shelf=steel_catwalk bridge=steel_truss, landmark=landmark_switchframe, wobble=1, props gate_switchyard|terminal_switchyard|surge_switchyard|shard_switchyard | sector3: cam h=5.8 d=6.45 look=0.82, proj p=-16 s=100, horizon=33, terrain cliff=metal_furnace shelf=metal_grime bridge=steel_catwalk, landmark=landmark_furnace, wobble=2, props gate_furnace|terminal_furnace|surge_furnace|shard_furnace | sector4: cam h=6.1 d=6.2 look=0.78, proj p=-14 s=104, horizon=30, terrain cliff=seal_panel shelf=vault_panel_cold bridge=rail_cold, landmark=landmark_vault, wobble=1, props gate_vault|terminal_vault|surge_vault|shard_vault
+  Gameplay kit summary: sector1: cam h=5.35 d=8.05 look=0.92, proj p=-13 s=92, horizon=40, fog 1760/3080, terrain cliff=concrete_shadow shelf=concrete_damp bridge=catwalk_oil ceiling=steel_truss soffit=metal_under lane=grate_slot far=relay_panel accent=emissive_relay, landmark=landmark_relay_gantry, wobble=1, props gate_subgrid|terminal_subgrid|surge_subgrid|shard_subgrid | sector2: cam h=5.45 d=7.25 look=0.92, proj p=-14 s=96, horizon=35, fog 1880/3200, terrain cliff=occluder_dark shelf=catwalk_oil bridge=hinge_steel ceiling=hinge_steel soffit=metal_under lane=hazard_rung far=skyline_panel accent=hazard_amber, landmark=landmark_switchframe, wobble=1, props gate_switchyard|terminal_switchyard|surge_switchyard|shard_switchyard | sector3: cam h=5.95 d=6.7 look=0.86, proj p=-15 s=102, horizon=33, fog 1960/3320, terrain cliff=furnace_soot shelf=metal_grime bridge=trench_plate ceiling=metal_duct soffit=duct_shadow lane=trench_hot far=furnace_soot accent=strip_furnace, landmark=landmark_furnace, wobble=2, props gate_furnace|terminal_furnace|surge_furnace|shard_furnace | sector4: cam h=6.2 d=6.45 look=0.82, proj p=-13 s=106, horizon=30, fog 1840/3040, terrain cliff=vault_rib shelf=vault_panel_cold bridge=seal_rib ceiling=vault_rib soffit=seal_rib lane=rail_cold far=uplink_panel accent=emissive_uplink, landmark=landmark_vault, wobble=1, props gate_vault|terminal_vault|surge_vault|shard_vault
   Face summary: splash=110t/11g, title=80t/8g, sector1=8t/3g, sector2=8t/3g, sector3=8t/3g, win=8t/3g, lose=8t/3g
 
 Generated Content
@@ -57,11 +57,13 @@ Generated Content
   Machine-code summary: world_transform_project@0x0000 (1 bytes, transform) | affine_textured_triangle@0x0010 (1 bytes, raster) | flat_shaded_triangle_fallback@0x0020 (1 bytes, raster) | shadow_decal_blit@0x0030 (72 bytes, effects) | actor_pose_step_interpolation@0x0080 (35 bytes, animation)
   Machine-code tables: sin_table_88@0x00A4 (256 x 2 bytes)
   Texture bank report: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-texture-bank-report.txt
-  Texture bank bytes: 53248
-  Texture atlas: 256x192 (43/48 used)
-  Gameplay texture atlas: 256x192 (43/48 used)
-  Texture atlas entries: 43
-  Texture atlas summary: banner-warm@0,0 | concrete-damp@32,0 | concrete-noir@64,0 | concrete-pit@96,0 | concrete-rain@128,0 | concrete-rib@160,0 | emissive-relay@192,0 | emissive-strip@224,0 | emissive-uplink@0,32 | gem-blue@32,32 | grass@64,32 | grate-cyan@96,32 | grate-deep@128,32 | grate-slot@160,32 | hazard-amber@192,32 | hazard-diag@224,32 | hazard-rung@0,64 | lava-hot@32,64 | leaf-canopy@64,64 | logo-panel@96,64 | logo-shine@128,64 | logo-void@160,64 | metal-dark@192,64 | metal-duct@224,64 | metal-furnace@0,96 | metal-grime@32,96 | metal-oil@64,96 | metal-plate@96,96 | metal-slot@128,96 | metal-under@160,96 | rail-cold@192,96 | rail-cyan@224,96 | seal-panel-cold@0,128 | soft-stone@32,128 | steel-brush@64,128 | steel-catwalk@96,128 | steel-rib@128,128 | steel-truss@160,128 | stone-shadow@192,128 | strip-furnace-hot@224,128 | strip-hot@0,160 | tree-bark@32,160 | vault-panel-cold@64,160
+  Texture bank bytes: 131072
+  Texture page A: 256x256 (26/60 used)
+  Texture page B: 256x256 (31/64 used)
+  Gameplay texture atlas: dual 256x256 pages (A shared/core, B gameplay-first)
+  Texture atlas entries: 57
+  Texture page A summary: banner-warm@0,0 | concrete-noir@32,0 | concrete-pit@64,0 | concrete-rain@96,0 | emissive-strip@128,0 | gem-blue@160,0 | grass@0,32 | grate-cyan@32,32 | grate-deep@64,32 | hazard-amber@96,32 | hazard-diag@128,32 | lava-hot@160,32 | leaf-canopy@0,64 | logo-panel@32,64 | logo-shine@64,64 | logo-void@96,64 | metal-dark@128,64 | metal-oil@160,64 | metal-plate@192,64 | rail-cyan@224,64 | soft-stone@0,96 | steel-brush@32,96 | steel-rib@64,96 | stone-shadow@96,96 | strip-hot@128,96 | tree-bark@160,96
+  Texture page B summary: catwalk-oil@0,0 | ceiling-rib@32,0 | concrete-damp@64,0 | concrete-rib@96,0 | concrete-shadow@128,0 | duct-shadow@160,0 | emissive-relay@192,0 | emissive-uplink@224,0 | furnace-soot@0,32 | grate-slot@32,32 | hazard-rung@64,32 | hinge-steel@96,32 | metal-duct@128,32 | metal-furnace@160,32 | metal-grime@192,32 | metal-occluder-dark@224,32 | metal-slot@0,64 | metal-trench-plate@32,64 | metal-under@64,64 | rail-cold@96,64 | relay-panel@128,64 | seal-panel-cold@160,64 | seal-rib-cold@192,64 | skyline-panel@224,64 | steel-catwalk@0,96 | steel-truss@32,96 | strip-furnace-hot@64,96 | trench-hot@96,96 | uplink-panel-cold@128,96 | vault-panel-cold@160,96 | vault-rib-cold@192,96
   Presentation source: C:\Users\RhythmicCarnage\Desktop\CyberStorm\assets\presentation.psd1
   Presentation include: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\generated_presentation_content.inc
   Presentation assets: 13 (64x24, 1536 bytes each, 19968 bytes total)
@@ -72,24 +74,29 @@ Generated Content
   Geometry scene groups: 34
   Geometry meshes: 52
   Geometry gameplay kits: 4
-  Geometry materials: 74
+  Geometry materials: 88
   Geometry bank bytes: 13130
   Geometry triangles: 926
   Geometry summary: splash: 11 groups, 96 ticks, 220 verts, 110 tris, view 320x200+0,0, title: 8 groups, 64 ticks/loop 64, 160 verts, 80 tris, view 320x200+0,0, sector1: 3 groups, 8 ticks, 16 verts, 8 tris, view 152x64+56,42, sector2: 3 groups, 8 ticks, 16 verts, 8 tris, view 152x64+56,42, sector3: 3 groups, 8 ticks, 16 verts, 8 tris, view 152x64+56,42, win: 3 groups, 24 ticks, 16 verts, 8 tris, view 320x200+0,0, lose: 3 groups, 24 ticks, 16 verts, 8 tris, view 320x200+0,0
   Frontend splash stats: 11 groups, 96 ticks, 110 tris, 20 materials, 17 textures
   Frontend title stats: 8 groups, 64 ticks/loop 64, 80 tris, 17 materials, 15 textures
   Geometry mesh summary: gate_vault:8 tris, gate_furnace:8 tris, gate_lock:8 tris, terminal_vault:12 tris, terminal_furnace:12 tris, terminal_lock:12 tris, surge_vault:12 tris, surge_furnace:12 tris, surge_lock:12 tris, shard_vault:14 tris, shard_furnace:14 tris, shard_lock:14 tris, beacon_exit:12 tris, beacon_focus:12 tris, beacon_spoof:12 tris, beacon_threat:12 tris, landmark_vault:14 tris, landmark_furnace:16 tris, landmark_lock:14 tris, portal_arch:8 tris, switch_pedestal:14 tris, lava_vent:12 tris, gem_cluster:12 tris, tree_round:12 tris, stone_stack:16 tris, bridge_span:12 tris, tower_toy:20 tris, gate_subgrid:14 tris, terminal_subgrid:20 tris, surge_subgrid:18 tris, shard_subgrid:20 tris, gate_switchyard:12 tris, terminal_switchyard:20 tris, surge_switchyard:18 tris, shard_switchyard:20 tris, landmark_relay_gantry:10 tris, landmark_switchframe:8 tris, storm_gate_mass:16 tris, cable_frame:8 tris, transfer_frame:8 tris, catwalk_rib:12 tris, vent_stack:18 tris, vault_buttress:16 tris, uplink_spine:18 tris, enemy_rusher:12 tris, enemy_rusher_alt:12 tris, enemy_flanker:12 tris, enemy_flanker_alt:12 tris, player_runner:14 tris, player_runner_lean:14 tris, warden:14 tris, warden_pressure:14 tris
-  Geometry gameplay kit summary: sector1: cam h=5.2 d=7.85 look=0.9, proj p=-14 s=90, horizon=40, terrain cliff=concrete_rib shelf=concrete_damp bridge=steel_catwalk, landmark=landmark_relay_gantry, wobble=1, props gate_subgrid|terminal_subgrid|surge_subgrid|shard_subgrid | sector2: cam h=5.35 d=7.05 look=0.88, proj p=-15 s=94, horizon=35, terrain cliff=metal_slot shelf=steel_catwalk bridge=steel_truss, landmark=landmark_switchframe, wobble=1, props gate_switchyard|terminal_switchyard|surge_switchyard|shard_switchyard | sector3: cam h=5.8 d=6.45 look=0.82, proj p=-16 s=100, horizon=33, terrain cliff=metal_furnace shelf=metal_grime bridge=steel_catwalk, landmark=landmark_furnace, wobble=2, props gate_furnace|terminal_furnace|surge_furnace|shard_furnace | sector4: cam h=6.1 d=6.2 look=0.78, proj p=-14 s=104, horizon=30, terrain cliff=seal_panel shelf=vault_panel_cold bridge=rail_cold, landmark=landmark_vault, wobble=1, props gate_vault|terminal_vault|surge_vault|shard_vault
-  Geometry textured materials: 45
-  Geometry texture summary: sun_warm:banner-warm/affine, concrete_damp:concrete-damp/affine, concrete_noir:concrete-noir/affine, concrete_pit:concrete-pit/affine, concrete_rain:concrete-rain/affine, concrete_rib:concrete-rib/affine, emissive_relay:emissive-relay/affine, emissive_strip:emissive-strip/affine, emissive_uplink:emissive-uplink/affine, gem_blue:gem-blue/flat, meadow_ground:grass/affine, grate_lane:grate-cyan/affine, grate_deep:grate-deep/affine, grate_slot:grate-slot/affine, hazard_amber:hazard-amber/affine, hazard_diag:hazard-diag/affine, hazard_rung:hazard-rung/affine, lava_hot:lava-hot/affine, tree_canopy:leaf-canopy/affine, logo_dark:logo-panel/affine, logo_panel:logo-panel/affine, logo_shine:logo-shine/affine, logo_void:logo-void/affine, metal_dark:metal-dark/affine, metal_duct:metal-duct/affine, metal_furnace:metal-furnace/affine, metal_grime:metal-grime/affine, metal_oil:metal-oil/affine, metal_plate:metal-plate/affine, metal_slot:metal-slot/affine, metal_under:metal-under/affine, rail_cold:rail-cold/affine, rail_cyan:rail-cyan/affine, seal_panel:seal-panel-cold/affine, sky_stone:soft-stone/affine, stone_soft:soft-stone/affine, steel_brush:steel-brush/affine, steel_catwalk:steel-catwalk/affine, steel_rib:steel-rib/affine, steel_truss:steel-truss/affine, stone_shadow:stone-shadow/affine, strip_furnace:strip-furnace-hot/affine, strip_hot:strip-hot/affine, tree_trunk:tree-bark/affine, vault_panel_cold:vault-panel-cold/affine
+  Geometry gameplay kit summary: sector1: cam h=5.35 d=8.05 look=0.92, proj p=-13 s=92, horizon=40, fog 1760/3080, terrain cliff=concrete_shadow shelf=concrete_damp bridge=catwalk_oil ceiling=steel_truss soffit=metal_under lane=grate_slot far=relay_panel accent=emissive_relay, landmark=landmark_relay_gantry, wobble=1, props gate_subgrid|terminal_subgrid|surge_subgrid|shard_subgrid | sector2: cam h=5.45 d=7.25 look=0.92, proj p=-14 s=96, horizon=35, fog 1880/3200, terrain cliff=occluder_dark shelf=catwalk_oil bridge=hinge_steel ceiling=hinge_steel soffit=metal_under lane=hazard_rung far=skyline_panel accent=hazard_amber, landmark=landmark_switchframe, wobble=1, props gate_switchyard|terminal_switchyard|surge_switchyard|shard_switchyard | sector3: cam h=5.95 d=6.7 look=0.86, proj p=-15 s=102, horizon=33, fog 1960/3320, terrain cliff=furnace_soot shelf=metal_grime bridge=trench_plate ceiling=metal_duct soffit=duct_shadow lane=trench_hot far=furnace_soot accent=strip_furnace, landmark=landmark_furnace, wobble=2, props gate_furnace|terminal_furnace|surge_furnace|shard_furnace | sector4: cam h=6.2 d=6.45 look=0.82, proj p=-13 s=106, horizon=30, fog 1840/3040, terrain cliff=vault_rib shelf=vault_panel_cold bridge=seal_rib ceiling=vault_rib soffit=seal_rib lane=rail_cold far=uplink_panel accent=emissive_uplink, landmark=landmark_vault, wobble=1, props gate_vault|terminal_vault|surge_vault|shard_vault
+  Geometry textured materials: 59
+  Geometry texture pages: page A 26, page B 31
+  Geometry texture summary: sun_warm:banner-warm/affine@A, catwalk_oil:catwalk-oil/affine@B, ceiling_rib:ceiling-rib/affine@B, concrete_damp:concrete-damp/affine@B, concrete_noir:concrete-noir/affine@A, concrete_pit:concrete-pit/affine@A, concrete_rain:concrete-rain/affine@A, concrete_rib:concrete-rib/affine@B, concrete_shadow:concrete-shadow/affine@B, duct_shadow:duct-shadow/affine@B, emissive_relay:emissive-relay/affine@B, emissive_strip:emissive-strip/affine@A, emissive_uplink:emissive-uplink/affine@B, furnace_soot:furnace-soot/affine@B, gem_blue:gem-blue/flat@A, meadow_ground:grass/affine@A, grate_lane:grate-cyan/affine@A, grate_deep:grate-deep/affine@A, grate_slot:grate-slot/affine@B, hazard_amber:hazard-amber/affine@A, hazard_diag:hazard-diag/affine@A, hazard_rung:hazard-rung/affine@B, hinge_steel:hinge-steel/affine@B, lava_hot:lava-hot/affine@A, tree_canopy:leaf-canopy/affine@A, logo_dark:logo-panel/affine@A, logo_panel:logo-panel/affine@A, logo_shine:logo-shine/affine@A, logo_void:logo-void/affine@A, metal_dark:metal-dark/affine@A, metal_duct:metal-duct/affine@B, metal_furnace:metal-furnace/affine@B, metal_grime:metal-grime/affine@B, occluder_dark:metal-occluder-dark/affine@B, metal_oil:metal-oil/affine@A, metal_plate:metal-plate/affine@A, metal_slot:metal-slot/affine@B, trench_plate:metal-trench-plate/affine@B, metal_under:metal-under/affine@B, rail_cold:rail-cold/affine@B, rail_cyan:rail-cyan/affine@A, relay_panel:relay-panel/affine@B, seal_panel:seal-panel-cold/affine@B, seal_rib:seal-rib-cold/affine@B, skyline_panel:skyline-panel/affine@B, sky_stone:soft-stone/affine@A, stone_soft:soft-stone/affine@A, steel_brush:steel-brush/affine@A, steel_catwalk:steel-catwalk/affine@B, steel_rib:steel-rib/affine@A, steel_truss:steel-truss/affine@B, stone_shadow:stone-shadow/affine@A, strip_furnace:strip-furnace-hot/affine@B, strip_hot:strip-hot/affine@A, tree_trunk:tree-bark/affine@A, trench_hot:trench-hot/affine@B, uplink_panel:uplink-panel-cold/affine@B, vault_panel_cold:vault-panel-cold/affine@B, vault_rib:vault-rib-cold/affine@B
+  Gameplay kit page-B usage: sector1: ceiling_rib, concrete_damp, concrete_rib, emissive_relay, grate_slot, metal_under, relay_panel, steel_truss, trench_plate | sector2: catwalk_oil, hazard_rung, hinge_steel, metal_slot, metal_under, skyline_panel | sector3: duct_shadow, furnace_soot, metal_duct, metal_furnace, metal_grime, strip_furnace, trench_hot | sector4: emissive_uplink, rail_cold, seal_panel, seal_rib, uplink_panel, vault_panel_cold, vault_rib
   Textured realm showcase path: active
   Frontend identity lane: splash/title now favor textured geometry, banked materials, and open-frame overlays
   Frontend splash timing: pylons 8, logo 24, wordmark 32, ui 60
-  Gameplay camera: quadrant-aware chase presets with authored projection, structure depth, horizon bands, and atmosphere
-  Gameplay viewport: 304x152 at 8,24
+  Gameplay renderer default mode: GAMEPLAY_3D_MACHINE
+  Gameplay camera: quadrant-aware chase presets with authored projection, structure depth, horizon bands, per-kit fog, and machine textured surfaces
+  Gameplay surface: 320x240
+  Gameplay present path: exact 2x VBE when active; legacy VGA path downsamples to 320x200
+  Gameplay viewport: 304x192 at 8,24
   Gameplay room structural headroom: S1: structural 190-208/252 (headroom 44-62, quadrant-aware wall families, optional trim cap 46), props 114 tris (sector1_map_a=190 (headroom 62, peak ne, optional cap 46, nw=188, sw=182, ne=190, se=184), sector1_map_b=194 (headroom 58, peak nw+sw, optional cap 46, nw=194, sw=194, ne=190, se=190), sector1_map_c=208 (headroom 44, peak se, optional cap 46, nw=196, sw=202, ne=202, se=208)) | S2: structural 200-224/252 (headroom 28-52, quadrant-aware wall families, optional trim cap 46), props 186 tris (sector2_map_a=200 (headroom 52, peak sw, optional cap 46, nw=192, sw=200, ne=188, se=196), sector2_map_b=224 (headroom 28, peak sw+se, optional cap 46, nw=212, sw=224, ne=212, se=224), sector2_map_c=218 (headroom 34, peak se, optional cap 46, nw=210, sw=216, ne=212, se=218)) | S3: structural 220-252/252 (headroom 0-32, quadrant-aware wall families, optional trim cap 46), props 136 tris (sector3_map_a=234 (headroom 18, peak se, optional cap 46, nw=218, sw=228, ne=224, se=234), sector3_map_b=252 (headroom 0, peak sw, optional cap 46, nw=240, sw=252, ne=236, se=248), sector3_map_c=220 (headroom 32, peak sw, optional cap 46, nw=208, sw=220, ne=204, se=216))
   Gameplay campaign art: subgrid-ingress: structural 158/252 (headroom 94, peak ne, trim cap 46), props 142 tris, landmarks 100 tris | switchyard-spine: structural 208/252 (headroom 44, peak nw+sw, trim cap 46), props 112 tris, landmarks 48 tris | thermal-foundry: structural 198/252 (headroom 54, peak sw, trim cap 46), props 154 tris, landmarks 96 tris | apex-vault: structural 216/252 (headroom 36, peak sw, trim cap 46), props 180 tris, landmarks 84 tris
-  Gameplay district materials: subgrid-ingress: 14 materials (concrete_damp, concrete_rib, emissive_relay, gem_blue, grate_slot, hazard_rung, metal_duct, metal_slot, metal_under, panel_dark, panel_white, rail_cyan, steel_catwalk, steel_truss) | switchyard-spine: 11 materials (emissive_relay, hazard_amber, hazard_rung, metal_duct, metal_slot, metal_under, panel_amber, panel_dark, panel_white, steel_catwalk, steel_truss) | thermal-foundry: 16 materials (console_amber, furnace_trim, furnace_wall, gate_glow, hazard_amber, hazard_rung, metal_furnace, metal_grime, panel_amber, panel_dark, panel_red, panel_white, steel_catwalk, steel_truss, strip_furnace, strip_hot) | apex-vault: 11 materials (console_cyan, emissive_uplink, gate_glow, panel_cyan, panel_dark, panel_white, rail_cold, seal_panel, vault_panel_cold, vault_trim, vault_wall)
+  Gameplay district materials: subgrid-ingress: 19 materials (catwalk_oil, ceiling_rib, concrete_damp, concrete_rib, concrete_shadow, emissive_relay, gem_blue, grate_slot, hazard_rung, metal_duct, metal_slot, metal_under, panel_dark, panel_white, rail_cyan, relay_panel, steel_catwalk, steel_truss, trench_plate) | switchyard-spine: 15 materials (catwalk_oil, emissive_relay, hazard_amber, hazard_rung, hinge_steel, metal_duct, metal_slot, metal_under, occluder_dark, panel_amber, panel_dark, panel_white, skyline_panel, steel_catwalk, steel_truss) | thermal-foundry: 21 materials (console_amber, duct_shadow, furnace_soot, furnace_trim, furnace_wall, gate_glow, hazard_amber, hazard_rung, metal_duct, metal_furnace, metal_grime, panel_amber, panel_dark, panel_red, panel_white, steel_catwalk, steel_truss, strip_furnace, strip_hot, trench_hot, trench_plate) | apex-vault: 14 materials (console_cyan, emissive_uplink, gate_glow, panel_cyan, panel_dark, panel_white, rail_cold, seal_panel, seal_rib, uplink_panel, vault_panel_cold, vault_rib, vault_trim, vault_wall)
   Sector source: C:\Users\RhythmicCarnage\Desktop\CyberStorm\assets\sectors.psd1
   Sector include: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\generated_sector_content.inc
   Maps include: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\generated_maps.inc
@@ -103,9 +110,9 @@ Generated Content
   Campaign districts: subgrid-ingress: SUBGRID INGRESS start 4,12 -> exit 24,2, shards 24/20, relays 1, keycards 1, next 2 | switchyard-spine: SWITCHYARD SPINE start 2,13 -> exit 24,1, shards 16/12, relays 2, keycards 1, next 3 | thermal-foundry: THERMAL FOUNDRY start 2,13 -> exit 24,1, shards 16/14, relays 2, keycards 1, next 4 | apex-vault: APEX VAULT start 2,13 -> exit 23,1, shards 16/14, relays 2, keycards 1, next 0
   Campaign zones: subgrid-ingress:dock-ramp (Dock Ramp, 2,10,10,13) | subgrid-ingress:relay-loop (Relay Loop, 8,8,16,11) | subgrid-ingress:charge-bridge (Charge Bridge, 6,11,12,13) | subgrid-ingress:vault-terrace (Vault Terrace, 14,3,22,6) | subgrid-ingress:return-span (Return Span, 18,7,25,10) | subgrid-ingress:storm-gate (Storm Gate, 21,1,25,4) | switchyard-spine:rail-dock (Rail Dock, 1,11,8,13) | switchyard-spine:crosslane (Crosslane, 8,7,15,10) | switchyard-spine:hinge-yard (Hinge Yard, 15,7,22,10) | switchyard-spine:upper-switch (Upper Switch, 8,1,20,6) | switchyard-spine:spur-run (Spur Run, 20,9,25,13) | switchyard-spine:breach-lock (Breach Lock, 21,1,25,4) | thermal-foundry:coolant-dock (Coolant Dock, 1,11,8,13) | thermal-foundry:ember-loop (Ember Loop, 8,7,15,10) | thermal-foundry:heat-spine (Heat Spine, 15,7,22,10) | thermal-foundry:smelter-rise (Smelter Rise, 8,1,20,6) | thermal-foundry:slag-return (Slag Return, 20,9,25,13) | thermal-foundry:forge-gate (Forge Gate, 21,1,25,4) | apex-vault:vault-dock (Vault Dock, 1,11,8,13) | apex-vault:corridor-spine (Corridor Spine, 8,7,16,10) | apex-vault:seal-run (Seal Run, 16,7,22,10) | apex-vault:warden-rise (Warden Rise, 8,1,20,6) | apex-vault:key-branch (Key Branch, 18,1,23,6) | apex-vault:final-breach (Final Breach, 21,1,25,4)
   Campaign beats: subgrid-ingress: #1 dock-ramp - Open with a readable shard ribbon and the storm tower framed in the distance. | subgrid-ingress: #2 relay-loop - Teach the first wide bend before the route compresses around the relay. | subgrid-ingress: #3 charge-bridge - The dash-strike lane stays obvious and safe enough for the first hard commit. | subgrid-ingress: #4 vault-terrace - The raised keycard terrace reads cleanly against the skyline. | subgrid-ingress: #5 return-span - Loop back through one hazard lesson and a late pressure beat. | subgrid-ingress: #6 storm-gate - Finish under the gate arch with the final breach silhouette filling the frame. | switchyard-spine: #1 rail-dock - Kick off in a broad loading lane with the first relay sightline already visible. | switchyard-spine: #2 crosslane - The main spine asks for a clean commit through readable flanker pressure. | switchyard-spine: #3 hinge-yard - The right hinge lets the player choose between the safe loop and the hot line. | switchyard-spine: #4 upper-switch - Upper switchbacks compress the route and keep the second relay in view. | switchyard-spine: #5 spur-run - The return sprint gathers late shards while enemy pressure pinches from both sides. | switchyard-spine: #6 breach-lock - The breach lock gives one final clean read before the district handoff. | thermal-foundry: #1 coolant-dock - Open with clean footing before the furnace lanes start to punish delay. | thermal-foundry: #2 ember-loop - The first hazard teaches the short overload burst without choking the route. | thermal-foundry: #3 heat-spine - Mid-route crossfire and hot floor force sharper line choice. | thermal-foundry: #4 smelter-rise - The keycard climb keeps the upper catwalk in view while the player commits upward. | thermal-foundry: #5 slag-return - The lower return run escalates hazard density and rewards quick recovery. | thermal-foundry: #6 forge-gate - The forge gate resolves into a clean sprint once the district is fully unlocked. | apex-vault: #1 vault-dock - Start in the quiet dock before the vault camera line closes in. | apex-vault: #2 corridor-spine - The center corridor is direct but keeps flanker pressure live. | apex-vault: #3 seal-run - Late hazards and tighter lanes punish hesitation. | apex-vault: #4 warden-rise - The upper rise frames the warden and the final gate in one glance. | apex-vault: #5 key-branch - The key branch is short, exposed, and worth the commitment. | apex-vault: #6 final-breach - Once the gate opens, the last sprint should feel urgent and unmistakable.
-  Campaign chunks: subgrid-ingress:dock-west 2,10->7,13 h0/0 ramp=none cliff=north bridge=none prop=2 | subgrid-ingress:dock-east 8,10->12,13 h0/64 ramp=east cliff=north bridge=none prop=2 | subgrid-ingress:relay-bend 10,8->16,11 h64/96 ramp=north cliff=east bridge=none prop=2 | subgrid-ingress:charge-teach 6,11->12,13 h64/112 ramp=north cliff=south bridge=east-west prop=2 | subgrid-ingress:vault-climb 14,5->18,8 h112/176 ramp=east cliff=north bridge=none prop=2 | subgrid-ingress:vault-key 18,3->22,5 h176/208 ramp=north cliff=west bridge=none prop=3 | subgrid-ingress:return-ramp 18,7->22,10 h128/176 ramp=west cliff=south bridge=none prop=2 | subgrid-ingress:return-lane 22,7->25,10 h96/128 ramp=east cliff=south bridge=none prop=2 | subgrid-ingress:gate-front 21,1->23,4 h96/144 ramp=north cliff=west bridge=none prop=3 | subgrid-ingress:gate-arch 23,1->25,3 h144/176 ramp=none cliff=south bridge=none prop=3 | switchyard-spine:dock-lane 1,11->8,13 h0/32 ramp=east cliff=north bridge=none prop=2 | switchyard-spine:crosslane-core 8,7->15,10 h32/96 ramp=north cliff=east bridge=east-west prop=2 | switchyard-spine:hinge-yard 15,7->22,10 h64/128 ramp=west cliff=south bridge=none prop=2 | switchyard-spine:upper-switch 8,1->20,6 h96/160 ramp=north cliff=west bridge=north-south prop=2 | switchyard-spine:spur-run 20,9->25,13 h64/112 ramp=east cliff=south bridge=none prop=2 | switchyard-spine:breach-lock 21,1->25,4 h128/176 ramp=north cliff=west bridge=none prop=3 | thermal-foundry:coolant-dock 1,11->8,13 h0/32 ramp=east cliff=north bridge=none prop=2 | thermal-foundry:ember-loop 8,7->15,10 h32/96 ramp=north cliff=east bridge=none prop=2 | thermal-foundry:heat-spine 15,7->22,10 h64/128 ramp=west cliff=south bridge=east-west prop=2 | thermal-foundry:smelter-rise 8,1->20,6 h96/176 ramp=north cliff=west bridge=north-south prop=2 | thermal-foundry:slag-return 20,9->25,13 h64/112 ramp=east cliff=south bridge=none prop=2 | thermal-foundry:forge-gate 21,1->25,4 h144/192 ramp=north cliff=west bridge=none prop=3 | apex-vault:vault-dock 1,11->8,13 h0/32 ramp=east cliff=north bridge=none prop=2 | apex-vault:corridor-spine 8,7->16,10 h32/96 ramp=north cliff=east bridge=none prop=2 | apex-vault:seal-run 16,7->22,10 h64/128 ramp=west cliff=south bridge=east-west prop=2 | apex-vault:warden-rise 8,1->20,6 h112/192 ramp=north cliff=west bridge=north-south prop=3 | apex-vault:key-branch 18,1->23,6 h160/208 ramp=east cliff=south bridge=none prop=2 | apex-vault:final-breach 21,1->25,4 h176/224 ramp=north cliff=west bridge=none prop=3
+  Campaign chunks: subgrid-ingress:dock-west 2,10->7,13 h0/0 ramp=none cliff=north bridge=none prop=2 | subgrid-ingress:dock-east 8,10->12,13 h0/64 ramp=east cliff=north bridge=none prop=3 | subgrid-ingress:relay-bend 10,8->16,11 h64/96 ramp=north cliff=east bridge=none prop=3 | subgrid-ingress:charge-teach 6,11->12,13 h64/112 ramp=north cliff=south bridge=east-west prop=2 | subgrid-ingress:vault-climb 14,5->18,8 h112/176 ramp=east cliff=north bridge=none prop=2 | subgrid-ingress:vault-key 18,3->22,5 h176/208 ramp=north cliff=west bridge=none prop=3 | subgrid-ingress:return-ramp 18,7->22,10 h128/176 ramp=west cliff=south bridge=none prop=3 | subgrid-ingress:return-lane 22,7->25,10 h96/128 ramp=east cliff=south bridge=none prop=2 | subgrid-ingress:gate-front 21,1->23,4 h96/144 ramp=north cliff=west bridge=none prop=3 | subgrid-ingress:gate-arch 23,1->25,3 h144/176 ramp=none cliff=south bridge=none prop=3 | switchyard-spine:dock-lane 1,11->8,13 h0/32 ramp=east cliff=north bridge=none prop=2 | switchyard-spine:crosslane-core 8,7->15,10 h32/96 ramp=north cliff=east bridge=east-west prop=3 | switchyard-spine:hinge-yard 15,7->22,10 h64/128 ramp=west cliff=south bridge=none prop=2 | switchyard-spine:upper-switch 8,1->20,6 h96/160 ramp=north cliff=west bridge=north-south prop=3 | switchyard-spine:spur-run 20,9->25,13 h64/112 ramp=east cliff=south bridge=none prop=2 | switchyard-spine:breach-lock 21,1->25,4 h128/176 ramp=north cliff=west bridge=none prop=3 | thermal-foundry:coolant-dock 1,11->8,13 h0/32 ramp=east cliff=north bridge=none prop=2 | thermal-foundry:ember-loop 8,7->15,10 h32/96 ramp=north cliff=east bridge=none prop=3 | thermal-foundry:heat-spine 15,7->22,10 h64/128 ramp=west cliff=south bridge=east-west prop=2 | thermal-foundry:smelter-rise 8,1->20,6 h96/176 ramp=north cliff=west bridge=north-south prop=3 | thermal-foundry:slag-return 20,9->25,13 h64/112 ramp=east cliff=south bridge=none prop=2 | thermal-foundry:forge-gate 21,1->25,4 h144/192 ramp=north cliff=west bridge=none prop=3 | apex-vault:vault-dock 1,11->8,13 h0/32 ramp=east cliff=north bridge=none prop=2 | apex-vault:corridor-spine 8,7->16,10 h32/96 ramp=north cliff=east bridge=none prop=3 | apex-vault:seal-run 16,7->22,10 h64/128 ramp=west cliff=south bridge=east-west prop=2 | apex-vault:warden-rise 8,1->20,6 h112/192 ramp=north cliff=west bridge=north-south prop=4 | apex-vault:key-branch 18,1->23,6 h160/208 ramp=east cliff=south bridge=none prop=2 | apex-vault:final-breach 21,1->25,4 h176/224 ramp=north cliff=west bridge=none prop=3
   Campaign capture: subgrid-ingress: beauty=subgrid-attract-a, action=subgrid-attract-b | switchyard-spine: beauty=switchyard-attract-a, action=switchyard-attract-b | thermal-foundry: beauty=thermal-attract-a, action=thermal-attract-b | apex-vault: beauty=vault-attract-a, action=vault-attract-b
-  Gameplay showcase slots: title=splash-lockup, beauty=vault-attract-a, action=thermal-attract-b
+  Gameplay showcase slots: title=splash-lockup, beauty=switchyard-attract-a, action=vault-attract-b
   Demo source: C:\Users\RhythmicCarnage\Desktop\CyberStorm\assets\demos.psd1
   Demo include: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\generated_demos.inc
   Demos: 17
@@ -121,23 +128,23 @@ Generated Content
 Replay Harness
   Report: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-replay-report.txt
   Scenarios: 17
-  SUBGRID BEAUTY PASS: final 0xEE07
-  SUBGRID ACTION PASS: final 0xC7FA
-  ADVENTURE IDLE VERIFY: final 0x884A
-  ADVENTURE TURN VERIFY: final 0x89CA
-  ADVENTURE RUN VERIFY: final 0x9B13
-  ADVENTURE JUMP GLIDE VERIFY: final 0x2846
-  ADVENTURE CHARGE HIT VERIFY: final 0x9C6A
-  ADVENTURE SWITCH VERIFY: final 0x9C6A
-  ADVENTURE KEY VERIFY: final 0xCA57
-  ADVENTURE PORTAL UNLOCK VERIFY: final 0xF2D7
-  ADVENTURE PORTAL COMPLETE VERIFY: final 0xF2D7
-  SWITCHYARD BEAUTY PASS: final 0xA6D6
-  SWITCHYARD ACTION PASS: final 0x75A3
-  THERMAL BEAUTY PASS: final 0xAFC6
-  THERMAL ACTION PASS: final 0x8FA7
-  VAULT BEAUTY PASS: final 0xC6E7
-  VAULT ACTION PASS: final 0x75A3
+  SUBGRID BEAUTY PASS: final 0xEEC7
+  SUBGRID ACTION PASS: final 0xCABA
+  ADVENTURE IDLE VERIFY: final 0x8A8A
+  ADVENTURE TURN VERIFY: final 0x8B0A
+  ADVENTURE RUN VERIFY: final 0x99D3
+  ADVENTURE JUMP GLIDE VERIFY: final 0x2A86
+  ADVENTURE CHARGE HIT VERIFY: final 0x9E2A
+  ADVENTURE SWITCH VERIFY: final 0x9E2A
+  ADVENTURE KEY VERIFY: final 0xCA97
+  ADVENTURE PORTAL UNLOCK VERIFY: final 0xF417
+  ADVENTURE PORTAL COMPLETE VERIFY: final 0xF417
+  SWITCHYARD BEAUTY PASS: final 0xA496
+  SWITCHYARD ACTION PASS: final 0x74E3
+  THERMAL BEAUTY PASS: final 0xAD86
+  THERMAL ACTION PASS: final 0x92E7
+  VAULT BEAUTY PASS: final 0xC3A7
+  VAULT ACTION PASS: final 0x74E3
 
 Balance Harness
   Report: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-balance-report.txt
@@ -159,23 +166,19 @@ Balance Harness
 Regression Harness
   Report: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-regression-report.txt
   Boot sector: 512 bytes, signature 0x55AA, LBA 0 matches the disk image
-  Bootstrap: 1266 bytes, 3 sectors, LBA 1..3
-  Stage two: 61782 bytes, 121 sectors, STAGE2_LBA matches, entry near jmp to 0x14FC
-  Code bank: 676 bytes (1024 padded), 2 sectors, LBA 125..126
-  Texture bank: 53248 bytes (53248 padded), 104 sectors, LBA 127..230
-  Map bank: 6714 bytes (7168 padded), 14 sectors, LBA 231..244
-  Presentation bank: 19968 bytes (19968 padded), 39 sectors, LBA 245..283
-  Geometry bank: 13130 bytes (13312 padded), 26 sectors, LBA 284..309
-  Disk image: 33554432 bytes, occupied through byte 158719, unused tail zero-filled
+  Bootstrap: 1314 bytes, 3 sectors, LBA 1..3
+  Stage two: 62568 bytes, 123 sectors, STAGE2_LBA matches, entry near jmp to 0x152B
+  Code bank: 676 bytes (1024 padded), 2 sectors, LBA 127..128
+  Texture bank A: 65536 bytes (65536 padded), 128 sectors, LBA 129..256
+  Texture bank B: 65536 bytes (65536 padded), 128 sectors, LBA 257..384
+  Map bank: 6714 bytes (7168 padded), 14 sectors, LBA 385..398
+  Presentation bank: 19968 bytes (19968 padded), 39 sectors, LBA 399..437
+  Geometry bank: 13130 bytes (13312 padded), 26 sectors, LBA 438..463
+  Disk image: 33554432 bytes, occupied through byte 237567, unused tail zero-filled
   Diagnostics: boot.lst, bootstrap.lst, and game.lst are present for post-failure inspection
 
 Frontend Verify
-  Report: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-frontend-verify-report.txt
-  Status: PASS
-  SPLASH TO TITLE: PASS (STATE_7 -> STATE_7)
-  TITLE TO START: PASS (STATE_7 + guard -> STATE_7 + guard)
-  TITLE TO ATTRACT: PASS (STATE_7 + demo + guard -> STATE_7 + demo + guard)
-  Forced mismatch: FAIL (STATE_7 -> STATE_7)
+  Status: skipped (use -FrontendVerify to boot debug-only splash/title/attract verification scenarios in VirtualBox).
 
 VM Smoke
   Status: skipped (use -VmSmoke to boot the headless VirtualBox smoke path).
@@ -189,11 +192,12 @@ Showcase Capture
 
 Asset Banks
   Layout include: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\generated_bank_layout.inc
-  Code bank: 676 bytes (1024 padded), 2 sectors, LBA 125..126, load 0x6000:0000, payload C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-code-bank.bin
-  Texture bank: 53248 bytes (53248 padded), 104 sectors, LBA 127..230, load 0x6800:0000, payload C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-texture-bank.bin
-  Map bank: 6714 bytes (7168 padded), 14 sectors, LBA 231..244, load 0x7000:0000, payload C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-map-bank.bin
-  Presentation bank: 19968 bytes (19968 padded), 39 sectors, LBA 245..283, load 0x7800:0000, payload C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-presentation-bank.bin
-  Geometry bank: 13130 bytes (13312 padded), 26 sectors, LBA 284..309, load 0x8000:0000, payload C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-geometry-bank.bin
+  Code bank: 676 bytes (1024 padded), 2 sectors, LBA 127..128, load 0x2000:0000, payload C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-code-bank.bin
+  Texture bank A: 65536 bytes (65536 padded), 128 sectors, LBA 129..256, load 0x4000:0000, payload C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-texture-bank.bin
+  Texture bank B: 65536 bytes (65536 padded), 128 sectors, LBA 257..384, load 0x5000:0000, payload C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-texture-bank-b.bin
+  Map bank: 6714 bytes (7168 padded), 14 sectors, LBA 385..398, load 0x2800:0000, payload C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-map-bank.bin
+  Presentation bank: 19968 bytes (19968 padded), 39 sectors, LBA 399..437, load 0x3000:0000, payload C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-presentation-bank.bin
+  Geometry bank: 13130 bytes (13312 padded), 26 sectors, LBA 438..463, load 0x3800:0000, payload C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-geometry-bank.bin
 
 Screenshots
   Housekeeping: kept 6 source screenshots, removed 0, public gallery status is missing
@@ -207,28 +211,28 @@ Screenshots
 Layout
   Boot code bytes: 200 / 510
   Boot code free bytes: 310
-  Bootstrap bytes: 1266
+  Bootstrap bytes: 1314
   Bootstrap padded bytes: 1536
   Bootstrap sectors: 3
-  Stage2 bytes: 61782
-  Stage2 free bytes before 64 KiB limit: 3754
-  Stage2 padded bytes: 61952
-  Stage2 sectors: 121
-  Disk image bytes used: 157296 / 33554432
-  Disk image free bytes: 33397136
-  Occupied sector bytes: 158720 / 33554432
-  Occupied sector free bytes: 33395712
+  Stage2 bytes: 62568
+  Stage2 free bytes before 64 KiB limit: 2968
+  Stage2 padded bytes: 62976
+  Stage2 sectors: 123
+  Disk image bytes used: 235954 / 33554432
+  Disk image free bytes: 33318478
+  Occupied sector bytes: 237568 / 33554432
+  Occupied sector free bytes: 33316864
   Boot load address: 0000:7C00 (phys 0x00007C00)
   Bootstrap load address: 0x0800:0000 (phys 0x00008000)
   Stage2 load address: 0x1000:0x0000 (phys 0x00010000)
   Boot signature: 0x55AA @ byte 510
   Bootstrap LBA range: 1..3
-  Stage2 LBA range: 4..124
+  Stage2 LBA range: 4..126
   Boot section: .text$mn (relocations applied: 6)
-  Stage2 section: .text$mn (relocations applied: 3621)
+  Stage2 section: .text$mn (relocations applied: 3669)
   Assembler warnings: boot=1, stage2=1
   Boot 'start' symbol offset: 0x0000
-  Stage2 'start' symbol offset: 0x14FC
+  Stage2 'start' symbol offset: 0x152B
 
 Artifacts
   C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\generated_art.inc
@@ -252,6 +256,7 @@ Artifacts
   C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\generated_bank_layout.inc
   C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-code-bank.bin
   C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-texture-bank.bin
+  C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-texture-bank-b.bin
   C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-map-bank.bin
   C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-presentation-bank.bin
   C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-geometry-bank.bin
@@ -267,5 +272,7 @@ Artifacts
   C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm.img
 
 Warnings
-  Stage two is within 3754 bytes of the 64 KiB load limit.
-  Stage two uses 121 sectors; that is close to the 128-sector single-segment load limit.
+  Stage two is within 2968 bytes of the 64 KiB load limit.
+  Stage two uses 123 sectors; that is close to the 128-sector single-segment load limit.
+  Asset bank 'Texture bank A' is within 4096 bytes of the current single-segment runtime load limit.
+  Asset bank 'Texture bank B' is within 4096 bytes of the current single-segment runtime load limit.

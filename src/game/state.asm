@@ -94,6 +94,12 @@ verify_result_demo_index db 0
 verify_fail_reason db VERIFY_FAIL_REASON_NONE
 verify_expected_signature dw 0
 verify_observed_signature dw 0
+; Runtime verify failure diagnostics pack the live demo engine state into four
+; host-readable words so timeout/failure reports can explain what stalled.
+verify_diag_action dw 0
+verify_diag_script_ptr dw 0
+verify_diag_progress dw 0
+verify_diag_flags dw 0
 verify_snapshot_heading db 0
 verify_snapshot_variant db 0
 verify_snapshot_cue_flags db 0

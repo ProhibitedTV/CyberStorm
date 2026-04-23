@@ -8,7 +8,7 @@
 
 | Built for | Boots from | Video | Runtime |
 | --- | --- | --- | --- |
-| BIOS x86 + Oracle VirtualBox | Raw HDD image (`.img`) | VBE `640x480x16` present path over a `320x200` compatibility surface, with legacy VGA fallback | i386-targeted boot chain + legacy 16-bit stage-two runtime |
+| BIOS x86 + Oracle VirtualBox | Raw HDD image (`.img`) | VBE `640x480x16` present path over a `320x240` gameplay surface with exact 2x presentation when active, plus legacy VGA fallback | i386-targeted boot chain + legacy 16-bit stage-two runtime |
 
 ## Key Features
 
@@ -123,7 +123,7 @@ This section is intentionally stable. Exact byte counts, LBA ranges, and generat
 | Banked payloads | Map, presentation, and geometry payloads load into `7000:0000`, `7800:0000`, and `8000:0000`. |
 | Public gallery | `title`, `beauty`, and `action` README slots are sourced from the verified showcase manifest under [build/showcase/](build/showcase). |
 | Validation stack | Build, balance, replay, regression, frontend verify, VM smoke, runtime verify, and showcase capture all write reviewable reports. |
-| Release defaults | `MUSIC` audio policy, grouped low-poly scenes, camera-relative gameplay-room 3D rendering, and an enhanced VBE present path that currently displays the `320x200` gameplay/runtime surface inside the new boot chain. |
+| Release defaults | `MUSIC` audio policy, grouped low-poly scenes, camera-relative gameplay-room 3D rendering, and an enhanced VBE present path that now displays the `320x240` gameplay surface at exact `2x` inside the new boot chain. |
 
 ## Why This Is A Strong AI-Assisted Development Example
 
@@ -342,8 +342,8 @@ powershell -ExecutionPolicy Bypass -File .\scripts\build.ps1 -CaptureShowcase
 This turns deterministic demos into reproducible public-facing captures:
 
 - a verified `title` shot from the VM smoke title frame
-- a verified `beauty` shot from the configured AdventureRealm beauty anchor in `assets/sectors.psd1` (currently `subgrid-attract-a`)
-- a verified `action` shot from the configured AdventureRealm action anchor in `assets/sectors.psd1` (currently `subgrid-attract-b`)
+- a verified `beauty` shot from the configured AdventureRealm beauty anchor in `assets/sectors.psd1` (currently `switchyard-attract-a`)
+- a verified `action` shot from the configured AdventureRealm action anchor in `assets/sectors.psd1` (currently `vault-attract-b`)
 - a machine-readable gallery manifest under `build/showcase/` so the README can publish fresh captures or preserve the last verified set without rotating manual screenshots
 
 Artifacts:

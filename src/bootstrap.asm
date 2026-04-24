@@ -29,8 +29,9 @@ BOOT_DISK_SECTORS_PER_TRACK equ 63
 HANDOFF_OFFSET     equ 0400h
 HANDOFF_SIG0       equ 4252h
 HANDOFF_SIG1       equ 5645h
-HANDOFF_VERSION    equ 1
+HANDOFF_VERSION    equ 2
 HANDOFF_FLAG_VBE   equ 0001h
+HANDOFF_PRESENT_FLAG_CAN_PAGE_FLIP equ 0001h
 HANDOFF_SIG0_OFF   equ 0
 HANDOFF_SIG1_OFF   equ 2
 HANDOFF_VERSION_OFF equ 4
@@ -40,6 +41,9 @@ HANDOFF_WIDTH_OFF  equ 10
 HANDOFF_HEIGHT_OFF equ 12
 HANDOFF_PITCH_OFF  equ 14
 HANDOFF_LFB_OFF    equ 16
+HANDOFF_FRAME_BYTES_OFF equ 20
+HANDOFF_IMAGE_PAGES_OFF equ 24
+HANDOFF_PRESENT_FLAGS_OFF equ 26
 
 FLAT_CODE_SEL equ 08h
 FLAT_DATA_SEL equ 10h
@@ -79,7 +83,7 @@ clear_handoff_block:
     mov es, ax
     mov di, HANDOFF_OFFSET
     xor ax, ax
-    mov cx, 12
+    mov cx, 14
     rep stosw
     pop di
     pop cx
@@ -238,6 +242,30 @@ setup_vbe_mode:
     mov ax, cs
     mov ds, ax
     mov es, ax
+    mov dword ptr [vbe_info_buffer], 'VBE2'
+    lea di, vbe_info_buffer
+    mov ax, 4F00h
+    int 10h
+    cmp ax, 004Fh
+    jne setup_vbe_info_ready
+    mov ax, word ptr vbe_info_buffer[18]
+    mov [vbe_total_memory_blocks], ax
+
+setup_vbe_info_ready:
+    mov ax, 4F02h
+    mov bx, ENHANCED_VBE_MODE
+    or bx, ENHANCED_VBE_LINEAR_FLAG
+    int 10h
+    cmp ax, 004Fh
+    je setup_vbe_mode_set
+    mov ax, 4F02h
+    mov bx, ENHANCED_VBE_MODE
+    int 10h
+    cmp ax, 004Fh
+    jne setup_vbe_legacy
+
+setup_vbe_mode_set:
+
     lea di, vbe_info_buffer
     mov ax, 4F01h
     mov cx, ENHANCED_VBE_MODE
@@ -245,32 +273,35 @@ setup_vbe_mode:
     cmp ax, 004Fh
     jne setup_vbe_legacy
 
-    mov ax, word ptr vbe_info_buffer[0]
-    test ax, 0001h
-    jz setup_vbe_legacy
-    test ax, 0010h
-    jz setup_vbe_legacy
-    test ax, 0080h
-    jz setup_vbe_legacy
+    ; VBox's VBE BIOS is functional but not always consistent about the more
+    ; decorative capability bits here. Treat a clean post-set mode-info query
+    ; plus the expected dimensions/depth/LFB address as sufficient, then trust
+    ; the later handoff instead of pre-rejecting the enhanced lane.
     cmp word ptr vbe_info_buffer[12], 640
     jne setup_vbe_legacy
     cmp word ptr vbe_info_buffer[14], 480
     jne setup_vbe_legacy
+    cmp word ptr vbe_info_buffer[16], 0
+    je setup_vbe_legacy
     cmp byte ptr vbe_info_buffer[25], 16
-    jne setup_vbe_legacy
-    mov al, byte ptr vbe_info_buffer[27]
-    cmp al, 6
     jne setup_vbe_legacy
     mov eax, dword ptr vbe_info_buffer[40]
     test eax, eax
     jz setup_vbe_legacy
 
-    mov ax, 4F02h
-    mov bx, ENHANCED_VBE_MODE
-    or bx, ENHANCED_VBE_LINEAR_FLAG
+    ; VirtualBox can leave the enhanced mode with a non-zero display start,
+    ; which makes the first gameplay frame look like a wrapped torus until the
+    ; presenter explicitly resets it. Normalize the visible origin here so
+    ; stage two always starts from a clean page-0 (0,0) view.
+    mov ax, 4F07h
+    mov bx, 0080h
+    xor cx, cx
+    xor dx, dx
     int 10h
-    cmp ax, 004Fh
-    jne setup_vbe_legacy
+    ; Some guest VBE BIOSes expose a valid 640x480x16 LFB mode but decline the
+    ; display-start reset handshake. Keep the enhanced handoff alive anyway and
+    ; let stage two use its safer degraded presenter instead of throwing the
+    ; whole runtime back to mode 13h.
 
     mov ax, cs
     mov ds, ax
@@ -280,10 +311,30 @@ setup_vbe_mode:
     mov [handoff_width], ax
     mov ax, word ptr vbe_info_buffer[14]
     mov [handoff_height], ax
+    mov ax, word ptr vbe_info_buffer[16]
+    mov dx, word ptr vbe_info_buffer[14]
+    mul dx
+    mov word ptr [handoff_frame_bytes], ax
+    mov word ptr [handoff_frame_bytes + 2], dx
+    xor ax, ax
+    mov al, byte ptr vbe_info_buffer[29]
+    mov [handoff_image_pages], ax
     mov eax, dword ptr vbe_info_buffer[40]
     mov dword ptr [handoff_lfb], eax
     mov word ptr [handoff_flags], HANDOFF_FLAG_VBE
     mov word ptr [handoff_mode], ENHANCED_VBE_MODE
+    mov word ptr [handoff_present_flags], 0
+    cmp word ptr [handoff_image_pages], 0
+    ja setup_vbe_enable_page_flip
+    movzx eax, word ptr [vbe_total_memory_blocks]
+    shl eax, 16
+    mov edx, dword ptr [handoff_frame_bytes]
+    add edx, edx
+    cmp eax, edx
+    jb setup_vbe_done
+
+setup_vbe_enable_page_flip:
+    or word ptr [handoff_present_flags], HANDOFF_PRESENT_FLAG_CAN_PAGE_FLIP
     jmp setup_vbe_done
 
 setup_vbe_legacy:
@@ -291,6 +342,9 @@ setup_vbe_legacy:
     mov ds, ax
     mov word ptr [handoff_flags], 0
     mov word ptr [handoff_mode], 0
+    mov dword ptr [handoff_frame_bytes], 0
+    mov word ptr [handoff_image_pages], 0
+    mov word ptr [handoff_present_flags], 0
     mov dword ptr [handoff_lfb], 0
 
 setup_vbe_done:
@@ -390,6 +444,12 @@ write_handoff_block:
     mov word ptr es:[di + HANDOFF_PITCH_OFF], ax
     mov eax, dword ptr [handoff_lfb]
     mov dword ptr es:[di + HANDOFF_LFB_OFF], eax
+    mov eax, dword ptr [handoff_frame_bytes]
+    mov dword ptr es:[di + HANDOFF_FRAME_BYTES_OFF], eax
+    mov ax, [handoff_image_pages]
+    mov word ptr es:[di + HANDOFF_IMAGE_PAGES_OFF], ax
+    mov ax, [handoff_present_flags]
+    mov word ptr es:[di + HANDOFF_PRESENT_FLAGS_OFF], ax
     pop di
     pop ax
     ret
@@ -428,6 +488,10 @@ handoff_width  dw 640
 handoff_height dw 480
 handoff_pitch  dw 640
 handoff_lfb    dd 0
+handoff_frame_bytes dd 0
+handoff_image_pages dw 0
+handoff_present_flags dw 0
+vbe_total_memory_blocks dw 0
 
 even
 gdt_start label byte

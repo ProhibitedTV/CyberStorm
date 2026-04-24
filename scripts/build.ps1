@@ -5565,6 +5565,7 @@ $renderSummaryLines = @(
     ("Scene renderer: {0}" -f $sceneRenderModeName)
     ("Gameplay renderer: {0}" -f $gameplayRenderModeName)
     'Primary output: BIOS HDD boot + VBE 640x480x16 LFB present when available, with legacy VGA fallback; gameplay now renders to a 320x240 surface and presents at exact 2x when the enhanced path is active.'
+    'Gameplay VBE present: page-flip only when the enhanced handoff opts into a verified extra image page; degraded whole-frame blit otherwise.'
     ("3D render stage: {0}" -f $debugRenderStageValue)
     'Debug switches: -DebugRender2D uses the oracle path, -DebugRenderReference forces stage-two MASM kernels, and -DebugRenderMachine (or legacy -DebugRender3D) enables the banked raw machine-code rail.'
 )
@@ -5803,7 +5804,8 @@ $generatedContentLines = @(
     ("Gameplay renderer default mode: {0}" -f $gameplayRenderModeName)
     ("Gameplay camera: quadrant-aware chase presets with authored projection, structure depth, horizon bands, per-kit fog, and machine textured surfaces")
     ("Gameplay surface: {0}x{1}" -f 320, $gameplaySurfaceH)
-    ("Gameplay present path: exact 2x VBE when active; legacy VGA path downsamples to 320x200")
+    ("Gameplay present path: exact 2x VBE page-flip only when the enhanced handoff marks it safe; degraded-blit fallback otherwise; legacy VGA path downsamples to 320x200")
+    ("Enhanced handoff: width/height/pitch/lfb + frame-bytes/image-pages/present-flags")
     ("Gameplay viewport: {0}x{1} at {2},{3}" -f $game3dViewW, $game3dViewH, $game3dViewX, $game3dViewY)
     ("Gameplay room structural headroom: {0}" -f ($gameplayGeometryBudget.SummaryLines -join ' | '))
     ("Gameplay campaign art: {0}" -f $(if ($campaignGameplayArt.SummaryLines.Count -gt 0) { $campaignGameplayArt.SummaryLines -join ' | ' } else { 'none' }))

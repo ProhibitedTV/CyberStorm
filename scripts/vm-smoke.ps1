@@ -204,6 +204,74 @@ function Get-SmokeSentinelStatus {
     }
 }
 
+function Get-GameplayPresentStrategyStatus {
+    param(
+        [System.Drawing.Bitmap]$Bitmap,
+        [hashtable]$Geometry
+    )
+
+    $pageFlipRef = New-RgbRef $Geometry.PageFlipR $Geometry.PageFlipG $Geometry.PageFlipB
+    $degradedRef = New-RgbRef $Geometry.DegradedR $Geometry.DegradedG $Geometry.DegradedB
+    $matchThreshold = 14000
+    $pageFlipMatches = 0
+    $degradedMatches = 0
+    $closestPageFlipDistance = [double]::PositiveInfinity
+    $closestDegradedDistance = [double]::PositiveInfinity
+
+    for ($logicalY = $Geometry.Y; $logicalY -lt ($Geometry.Y + $Geometry.H); $logicalY++) {
+        for ($logicalX = $Geometry.X; $logicalX -lt ($Geometry.X + $Geometry.W); $logicalX++) {
+            $sample = Get-LogicalBitmapPixel `
+                -Bitmap $Bitmap `
+                -LogicalX $logicalX `
+                -LogicalY $logicalY `
+                -ScreenW $Geometry.ScreenW `
+                -ScreenH $Geometry.ScreenH
+            $pageFlipDistance = Get-ColorDistance -Color $sample -Reference $pageFlipRef
+            $degradedDistance = Get-ColorDistance -Color $sample -Reference $degradedRef
+            if ($pageFlipDistance -lt $closestPageFlipDistance) {
+                $closestPageFlipDistance = $pageFlipDistance
+            }
+
+            if ($degradedDistance -lt $closestDegradedDistance) {
+                $closestDegradedDistance = $degradedDistance
+            }
+
+            if ($pageFlipDistance -le $matchThreshold) {
+                $pageFlipMatches++
+            }
+
+            if ($degradedDistance -le $matchThreshold) {
+                $degradedMatches++
+            }
+        }
+    }
+
+    $minimumMatches = [Math]::Max(4, [int][Math]::Floor(($Geometry.W * $Geometry.H) / 6))
+    $visible = ($pageFlipMatches -ge $minimumMatches) -or ($degradedMatches -ge $minimumMatches)
+    $mode = 'unknown'
+    if ($visible) {
+        if ($pageFlipMatches -gt $degradedMatches) {
+            $mode = 'page-flip'
+        } elseif ($degradedMatches -gt $pageFlipMatches) {
+            $mode = 'degraded-blit'
+        } elseif ($closestPageFlipDistance -le $closestDegradedDistance) {
+            $mode = 'page-flip'
+        } else {
+            $mode = 'degraded-blit'
+        }
+    }
+
+    return [pscustomobject]@{
+        Visible = $visible
+        Mode = $mode
+        PageFlipMatches = $pageFlipMatches
+        DegradedMatches = $degradedMatches
+        ClosestPageFlipDistance = [int][Math]::Round($closestPageFlipDistance)
+        ClosestDegradedDistance = [int][Math]::Round($closestDegradedDistance)
+        MinimumMatches = $minimumMatches
+    }
+}
+
 function Capture-SmokeWindow {
     param(
         [string]$Label,
@@ -245,8 +313,124 @@ function Capture-SmokeWindow {
     throw ("{0} capture never showed the shared smoke sentinel (closest distance {1}, matching pixels {2}/{3})." -f $Label, $lastSample.ClosestDistance, $lastSample.MatchingPixels, $lastSample.MinimumMatches)
 }
 
+function Capture-GameplaySmokeWindow {
+    param(
+        [string]$Label,
+        [string]$OutputPath,
+        [hashtable]$PageFlipTopGeometry,
+        [hashtable]$PageFlipLowerGeometry,
+        [hashtable]$PageFlipStrategyGeometry,
+        [hashtable]$DegradedTopGeometry,
+        [hashtable]$DegradedLowerGeometry,
+        [hashtable]$DegradedStrategyGeometry
+    )
+
+    $lastPageFlipTopSample = $null
+    $lastPageFlipLowerSample = $null
+    $lastPageFlipStrategySample = $null
+    $lastDegradedTopSample = $null
+    $lastDegradedLowerSample = $null
+    $lastDegradedStrategySample = $null
+    $maxCaptureAttempts = 3
+    for ($attempt = 1; $attempt -le $maxCaptureAttempts; $attempt++) {
+        Invoke-VmScreenshot -Name $VmName -OutputPath $OutputPath -Context ("vm smoke screenshot ({0})" -f $Label.ToLowerInvariant())
+        if (-not (Test-Path -LiteralPath $OutputPath)) {
+            throw ("{0} screenshot was not created: {1}" -f $Label, $OutputPath)
+        }
+
+        $bitmap = [System.Drawing.Bitmap]::FromFile($OutputPath)
+        try {
+            $lastPageFlipTopSample = Get-SmokeSentinelStatus -Bitmap $bitmap -Geometry $PageFlipTopGeometry
+            $lastPageFlipLowerSample = Get-SmokeSentinelStatus -Bitmap $bitmap -Geometry $PageFlipLowerGeometry
+            $lastPageFlipStrategySample = Get-GameplayPresentStrategyStatus -Bitmap $bitmap -Geometry $PageFlipStrategyGeometry
+            $lastDegradedTopSample = Get-SmokeSentinelStatus -Bitmap $bitmap -Geometry $DegradedTopGeometry
+            $lastDegradedLowerSample = Get-SmokeSentinelStatus -Bitmap $bitmap -Geometry $DegradedLowerGeometry
+            $lastDegradedStrategySample = Get-GameplayPresentStrategyStatus -Bitmap $bitmap -Geometry $DegradedStrategyGeometry
+        } finally {
+            $bitmap.Dispose()
+        }
+
+        if ($lastPageFlipTopSample.Visible -and $lastPageFlipLowerSample.Visible -and $lastPageFlipStrategySample.Visible -and $lastPageFlipStrategySample.Mode -eq 'page-flip') {
+            return [pscustomobject]@{
+                Label = $Label
+                OutputPath = $OutputPath
+                Attempt = $attempt
+                TopMatchingPixels = $lastPageFlipTopSample.MatchingPixels
+                TopMinimumMatches = $lastPageFlipTopSample.MinimumMatches
+                TopClosestDistance = $lastPageFlipTopSample.ClosestDistance
+                LowerMatchingPixels = $lastPageFlipLowerSample.MatchingPixels
+                LowerMinimumMatches = $lastPageFlipLowerSample.MinimumMatches
+                LowerClosestDistance = $lastPageFlipLowerSample.ClosestDistance
+                PresentStrategy = $lastPageFlipStrategySample.Mode
+                StrategyVisible = $lastPageFlipStrategySample.Visible
+                StrategyMinimumMatches = $lastPageFlipStrategySample.MinimumMatches
+                PageFlipMatches = $lastPageFlipStrategySample.PageFlipMatches
+                DegradedMatches = $lastPageFlipStrategySample.DegradedMatches
+                ClosestPageFlipDistance = $lastPageFlipStrategySample.ClosestPageFlipDistance
+                ClosestDegradedDistance = $lastPageFlipStrategySample.ClosestDegradedDistance
+            }
+        }
+
+        if ($lastDegradedTopSample.Visible -and $lastDegradedLowerSample.Visible -and $lastDegradedStrategySample.Visible -and $lastDegradedStrategySample.Mode -eq 'degraded-blit') {
+            return [pscustomobject]@{
+                Label = $Label
+                OutputPath = $OutputPath
+                Attempt = $attempt
+                TopMatchingPixels = $lastDegradedTopSample.MatchingPixels
+                TopMinimumMatches = $lastDegradedTopSample.MinimumMatches
+                TopClosestDistance = $lastDegradedTopSample.ClosestDistance
+                LowerMatchingPixels = $lastDegradedLowerSample.MatchingPixels
+                LowerMinimumMatches = $lastDegradedLowerSample.MinimumMatches
+                LowerClosestDistance = $lastDegradedLowerSample.ClosestDistance
+                PresentStrategy = $lastDegradedStrategySample.Mode
+                StrategyVisible = $lastDegradedStrategySample.Visible
+                StrategyMinimumMatches = $lastDegradedStrategySample.MinimumMatches
+                PageFlipMatches = $lastDegradedStrategySample.PageFlipMatches
+                DegradedMatches = $lastDegradedStrategySample.DegradedMatches
+                ClosestPageFlipDistance = $lastDegradedStrategySample.ClosestPageFlipDistance
+                ClosestDegradedDistance = $lastDegradedStrategySample.ClosestDegradedDistance
+            }
+        }
+
+        if ($attempt -lt $maxCaptureAttempts) {
+            Start-Sleep -Seconds 1
+        }
+    }
+
+    $firstFailingRegion = if (-not $lastPageFlipTopSample.Visible -and -not $lastDegradedTopSample.Visible) {
+        'upper gameplay proof'
+    } elseif (-not $lastPageFlipLowerSample.Visible -and -not $lastDegradedLowerSample.Visible) {
+        'lower gameplay proof'
+    } else {
+        'present strategy marker'
+    }
+    $resolvedStrategyMode = if ($lastPageFlipStrategySample.Visible) {
+        $lastPageFlipStrategySample.Mode
+    } elseif ($lastDegradedStrategySample.Visible) {
+        $lastDegradedStrategySample.Mode
+    } else {
+        'unknown'
+    }
+
+    throw ("{0} capture never stabilized the gameplay presenter ({1} failed first; upper {2}/{3} distance {4}; lower {5}/{6} distance {7}; strategy {8} page-flip {9}/{10} distance {11}, degraded {12}/{10} distance {13})." -f `
+        $Label, `
+        $firstFailingRegion, `
+        ([Math]::Max($lastPageFlipTopSample.MatchingPixels, $lastDegradedTopSample.MatchingPixels)), `
+        ([Math]::Max($lastPageFlipTopSample.MinimumMatches, $lastDegradedTopSample.MinimumMatches)), `
+        ([Math]::Min($lastPageFlipTopSample.ClosestDistance, $lastDegradedTopSample.ClosestDistance)), `
+        ([Math]::Max($lastPageFlipLowerSample.MatchingPixels, $lastDegradedLowerSample.MatchingPixels)), `
+        ([Math]::Max($lastPageFlipLowerSample.MinimumMatches, $lastDegradedLowerSample.MinimumMatches)), `
+        ([Math]::Min($lastPageFlipLowerSample.ClosestDistance, $lastDegradedLowerSample.ClosestDistance)), `
+        $resolvedStrategyMode, `
+        ([Math]::Max($lastPageFlipStrategySample.PageFlipMatches, $lastDegradedStrategySample.PageFlipMatches)), `
+        ([Math]::Max($lastPageFlipStrategySample.MinimumMatches, $lastDegradedStrategySample.MinimumMatches)), `
+        ([Math]::Min($lastPageFlipStrategySample.ClosestPageFlipDistance, $lastDegradedStrategySample.ClosestPageFlipDistance)), `
+        ([Math]::Max($lastPageFlipStrategySample.DegradedMatches, $lastDegradedStrategySample.DegradedMatches)), `
+        ([Math]::Min($lastPageFlipStrategySample.ClosestDegradedDistance, $lastDegradedStrategySample.ClosestDegradedDistance)))
+}
+
 if ($WaitSeconds -lt 8) {
-    throw 'WaitSeconds must be at least 8 so the smoke path can reach splash -> title -> attract timing.'
+    throw 'WaitSeconds must be at least 8 so the smoke path can reach splash -> title timing before the direct gameplay proof boot.'
 }
 
 if ([string]::IsNullOrWhiteSpace($AudioConfigPath)) {
@@ -289,13 +473,74 @@ $gameplayGeometry = @{
     G = $geometry.G
     B = $geometry.B
 }
+$gameplayTopDegradedGeometry = @{
+    ScreenW = Get-AsmEquValue -SourcePath $ConstantsSourcePath -Name 'SCREEN_W'
+    ScreenH = Get-AsmEquValue -SourcePath $ConstantsSourcePath -Name 'SCREEN_H'
+    X = $geometry.X
+    Y = Get-AsmEquValue -SourcePath $ConstantsSourcePath -Name 'SMOKE_GAMEPLAY_TOP_DEGRADED_Y'
+    W = $geometry.W
+    H = $geometry.H
+    R = $geometry.R
+    G = $geometry.G
+    B = $geometry.B
+}
+$gameplayLowerGeometry = @{
+    ScreenW = Get-AsmEquValue -SourcePath $ConstantsSourcePath -Name 'SCREEN_W'
+    ScreenH = Get-AsmEquValue -SourcePath $ConstantsSourcePath -Name 'GAMEPLAY_SCREEN_H'
+    X = Get-AsmEquValue -SourcePath $ConstantsSourcePath -Name 'SMOKE_GAMEPLAY_PROOF_X'
+    Y = Get-AsmEquValue -SourcePath $ConstantsSourcePath -Name 'SMOKE_GAMEPLAY_PROOF_Y'
+    W = Get-AsmEquValue -SourcePath $ConstantsSourcePath -Name 'SMOKE_GAMEPLAY_PROOF_W'
+    H = Get-AsmEquValue -SourcePath $ConstantsSourcePath -Name 'SMOKE_GAMEPLAY_PROOF_H'
+    R = Get-AsmEquValue -SourcePath $ConstantsSourcePath -Name 'SMOKE_GAMEPLAY_PROOF_R'
+    G = Get-AsmEquValue -SourcePath $ConstantsSourcePath -Name 'SMOKE_GAMEPLAY_PROOF_G'
+    B = Get-AsmEquValue -SourcePath $ConstantsSourcePath -Name 'SMOKE_GAMEPLAY_PROOF_B'
+}
+$gameplayLowerDegradedGeometry = @{
+    ScreenW = Get-AsmEquValue -SourcePath $ConstantsSourcePath -Name 'SCREEN_W'
+    ScreenH = Get-AsmEquValue -SourcePath $ConstantsSourcePath -Name 'SCREEN_H'
+    X = Get-AsmEquValue -SourcePath $ConstantsSourcePath -Name 'SMOKE_GAMEPLAY_PROOF_X'
+    Y = Get-AsmEquValue -SourcePath $ConstantsSourcePath -Name 'SMOKE_GAMEPLAY_PROOF_DEGRADED_Y'
+    W = Get-AsmEquValue -SourcePath $ConstantsSourcePath -Name 'SMOKE_GAMEPLAY_PROOF_W'
+    H = Get-AsmEquValue -SourcePath $ConstantsSourcePath -Name 'SMOKE_GAMEPLAY_PROOF_H'
+    R = Get-AsmEquValue -SourcePath $ConstantsSourcePath -Name 'SMOKE_GAMEPLAY_PROOF_R'
+    G = Get-AsmEquValue -SourcePath $ConstantsSourcePath -Name 'SMOKE_GAMEPLAY_PROOF_G'
+    B = Get-AsmEquValue -SourcePath $ConstantsSourcePath -Name 'SMOKE_GAMEPLAY_PROOF_B'
+}
+$gameplayStrategyGeometry = @{
+    ScreenW = Get-AsmEquValue -SourcePath $ConstantsSourcePath -Name 'SCREEN_W'
+    ScreenH = Get-AsmEquValue -SourcePath $ConstantsSourcePath -Name 'GAMEPLAY_SCREEN_H'
+    X = Get-AsmEquValue -SourcePath $ConstantsSourcePath -Name 'SMOKE_GAMEPLAY_STRATEGY_X'
+    Y = Get-AsmEquValue -SourcePath $ConstantsSourcePath -Name 'SMOKE_GAMEPLAY_STRATEGY_Y'
+    W = Get-AsmEquValue -SourcePath $ConstantsSourcePath -Name 'SMOKE_GAMEPLAY_STRATEGY_W'
+    H = Get-AsmEquValue -SourcePath $ConstantsSourcePath -Name 'SMOKE_GAMEPLAY_STRATEGY_H'
+    PageFlipR = Get-AsmEquValue -SourcePath $ConstantsSourcePath -Name 'SMOKE_GAMEPLAY_STRATEGY_PAGE_FLIP_R'
+    PageFlipG = Get-AsmEquValue -SourcePath $ConstantsSourcePath -Name 'SMOKE_GAMEPLAY_STRATEGY_PAGE_FLIP_G'
+    PageFlipB = Get-AsmEquValue -SourcePath $ConstantsSourcePath -Name 'SMOKE_GAMEPLAY_STRATEGY_PAGE_FLIP_B'
+    DegradedR = Get-AsmEquValue -SourcePath $ConstantsSourcePath -Name 'SMOKE_GAMEPLAY_STRATEGY_DEGRADED_R'
+    DegradedG = Get-AsmEquValue -SourcePath $ConstantsSourcePath -Name 'SMOKE_GAMEPLAY_STRATEGY_DEGRADED_G'
+    DegradedB = Get-AsmEquValue -SourcePath $ConstantsSourcePath -Name 'SMOKE_GAMEPLAY_STRATEGY_DEGRADED_B'
+}
+$gameplayStrategyDegradedGeometry = @{
+    ScreenW = Get-AsmEquValue -SourcePath $ConstantsSourcePath -Name 'SCREEN_W'
+    ScreenH = Get-AsmEquValue -SourcePath $ConstantsSourcePath -Name 'SCREEN_H'
+    X = Get-AsmEquValue -SourcePath $ConstantsSourcePath -Name 'SMOKE_GAMEPLAY_STRATEGY_X'
+    Y = Get-AsmEquValue -SourcePath $ConstantsSourcePath -Name 'SMOKE_GAMEPLAY_STRATEGY_DEGRADED_Y'
+    W = Get-AsmEquValue -SourcePath $ConstantsSourcePath -Name 'SMOKE_GAMEPLAY_STRATEGY_W'
+    H = Get-AsmEquValue -SourcePath $ConstantsSourcePath -Name 'SMOKE_GAMEPLAY_STRATEGY_H'
+    PageFlipR = Get-AsmEquValue -SourcePath $ConstantsSourcePath -Name 'SMOKE_GAMEPLAY_STRATEGY_PAGE_FLIP_R'
+    PageFlipG = Get-AsmEquValue -SourcePath $ConstantsSourcePath -Name 'SMOKE_GAMEPLAY_STRATEGY_PAGE_FLIP_G'
+    PageFlipB = Get-AsmEquValue -SourcePath $ConstantsSourcePath -Name 'SMOKE_GAMEPLAY_STRATEGY_PAGE_FLIP_B'
+    DegradedR = Get-AsmEquValue -SourcePath $ConstantsSourcePath -Name 'SMOKE_GAMEPLAY_STRATEGY_DEGRADED_R'
+    DegradedG = Get-AsmEquValue -SourcePath $ConstantsSourcePath -Name 'SMOKE_GAMEPLAY_STRATEGY_DEGRADED_G'
+    DegradedB = Get-AsmEquValue -SourcePath $ConstantsSourcePath -Name 'SMOKE_GAMEPLAY_STRATEGY_DEGRADED_B'
+}
 $startupCaptureSeconds = 2
 $titleCaptureSeconds = [Math]::Min(($WaitSeconds - 2), 6)
 if ($titleCaptureSeconds -le $startupCaptureSeconds) {
     $titleCaptureSeconds = $startupCaptureSeconds + 1
 }
 $titleSleepSeconds = $titleCaptureSeconds - $startupCaptureSeconds
-$attractCaptureSeconds = $WaitSeconds - $titleCaptureSeconds
+$gameplayCaptureSeconds = 3
 $restoreRelease = $false
 $caughtException = $null
 
@@ -317,9 +562,11 @@ try {
     }
     $titleCapture = Capture-SmokeWindow -Label 'Title' -OutputPath $titleScreenshotPath -Geometry $geometry
 
-    if ($attractCaptureSeconds -gt 0) {
-        Start-Sleep -Seconds $attractCaptureSeconds
-    }
+    Stop-VmIfRunning -Name $VmName
+    Invoke-ChildBuild -ExtraArguments @('-DebugRenderSentinels', '-DebugStartInGame')
+    Invoke-DeployVm -Name $VmName
+    Start-HeadlessVm -Name $VmName -Context 'vm smoke gameplay startvm'
+    Start-Sleep -Seconds $gameplayCaptureSeconds
 
     if (-not (Test-Path -LiteralPath $vboxLogPath)) {
         throw ("VBox log was not found after smoke boot: {0}" -f $vboxLogPath)
@@ -334,7 +581,15 @@ try {
         throw 'VBox log never reached the hard-disk boot path.'
     }
 
-    $attractCapture = Capture-SmokeWindow -Label 'Attract' -OutputPath $screenshotPath -Geometry $gameplayGeometry
+    $gameplayCapture = Capture-GameplaySmokeWindow `
+        -Label 'Gameplay' `
+        -OutputPath $screenshotPath `
+        -PageFlipTopGeometry $gameplayGeometry `
+        -PageFlipLowerGeometry $gameplayLowerGeometry `
+        -PageFlipStrategyGeometry $gameplayStrategyGeometry `
+        -DegradedTopGeometry $gameplayTopDegradedGeometry `
+        -DegradedLowerGeometry $gameplayLowerDegradedGeometry `
+        -DegradedStrategyGeometry $gameplayStrategyDegradedGeometry
 
     Copy-Item -LiteralPath $vboxLogPath -Destination $logCopyPath -Force
     $logLines = Get-Content -LiteralPath $logCopyPath
@@ -370,13 +625,17 @@ try {
         'Status: PASS'
         ("VM: {0}" -f $VmName)
         'Frontend: headless'
-        ("Wait: {0}s (targets splash -> title -> attract demo)" -f $WaitSeconds)
+        ("Wait: {0}s (targets splash -> title proof, then direct gameplay presenter proof)" -f $WaitSeconds)
         ("Audio mode: {0}" -f $audioModeName)
         ("Audio controller: SB16 via {0} (host default {1})" -f $hostAudioDriver, $defaultAudioDriver)
         ("Smoke sentinel: x={0} y={1} w={2} h={3} rgb=({4},{5},{6})" -f $geometry.X, $geometry.Y, $geometry.W, $geometry.H, $geometry.R, $geometry.G, $geometry.B)
+        ("Gameplay proof marker: x={0} y={1} w={2} h={3} rgb=({4},{5},{6})" -f $gameplayLowerGeometry.X, $gameplayLowerGeometry.Y, $gameplayLowerGeometry.W, $gameplayLowerGeometry.H, $gameplayLowerGeometry.R, $gameplayLowerGeometry.G, $gameplayLowerGeometry.B)
         ("Startup render proof: sentinel matched on attempt {0} with {1}/{2} pixels (closest distance {3})." -f $startupCapture.Attempt, $startupCapture.MatchingPixels, $startupCapture.MinimumMatches, $startupCapture.ClosestDistance)
         ("Title render proof: sentinel matched on attempt {0} with {1}/{2} pixels (closest distance {3})." -f $titleCapture.Attempt, $titleCapture.MatchingPixels, $titleCapture.MinimumMatches, $titleCapture.ClosestDistance)
-        ("Attract render proof: sentinel matched on attempt {0} with {1}/{2} pixels (closest distance {3})." -f $attractCapture.Attempt, $attractCapture.MatchingPixels, $attractCapture.MinimumMatches, $attractCapture.ClosestDistance)
+        ("Gameplay present strategy: {0}" -f $gameplayCapture.PresentStrategy)
+        ("Gameplay upper proof: matched on attempt {0} with {1}/{2} pixels (closest distance {3})." -f $gameplayCapture.Attempt, $gameplayCapture.TopMatchingPixels, $gameplayCapture.TopMinimumMatches, $gameplayCapture.TopClosestDistance)
+        ("Gameplay lower proof: matched on attempt {0} with {1}/{2} pixels (closest distance {3})." -f $gameplayCapture.Attempt, $gameplayCapture.LowerMatchingPixels, $gameplayCapture.LowerMinimumMatches, $gameplayCapture.LowerClosestDistance)
+        ("Gameplay strategy proof: page-flip matches {0}/{1} (closest distance {2}); degraded matches {3}/{1} (closest distance {4})." -f $gameplayCapture.PageFlipMatches, $gameplayCapture.StrategyMinimumMatches, $gameplayCapture.ClosestPageFlipDistance, $gameplayCapture.DegradedMatches, $gameplayCapture.ClosestDegradedDistance)
         ("Startup screenshot: {0}" -f $startupScreenshotPath)
         ("Title screenshot: {0}" -f $titleScreenshotPath)
         ("Screenshot: {0}" -f $screenshotPath)
@@ -389,7 +648,7 @@ try {
         'Status: FAIL'
         ("Failure class: {0}" -f $failureKind)
         ("VM: {0}" -f $VmName)
-        ("Wait: {0}s (targets splash -> title -> attract demo)" -f $WaitSeconds)
+        ("Wait: {0}s (targets splash -> title proof, then direct gameplay presenter proof)" -f $WaitSeconds)
         ("Audio mode: {0}" -f $audioModeName)
         ("Smoke sentinel: x={0} y={1} w={2} h={3} rgb=({4},{5},{6})" -f $geometry.X, $geometry.Y, $geometry.W, $geometry.H, $geometry.R, $geometry.G, $geometry.B)
         ("Error: {0}" -f $_.Exception.Message)

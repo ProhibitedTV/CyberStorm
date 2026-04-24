@@ -679,8 +679,15 @@ capture_runtime_verify_diagnostics:
     shl ah, 1
     shl ah, 1
     shl ah, 1
-    mov bl, [demo_active]
-    and bl, 0Fh
+    mov bl, [video_gameplay_present_mode]
+    and bl, 03h
+    shl bl, 1
+    mov bh, [demo_active]
+    and bh, 01h
+    shl bh, 1
+    shl bh, 1
+    shl bh, 1
+    or bl, bh
     or ah, bl
     mov [verify_diag_flags], ax
 

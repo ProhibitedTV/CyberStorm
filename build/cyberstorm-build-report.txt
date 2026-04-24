@@ -1,5 +1,5 @@
 CyberStorm Build Report
-Generated: 2026-04-23 20:37:54 -06:00
+Generated: 2026-04-24 12:18:44 -06:00
 
 Toolchain
   Assembler: MASM
@@ -23,6 +23,7 @@ Render Path
   Scene renderer: SCENES_3D_REFERENCE
   Gameplay renderer: GAMEPLAY_3D_MACHINE
   Primary output: BIOS HDD boot + VBE 640x480x16 LFB present when available, with legacy VGA fallback; gameplay now renders to a 320x240 surface and presents at exact 2x when the enhanced path is active.
+  Gameplay VBE present: page-flip only when the enhanced handoff opts into a verified extra image page; degraded whole-frame blit otherwise.
   3D render stage: 5
   Debug switches: -DebugRender2D uses the oracle path, -DebugRenderReference forces stage-two MASM kernels, and -DebugRenderMachine (or legacy -DebugRender3D) enables the banked raw machine-code rail.
 
@@ -92,7 +93,8 @@ Generated Content
   Gameplay renderer default mode: GAMEPLAY_3D_MACHINE
   Gameplay camera: quadrant-aware chase presets with authored projection, structure depth, horizon bands, per-kit fog, and machine textured surfaces
   Gameplay surface: 320x240
-  Gameplay present path: exact 2x VBE when active; legacy VGA path downsamples to 320x200
+  Gameplay present path: exact 2x VBE page-flip only when the enhanced handoff marks it safe; degraded-blit fallback otherwise; legacy VGA path downsamples to 320x200
+  Enhanced handoff: width/height/pitch/lfb + frame-bytes/image-pages/present-flags
   Gameplay viewport: 304x192 at 8,24
   Gameplay room structural headroom: S1: structural 190-208/252 (headroom 44-62, quadrant-aware wall families, optional trim cap 46), props 114 tris (sector1_map_a=190 (headroom 62, peak ne, optional cap 46, nw=188, sw=182, ne=190, se=184), sector1_map_b=194 (headroom 58, peak nw+sw, optional cap 46, nw=194, sw=194, ne=190, se=190), sector1_map_c=208 (headroom 44, peak se, optional cap 46, nw=196, sw=202, ne=202, se=208)) | S2: structural 200-224/252 (headroom 28-52, quadrant-aware wall families, optional trim cap 46), props 186 tris (sector2_map_a=200 (headroom 52, peak sw, optional cap 46, nw=192, sw=200, ne=188, se=196), sector2_map_b=224 (headroom 28, peak sw+se, optional cap 46, nw=212, sw=224, ne=212, se=224), sector2_map_c=218 (headroom 34, peak se, optional cap 46, nw=210, sw=216, ne=212, se=218)) | S3: structural 220-252/252 (headroom 0-32, quadrant-aware wall families, optional trim cap 46), props 136 tris (sector3_map_a=234 (headroom 18, peak se, optional cap 46, nw=218, sw=228, ne=224, se=234), sector3_map_b=252 (headroom 0, peak sw, optional cap 46, nw=240, sw=252, ne=236, se=248), sector3_map_c=220 (headroom 32, peak sw, optional cap 46, nw=208, sw=220, ne=204, se=216))
   Gameplay campaign art: subgrid-ingress: structural 158/252 (headroom 94, peak ne, trim cap 46), props 142 tris, landmarks 100 tris | switchyard-spine: structural 208/252 (headroom 44, peak nw+sw, trim cap 46), props 112 tris, landmarks 48 tris | thermal-foundry: structural 198/252 (headroom 54, peak sw, trim cap 46), props 154 tris, landmarks 96 tris | apex-vault: structural 216/252 (headroom 36, peak sw, trim cap 46), props 180 tris, landmarks 84 tris
@@ -166,15 +168,15 @@ Balance Harness
 Regression Harness
   Report: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-regression-report.txt
   Boot sector: 512 bytes, signature 0x55AA, LBA 0 matches the disk image
-  Bootstrap: 1314 bytes, 3 sectors, LBA 1..3
-  Stage two: 63482 bytes, 124 sectors, STAGE2_LBA matches, entry near jmp to 0x152B
-  Code bank: 676 bytes (1024 padded), 2 sectors, LBA 128..129
-  Texture bank A: 65536 bytes (65536 padded), 128 sectors, LBA 130..257
-  Texture bank B: 65536 bytes (65536 padded), 128 sectors, LBA 258..385
-  Map bank: 6853 bytes (7168 padded), 14 sectors, LBA 386..399
-  Presentation bank: 19968 bytes (19968 padded), 39 sectors, LBA 400..438
-  Geometry bank: 13130 bytes (13312 padded), 26 sectors, LBA 439..464
-  Disk image: 33554432 bytes, occupied through byte 238079, unused tail zero-filled
+  Bootstrap: 1500 bytes, 3 sectors, LBA 1..3
+  Stage two: 65218 bytes, 128 sectors, STAGE2_LBA matches, entry near jmp to 0x152B
+  Code bank: 676 bytes (1024 padded), 2 sectors, LBA 132..133
+  Texture bank A: 65536 bytes (65536 padded), 128 sectors, LBA 134..261
+  Texture bank B: 65536 bytes (65536 padded), 128 sectors, LBA 262..389
+  Map bank: 6853 bytes (7168 padded), 14 sectors, LBA 390..403
+  Presentation bank: 19968 bytes (19968 padded), 39 sectors, LBA 404..442
+  Geometry bank: 13130 bytes (13312 padded), 26 sectors, LBA 443..468
+  Disk image: 33554432 bytes, occupied through byte 240127, unused tail zero-filled
   Diagnostics: boot.lst, bootstrap.lst, and game.lst are present for post-failure inspection
 
 Frontend Verify
@@ -192,12 +194,12 @@ Showcase Capture
 
 Asset Banks
   Layout include: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\generated_bank_layout.inc
-  Code bank: 676 bytes (1024 padded), 2 sectors, LBA 128..129, load 0x2000:0000, payload C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-code-bank.bin
-  Texture bank A: 65536 bytes (65536 padded), 128 sectors, LBA 130..257, load 0x4000:0000, payload C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-texture-bank.bin
-  Texture bank B: 65536 bytes (65536 padded), 128 sectors, LBA 258..385, load 0x5000:0000, payload C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-texture-bank-b.bin
-  Map bank: 6853 bytes (7168 padded), 14 sectors, LBA 386..399, load 0x2800:0000, payload C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-map-bank.bin
-  Presentation bank: 19968 bytes (19968 padded), 39 sectors, LBA 400..438, load 0x3000:0000, payload C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-presentation-bank.bin
-  Geometry bank: 13130 bytes (13312 padded), 26 sectors, LBA 439..464, load 0x3800:0000, payload C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-geometry-bank.bin
+  Code bank: 676 bytes (1024 padded), 2 sectors, LBA 132..133, load 0x2000:0000, payload C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-code-bank.bin
+  Texture bank A: 65536 bytes (65536 padded), 128 sectors, LBA 134..261, load 0x4000:0000, payload C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-texture-bank.bin
+  Texture bank B: 65536 bytes (65536 padded), 128 sectors, LBA 262..389, load 0x5000:0000, payload C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-texture-bank-b.bin
+  Map bank: 6853 bytes (7168 padded), 14 sectors, LBA 390..403, load 0x2800:0000, payload C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-map-bank.bin
+  Presentation bank: 19968 bytes (19968 padded), 39 sectors, LBA 404..442, load 0x3000:0000, payload C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-presentation-bank.bin
+  Geometry bank: 13130 bytes (13312 padded), 26 sectors, LBA 443..468, load 0x3800:0000, payload C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-geometry-bank.bin
 
 Screenshots
   Housekeeping: kept 6 source screenshots, removed 0, public gallery status is missing
@@ -211,25 +213,25 @@ Screenshots
 Layout
   Boot code bytes: 200 / 510
   Boot code free bytes: 310
-  Bootstrap bytes: 1314
+  Bootstrap bytes: 1500
   Bootstrap padded bytes: 1536
   Bootstrap sectors: 3
-  Stage2 bytes: 63482
-  Stage2 free bytes before 64 KiB limit: 2054
-  Stage2 padded bytes: 63488
-  Stage2 sectors: 124
-  Disk image bytes used: 237007 / 33554432
-  Disk image free bytes: 33317425
-  Occupied sector bytes: 238080 / 33554432
-  Occupied sector free bytes: 33316352
+  Stage2 bytes: 65218
+  Stage2 free bytes before 64 KiB limit: 318
+  Stage2 padded bytes: 65536
+  Stage2 sectors: 128
+  Disk image bytes used: 238929 / 33554432
+  Disk image free bytes: 33315503
+  Occupied sector bytes: 240128 / 33554432
+  Occupied sector free bytes: 33314304
   Boot load address: 0000:7C00 (phys 0x00007C00)
   Bootstrap load address: 0x0800:0000 (phys 0x00008000)
   Stage2 load address: 0x1000:0x0000 (phys 0x00010000)
   Boot signature: 0x55AA @ byte 510
   Bootstrap LBA range: 1..3
-  Stage2 LBA range: 4..127
+  Stage2 LBA range: 4..131
   Boot section: .text$mn (relocations applied: 6)
-  Stage2 section: .text$mn (relocations applied: 3711)
+  Stage2 section: .text$mn (relocations applied: 3751)
   Assembler warnings: boot=1, stage2=1
   Boot 'start' symbol offset: 0x0000
   Stage2 'start' symbol offset: 0x152B
@@ -272,7 +274,7 @@ Artifacts
   C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm.img
 
 Warnings
-  Stage two is within 2054 bytes of the 64 KiB load limit.
-  Stage two uses 124 sectors; that is close to the 128-sector single-segment load limit.
+  Stage two is within 318 bytes of the 64 KiB load limit.
+  Stage two uses 128 sectors; that is close to the 128-sector single-segment load limit.
   Asset bank 'Texture bank A' is within 4096 bytes of the current single-segment runtime load limit.
   Asset bank 'Texture bank B' is within 4096 bytes of the current single-segment runtime load limit.

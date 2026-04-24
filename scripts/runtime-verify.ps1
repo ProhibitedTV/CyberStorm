@@ -372,6 +372,15 @@ function Get-GameStateName {
     }
 }
 
+function Get-GameplayPresentModeName {
+    param([int]$Code)
+
+    switch ($Code -band 0xFF) {
+        1 { return 'page-flip' }
+        default { return 'degraded-blit' }
+    }
+}
+
 function Convert-RuntimeVerifyDiagnostics {
     param(
         [int]$ActionWord,
@@ -382,6 +391,7 @@ function Convert-RuntimeVerifyDiagnostics {
 
     $packedState = (($FlagsWord -shr 8) -band 0xFF)
     $gameState = (($packedState -shr 4) -band 0x0F)
+    $presentMode = (($packedState -shr 1) -band 0x03)
 
     return [pscustomobject]@{
         ActionCode = ($ActionWord -band 0x00FF)
@@ -390,7 +400,9 @@ function Convert-RuntimeVerifyDiagnostics {
         StateTicks = ($ProgressWord -band 0x00FF)
         VerifyActionIndex = (($ProgressWord -shr 8) -band 0x00FF)
         VerifyActionPending = ($FlagsWord -band 0x00FF)
-        DemoActive = ($packedState -band 0x0F)
+        GameplayPresentMode = $presentMode
+        GameplayPresentModeName = (Get-GameplayPresentModeName -Code $presentMode)
+        DemoActive = (($packedState -shr 3) -band 0x01)
         GameState = $gameState
         GameStateName = (Get-GameStateName -Code $gameState)
         RawAction = (Format-Hex16 $ActionWord)
@@ -810,7 +822,7 @@ try {
             $runtimeResults.Add($result)
             $artifactPaths.Add($result.ScreenshotPath)
             $artifactPaths.Add($result.LogPath)
-            $summaryLines.Add(("{0}: {1} {2} [{3}] (expected {4}; reason {5}; wait {6}s; marker {7}/{8}/{9}; exp {10} / obs {11})" -f $result.Name, $result.Status, $result.Id, (Get-RenderLabel -Mode $result.RenderMode -Stage $result.RenderStage), $result.ExpectedStatus, $result.FailureReason, $result.WaitSeconds, $result.ClosestDistance, $result.PassDistance, $result.FailDistance, $result.ExpectedSignature, $result.ObservedSignature))
+            $summaryLines.Add(("{0}: {1} {2} [{3}] (expected {4}; reason {5}; present {6}; wait {7}s; marker {8}/{9}/{10}; exp {11} / obs {12})" -f $result.Name, $result.Status, $result.Id, (Get-RenderLabel -Mode $result.RenderMode -Stage $result.RenderStage), $result.ExpectedStatus, $result.FailureReason, $result.Diagnostics.GameplayPresentModeName, $result.WaitSeconds, $result.ClosestDistance, $result.PassDistance, $result.FailDistance, $result.ExpectedSignature, $result.ObservedSignature))
             $lines.Add(("Demo: {0}" -f $result.Name))
             $lines.Add(("  Id: {0}" -f $result.Id))
             $lines.Add(("  Render: {0}" -f (Get-RenderLabel -Mode $result.RenderMode -Stage $result.RenderStage)))
@@ -834,6 +846,7 @@ try {
             $lines.Add(("  State ticks: {0}" -f $result.Diagnostics.StateTicks))
             $lines.Add(("  Verify action index: {0}" -f $result.Diagnostics.VerifyActionIndex))
             $lines.Add(("  Verify action pending: {0}" -f $result.Diagnostics.VerifyActionPending))
+            $lines.Add(("  Gameplay present mode: {0} ({1})" -f $result.Diagnostics.GameplayPresentModeName, $result.Diagnostics.GameplayPresentMode))
             $lines.Add(("  Demo active: {0}" -f $result.Diagnostics.DemoActive))
             $lines.Add(("  Game state: {0} ({1})" -f $result.Diagnostics.GameStateName, $result.Diagnostics.GameState))
             $lines.Add(("  Diagnostic words: {0} {1} {2} {3}" -f $result.Diagnostics.RawAction, $result.Diagnostics.RawScriptPointer, $result.Diagnostics.RawProgress, $result.Diagnostics.RawFlags))

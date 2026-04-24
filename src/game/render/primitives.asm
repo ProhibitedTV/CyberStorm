@@ -139,6 +139,24 @@ get_backbuffer_row_ptr_ready:
     pop bx
     ret
 
+get_backbuffer_row_dssi:
+    push bx
+    mov ax, BACKBUFFER_SEG
+    mov si, dx
+    cmp si, GAMEPLAY_BACKBUFFER_SPLIT_Y
+    jb get_backbuffer_row_dssi_ready
+    mov ax, BACKBUFFER_HIGH_SEG
+    sub si, GAMEPLAY_BACKBUFFER_SPLIT_Y
+
+get_backbuffer_row_dssi_ready:
+    mov bx, si
+    shl si, 6
+    shl bx, 8
+    add si, bx
+    mov ds, ax
+    pop bx
+    ret
+
 compute_offset:
     ; Map (bx, dx) onto the active gameplay-aware backbuffer row and select the
     ; correct backing segment before returning ES:DI.

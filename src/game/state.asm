@@ -59,6 +59,11 @@ video_pitch dw SCREEN_W
 video_output_w dw SCREEN_W
 video_output_h dw SCREEN_H
 video_lfb_addr dd 0
+video_frame_bytes dd 0
+video_image_pages dw 0
+video_present_flags dw 0
+video_gameplay_present_mode db ENHANCED_GAMEPLAY_PRESENT_DEGRADED_BLIT
+video_visible_page db 0
 rng_state    dw 0ACE1h
 last_tick    dw 0
 pit_frame_due_low dw 0

@@ -40,6 +40,28 @@ IF DEBUG_SMOKE_SENTINEL
     ; Gameplay frames can take a different presenter path than frontend scenes,
     ; so stamp the smoke marker directly into the gameplay backbuffer too.
     call fill_rect_reference
+
+    mov bx, SMOKE_GAMEPLAY_PROOF_X
+    mov dx, SMOKE_GAMEPLAY_PROOF_Y
+    mov cx, SMOKE_GAMEPLAY_PROOF_W
+    mov bp, SMOKE_GAMEPLAY_PROOF_H
+    mov al, SMOKE_GAMEPLAY_PROOF_COLOR
+    call fill_rect_reference
+
+    mov bx, SMOKE_GAMEPLAY_STRATEGY_X
+    mov dx, SMOKE_GAMEPLAY_STRATEGY_Y
+    mov cx, SMOKE_GAMEPLAY_STRATEGY_W
+    mov bp, SMOKE_GAMEPLAY_STRATEGY_H
+    cmp byte ptr [video_gameplay_present_mode], ENHANCED_GAMEPLAY_PRESENT_PAGE_FLIP
+    jne render_game_screen_smoke_strategy_degraded
+    mov al, SMOKE_GAMEPLAY_STRATEGY_PAGE_FLIP_COLOR
+    jmp render_game_screen_smoke_strategy_ready
+
+render_game_screen_smoke_strategy_degraded:
+    mov al, SMOKE_GAMEPLAY_STRATEGY_DEGRADED_COLOR
+
+render_game_screen_smoke_strategy_ready:
+    call fill_rect_reference
 ENDIF
 IF DEBUG_RENDER_SENTINELS
     mov bx, 16

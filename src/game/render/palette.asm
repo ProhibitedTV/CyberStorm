@@ -149,7 +149,7 @@ palette_event_done:
     ret
 
 set_palette_entry:
-    push ax
+    push eax
     push bx
     push cx
     push dx
@@ -183,8 +183,13 @@ set_palette_entry:
 
     shl bx, 1
     mov [palette_rgb565_table + bx], dx
+    movzx eax, dx
+    shl eax, 16
+    mov ax, dx
+    shl bx, 1
+    mov [palette_rgb565_expand_table + bx], eax
     pop dx
     pop cx
     pop bx
-    pop ax
+    pop eax
     ret

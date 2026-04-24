@@ -1,9 +1,20 @@
 CyberStorm VM Smoke Report
-Generated: 2026-04-23 20:37:54 -06:00
-Status: FAIL
-Failure class: CONTENT
+Generated: 2026-04-24 12:18:44 -06:00
+Status: PASS
 VM: CyberStorm
-Wait: 14s (targets splash -> title -> attract demo)
+Frontend: headless
+Wait: 14s (targets splash -> title proof, then direct gameplay presenter proof)
 Audio mode: MUSIC
+Audio controller: SB16 via HostAudioWas (host default HostAudioWas)
 Smoke sentinel: x=12 y=12 w=6 h=6 rgb=(63,18,18)
-Error: Attract capture never showed the shared smoke sentinel (closest distance 75683, matching pixels 0/6).
+Gameplay proof marker: x=12 y=228 w=6 h=6 rgb=(63,18,18)
+Startup render proof: sentinel matched on attempt 1 with 36/6 pixels (closest distance 2).
+Title render proof: sentinel matched on attempt 1 with 36/6 pixels (closest distance 2).
+Gameplay present strategy: degraded-blit
+Gameplay upper proof: matched on attempt 1 with 30/6 pixels (closest distance 2).
+Gameplay lower proof: matched on attempt 1 with 30/6 pixels (closest distance 2).
+Gameplay strategy proof: page-flip matches 0/6 (closest distance 80915); degraded matches 30/6 (closest distance 4).
+Startup screenshot: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\vm-smoke\cyberstorm-vm-smoke-startup.png
+Title screenshot: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\vm-smoke\cyberstorm-vm-smoke-title.png
+Screenshot: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\vm-smoke\cyberstorm-vm-smoke.png
+VBox log: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\vm-smoke\cyberstorm-vm-smoke.log

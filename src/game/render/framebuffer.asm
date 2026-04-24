@@ -24,6 +24,41 @@ clear_backbuffer:
     pop ax
     ret
 
+reset_legacy_vga_display_origin:
+    push ax
+    push dx
+
+    ; VBox can occasionally preserve a non-zero VGA display start / panning
+    ; origin across mode switches, which makes gameplay look horizontally
+    ; wrapped like a bad tracking lock. Reassert a clean origin whenever we
+    ; present through the legacy VGA path.
+    mov dx, 03D4h
+    mov al, 0Ch
+    out dx, al
+    inc dx
+    xor al, al
+    out dx, al
+    dec dx
+    mov al, 0Dh
+    out dx, al
+    inc dx
+    xor al, al
+    out dx, al
+
+    mov dx, 03DAh
+    in al, dx
+    mov dx, 03C0h
+    mov al, 13h
+    out dx, al
+    xor al, al
+    out dx, al
+    mov al, 20h
+    out dx, al
+
+    pop dx
+    pop ax
+    ret
+
 draw_starfield:
     push ax
     push bx
@@ -87,6 +122,7 @@ present_frame:
     push si
     push di
     push ds
+    call reset_legacy_vga_display_origin
     call wait_for_vblank
     mov ax, BACKBUFFER_SEG
     mov ds, ax
@@ -105,52 +141,25 @@ present_frame:
 
 present_frame_gameplay_vga:
     push ax
-    push bx
     push cx
-    push dx
     push si
     push di
     push ds
+    call build_gameplay_compat_surface
+    call reset_legacy_vga_display_origin
     call wait_for_vblank
+    mov ax, BACKBUFFER_COMPAT_SEG
+    mov ds, ax
     mov ax, VGA_SEG
     mov es, ax
-    xor bx, bx
-    xor dx, dx
+    xor si, si
     xor di, di
-    mov cx, SCREEN_H
-
-present_frame_gameplay_vga_row:
-    push cx
-    push bx
-    push dx
-    push di
-    mov dx, bx
-    call get_backbuffer_row_ptr
-    mov ds, ax
-    mov si, di
-    pop di
     mov cx, SCREEN_WORDS
     rep movsw
-    pop dx
-    pop bx
-    add dx, GAMEPLAY_SCREEN_H
-
-present_frame_gameplay_vga_advance:
-    cmp dx, SCREEN_H
-    jb present_frame_gameplay_vga_next
-    sub dx, SCREEN_H
-    inc bx
-    jmp present_frame_gameplay_vga_advance
-
-present_frame_gameplay_vga_next:
-    pop cx
-    loop present_frame_gameplay_vga_row
 
     pop ds
     pop di
     pop si
-    pop dx
     pop cx
-    pop bx
     pop ax
     ret

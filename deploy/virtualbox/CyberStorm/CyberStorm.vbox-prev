@@ -8,14 +8,15 @@
 ** Written by VirtualBox 7.2.6 (r172322)
 -->
 <VirtualBox xmlns="http://www.virtualbox.org/" version="1.19-windows">
-  <Machine uuid="{d6a302b5-72e8-449e-920a-ba5ca43a40c2}" name="CyberStorm" OSType="Other" snapshotFolder="Snapshots" lastStateChange="2026-04-24T14:38:50Z">
+  <Machine uuid="{b5363b5b-27e0-4527-9c69-8a977f70f517}" name="CyberStorm" OSType="Other" snapshotFolder="Snapshots" lastStateChange="2026-04-24T18:36:07Z">
     <MediaRegistry>
       <HardDisks>
-        <HardDisk uuid="{7bcad015-423a-4fc9-b48c-20294d2a58d3}" location="C:/Users/RhythmicCarnage/Desktop/CyberStorm/deploy/virtualbox/CyberStorm.vdi" format="VDI" type="Normal"/>
+        <HardDisk uuid="{9d6037cf-2173-4cd9-aacb-42ba66fad866}" location="C:/Users/RhythmicCarnage/Desktop/CyberStorm/deploy/virtualbox/CyberStorm.vdi" format="VDI" type="Normal"/>
       </HardDisks>
     </MediaRegistry>
     <ExtraData>
-      <ExtraDataItem name="GUI/LastNormalWindowPosition" value="640,258,640,523"/>
+      <ExtraDataItem name="GUI/LastCloseAction" value="PowerOff"/>
+      <ExtraDataItem name="GUI/LastNormalWindowPosition" value="631,295,640,443"/>
     </ExtraData>
     <Hardware>
       <Memory RAMSize="64"/>
@@ -32,19 +33,23 @@
         <AutoSerialNumGen enabled="true"/>
       </BIOS>
       <Network>
-        <Adapter slot="0" enabled="true" MACAddress="08002754D050">
+        <Adapter slot="0" enabled="true" MACAddress="080027AC3072">
           <NAT/>
         </Adapter>
       </Network>
       <AudioAdapter controller="SB16" useDefault="true" driver="WAS" enabled="true" enabledOut="true"/>
       <Clipboard/>
       <GuestProperties>
-        <GuestProperty name="/VirtualBox/HostInfo/GUI/LanguageID" value="en_US" timestamp="1777041530360364200" flags=""/>
+        <GuestProperty name="/VirtualBox/GuestAdd/GuiOnFocus" value="0" timestamp="1777055767113355200" flags="TRANSIENT, RDONLYGUEST"/>
+        <GuestProperty name="/VirtualBox/HostInfo/GUI/LanguageID" value="en_US" timestamp="1777055768842694400" flags="RDONLYGUEST"/>
+        <GuestProperty name="/VirtualBox/HostInfo/VBoxRev" value="172322" timestamp="1777055722992120402" flags="TRANSIENT, RDONLYGUEST"/>
+        <GuestProperty name="/VirtualBox/HostInfo/VBoxVer" value="7.2.6" timestamp="1777055722992120400" flags="TRANSIENT, RDONLYGUEST"/>
+        <GuestProperty name="/VirtualBox/HostInfo/VBoxVerExt" value="7.2.6" timestamp="1777055722992120401" flags="TRANSIENT, RDONLYGUEST"/>
       </GuestProperties>
       <StorageControllers>
         <StorageController name="IDE" type="PIIX4" PortCount="2" useHostIOCache="true" Bootable="true">
           <AttachedDevice type="HardDisk" hotpluggable="false" port="0" device="0">
-            <Image uuid="{7bcad015-423a-4fc9-b48c-20294d2a58d3}"/>
+            <Image uuid="{9d6037cf-2173-4cd9-aacb-42ba66fad866}"/>
           </AttachedDevice>
         </StorageController>
       </StorageControllers>

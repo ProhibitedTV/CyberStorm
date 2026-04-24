@@ -296,6 +296,11 @@ campaign_district_max_ready:
     mov di, offset adventure_realm_intro
     call copy_campaign_string_from_table
 
+    mov bl, dl
+    mov si, offset campaign_district_shift_table
+    mov di, offset adventure_realm_shift
+    call copy_campaign_string_from_table
+
     xor bx, bx
     mov bl, dl
     mov al, [campaign_district_start_x_table + bx]
@@ -2825,6 +2830,72 @@ score_rank_color_b:
 
 score_rank_color_c:
     mov al, PAL_AMBER
+    ret
+
+get_next_rank_ptr:
+    call get_score_rank_index
+    cmp al, 0
+    je next_rank_ptr_cap
+    cmp al, 1
+    je next_rank_ptr_s
+    cmp al, 2
+    je next_rank_ptr_a
+    cmp al, 3
+    je next_rank_ptr_b
+    mov si, offset rank_c_text
+    ret
+
+next_rank_ptr_cap:
+    mov si, offset top_rank_text
+    ret
+
+next_rank_ptr_s:
+    mov si, offset rank_s_text
+    ret
+
+next_rank_ptr_a:
+    mov si, offset rank_a_text
+    ret
+
+next_rank_ptr_b:
+    mov si, offset rank_b_text
+    ret
+
+get_next_rank_delta_ax:
+    push bx
+    call get_score_rank_index
+    cmp al, 0
+    je next_rank_delta_none
+    cmp al, 1
+    je next_rank_delta_to_s
+    cmp al, 2
+    je next_rank_delta_to_a
+    cmp al, 3
+    je next_rank_delta_to_b
+    mov bx, SCORE_RANK_C_THRESHOLD
+    jmp next_rank_delta_ready
+
+next_rank_delta_to_s:
+    mov bx, SCORE_RANK_S_THRESHOLD
+    jmp next_rank_delta_ready
+
+next_rank_delta_to_a:
+    mov bx, SCORE_RANK_A_THRESHOLD
+    jmp next_rank_delta_ready
+
+next_rank_delta_to_b:
+    mov bx, SCORE_RANK_B_THRESHOLD
+
+next_rank_delta_ready:
+    mov ax, bx
+    sub ax, [score_total]
+    jnc next_rank_delta_done
+
+next_rank_delta_none:
+    xor ax, ax
+
+next_rank_delta_done:
+    pop bx
     ret
 
 award_kill:

@@ -1,21 +1,26 @@
 # Sector Identity
 
-CyberStorm now treats its three sectors as authored breach spaces instead of three copies of the same board with different maps.
+CyberStorm now treats its four districts as authored breach spaces in one escalating arcade run, not as interchangeable maps.
 
-## Sector 1: Scout Grid
+## District 1: Subgrid Ingress
 
-Sector 1 is the readable baseline. It keeps the cleanest pursuit lanes, the lowest hazard load, and the coolest cyan UI treatment. The goal is to teach the chase rhythm clearly: move, draw hunters out, collect shards, and keep the gate plan in view.
+Subgrid is the readable baseline. It should teach the campaign goal in one glance: the first relay sits across a visible bridge, the storm gate reads as the eventual destination, and the chase lanes stay clear enough that the player can learn the run rhythm without guesswork.
 
-## Sector 2: Surge Furnace
+## District 2: Switchyard Spine
 
-Sector 2 turns the existing surge-node system into the defining pressure source. It uses a warmer amber warning palette, denser surge placement, and entry feedback that frames the arena like a live hazard chamber. The player is encouraged to route hunters through arcs instead of only outrunning them.
+Switchyard is the commitment district. The map should make the safe route and the hot route legible, squeeze the player through stronger hinge-yard framing, and make return pressure feel intentional rather than random clutter.
 
-## Sector 3: Warden Lock
+## District 3: Thermal Foundry
 
-Sector 3 is the lockdown sector. It adds one more hunter, expands warden engagement range so they commit earlier, and uses a red/white gate-lane treatment to keep the exit under pressure. The intended feeling is that the whole map is collapsing toward the final breach corridor.
+Thermal is the recovery-under-stress district. Hot trench walls, furnace ribs, and vent massing should make the key climb feel like a deliberate test, then the slag return should ask the player to re-run the space under heavier pressure with the same readable rules.
+
+## District 4: Apex Vault
+
+Apex is the finale district. The opening should feel quiet and monumental, the warden reveal should happen in direct relation to the final gate, the key branch should feel exposed, and the last breach lane should become the cleanest, most urgent sprint in the game.
 
 ## Design Rules
 
-- Every sector should announce itself with color, message text, and a simple ambient overlay before the player reads the map details.
-- Mechanical differences stay tied to existing systems: hunter mix, surge density, and chase pressure.
-- New sector flavor should remain readable in a single glance and never require extra controls or hidden rules.
+- Every district should announce itself with title, mission line, and one short "what changed here" line before the player needs to parse the route.
+- Mechanical differences stay tied to existing systems: relay count, key branch exposure, hunter pressure, and warden framing.
+- The campaign should escalate through authored setpieces, not new verbs or hidden rules.
+- District flavor should remain readable in a single glance and never require extra controls or a second progression layer.

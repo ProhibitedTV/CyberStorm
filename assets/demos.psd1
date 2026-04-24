@@ -8,7 +8,7 @@
             Attract = $true
             CaptureRole = 'beauty'
             DistrictName = 'SUBGRID INGRESS'
-            Purpose = 'Establishing pass'
+            Purpose = 'Storm-gate reveal'
             CaptureTicks = 52
             RuntimeVerify = $false
             Expected = @{
@@ -401,7 +401,7 @@
             Attract = $true
             CaptureRole = 'beauty'
             DistrictName = 'SWITCHYARD SPINE'
-            Purpose = 'Traversal pass'
+            Purpose = 'Hinge-yard reveal'
             CaptureTicks = 58
             RuntimeVerify = $false
             Expected = @{
@@ -474,7 +474,7 @@
             Attract = $true
             CaptureRole = 'beauty'
             DistrictName = 'THERMAL FOUNDRY'
-            Purpose = 'Atmosphere pass'
+            Purpose = 'Smelter-rise reveal'
             CaptureTicks = 60
             RuntimeVerify = $false
             Expected = @{
@@ -547,7 +547,7 @@
             Attract = $true
             CaptureRole = 'beauty'
             DistrictName = 'APEX VAULT'
-            Purpose = 'Finale pass'
+            Purpose = 'Final-breach reveal'
             CaptureTicks = 62
             RuntimeVerify = $false
             Expected = @{
@@ -584,7 +584,7 @@
             Attract = $true
             CaptureRole = 'action'
             DistrictName = 'APEX VAULT'
-            Purpose = 'Warden pass'
+            Purpose = 'Warden finale pass'
             CaptureTicks = 58
             RuntimeVerify = $false
             Expected = @{

@@ -1514,6 +1514,7 @@ function Write-GeneratedSectorIncludes {
         $campaignMeshLines = New-Object 'System.Collections.Generic.List[string]'
         $campaignTitleRefs = New-Object 'System.Collections.Generic.List[string]'
         $campaignIntroRefs = New-Object 'System.Collections.Generic.List[string]'
+        $campaignShiftRefs = New-Object 'System.Collections.Generic.List[string]'
         $campaignMapRefs = New-Object 'System.Collections.Generic.List[string]'
         $campaignGemRefs = New-Object 'System.Collections.Generic.List[string]'
         $campaignSwitchRefs = New-Object 'System.Collections.Generic.List[string]'
@@ -1576,7 +1577,7 @@ function Write-GeneratedSectorIncludes {
                 throw ("Each Campaign district in {0} must be a hashtable." -f $SourcePath)
             }
 
-            foreach ($requiredDistrictKey in @('Title', 'Intro', 'Start', 'Exit', 'ObjectiveCounts', 'Rows', 'MacroZones', 'RouteBeats', 'Chunks', 'CaptureAnchors', 'NextDistrict')) {
+            foreach ($requiredDistrictKey in @('Title', 'Intro', 'Shift', 'Start', 'Exit', 'ObjectiveCounts', 'Rows', 'MacroZones', 'RouteBeats', 'Chunks', 'CaptureAnchors', 'NextDistrict')) {
                 if (-not $district.ContainsKey($requiredDistrictKey)) {
                     throw ("Campaign district {0} in {1} is missing '{2}'." -f ($districtIndex + 1), $SourcePath, $requiredDistrictKey)
                 }
@@ -1589,6 +1590,7 @@ function Write-GeneratedSectorIncludes {
 
             $districtTitle = [string]$district['Title']
             $districtIntro = [string]$district['Intro']
+            $districtShift = [string]$district['Shift']
             $districtRows = @($district['Rows'] | ForEach-Object { [string]$_ })
             $districtMacroZones = @($district['MacroZones'])
             $districtRouteBeats = @($district['RouteBeats'])
@@ -1862,6 +1864,7 @@ function Write-GeneratedSectorIncludes {
 
             $campaignTitleRefs.Add(((& $appendCampaignPayload ([Text.Encoding]::ASCII.GetBytes($districtTitle + [char]0))).ToString()))
             $campaignIntroRefs.Add(((& $appendCampaignPayload ([Text.Encoding]::ASCII.GetBytes($districtIntro + [char]0))).ToString()))
+            $campaignShiftRefs.Add(((& $appendCampaignPayload ([Text.Encoding]::ASCII.GetBytes($districtShift + [char]0))).ToString()))
             $campaignMapRefs.Add(((& $appendCampaignPayload ([Text.Encoding]::ASCII.GetBytes(($districtRows -join '')))).ToString()))
             $campaignGemRefs.Add(((& $appendCampaignPayload ([byte[]]@($districtGemBytes | ForEach-Object { [byte][int]$_ }))).ToString()))
             $campaignSwitchRefs.Add(((& $appendCampaignPayload ([byte[]]@($districtSwitchBytes | ForEach-Object { [byte][int]$_ }))).ToString()))
@@ -1916,6 +1919,7 @@ function Write-GeneratedSectorIncludes {
         $sectorLines.Add('; Campaign district tables')
         Add-AsmDataLines -Lines $sectorLines -Label 'campaign_district_title_table' -Directive 'dw' -Values $campaignTitleRefs.ToArray() -ValuesPerLine 4
         Add-AsmDataLines -Lines $sectorLines -Label 'campaign_district_intro_table' -Directive 'dw' -Values $campaignIntroRefs.ToArray() -ValuesPerLine 4
+        Add-AsmDataLines -Lines $sectorLines -Label 'campaign_district_shift_table' -Directive 'dw' -Values $campaignShiftRefs.ToArray() -ValuesPerLine 4
         Add-AsmDataLines -Lines $sectorLines -Label 'campaign_district_map_ptr_table' -Directive 'dw' -Values $campaignMapRefs.ToArray() -ValuesPerLine 4
         Add-AsmDataLines -Lines $sectorLines -Label 'campaign_district_start_x_table' -Directive 'db' -Values $campaignStartXs.ToArray() -ValuesPerLine 8
         Add-AsmDataLines -Lines $sectorLines -Label 'campaign_district_start_y_table' -Directive 'db' -Values $campaignStartYs.ToArray() -ValuesPerLine 8

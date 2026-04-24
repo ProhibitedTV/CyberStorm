@@ -333,7 +333,8 @@
             @{
                 Id = 'subgrid-ingress'
                 Title = 'SUBGRID INGRESS'
-                Intro = 'BREACH THE SUBGRID. SCOOP DATA SHARDS, OVERLOAD THE RELAY, LIFT THE KEYCARD, AND WAKE THE STORM GATE.'
+                Intro = 'CLEAR SHARDS, JACK THE RELAY, LIFT THE KEY, AND WAKE THE STORM GATE.'
+                Shift = 'READ THE CHASE. THE GATE STAYS IN VIEW SO THE RUN ALWAYS HAS A DESTINATION.'
                 Start = '4,12'
                 Exit = '24,2'
                 NextDistrict = 2
@@ -351,12 +352,12 @@
                     @{ Id = 'storm-gate'; Label = 'Storm Gate'; Bounds = '21,1,25,4' }
                 )
                 RouteBeats = @(
-                    @{ Zone = 'dock-ramp'; Sequence = 1; Summary = 'Open with a readable shard ribbon and the storm tower framed in the distance.' }
-                    @{ Zone = 'relay-loop'; Sequence = 2; Summary = 'Teach the first wide bend before the route compresses around the relay.' }
-                    @{ Zone = 'charge-bridge'; Sequence = 3; Summary = 'The dash-strike lane stays obvious and safe enough for the first hard commit.' }
-                    @{ Zone = 'vault-terrace'; Sequence = 4; Summary = 'The raised keycard terrace reads cleanly against the skyline.' }
-                    @{ Zone = 'return-span'; Sequence = 5; Summary = 'Loop back through one hazard lesson and a late pressure beat.' }
-                    @{ Zone = 'storm-gate'; Sequence = 6; Summary = 'Finish under the gate arch with the final breach silhouette filling the frame.' }
+                    @{ Zone = 'dock-ramp'; Sequence = 1; Summary = 'Open on a readable shard ribbon with the storm gate already peeking over the canal.' }
+                    @{ Zone = 'relay-loop'; Sequence = 2; Summary = 'The first relay reveal should land across the bridge so the objective and return route read together.' }
+                    @{ Zone = 'charge-bridge'; Sequence = 3; Summary = 'The first committed burst stays obvious, safe, and worth taking.' }
+                    @{ Zone = 'vault-terrace'; Sequence = 4; Summary = 'The key terrace should read like a skyline prize instead of a hidden errand.' }
+                    @{ Zone = 'return-span'; Sequence = 5; Summary = 'Fold one hazard lesson into the escape without muddying the line back out.' }
+                    @{ Zone = 'storm-gate'; Sequence = 6; Summary = 'The gate should feel like the destination the player has been chasing since the opening glance.' }
                 )
                 Chunks = @(
                     @{ Id = 'dock-west'; Zone = 'dock-ramp'; Bounds = '2,10,7,13'; Role = 'start-lane'; BaseHeight = 0; ShelfHeight = 0; RampDir = 'none'; CliffSide = 'north'; BridgeSpan = 'none'; LandmarkAnchor = '24,2'; PropBudget = 2 }
@@ -449,7 +450,8 @@
             @{
                 Id = 'switchyard-spine'
                 Title = 'SWITCHYARD SPINE'
-                Intro = 'RIDE THE SWITCHYARD SPINE. THREAD CROSSFIRE, WAKE TWO RELAYS, SECURE THE KEYCARD, AND CUT THE BREACH LATTICE.'
+                Intro = 'WAKE TWO RELAYS, SECURE THE KEYCARD, AND CUT THE BREACH LATTICE.'
+                Shift = 'ROUTE CHOICE MATTERS NOW. THE SAFE LOOP HOLDS, BUT THE HOT HINGE PAYS FASTER.'
                 Start = '2,13'
                 Exit = '24,1'
                 NextDistrict = 3
@@ -468,18 +470,18 @@
                 )
                 RouteBeats = @(
                     @{ Zone = 'rail-dock'; Sequence = 1; Summary = 'Kick off in a broad loading lane with the first relay sightline already visible.' }
-                    @{ Zone = 'crosslane'; Sequence = 2; Summary = 'The main spine asks for a clean commit through readable flanker pressure.' }
-                    @{ Zone = 'hinge-yard'; Sequence = 3; Summary = 'The right hinge lets the player choose between the safe loop and the hot line.' }
-                    @{ Zone = 'upper-switch'; Sequence = 4; Summary = 'Upper switchbacks compress the route and keep the second relay in view.' }
-                    @{ Zone = 'spur-run'; Sequence = 5; Summary = 'The return sprint gathers late shards while enemy pressure pinches from both sides.' }
-                    @{ Zone = 'breach-lock'; Sequence = 6; Summary = 'The breach lock gives one final clean read before the district handoff.' }
+                    @{ Zone = 'crosslane'; Sequence = 2; Summary = 'The main spine should ask for a clean commit through readable crossfire instead of random clutter.' }
+                    @{ Zone = 'hinge-yard'; Sequence = 3; Summary = 'This is the setpiece: the player sees the safe loop and the hot hinge together, then chooses.' }
+                    @{ Zone = 'upper-switch'; Sequence = 4; Summary = 'Upper switchbacks compress the route while the second relay stays visible enough to pull the run forward.' }
+                    @{ Zone = 'spur-run'; Sequence = 5; Summary = 'The return sprint should feel tighter and meaner than the opening commit.' }
+                    @{ Zone = 'breach-lock'; Sequence = 6; Summary = 'The lock should hand the player into district three with one final clean read of the lattice.' }
                 )
                 Chunks = @(
                     @{ Id = 'dock-lane'; Zone = 'rail-dock'; Bounds = '1,11,8,13'; Role = 'start-lane'; BaseHeight = 0; ShelfHeight = 32; RampDir = 'east'; CliffSide = 'north'; BridgeSpan = 'none'; LandmarkAnchor = '24,1'; PropBudget = 2 }
-                    @{ Id = 'crosslane-core'; Zone = 'crosslane'; Bounds = '8,7,15,10'; Role = 'crossfire'; BaseHeight = 32; ShelfHeight = 96; RampDir = 'north'; CliffSide = 'east'; BridgeSpan = 'east-west'; LandmarkAnchor = '16,7'; PropBudget = 3 }
-                    @{ Id = 'hinge-yard'; Zone = 'hinge-yard'; Bounds = '15,7,22,10'; Role = 'route-choice'; BaseHeight = 64; ShelfHeight = 128; RampDir = 'west'; CliffSide = 'south'; BridgeSpan = 'none'; LandmarkAnchor = '20,9'; PropBudget = 2 }
+                    @{ Id = 'crosslane-core'; Zone = 'crosslane'; Bounds = '8,7,15,10'; Role = 'spine-commit'; BaseHeight = 32; ShelfHeight = 96; RampDir = 'north'; CliffSide = 'east'; BridgeSpan = 'east-west'; LandmarkAnchor = '16,7'; PropBudget = 3 }
+                    @{ Id = 'hinge-yard'; Zone = 'hinge-yard'; Bounds = '15,7,22,10'; Role = 'safe-vs-hot'; BaseHeight = 64; ShelfHeight = 128; RampDir = 'west'; CliffSide = 'south'; BridgeSpan = 'none'; LandmarkAnchor = '20,9'; PropBudget = 2 }
                     @{ Id = 'upper-switch'; Zone = 'upper-switch'; Bounds = '8,1,20,6'; Role = 'switchback'; BaseHeight = 96; ShelfHeight = 160; RampDir = 'north'; CliffSide = 'west'; BridgeSpan = 'north-south'; LandmarkAnchor = '18,3'; PropBudget = 3 }
-                    @{ Id = 'spur-run'; Zone = 'spur-run'; Bounds = '20,9,25,13'; Role = 'return-run'; BaseHeight = 64; ShelfHeight = 112; RampDir = 'east'; CliffSide = 'south'; BridgeSpan = 'none'; LandmarkAnchor = '22,11'; PropBudget = 2 }
+                    @{ Id = 'spur-run'; Zone = 'spur-run'; Bounds = '20,9,25,13'; Role = 'pressure-return'; BaseHeight = 64; ShelfHeight = 112; RampDir = 'east'; CliffSide = 'south'; BridgeSpan = 'none'; LandmarkAnchor = '22,11'; PropBudget = 2 }
                     @{ Id = 'breach-lock'; Zone = 'breach-lock'; Bounds = '21,1,25,4'; Role = 'finish'; BaseHeight = 128; ShelfHeight = 176; RampDir = 'north'; CliffSide = 'west'; BridgeSpan = 'none'; LandmarkAnchor = '24,1'; PropBudget = 3 }
                 )
                 CaptureAnchors = @{
@@ -555,7 +557,8 @@
             @{
                 Id = 'thermal-foundry'
                 Title = 'THERMAL FOUNDRY'
-                Intro = 'PUSH THE THERMAL FOUNDRY. TIME THE OVERLOAD BURSTS, CLEAR THE HOT FLOOR, CLAIM THE KEYCARD, AND OPEN THE STORM GATE.'
+                Intro = 'TIME OVERLOAD BURSTS, LIFT THE KEY, AND FORCE THE FORGE GATE.'
+                Shift = 'HEAT AND RECOVERY MATTER NOW. BAD FOOTING COSTS TIME AND CONTROL.'
                 Start = '2,13'
                 Exit = '24,1'
                 NextDistrict = 4
@@ -574,18 +577,18 @@
                 )
                 RouteBeats = @(
                     @{ Zone = 'coolant-dock'; Sequence = 1; Summary = 'Open with clean footing before the furnace lanes start to punish delay.' }
-                    @{ Zone = 'ember-loop'; Sequence = 2; Summary = 'The first hazard teaches the short overload burst without choking the route.' }
-                    @{ Zone = 'heat-spine'; Sequence = 3; Summary = 'Mid-route crossfire and hot floor force sharper line choice.' }
-                    @{ Zone = 'smelter-rise'; Sequence = 4; Summary = 'The keycard climb keeps the upper catwalk in view while the player commits upward.' }
-                    @{ Zone = 'slag-return'; Sequence = 5; Summary = 'The lower return run escalates hazard density and rewards quick recovery.' }
-                    @{ Zone = 'forge-gate'; Sequence = 6; Summary = 'The forge gate resolves into a clean sprint once the district is fully unlocked.' }
+                    @{ Zone = 'ember-loop'; Sequence = 2; Summary = 'The first hot lane should teach controlled overload timing without choking the run.' }
+                    @{ Zone = 'heat-spine'; Sequence = 3; Summary = 'Mid-route heat and crossfire should force a sharper line than switchyard ever asked for.' }
+                    @{ Zone = 'smelter-rise'; Sequence = 4; Summary = 'This is the signature climb: the keycard sits high and obvious while the player commits upward.' }
+                    @{ Zone = 'slag-return'; Sequence = 5; Summary = 'The lower return should feel like a deliberate recovery test, not just denser clutter.' }
+                    @{ Zone = 'forge-gate'; Sequence = 6; Summary = 'Once unlocked, the forge gate should resolve into the cleanest sprint in the district.' }
                 )
                 Chunks = @(
                     @{ Id = 'coolant-dock'; Zone = 'coolant-dock'; Bounds = '1,11,8,13'; Role = 'start-lane'; BaseHeight = 0; ShelfHeight = 32; RampDir = 'east'; CliffSide = 'north'; BridgeSpan = 'none'; LandmarkAnchor = '24,1'; PropBudget = 2 }
                     @{ Id = 'ember-loop'; Zone = 'ember-loop'; Bounds = '8,7,15,10'; Role = 'hazard-lesson'; BaseHeight = 32; ShelfHeight = 96; RampDir = 'north'; CliffSide = 'east'; BridgeSpan = 'none'; LandmarkAnchor = '14,5'; PropBudget = 3 }
                     @{ Id = 'heat-spine'; Zone = 'heat-spine'; Bounds = '15,7,22,10'; Role = 'pressure-lane'; BaseHeight = 64; ShelfHeight = 128; RampDir = 'west'; CliffSide = 'south'; BridgeSpan = 'east-west'; LandmarkAnchor = '20,9'; PropBudget = 2 }
                     @{ Id = 'smelter-rise'; Zone = 'smelter-rise'; Bounds = '8,1,20,6'; Role = 'catwalk-climb'; BaseHeight = 96; ShelfHeight = 176; RampDir = 'north'; CliffSide = 'west'; BridgeSpan = 'north-south'; LandmarkAnchor = '20,3'; PropBudget = 3 }
-                    @{ Id = 'slag-return'; Zone = 'slag-return'; Bounds = '20,9,25,13'; Role = 'return-run'; BaseHeight = 64; ShelfHeight = 112; RampDir = 'east'; CliffSide = 'south'; BridgeSpan = 'none'; LandmarkAnchor = '23,11'; PropBudget = 2 }
+                    @{ Id = 'slag-return'; Zone = 'slag-return'; Bounds = '20,9,25,13'; Role = 'recovery-test'; BaseHeight = 64; ShelfHeight = 112; RampDir = 'east'; CliffSide = 'south'; BridgeSpan = 'none'; LandmarkAnchor = '23,11'; PropBudget = 2 }
                     @{ Id = 'forge-gate'; Zone = 'forge-gate'; Bounds = '21,1,25,4'; Role = 'finish'; BaseHeight = 144; ShelfHeight = 192; RampDir = 'north'; CliffSide = 'west'; BridgeSpan = 'none'; LandmarkAnchor = '24,1'; PropBudget = 3 }
                 )
                 CaptureAnchors = @{
@@ -661,7 +664,8 @@
             @{
                 Id = 'apex-vault'
                 Title = 'APEX VAULT'
-                Intro = 'CRACK THE APEX VAULT. HOLD OFF THE WARDEN, WAKE THE FINAL RELAYS, PULL THE KEYCARD, AND FORCE THE LAST BREACH.'
+                Intro = 'HOLD OFF THE WARDEN, WAKE THE FINAL RELAYS, TAKE THE KEY, AND FORCE THE BREACH.'
+                Shift = 'LOCKDOWN IS LIVE. THE KEY BRANCH IS EXPOSED AND THE LAST SPRINT HAS TO FEEL FINAL.'
                 Start = '2,13'
                 Exit = '23,1'
                 NextDistrict = 0
@@ -679,20 +683,20 @@
                     @{ Id = 'final-breach'; Label = 'Final Breach'; Bounds = '21,1,25,4' }
                 )
                 RouteBeats = @(
-                    @{ Zone = 'vault-dock'; Sequence = 1; Summary = 'Start in the quiet dock before the vault camera line closes in.' }
-                    @{ Zone = 'corridor-spine'; Sequence = 2; Summary = 'The center corridor is direct but keeps flanker pressure live.' }
-                    @{ Zone = 'seal-run'; Sequence = 3; Summary = 'Late hazards and tighter lanes punish hesitation.' }
-                    @{ Zone = 'warden-rise'; Sequence = 4; Summary = 'The upper rise frames the warden and the final gate in one glance.' }
-                    @{ Zone = 'key-branch'; Sequence = 5; Summary = 'The key branch is short, exposed, and worth the commitment.' }
-                    @{ Zone = 'final-breach'; Sequence = 6; Summary = 'Once the gate opens, the last sprint should feel urgent and unmistakable.' }
+                    @{ Zone = 'vault-dock'; Sequence = 1; Summary = 'Start in a calm dock so the monument space reads before the pressure arrives.' }
+                    @{ Zone = 'corridor-spine'; Sequence = 2; Summary = 'The center corridor is the last honest runway before the lockdown closes in.' }
+                    @{ Zone = 'seal-run'; Sequence = 3; Summary = 'Seal-run should tighten the lane and make hesitation expensive.' }
+                    @{ Zone = 'warden-rise'; Sequence = 4; Summary = 'This is the reveal: the warden and the final gate should read together in one glance.' }
+                    @{ Zone = 'key-branch'; Sequence = 5; Summary = 'The key branch is short, exposed, and worth the fear it creates.' }
+                    @{ Zone = 'final-breach'; Sequence = 6; Summary = 'Once unlocked, the last sprint should feel cleaner, faster, and more final than anything before it.' }
                 )
                 Chunks = @(
-                    @{ Id = 'vault-dock'; Zone = 'vault-dock'; Bounds = '1,11,8,13'; Role = 'start-lane'; BaseHeight = 0; ShelfHeight = 32; RampDir = 'east'; CliffSide = 'north'; BridgeSpan = 'none'; LandmarkAnchor = '23,1'; PropBudget = 2 }
+                    @{ Id = 'vault-dock'; Zone = 'vault-dock'; Bounds = '1,11,8,13'; Role = 'monument-read'; BaseHeight = 0; ShelfHeight = 32; RampDir = 'east'; CliffSide = 'north'; BridgeSpan = 'none'; LandmarkAnchor = '23,1'; PropBudget = 2 }
                     @{ Id = 'corridor-spine'; Zone = 'corridor-spine'; Bounds = '8,7,16,10'; Role = 'main-corridor'; BaseHeight = 32; ShelfHeight = 96; RampDir = 'north'; CliffSide = 'east'; BridgeSpan = 'none'; LandmarkAnchor = '15,9'; PropBudget = 3 }
-                    @{ Id = 'seal-run'; Zone = 'seal-run'; Bounds = '16,7,22,10'; Role = 'lockdown'; BaseHeight = 64; ShelfHeight = 128; RampDir = 'west'; CliffSide = 'south'; BridgeSpan = 'east-west'; LandmarkAnchor = '21,7'; PropBudget = 2 }
-                    @{ Id = 'warden-rise'; Zone = 'warden-rise'; Bounds = '8,1,20,6'; Role = 'warden-overlook'; BaseHeight = 112; ShelfHeight = 192; RampDir = 'north'; CliffSide = 'west'; BridgeSpan = 'north-south'; LandmarkAnchor = '19,3'; PropBudget = 4 }
-                    @{ Id = 'key-branch'; Zone = 'key-branch'; Bounds = '18,1,23,6'; Role = 'key-route'; BaseHeight = 160; ShelfHeight = 208; RampDir = 'east'; CliffSide = 'south'; BridgeSpan = 'none'; LandmarkAnchor = '21,3'; PropBudget = 2 }
-                    @{ Id = 'final-breach'; Zone = 'final-breach'; Bounds = '21,1,25,4'; Role = 'finish'; BaseHeight = 176; ShelfHeight = 224; RampDir = 'north'; CliffSide = 'west'; BridgeSpan = 'none'; LandmarkAnchor = '23,1'; PropBudget = 3 }
+                    @{ Id = 'seal-run'; Zone = 'seal-run'; Bounds = '16,7,22,10'; Role = 'lockdown-lane'; BaseHeight = 64; ShelfHeight = 128; RampDir = 'west'; CliffSide = 'south'; BridgeSpan = 'east-west'; LandmarkAnchor = '21,7'; PropBudget = 2 }
+                    @{ Id = 'warden-rise'; Zone = 'warden-rise'; Bounds = '8,1,20,6'; Role = 'warden-reveal'; BaseHeight = 112; ShelfHeight = 192; RampDir = 'north'; CliffSide = 'west'; BridgeSpan = 'north-south'; LandmarkAnchor = '19,3'; PropBudget = 4 }
+                    @{ Id = 'key-branch'; Zone = 'key-branch'; Bounds = '18,1,23,6'; Role = 'exposed-key'; BaseHeight = 160; ShelfHeight = 208; RampDir = 'east'; CliffSide = 'south'; BridgeSpan = 'none'; LandmarkAnchor = '21,3'; PropBudget = 2 }
+                    @{ Id = 'final-breach'; Zone = 'final-breach'; Bounds = '21,1,25,4'; Role = 'final-sprint'; BaseHeight = 176; ShelfHeight = 224; RampDir = 'north'; CliffSide = 'west'; BridgeSpan = 'none'; LandmarkAnchor = '23,1'; PropBudget = 3 }
                 )
                 CaptureAnchors = @{
                     Beauty = 'vault-attract-a'
@@ -812,7 +816,7 @@
             @{ From = 'glide-return'; To = 'portal-plaza'; Subject = 'portal-arch'; Summary = 'The final glide points directly back into the portal silhouette.' }
         )
         CaptureAnchors = @{
-            Beauty = 'switchyard-attract-a'
+            Beauty = 'thermal-attract-a'
             Action = 'vault-attract-b'
         }
         Key = @(

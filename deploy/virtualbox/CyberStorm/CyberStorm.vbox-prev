@@ -8,21 +8,46 @@
 ** Written by VirtualBox 7.2.6 (r172322)
 -->
 <VirtualBox xmlns="http://www.virtualbox.org/" version="1.19-windows">
-  <Machine uuid="{a8803921-669b-4512-b48d-56a25d45067b}" name="CyberStorm" OSType="Other" snapshotFolder="Snapshots" lastStateChange="2026-04-23T21:04:06Z">
+  <Machine uuid="{d6a302b5-72e8-449e-920a-ba5ca43a40c2}" name="CyberStorm" OSType="Other" snapshotFolder="Snapshots" lastStateChange="2026-04-24T14:38:50Z">
+    <MediaRegistry>
+      <HardDisks>
+        <HardDisk uuid="{7bcad015-423a-4fc9-b48c-20294d2a58d3}" location="C:/Users/RhythmicCarnage/Desktop/CyberStorm/deploy/virtualbox/CyberStorm.vdi" format="VDI" type="Normal"/>
+      </HardDisks>
+    </MediaRegistry>
+    <ExtraData>
+      <ExtraDataItem name="GUI/LastNormalWindowPosition" value="640,258,640,523"/>
+    </ExtraData>
     <Hardware>
-      <Memory RAMSize="1024"/>
+      <Memory RAMSize="64"/>
+      <Boot>
+        <Order position="1" device="HardDisk"/>
+        <Order position="2" device="None"/>
+        <Order position="3" device="None"/>
+        <Order position="4" device="None"/>
+      </Boot>
+      <Display controller="VBoxSVGA" VRAMSize="16"/>
       <Firmware/>
       <BIOS>
         <SmbiosUuidLittleEndian enabled="true"/>
         <AutoSerialNumGen enabled="true"/>
       </BIOS>
       <Network>
-        <Adapter slot="0" enabled="true" MACAddress="0800272B5429">
+        <Adapter slot="0" enabled="true" MACAddress="08002754D050">
           <NAT/>
         </Adapter>
       </Network>
-      <AudioAdapter useDefault="true" driver="WAS" enabled="true"/>
+      <AudioAdapter controller="SB16" useDefault="true" driver="WAS" enabled="true" enabledOut="true"/>
       <Clipboard/>
+      <GuestProperties>
+        <GuestProperty name="/VirtualBox/HostInfo/GUI/LanguageID" value="en_US" timestamp="1777041530360364200" flags=""/>
+      </GuestProperties>
+      <StorageControllers>
+        <StorageController name="IDE" type="PIIX4" PortCount="2" useHostIOCache="true" Bootable="true">
+          <AttachedDevice type="HardDisk" hotpluggable="false" port="0" device="0">
+            <Image uuid="{7bcad015-423a-4fc9-b48c-20294d2a58d3}"/>
+          </AttachedDevice>
+        </StorageController>
+      </StorageControllers>
       <CPU>
         <HardwareVirtExLargePages enabled="true"/>
         <PAE enabled="false"/>

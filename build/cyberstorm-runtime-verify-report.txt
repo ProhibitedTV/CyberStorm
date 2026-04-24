@@ -1,9 +1,433 @@
 CyberStorm Runtime Verification Report
-Generated: 2026-04-23 15:02:51 -06:00
+Generated: 2026-04-23 20:13:54 -06:00
 Demo source: C:\Users\RhythmicCarnage\Desktop\CyberStorm\scripts\..\assets\demos.psd1
 Status: FAIL
-Failure class: ENVIRONMENT
-Error: VM 'CyberStorm' never reached a capture-ready running state.
+Failure class: CONTENT
+Error: Runtime verify status mismatches detected.
+adventure-idle-verify expected PASS but observed FAIL (TIMEOUT)
+adventure-turn-verify expected PASS but observed FAIL (TIMEOUT)
+adventure-run-verify expected PASS but observed FAIL (TIMEOUT)
+adventure-jump-glide-verify expected PASS but observed FAIL (TIMEOUT)
+adventure-charge-hit-verify expected PASS but observed FAIL (TIMEOUT)
+adventure-switch-verify expected PASS but observed FAIL (TIMEOUT)
+adventure-key-verify expected PASS but observed FAIL (TIMEOUT)
+adventure-portal-unlock-verify expected PASS but observed FAIL (TIMEOUT)
+adventure-portal-complete-verify expected PASS but observed FAIL (TIMEOUT)
+Focused repro: powershell -ExecutionPolicy Bypass -File .\scripts\runtime-verify.ps1 -DemoFilter adventure-idle-verify
 
 Render mode: 3DReference
 
+Demo: ADVENTURE IDLE VERIFY
+  Id: adventure-idle-verify
+  Render: 3dref
+  Status: FAIL
+  Expected status: PASS
+  Status match: NO
+  Failure reason: TIMEOUT
+  Failure reason code: 0x0001
+  Wait: 30s
+  Marker resolved: YES
+  Marker closest distance: 2
+  Marker pass distance: 56145
+  Marker fail distance: 2
+  Expected signature: 0x8A01
+  Observed signature: 0xBF01
+  Screenshot: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\runtime-verify\runtime-verify-3dref-adventure-idle-verify-expect-pass.png
+  VBox log: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\runtime-verify\runtime-verify-3dref-adventure-idle-verify-expect-pass.log
+  Demo action code: 0x0001
+  Demo action ticks: 0
+  Demo script ptr: 0xDE01
+  State ticks: 1
+  Verify action index: 0
+  Verify action pending: 1
+  Demo active: 1
+  Game state: PLAYING (1)
+  Diagnostic words: 0x0001 0xDE01 0x0001 0x1101
+  Host diagnostics:
+    Demo 3: ADVENTURE IDLE VERIFY
+      Id: adventure-idle-verify
+      Ticks: 46
+      State: PLAYING
+      Player: 4,12
+      HeadingId: 1
+      Objectives: 0/2
+      PortalTile: 3
+      Score/Kills/Hits: 0/0/0
+      Shot: mode=0 reason=0 tick=0 subject=4,12 frame=0
+      CueFlags: 0
+      Autonomous: intro=0 enemyTick=1 threat=0 tile=4,12
+      EnemySlots: e0=0x818C e1=0x92C9 e2=0xA603
+      Final signature: 0x8A8A
+    
+
+Demo: ADVENTURE TURN VERIFY
+  Id: adventure-turn-verify
+  Render: 3dref
+  Status: FAIL
+  Expected status: PASS
+  Status match: NO
+  Failure reason: TIMEOUT
+  Failure reason code: 0x0001
+  Wait: 30s
+  Marker resolved: YES
+  Marker closest distance: 2
+  Marker pass distance: 56145
+  Marker fail distance: 2
+  Expected signature: 0x8B01
+  Observed signature: 0xBF01
+  Screenshot: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\runtime-verify\runtime-verify-3dref-adventure-turn-verify-expect-pass.png
+  VBox log: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\runtime-verify\runtime-verify-3dref-adventure-turn-verify-expect-pass.log
+  Demo action code: 0x0001
+  Demo action ticks: 0
+  Demo script ptr: 0xDE01
+  State ticks: 1
+  Verify action index: 0
+  Verify action pending: 1
+  Demo active: 1
+  Game state: PLAYING (1)
+  Diagnostic words: 0x0001 0xDE01 0x0001 0x1101
+  Host diagnostics:
+    Demo 4: ADVENTURE TURN VERIFY
+      Id: adventure-turn-verify
+      Ticks: 48
+      State: PLAYING
+      Player: 4,12
+      HeadingId: 0
+      Objectives: 0/2
+      PortalTile: 3
+      Score/Kills/Hits: 0/0/0
+      Shot: mode=0 reason=0 tick=0 subject=4,12 frame=0
+      CueFlags: 0
+      Autonomous: intro=0 enemyTick=3 threat=0 tile=4,12
+      EnemySlots: e0=0x818C e1=0x92C9 e2=0xA603
+      Final signature: 0x8B0A
+    
+
+Demo: ADVENTURE RUN VERIFY
+  Id: adventure-run-verify
+  Render: 3dref
+  Status: FAIL
+  Expected status: PASS
+  Status match: NO
+  Failure reason: TIMEOUT
+  Failure reason code: 0x0001
+  Wait: 30s
+  Marker resolved: YES
+  Marker closest distance: 2
+  Marker pass distance: 56145
+  Marker fail distance: 2
+  Expected signature: 0x9901
+  Observed signature: 0xBF01
+  Screenshot: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\runtime-verify\runtime-verify-3dref-adventure-run-verify-expect-pass.png
+  VBox log: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\runtime-verify\runtime-verify-3dref-adventure-run-verify-expect-pass.log
+  Demo action code: 0x0001
+  Demo action ticks: 0
+  Demo script ptr: 0xDE01
+  State ticks: 1
+  Verify action index: 0
+  Verify action pending: 1
+  Demo active: 1
+  Game state: PLAYING (1)
+  Diagnostic words: 0x0001 0xDE01 0x0001 0x1101
+  Host diagnostics:
+    Demo 5: ADVENTURE RUN VERIFY
+      Id: adventure-run-verify
+      Ticks: 56
+      State: PLAYING
+      Player: 5,12
+      HeadingId: 1
+      Objectives: 0/2
+      PortalTile: 3
+      Score/Kills/Hits: 1400/0/1
+      Shot: mode=0 reason=0 tick=0 subject=4,12 frame=0
+      CueFlags: 0
+      Autonomous: intro=0 enemyTick=3 threat=0 tile=6,12
+      EnemySlots: e0=0x0000 e1=0x92CA e2=0xA603
+      Final signature: 0x99D3
+    
+
+Demo: ADVENTURE JUMP GLIDE VERIFY
+  Id: adventure-jump-glide-verify
+  Render: 3dref
+  Status: FAIL
+  Expected status: PASS
+  Status match: NO
+  Failure reason: TIMEOUT
+  Failure reason code: 0x0001
+  Wait: 30s
+  Marker resolved: YES
+  Marker closest distance: 2
+  Marker pass distance: 56145
+  Marker fail distance: 2
+  Expected signature: 0x2A01
+  Observed signature: 0xBF01
+  Screenshot: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\runtime-verify\runtime-verify-3dref-adventure-jump-glide-verify-expect-pass.png
+  VBox log: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\runtime-verify\runtime-verify-3dref-adventure-jump-glide-verify-expect-pass.log
+  Demo action code: 0x0001
+  Demo action ticks: 0
+  Demo script ptr: 0xDE01
+  State ticks: 1
+  Verify action index: 0
+  Verify action pending: 1
+  Demo active: 1
+  Game state: PLAYING (1)
+  Diagnostic words: 0x0001 0xDE01 0x0001 0x1101
+  Host diagnostics:
+    Demo 6: ADVENTURE JUMP GLIDE VERIFY
+      Id: adventure-jump-glide-verify
+      Ticks: 61
+      State: PLAYING
+      Player: 4,12
+      HeadingId: 1
+      Objectives: 0/2
+      PortalTile: 3
+      Score/Kills/Hits: 0/0/1
+      Shot: mode=0 reason=0 tick=0 subject=4,12 frame=0
+      CueFlags: 0
+      Autonomous: intro=0 enemyTick=0 threat=0 tile=5,12
+      EnemySlots: e0=0x0000 e1=0x928A e2=0xA603
+      Final signature: 0x2A86
+    
+
+Demo: ADVENTURE CHARGE HIT VERIFY
+  Id: adventure-charge-hit-verify
+  Render: 3dref
+  Status: FAIL
+  Expected status: PASS
+  Status match: NO
+  Failure reason: TIMEOUT
+  Failure reason code: 0x0001
+  Wait: 30s
+  Marker resolved: YES
+  Marker closest distance: 2
+  Marker pass distance: 56145
+  Marker fail distance: 2
+  Expected signature: 0x9E01
+  Observed signature: 0xBF01
+  Screenshot: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\runtime-verify\runtime-verify-3dref-adventure-charge-hit-verify-expect-pass.png
+  VBox log: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\runtime-verify\runtime-verify-3dref-adventure-charge-hit-verify-expect-pass.log
+  Demo action code: 0x0001
+  Demo action ticks: 0
+  Demo script ptr: 0xDE01
+  State ticks: 1
+  Verify action index: 0
+  Verify action pending: 1
+  Demo active: 1
+  Game state: PLAYING (1)
+  Diagnostic words: 0x0001 0xDE01 0x0001 0x1101
+  Host diagnostics:
+    Demo 7: ADVENTURE CHARGE HIT VERIFY
+      Id: adventure-charge-hit-verify
+      Ticks: 58
+      State: PLAYING
+      Player: 7,12
+      HeadingId: 1
+      Objectives: 0/2
+      PortalTile: 3
+      Score/Kills/Hits: 1730/1/0
+      Shot: mode=0 reason=0 tick=0 subject=4,12 frame=0
+      CueFlags: 0
+      Autonomous: intro=0 enemyTick=5 threat=0 tile=6,12
+      EnemySlots: e0=0x0000 e1=0x92CA e2=0xA603
+      Final signature: 0x9E2A
+    
+
+Demo: ADVENTURE SWITCH VERIFY
+  Id: adventure-switch-verify
+  Render: 3dref
+  Status: FAIL
+  Expected status: PASS
+  Status match: NO
+  Failure reason: TIMEOUT
+  Failure reason code: 0x0001
+  Wait: 30s
+  Marker resolved: YES
+  Marker closest distance: 2
+  Marker pass distance: 56145
+  Marker fail distance: 2
+  Expected signature: 0x9E01
+  Observed signature: 0xBF01
+  Screenshot: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\runtime-verify\runtime-verify-3dref-adventure-switch-verify-expect-pass.png
+  VBox log: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\runtime-verify\runtime-verify-3dref-adventure-switch-verify-expect-pass.log
+  Demo action code: 0x0001
+  Demo action ticks: 0
+  Demo script ptr: 0xDE01
+  State ticks: 1
+  Verify action index: 0
+  Verify action pending: 1
+  Demo active: 1
+  Game state: PLAYING (1)
+  Diagnostic words: 0x0001 0xDE01 0x0001 0x1101
+  Host diagnostics:
+    Demo 8: ADVENTURE SWITCH VERIFY
+      Id: adventure-switch-verify
+      Ticks: 58
+      State: PLAYING
+      Player: 7,12
+      HeadingId: 1
+      Objectives: 0/2
+      PortalTile: 3
+      Score/Kills/Hits: 1730/1/0
+      Shot: mode=0 reason=0 tick=0 subject=4,12 frame=0
+      CueFlags: 0
+      Autonomous: intro=0 enemyTick=5 threat=0 tile=6,12
+      EnemySlots: e0=0x0000 e1=0x92CA e2=0xA603
+      Final signature: 0x9E2A
+    
+
+Demo: ADVENTURE KEY VERIFY
+  Id: adventure-key-verify
+  Render: 3dref
+  Status: FAIL
+  Expected status: PASS
+  Status match: NO
+  Failure reason: TIMEOUT
+  Failure reason code: 0x0001
+  Wait: 30s
+  Marker resolved: YES
+  Marker closest distance: 2
+  Marker pass distance: 56145
+  Marker fail distance: 2
+  Expected signature: 0xCA01
+  Observed signature: 0xBF01
+  Screenshot: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\runtime-verify\runtime-verify-3dref-adventure-key-verify-expect-pass.png
+  VBox log: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\runtime-verify\runtime-verify-3dref-adventure-key-verify-expect-pass.log
+  Demo action code: 0x0001
+  Demo action ticks: 0
+  Demo script ptr: 0xDE01
+  State ticks: 1
+  Verify action index: 0
+  Verify action pending: 1
+  Demo active: 1
+  Game state: PLAYING (1)
+  Diagnostic words: 0x0001 0xDE01 0x0001 0x1101
+  Host diagnostics:
+    Demo 9: ADVENTURE KEY VERIFY
+      Id: adventure-key-verify
+      Ticks: 93
+      State: PLAYING
+      Player: 10,12
+      HeadingId: 1
+      Objectives: 0/2
+      PortalTile: 3
+      Score/Kills/Hits: 4430/1/1
+      Shot: mode=0 reason=0 tick=0 subject=4,12 frame=0
+      CueFlags: 0
+      Autonomous: intro=0 enemyTick=0 threat=0 tile=10,12
+      EnemySlots: e0=0x0000 e1=0x0000 e2=0xA603
+      Final signature: 0xCA97
+    
+
+Demo: ADVENTURE PORTAL UNLOCK VERIFY
+  Id: adventure-portal-unlock-verify
+  Render: 3dref
+  Status: FAIL
+  Expected status: PASS
+  Status match: NO
+  Failure reason: TIMEOUT
+  Failure reason code: 0x0001
+  Wait: 30s
+  Marker resolved: YES
+  Marker closest distance: 2
+  Marker pass distance: 56145
+  Marker fail distance: 2
+  Expected signature: 0xF401
+  Observed signature: 0xBF01
+  Screenshot: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\runtime-verify\runtime-verify-3dref-adventure-portal-unlock-verify-expect-pass.png
+  VBox log: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\runtime-verify\runtime-verify-3dref-adventure-portal-unlock-verify-expect-pass.log
+  Demo action code: 0x0001
+  Demo action ticks: 0
+  Demo script ptr: 0xDE01
+  State ticks: 1
+  Verify action index: 0
+  Verify action pending: 1
+  Demo active: 1
+  Game state: PLAYING (1)
+  Diagnostic words: 0x0001 0xDE01 0x0001 0x1101
+  Host diagnostics:
+    Demo 10: ADVENTURE PORTAL UNLOCK VERIFY
+      Id: adventure-portal-unlock-verify
+      Ticks: 120
+      State: PLAYING
+      Player: 12,12
+      HeadingId: 0
+      Objectives: 0/2
+      PortalTile: 3
+      Score/Kills/Hits: 4430/1/1
+      Shot: mode=0 reason=0 tick=0 subject=4,12 frame=0
+      CueFlags: 0
+      Autonomous: intro=0 enemyTick=3 threat=0 tile=10,12
+      EnemySlots: e0=0x0000 e1=0x0000 e2=0xA603
+      Final signature: 0xF417
+    
+
+Demo: ADVENTURE PORTAL COMPLETE VERIFY
+  Id: adventure-portal-complete-verify
+  Render: 3dref
+  Status: FAIL
+  Expected status: PASS
+  Status match: NO
+  Failure reason: TIMEOUT
+  Failure reason code: 0x0001
+  Wait: 30s
+  Marker resolved: YES
+  Marker closest distance: 2
+  Marker pass distance: 56145
+  Marker fail distance: 2
+  Expected signature: 0xF401
+  Observed signature: 0xBF01
+  Screenshot: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\runtime-verify\runtime-verify-3dref-adventure-portal-complete-verify-expect-pass.png
+  VBox log: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\runtime-verify\runtime-verify-3dref-adventure-portal-complete-verify-expect-pass.log
+  Demo action code: 0x0001
+  Demo action ticks: 0
+  Demo script ptr: 0xDE01
+  State ticks: 1
+  Verify action index: 0
+  Verify action pending: 1
+  Demo active: 1
+  Game state: PLAYING (1)
+  Diagnostic words: 0x0001 0xDE01 0x0001 0x1101
+  Host diagnostics:
+    Demo 11: ADVENTURE PORTAL COMPLETE VERIFY
+      Id: adventure-portal-complete-verify
+      Ticks: 125
+      State: PLAYING
+      Player: 12,12
+      HeadingId: 0
+      Objectives: 0/2
+      PortalTile: 3
+      Score/Kills/Hits: 4430/1/1
+      Shot: mode=0 reason=0 tick=0 subject=4,12 frame=0
+      CueFlags: 0
+      Autonomous: intro=0 enemyTick=0 threat=0 tile=10,12
+      EnemySlots: e0=0x0000 e1=0x0000 e2=0xA603
+      Final signature: 0xF417
+    
+
+Forced mismatch demo
+  Demo: ADVENTURE IDLE VERIFY
+  Render: 3dref
+  Status: FAIL
+  Expected status: FAIL
+  Status match: YES
+  Failure reason: TIMEOUT
+  Failure reason code: 0x0001
+  Wait: 30s
+  Marker resolved: YES
+  Marker closest distance: 2
+  Marker pass distance: 56145
+  Marker fail distance: 2
+  Expected signature: 0x8A01
+  Observed signature: 0xBF01
+  Screenshot: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\runtime-verify\runtime-verify-3dref-adventure-idle-verify-expect-fail.png
+  VBox log: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\runtime-verify\runtime-verify-3dref-adventure-idle-verify-expect-fail.log
+
+First failing demo
+  Id: adventure-idle-verify
+  Name: ADVENTURE IDLE VERIFY
+  Reason: TIMEOUT
+  Expected/Observed: 0x8A01 / 0xBF01
+  Screenshot: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\runtime-verify\runtime-verify-3dref-adventure-idle-verify-expect-pass.png
+  VBox log: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\runtime-verify\runtime-verify-3dref-adventure-idle-verify-expect-pass.log
+Focused repro
+  powershell -ExecutionPolicy Bypass -File .\scripts\runtime-verify.ps1 -DemoFilter adventure-idle-verify

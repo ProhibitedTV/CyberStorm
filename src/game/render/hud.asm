@@ -18,6 +18,9 @@ IF DEBUG_GAMEPLAY_RENDER_MODE EQ GAMEPLAY_RENDER_MODE_2D
     call render_player
 ELSE
     call render_gameplay_3d
+IF DEBUG_LEGACY_GAMEPLAY EQ 0
+    call render_adventure_intro_overlay
+ENDIF
 ENDIF
 IF DEBUG_RENDER_SENTINELS
     mov bx, 8
@@ -200,73 +203,153 @@ render_adventure_status:
     mov ah, PAL_WHITE
     call draw_text_small
 
-    mov bx, 50
+    mov al, [current_district]
+    mov bx, 42
+    mov dx, 15
+    mov ah, PAL_GATE
+    call draw_digit_small
+
+    mov bx, 49
+    mov dx, 15
+    mov si, offset slash_text
+    mov ah, PAL_WHITE
+    call draw_text_small
+
+    mov al, CAMPAIGN_DISTRICT_COUNT
+    mov bx, 56
+    mov dx, 15
+    mov ah, PAL_WHITE
+    call draw_digit_small
+
+    mov bx, 68
     mov dx, 15
     mov si, offset adventure_realm_title
     call get_sector_title_color
     mov ah, al
     call draw_text_small
 
-    mov bx, 150
-    mov dx, 15
-    mov si, offset shield_text
-    mov ah, PAL_WHITE
-    call draw_text_small
-
-    mov al, [shield_count]
-    mov bx, 188
-    mov dx, 15
-    mov ah, PAL_AMBER
-    call draw_digit_small
-
-    mov bx, 204
+    mov bx, 176
     mov dx, 15
     mov si, offset gems_text
     mov ah, PAL_WHITE
     call draw_text_small
 
     mov al, [data_count]
-    mov bx, 232
+    mov bx, 204
     mov dx, 15
     mov ah, PAL_CYAN2
-    call draw_digit_small
+    call draw_two_digit_small
 
-    mov bx, 239
+    mov bx, 220
     mov dx, 15
     mov si, offset slash_text
     mov ah, PAL_WHITE
     call draw_text_small
 
-    mov al, [adventure_realm_gem_count]
-    mov bx, 246
+    mov al, [adventure_realm_required_gems]
+    mov bx, 228
     mov dx, 15
     mov ah, PAL_WHITE
-    call draw_digit_small
+    call draw_two_digit_small
 
-    mov bx, 258
+    mov bx, 254
     mov dx, 15
-    mov si, offset goals_text
+    mov si, offset shield_short_text
     mov ah, PAL_WHITE
     call draw_text_small
 
-    mov al, [adventure_objectives_done]
-    mov bx, 292
+    mov al, [shield_count]
+    mov bx, 270
     mov dx, 15
+    mov ah, PAL_AMBER
+    call draw_digit_small
+
+    mov bx, 280
+    mov dx, 15
+    mov si, offset pulse_short_text
+    mov ah, PAL_WHITE
+    call draw_text_small
+
+    mov al, [pulse_count]
+    mov bx, 296
+    mov dx, 15
+    mov ah, PAL_AMBER
+    call draw_digit_small
+
+    call draw_message_banner
+    call get_message_text_ptr
+    mov bx, 18
+    mov dx, GAME_HUD_MESSAGE_Y
+    call get_message_text_color
+    mov ah, al
+    call draw_text_small
+
+    mov bx, 188
+    mov dx, GAME_HUD_MESSAGE_Y
+    mov si, offset relay_text
+    mov ah, PAL_WHITE
+    call draw_text_small
+
+    xor ax, ax
+    mov al, [adventure_objectives_done]
+    sub al, [adventure_key_collected]
+    jnc adventure_relay_ready
+    xor al, al
+
+adventure_relay_ready:
+    mov bx, 214
+    mov dx, GAME_HUD_MESSAGE_Y
     mov ah, PAL_GATE
     call draw_digit_small
 
-    mov bx, 18
-    mov dx, GAME_HUD_STATUS_LABEL_Y
-    mov si, offset portal_text
+    mov bx, 221
+    mov dx, GAME_HUD_MESSAGE_Y
+    mov si, offset slash_text
     mov ah, PAL_WHITE
     call draw_text_small
 
-    mov bx, 52
-    mov dx, GAME_HUD_STATUS_LABEL_Y
-    mov si, offset portal_locked_text
+    mov al, [adventure_realm_switch_count]
+    mov bx, 228
+    mov dx, GAME_HUD_MESSAGE_Y
+    mov ah, PAL_WHITE
+    call draw_digit_small
+
+    mov bx, 236
+    mov dx, GAME_HUD_MESSAGE_Y
+    mov si, offset key_text
+    mov ah, PAL_WHITE
+    call draw_text_small
+
+    mov al, [adventure_key_collected]
+    mov bx, 252
+    mov dx, GAME_HUD_MESSAGE_Y
+    mov ah, PAL_GATE
+    call draw_digit_small
+
+    mov bx, 259
+    mov dx, GAME_HUD_MESSAGE_Y
+    mov si, offset slash_text
+    mov ah, PAL_WHITE
+    call draw_text_small
+
+    mov al, [adventure_realm_key_count]
+    mov bx, 266
+    mov dx, GAME_HUD_MESSAGE_Y
+    mov ah, PAL_WHITE
+    call draw_digit_small
+
+    mov bx, 274
+    mov dx, GAME_HUD_MESSAGE_Y
+    mov si, offset gate_text
+    mov ah, PAL_WHITE
+    call draw_text_small
+
     mov bl, [exit_x]
     mov bh, [exit_y]
     call get_tile
+    mov bx, 294
+    mov dx, GAME_HUD_MESSAGE_Y
+    mov si, offset portal_locked_text
     mov ah, PAL_RED
     cmp al, TILE_EXIT_OPEN
     jne adventure_status_portal_ready
@@ -274,21 +357,19 @@ render_adventure_status:
     mov ah, PAL_GATE
 
 adventure_status_portal_ready:
-    mov bx, 52
-    mov dx, GAME_HUD_STATUS_LABEL_Y
     call draw_text_small
 
-    call draw_message_banner
-    call get_message_text_ptr
     mov bx, 18
     mov dx, GAME_HUD_CONTROLS_Y
-    call get_message_text_color
-    mov ah, al
-    call draw_text_small
+    cmp byte ptr [demo_active], 0
+    je adventure_status_controls_normal
+    mov si, offset demo_takeover_text
+    jmp adventure_status_controls_ready
 
-    mov bx, 118
-    mov dx, GAME_HUD_CONTROLS_Y
+adventure_status_controls_normal:
     mov si, offset adventure_controls_text
+
+adventure_status_controls_ready:
     call get_sector_accent_color
     mov ah, al
     call draw_text_small
@@ -407,6 +488,8 @@ get_message_text_ptr:
     mov al, [message_id]
     cmp al, MSG_SECTOR
     je message_text_ptr_sector
+    cmp al, MSG_GATE
+    je message_text_ptr_gate
     xor ah, ah
     shl ax, 1
     mov bx, ax
@@ -419,6 +502,17 @@ IF DEBUG_LEGACY_GAMEPLAY EQ 0
     ret
 ENDIF
     call get_current_template_scenario_entry_ptr
+    ret
+
+message_text_ptr_gate:
+IF DEBUG_LEGACY_GAMEPLAY EQ 0
+    cmp byte ptr [sector_num], 4
+    jne message_text_ptr_gate_default
+    mov si, offset text_msg_gate_final
+    ret
+message_text_ptr_gate_default:
+ENDIF
+    mov si, offset text_msg_gate
     ret
 
 get_sector_accent_color:
@@ -465,6 +559,88 @@ sector_title_lock:
 
 sector_title_vault:
     mov al, PAL_WHITE
+    ret
+
+render_adventure_intro_overlay:
+    cmp byte ptr [game_state], STATE_PLAYING
+    jne adventure_intro_overlay_done
+    cmp byte ptr [adventure_intro_timer], 0
+    je adventure_intro_overlay_done
+
+    mov bx, 34
+    mov dx, 38
+    mov cx, 252
+    mov bp, 36
+    mov al, PAL_PANEL
+    call fill_rect
+
+    mov bx, 30
+    mov dx, 34
+    mov cx, 260
+    mov bp, 44
+    test byte ptr [anim_phase], 1
+    jz adventure_intro_frame_base
+    mov al, PAL_WHITE
+    jmp adventure_intro_frame_ready
+
+adventure_intro_frame_base:
+    call get_sector_accent_color
+
+adventure_intro_frame_ready:
+    call draw_rect_outline
+
+    mov bx, 42
+    mov dx, 42
+    mov si, offset realm_text
+    mov ah, PAL_WHITE
+    call draw_text_small
+
+    mov al, [current_district]
+    mov bx, 66
+    mov dx, 42
+    mov ah, PAL_GATE
+    call draw_digit_small
+
+    mov bx, 73
+    mov dx, 42
+    mov si, offset slash_text
+    mov ah, PAL_WHITE
+    call draw_text_small
+
+    mov al, CAMPAIGN_DISTRICT_COUNT
+    mov bx, 80
+    mov dx, 42
+    mov ah, PAL_WHITE
+    call draw_digit_small
+
+    mov bx, 94
+    mov dx, 42
+    mov si, offset adventure_realm_title
+    call get_sector_title_color
+    mov ah, al
+    call draw_text_small
+
+    mov bx, 42
+    mov dx, 54
+    mov si, offset adventure_realm_intro
+    mov ah, PAL_WHITE
+    call draw_text_small
+
+    mov bx, 42
+    mov dx, 66
+    mov si, offset adventure_realm_shift
+    test byte ptr [anim_phase], 1
+    jz adventure_intro_shift_base
+    mov ah, PAL_WHITE
+    jmp adventure_intro_shift_ready
+
+adventure_intro_shift_base:
+    mov ah, PAL_AMBER
+
+adventure_intro_shift_ready:
+    call draw_text_small
+
+adventure_intro_overlay_done:
     ret
 
 draw_shield_meter:

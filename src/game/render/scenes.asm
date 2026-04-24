@@ -996,16 +996,16 @@ ENDIF
 
 draw_win_scene_overlay:
     mov bx, 30
-    mov dx, 34
+    mov dx, 26
     mov cx, 260
-    mov bp, 120
+    mov bp, 152
     mov al, PAL_PANEL
     call fill_rect
 
     mov bx, 26
-    mov dx, 30
+    mov dx, 22
     mov cx, 268
-    mov bp, 128
+    mov bp, 160
     cmp byte ptr [sound_id], SFX_WIN
     jne win_frame_anim
     cmp byte ptr [sound_timer], 0
@@ -1028,7 +1028,7 @@ win_frame_ready:
     call draw_rect_outline
 
     mov bx, 96
-    mov dx, 38
+    mov dx, 34
     mov si, PRESENT_BANNER_WIN_BANNER_OFFSET
     call draw_presentation_asset_2x
     xor ax, ax
@@ -1044,7 +1044,7 @@ win_frame_ready:
 win_bar_ready:
     mov cx, ax
     mov bx, 60
-    mov dx, 88
+    mov dx, 84
     mov bp, 4
     cmp byte ptr [sound_id], SFX_WIN
     jne win_bar_anim
@@ -1066,16 +1066,16 @@ win_bar_base:
 win_bar_color_ready:
     call fill_rect
     mov bx, 60
-    mov dx, 80
+    mov dx, 76
     mov bp, 2
     call fill_rect
-    mov dx, 96
+    mov dx, 92
     call fill_rect
 
     cmp byte ptr [state_ticks], END_REVEAL_BODY
     jb win_scene_headline_gate
     mov bx, 74
-    mov dx, 104
+    mov dx, 94
     mov si, PRESENT_BANNER_WIN_PLATE_OFFSET
     call draw_presentation_asset_2x
 
@@ -1085,100 +1085,150 @@ win_scene_headline_gate:
     cmp byte ptr [state_ticks], END_REVEAL_HEADLINE
     jb win_scene_done
 
-    mov bx, 78
-    mov dx, 54
+    mov bx, 70
+    mov dx, 52
     mov si, offset win_line_1
     mov ah, PAL_CYAN2
     call draw_text_big
     cmp byte ptr [state_ticks], END_REVEAL_BODY
     jb win_scene_done
 
-    mov bx, 52
-    mov dx, 100
+    mov bx, 40
+    mov dx, 98
     mov si, offset win_line_2
     mov ah, PAL_WHITE
     call draw_text_small
-    mov bx, 68
-    mov dx, 112
+    mov bx, 40
+    mov dx, 110
     mov si, offset win_line_3
     mov ah, PAL_CYAN
     call draw_text_small
     cmp byte ptr [state_ticks], END_REVEAL_STATS
     jb win_scene_done
 
-    mov bx, 52
+    mov bx, 48
     mov dx, 122
-    mov cx, 196
-    mov bp, 22
+    mov cx, 204
+    mov bp, 40
     mov al, PAL_GATE
     call draw_rect_outline
 
-    mov bx, 60
+    mov bx, 56
     mov dx, 126
     mov si, offset score_text
     mov ah, PAL_WHITE
     call draw_text_small
     mov ax, [score_total]
-    mov bx, 96
+    mov bx, 92
     mov dx, 126
     mov cl, PAL_GATE
     call draw_word_decimal_small
 
-    mov bx, 176
+    mov bx, 174
     mov dx, 126
     call get_score_rank_ptr
     call get_score_rank_color
     mov ah, al
     call draw_text_small
 
-    mov bx, 60
+    mov bx, 56
     mov dx, 138
     mov si, offset sector1_short_text
     mov ah, PAL_WHITE
     call draw_text_small
     mov al, 1
     call get_sector_score_ax
-    mov bx, 74
+    mov bx, 70
     mov dx, 138
     mov cl, PAL_GATE
     call draw_word_decimal_small
 
-    mov bx, 122
+    mov bx, 126
     mov dx, 138
     mov si, offset sector2_short_text
     mov ah, PAL_WHITE
     call draw_text_small
     mov al, 2
     call get_sector_score_ax
-    mov bx, 136
+    mov bx, 140
     mov dx, 138
     mov cl, PAL_GATE
     call draw_word_decimal_small
 
-    mov bx, 184
-    mov dx, 138
+    mov bx, 56
+    mov dx, 148
     mov si, offset sector3_short_text
     mov ah, PAL_WHITE
     call draw_text_small
     mov al, 3
     call get_sector_score_ax
-    mov bx, 198
-    mov dx, 138
+    mov bx, 70
+    mov dx, 148
     mov cl, PAL_GATE
     call draw_word_decimal_small
+
+    mov bx, 126
+    mov dx, 148
+    mov si, offset sector4_short_text
+    mov ah, PAL_WHITE
+    call draw_text_small
+    mov al, 4
+    call get_sector_score_ax
+    mov bx, 140
+    mov dx, 148
+    mov cl, PAL_GATE
+    call draw_word_decimal_small
+
+    call get_score_rank_index
+    cmp al, 0
+    je win_scene_top_rank
+
+    mov bx, 56
+    mov dx, 158
+    mov si, offset next_rank_text
+    mov ah, PAL_WHITE
+    call draw_text_small
+
+    mov bx, 84
+    mov dx, 158
+    call get_next_rank_ptr
+    mov ah, PAL_CYAN2
+    call draw_text_small
+
+    mov bx, 118
+    mov dx, 158
+    mov si, offset plus_text
+    mov ah, PAL_WHITE
+    call draw_text_small
+
+    call get_next_rank_delta_ax
+    mov bx, 126
+    mov dx, 158
+    mov cl, PAL_GATE
+    call draw_word_decimal_small
+    jmp win_scene_prompt_gate
+
+win_scene_top_rank:
+    mov bx, 56
+    mov dx, 158
+    mov si, offset top_rank_text
+    mov ah, PAL_WHITE
+    call draw_text_small
+
+win_scene_prompt_gate:
     cmp byte ptr [state_ticks], END_REVEAL_PROMPT
     jb win_scene_done
 
     mov bx, 64
-    mov dx, 142
-    mov cx, 156
+    mov dx, 166
+    mov cx, 170
     mov bp, 10
     mov al, PAL_PANEL2
     call fill_rect
 
     mov bx, 62
-    mov dx, 140
-    mov cx, 160
+    mov dx, 164
+    mov cx, 174
     mov bp, 14
     test byte ptr [anim_phase], 1
     jz win_prompt_frame_base
@@ -1191,8 +1241,8 @@ win_prompt_frame_base:
 win_prompt_frame_ready:
     call draw_rect_outline
 
-    mov bx, 70
-    mov dx, 146
+    mov bx, 78
+    mov dx, 170
     mov si, offset replay_prompt
     test byte ptr [anim_phase], 1
     jz win_prompt_dim
@@ -1217,16 +1267,16 @@ ENDIF
 
 draw_lose_scene_overlay:
     mov bx, 30
-    mov dx, 34
+    mov dx, 26
     mov cx, 260
-    mov bp, 120
+    mov bp, 152
     mov al, PAL_PANEL
     call fill_rect
 
     mov bx, 26
-    mov dx, 30
+    mov dx, 22
     mov cx, 268
-    mov bp, 128
+    mov bp, 160
     cmp byte ptr [sound_id], SFX_LOSE
     jne lose_frame_anim
     cmp byte ptr [sound_timer], 0
@@ -1249,7 +1299,7 @@ lose_frame_ready:
     call draw_rect_outline
 
     mov bx, 96
-    mov dx, 38
+    mov dx, 34
     mov si, PRESENT_BANNER_LOSE_BANNER_OFFSET
     call draw_presentation_asset_2x
     xor ax, ax
@@ -1265,7 +1315,7 @@ lose_frame_ready:
 lose_bar_ready:
     mov cx, ax
     mov bx, 60
-    mov dx, 88
+    mov dx, 84
     mov bp, 4
     cmp byte ptr [sound_id], SFX_LOSE
     jne lose_bar_anim
@@ -1287,16 +1337,16 @@ lose_bar_base:
 lose_bar_color_ready:
     call fill_rect
     mov bx, 60
-    mov dx, 80
+    mov dx, 76
     mov bp, 2
     call fill_rect
-    mov dx, 96
+    mov dx, 92
     call fill_rect
 
     cmp byte ptr [state_ticks], END_REVEAL_BODY
     jb lose_scene_headline_gate
     mov bx, 74
-    mov dx, 104
+    mov dx, 94
     mov si, PRESENT_BANNER_LOSE_PLATE_OFFSET
     call draw_presentation_asset_2x
 
@@ -1304,100 +1354,150 @@ lose_scene_headline_gate:
     cmp byte ptr [state_ticks], END_REVEAL_HEADLINE
     jb lose_scene_done
 
-    mov bx, 82
-    mov dx, 54
+    mov bx, 58
+    mov dx, 52
     mov si, offset lose_line_1
     mov ah, PAL_RED2
     call draw_text_big
     cmp byte ptr [state_ticks], END_REVEAL_BODY
     jb lose_scene_done
 
-    mov bx, 46
-    mov dx, 100
+    mov bx, 34
+    mov dx, 98
     mov si, offset lose_line_2
     mov ah, PAL_WHITE
     call draw_text_small
-    mov bx, 62
-    mov dx, 112
+    mov bx, 34
+    mov dx, 110
     mov si, offset lose_line_3
     mov ah, PAL_AMBER
     call draw_text_small
     cmp byte ptr [state_ticks], END_REVEAL_STATS
     jb lose_scene_done
 
-    mov bx, 56
+    mov bx, 48
     mov dx, 122
-    mov cx, 192
-    mov bp, 22
+    mov cx, 204
+    mov bp, 40
     mov al, PAL_RED2
     call draw_rect_outline
 
-    mov bx, 64
+    mov bx, 56
     mov dx, 126
     mov si, offset score_text
     mov ah, PAL_WHITE
     call draw_text_small
     mov ax, [score_total]
-    mov bx, 100
+    mov bx, 92
     mov dx, 126
     mov cl, PAL_RED2
     call draw_word_decimal_small
 
-    mov bx, 182
+    mov bx, 174
     mov dx, 126
     call get_score_rank_ptr
     call get_score_rank_color
     mov ah, al
     call draw_text_small
 
-    mov bx, 64
+    mov bx, 56
     mov dx, 138
     mov si, offset sector1_short_text
     mov ah, PAL_WHITE
     call draw_text_small
     mov al, 1
     call get_sector_score_ax
-    mov bx, 78
+    mov bx, 70
     mov dx, 138
     mov cl, PAL_RED2
     call draw_word_decimal_small
 
-    mov bx, 124
+    mov bx, 126
     mov dx, 138
     mov si, offset sector2_short_text
     mov ah, PAL_WHITE
     call draw_text_small
     mov al, 2
     call get_sector_score_ax
-    mov bx, 138
+    mov bx, 140
     mov dx, 138
     mov cl, PAL_RED2
     call draw_word_decimal_small
 
-    mov bx, 184
-    mov dx, 138
+    mov bx, 56
+    mov dx, 148
     mov si, offset sector3_short_text
     mov ah, PAL_WHITE
     call draw_text_small
     mov al, 3
     call get_sector_score_ax
-    mov bx, 198
-    mov dx, 138
+    mov bx, 70
+    mov dx, 148
     mov cl, PAL_RED2
     call draw_word_decimal_small
+
+    mov bx, 126
+    mov dx, 148
+    mov si, offset sector4_short_text
+    mov ah, PAL_WHITE
+    call draw_text_small
+    mov al, 4
+    call get_sector_score_ax
+    mov bx, 140
+    mov dx, 148
+    mov cl, PAL_RED2
+    call draw_word_decimal_small
+
+    call get_score_rank_index
+    cmp al, 0
+    je lose_scene_top_rank
+
+    mov bx, 56
+    mov dx, 158
+    mov si, offset next_rank_text
+    mov ah, PAL_WHITE
+    call draw_text_small
+
+    mov bx, 84
+    mov dx, 158
+    call get_next_rank_ptr
+    mov ah, PAL_AMBER
+    call draw_text_small
+
+    mov bx, 118
+    mov dx, 158
+    mov si, offset plus_text
+    mov ah, PAL_WHITE
+    call draw_text_small
+
+    call get_next_rank_delta_ax
+    mov bx, 126
+    mov dx, 158
+    mov cl, PAL_RED2
+    call draw_word_decimal_small
+    jmp lose_scene_prompt_gate
+
+lose_scene_top_rank:
+    mov bx, 56
+    mov dx, 158
+    mov si, offset top_rank_text
+    mov ah, PAL_WHITE
+    call draw_text_small
+
+lose_scene_prompt_gate:
     cmp byte ptr [state_ticks], END_REVEAL_PROMPT
     jb lose_scene_done
 
     mov bx, 64
-    mov dx, 142
-    mov cx, 156
+    mov dx, 166
+    mov cx, 170
     mov bp, 10
     mov al, PAL_PANEL2
     call fill_rect
 
     mov bx, 62
-    mov dx, 140
-    mov cx, 160
+    mov dx, 164
+    mov cx, 174
     mov bp, 14
     test byte ptr [anim_phase], 1
     jz lose_prompt_frame_base
@@ -1410,8 +1510,8 @@ lose_prompt_frame_base:
 lose_prompt_frame_ready:
     call draw_rect_outline
 
-    mov bx, 70
-    mov dx, 146
+    mov bx, 78
+    mov dx, 170
     mov si, offset replay_prompt
     test byte ptr [anim_phase], 1
     jz lose_prompt_dim

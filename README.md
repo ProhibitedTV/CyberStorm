@@ -14,11 +14,11 @@
 
 ### For Players
 
-- **One polished release realm.** `Sunspark Glade` is the current baseline build: a colorful toy-like play space with a stable chase camera, open lanes, portal goal, and big landmark silhouettes.
+- **A full four-district arcade run.** The mainline route now pushes through `Subgrid Ingress`, `Switchyard Spine`, `Thermal Foundry`, and `Apex Vault` as one authored breach campaign.
 - **Continuous bare-metal movement.** The release path now supports real-time run, turn, jump, glide, charge, and flame controls instead of the older move-once tactical loop.
-- **Simple collectible progression.** Gather gems, light flame pedestals, and open the exit portal instead of pushing through three half-converted tactical sectors.
+- **Readable objective pressure.** Each district keeps the same simple progression spine: secure relays, take the keycard branch, and force the gate before the storm closes.
 - **Readable 3D creature pressure.** Small charge targets, flame-vulnerable foes, and a larger patrol threat all render as low-poly world actors instead of flat tokens.
-- **A real attract mode and legacy path.** The title still rolls into authored demos, and the older infiltration loop stays available in debug/verification builds while the adventure slice hardens.
+- **A real finale and replay hook.** `Apex Vault` now plays like a climax, and the clear screen turns into a campaign debrief with rank, district breakdown, and the next score target.
 
 ### For Engine People
 
@@ -38,7 +38,7 @@ The README gallery is intentionally small. The build maintains three verified pu
 | Splash / Identity | Realm Beauty | Gameplay Action |
 | --- | --- | --- |
 | ![CyberStorm splash shot](build/readme-shot-1.png) | ![CyberStorm gameplay shot](build/readme-shot-2.png) | ![CyberStorm payoff shot](build/readme-shot-3.png) |
-| The first shot should be the BitRiver splash lockup so the project’s first impression is also the gallery’s first impression. | The middle shot should sell the realm silhouette, horizon, and toy-like prop language. | The last shot should show the runner, foes, and objective state in one readable action frame. |
+| The first shot should be the BitRiver splash lockup so the project's first impression is also the gallery's first impression. | The middle shot should sell a district setpiece, skyline massing, and the route the player is about to commit to. | The last shot should show the runner, warden pressure, and final objective state in one readable action frame. |
 
 The gallery now comes only from the verified showcase manifest under [build/showcase/](build/showcase), not from ad hoc filename heuristics or incidental screenshots.
 
@@ -342,7 +342,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\build.ps1 -CaptureShowcase
 This turns deterministic demos into reproducible public-facing captures:
 
 - a verified `title` shot from the VM smoke title frame
-- a verified `beauty` shot from the configured AdventureRealm beauty anchor in `assets/sectors.psd1` (currently `switchyard-attract-a`)
+- a verified `beauty` shot from the configured AdventureRealm beauty anchor in `assets/sectors.psd1` (currently `thermal-attract-a`)
 - a verified `action` shot from the configured AdventureRealm action anchor in `assets/sectors.psd1` (currently `vault-attract-b`)
 - a machine-readable gallery manifest under `build/showcase/` so the README can publish fresh captures or preserve the last verified set without rotating manual screenshots
 

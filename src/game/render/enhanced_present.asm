@@ -177,15 +177,19 @@ present_frame_vbe_gameplay:
 present_frame_vbe_gameplay_row:
     push cx
     push bx
+    push edi
     mov dx, bx
     call get_backbuffer_row_ptr
     mov ds, ax
     mov si, di
+    pop edi
     call present_frame_vbe_emit_row_2x
+    push edi
     mov dx, bx
     call get_backbuffer_row_ptr
     mov ds, ax
     mov si, di
+    pop edi
     call present_frame_vbe_emit_row_2x
     pop bx
     inc bx

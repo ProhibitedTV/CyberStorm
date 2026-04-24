@@ -309,7 +309,11 @@ demo_text     db 'DEMO', 0
 spoof_text    db 'SPOOF', 0
 shield_text   db 'SHIELD', 0
 pulse_text    db 'PULSE', 0
+shield_short_text db 'SH', 0
+pulse_short_text db 'PL', 0
 gate_text     db 'GATE', 0
+relay_text    db 'RELAY', 0
+key_text      db 'KEY', 0
 controls_text db 'MOVE WASD OR ARROWS  C EMP  R RESET', 0
 adventure_controls_text db 'WS RUN  AD TURN  SPC GLIDE  SHF DASH  C OVERLOAD  ENT BREACH', 0
 realm_text db 'DIST', 0
@@ -365,6 +369,7 @@ include generated_geometry.inc
 ; the compact adventure_realm_* contract.
 adventure_realm_title db CAMPAIGN_MAX_TITLE_BYTES dup (0)
 adventure_realm_intro db CAMPAIGN_MAX_INTRO_BYTES dup (0)
+adventure_realm_shift db CAMPAIGN_MAX_INTRO_BYTES dup (0)
 adventure_realm_start_x db 0
 adventure_realm_start_y db 0
 adventure_realm_portal_x db 0
@@ -413,6 +418,7 @@ text_msg_trap     db 'THE HAZARD CAUGHT A FOE.', 0
 text_msg_recharge db 'CHAIN BREAK. OVERLOAD RESTORED.', 0
 text_msg_spoof    db 'RELAY JACKED. ANOTHER GATE LOCK DROPPED.', 0
 text_msg_key      db 'KEYCARD CLAIMED. THE GATE CAN NOW UNSEAL.', 0
+text_msg_gate_final db 'FINAL BREACH OPEN. FINISH THE RUN.', 0
 
 splash_brand    db 'BITRIVER', 0
 splash_subtitle db 'SOFTWARE', 0
@@ -466,13 +472,16 @@ debug_demo_ticks_tag db 'DT', 0
 debug_verify_action_tag db 'VA', 0
 ENDIF
 
-win_line_1    db 'VAULT', 0
+win_line_1    db 'RUN CLEAR', 0
 win_line_2    db 'ALL FOUR DISTRICTS FELL TO THE RUN.', 0
-win_line_3    db 'THE STORM BENT. THE BREACH HELD.', 0
-lose_line_1   db 'SEVERED', 0
-lose_line_2   db 'THE STORM CLOSED BEFORE THE BREACH.', 0
-lose_line_3   db 'REBUILD THE LINE. RUN IT AGAIN.', 0
+win_line_3    db 'THE APEX VAULT BROKE. PUSH THE NEXT RANK.', 0
+lose_line_1   db 'RUN BROKEN', 0
+lose_line_2   db 'THE STORM CLOSED BEFORE THE FINAL BREACH.', 0
+lose_line_3   db 'REBUILD THE LINE. PUSH THE NEXT RANK.', 0
 replay_prompt db 'ENTER CONTINUES.', 0
+next_rank_text db 'NEXT', 0
+top_rank_text db 'TOP RANK LOCKED.', 0
+plus_text db '+', 0
 verify_pass_headline db 'REPLAY PASS', 0
 verify_fail_headline db 'REPLAY FAIL', 0
 verify_line_1 db 'LIVE RUNTIME MATCHED THE AUTHORED DEMO.', 0

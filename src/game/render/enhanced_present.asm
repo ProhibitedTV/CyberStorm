@@ -286,6 +286,56 @@ present_frame_vbe_same_source:
     pop eax
     ret
 
+build_gameplay_compat_surface:
+    push ax
+    push bx
+    push cx
+    push dx
+    push si
+    push di
+    push ds
+    push es
+
+    mov ax, BACKBUFFER_COMPAT_SEG
+    mov es, ax
+    xor bx, bx
+    xor dx, dx
+    xor di, di
+    mov cx, SCREEN_H
+
+build_gameplay_compat_surface_row:
+    push cx
+    push bx
+    push dx
+    mov dx, bx
+    call get_backbuffer_row_dssi
+    mov cx, SCREEN_W / 2
+    rep movsw
+    pop dx
+    pop bx
+    add dx, GAMEPLAY_SCREEN_H
+
+build_gameplay_compat_surface_advance:
+    cmp dx, SCREEN_H
+    jb build_gameplay_compat_surface_next
+    sub dx, SCREEN_H
+    inc bx
+    jmp build_gameplay_compat_surface_advance
+
+build_gameplay_compat_surface_next:
+    pop cx
+    loop build_gameplay_compat_surface_row
+
+    pop es
+    pop ds
+    pop di
+    pop si
+    pop dx
+    pop cx
+    pop bx
+    pop ax
+    ret
+
 present_frame_vbe_gameplay:
 IF DEBUG_FRONTEND_VERIFY
     jmp present_frame_vbe_generic
@@ -357,56 +407,6 @@ present_frame_vbe_gameplay_degraded_done:
     pop ecx
     pop ebx
     pop eax
-    ret
-
-build_gameplay_compat_surface:
-    push ax
-    push bx
-    push cx
-    push dx
-    push si
-    push di
-    push ds
-    push es
-
-    mov ax, BACKBUFFER_COMPAT_SEG
-    mov es, ax
-    xor bx, bx
-    xor dx, dx
-    xor di, di
-    mov cx, SCREEN_H
-
-build_gameplay_compat_surface_row:
-    push cx
-    push bx
-    push dx
-    mov dx, bx
-    call get_backbuffer_row_dssi
-    mov cx, SCREEN_W / 2
-    rep movsw
-    pop dx
-    pop bx
-    add dx, GAMEPLAY_SCREEN_H
-
-build_gameplay_compat_surface_advance:
-    cmp dx, SCREEN_H
-    jb build_gameplay_compat_surface_next
-    sub dx, SCREEN_H
-    inc bx
-    jmp build_gameplay_compat_surface_advance
-
-build_gameplay_compat_surface_next:
-    pop cx
-    loop build_gameplay_compat_surface_row
-
-    pop es
-    pop ds
-    pop di
-    pop si
-    pop dx
-    pop cx
-    pop bx
-    pop ax
     ret
 
 present_frame_vbe_gameplay_page_flip:

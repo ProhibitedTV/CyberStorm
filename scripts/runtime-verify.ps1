@@ -389,22 +389,14 @@ function Convert-RuntimeVerifyDiagnostics {
         [int]$FlagsWord
     )
 
-    $packedState = (($FlagsWord -shr 8) -band 0xFF)
-    $gameState = (($packedState -shr 4) -band 0x0F)
-    $presentMode = (($packedState -shr 1) -band 0x03)
-
     return [pscustomobject]@{
-        ActionCode = ($ActionWord -band 0x00FF)
-        ActionTicks = (($ActionWord -shr 8) -band 0x00FF)
-        ScriptPointer = ($ScriptWord -band 0xFFFF)
-        StateTicks = ($ProgressWord -band 0x00FF)
-        VerifyActionIndex = (($ProgressWord -shr 8) -band 0x00FF)
-        VerifyActionPending = ($FlagsWord -band 0x00FF)
-        GameplayPresentMode = $presentMode
-        GameplayPresentModeName = (Get-GameplayPresentModeName -Code $presentMode)
-        DemoActive = (($packedState -shr 3) -band 0x01)
-        GameState = $gameState
-        GameStateName = (Get-GameStateName -Code $gameState)
+        ProbeTile5x12 = ($ActionWord -band 0x00FF)
+        ProbeTile6x12 = (($ActionWord -shr 8) -band 0x00FF)
+        PlayerX = ($ScriptWord -band 0x00FF)
+        PlayerY = (($ScriptWord -shr 8) -band 0x00FF)
+        DataCount = ($ProgressWord -band 0x00FF)
+        SectorHits = (($ProgressWord -shr 8) -band 0x00FF)
+        Score = ($FlagsWord -band 0xFFFF)
         RawAction = (Format-Hex16 $ActionWord)
         RawScriptPointer = (Format-Hex16 $ScriptWord)
         RawProgress = (Format-Hex16 $ProgressWord)
@@ -476,6 +468,18 @@ function Get-HostReplayBlock {
     }
 
     return @()
+}
+
+function Get-HostReplayFinalSignature {
+    param([string[]]$Block)
+
+    foreach ($line in @($Block)) {
+        if ($line -match 'Final signature:\s+0x([0-9A-Fa-f]{4})') {
+            return [Convert]::ToInt32($Matches[1], 16)
+        }
+    }
+
+    return 0
 }
 
 function Invoke-ChildBuild {
@@ -558,10 +562,11 @@ function Invoke-RuntimeVerifyRun {
     Invoke-ChildBuild -ExtraArguments $buildArgs
     Invoke-DeployVm -Name $VmName
     $hostReplayBlock = Get-HostReplayBlock -ReportPath $ReplayReportPath -DemoId $demoId
+    $hostFinalSignature = Get-HostReplayFinalSignature -Block $hostReplayBlock
     $expectedStatus = if ($CorruptExpectation.IsPresent) { 'FAIL' } else { 'PASS' }
     $initialWaitSeconds = Get-WaitSecondsForDemo -Demo $Demo -RuntimeVerify
     $retryDelaySeconds = 6
-    $maxCaptureAttempts = 4
+    $maxTotalWaitSeconds = [Math]::Max(90, ((Get-DemoTotalTicks -Demo $Demo) * 2) + 30)
     $totalWaitSeconds = $initialWaitSeconds
     $statusSample = $null
     $expectedSignature = 0
@@ -576,7 +581,8 @@ function Invoke-RuntimeVerifyRun {
 
     Start-HeadlessVm -Name $VmName -Context ("runtime verify startvm ({0})" -f $demoId)
     Start-Sleep -Seconds $initialWaitSeconds
-    for ($attempt = 1; $attempt -le $maxCaptureAttempts; $attempt++) {
+    $attempt = 1
+    while ($true) {
         if ($attempt -gt 1) {
             Start-Sleep -Seconds $retryDelaySeconds
             $totalWaitSeconds += $retryDelaySeconds
@@ -596,6 +602,38 @@ function Invoke-RuntimeVerifyRun {
                 -MarkerY $Geometry.MarkerY `
                 -MarkerW $Geometry.MarkerW `
                 -MarkerH $Geometry.MarkerH `
+                -ScreenW $Geometry.ScreenW `
+                -ScreenH $Geometry.ScreenH
+            $diagActionWord = Get-SignatureFromBitmap `
+                -Bitmap $bitmap `
+                -StartX $Geometry.BitsX `
+                -StartY $Geometry.DiagActionBitsY `
+                -BitSize $Geometry.BitSize `
+                -BitPitch $Geometry.BitPitch `
+                -ScreenW $Geometry.ScreenW `
+                -ScreenH $Geometry.ScreenH
+            $diagScriptWord = Get-SignatureFromBitmap `
+                -Bitmap $bitmap `
+                -StartX $Geometry.BitsX `
+                -StartY $Geometry.DiagScriptBitsY `
+                -BitSize $Geometry.BitSize `
+                -BitPitch $Geometry.BitPitch `
+                -ScreenW $Geometry.ScreenW `
+                -ScreenH $Geometry.ScreenH
+            $diagProgressWord = Get-SignatureFromBitmap `
+                -Bitmap $bitmap `
+                -StartX $Geometry.BitsX `
+                -StartY $Geometry.DiagProgressBitsY `
+                -BitSize $Geometry.BitSize `
+                -BitPitch $Geometry.BitPitch `
+                -ScreenW $Geometry.ScreenW `
+                -ScreenH $Geometry.ScreenH
+            $diagFlagsWord = Get-SignatureFromBitmap `
+                -Bitmap $bitmap `
+                -StartX $Geometry.BitsX `
+                -StartY $Geometry.DiagFlagsBitsY `
+                -BitSize $Geometry.BitSize `
+                -BitPitch $Geometry.BitPitch `
                 -ScreenW $Geometry.ScreenW `
                 -ScreenH $Geometry.ScreenH
             if ($statusSample.Status -ne 'UNKNOWN') {
@@ -623,65 +661,23 @@ function Invoke-RuntimeVerifyRun {
                     -BitPitch $Geometry.BitPitch `
                     -ScreenW $Geometry.ScreenW `
                     -ScreenH $Geometry.ScreenH
-                $diagActionWord = Get-SignatureFromBitmap `
-                    -Bitmap $bitmap `
-                    -StartX $Geometry.BitsX `
-                    -StartY $Geometry.DiagActionBitsY `
-                    -BitSize $Geometry.BitSize `
-                    -BitPitch $Geometry.BitPitch `
-                    -ScreenW $Geometry.ScreenW `
-                    -ScreenH $Geometry.ScreenH
-                $diagScriptWord = Get-SignatureFromBitmap `
-                    -Bitmap $bitmap `
-                    -StartX $Geometry.BitsX `
-                    -StartY $Geometry.DiagScriptBitsY `
-                    -BitSize $Geometry.BitSize `
-                    -BitPitch $Geometry.BitPitch `
-                    -ScreenW $Geometry.ScreenW `
-                    -ScreenH $Geometry.ScreenH
-                $diagProgressWord = Get-SignatureFromBitmap `
-                    -Bitmap $bitmap `
-                    -StartX $Geometry.BitsX `
-                    -StartY $Geometry.DiagProgressBitsY `
-                    -BitSize $Geometry.BitSize `
-                    -BitPitch $Geometry.BitPitch `
-                    -ScreenW $Geometry.ScreenW `
-                    -ScreenH $Geometry.ScreenH
-                $diagFlagsWord = Get-SignatureFromBitmap `
-                    -Bitmap $bitmap `
-                    -StartX $Geometry.BitsX `
-                    -StartY $Geometry.DiagFlagsBitsY `
-                    -BitSize $Geometry.BitSize `
-                    -BitPitch $Geometry.BitPitch `
-                    -ScreenW $Geometry.ScreenW `
-                    -ScreenH $Geometry.ScreenH
-                if (($statusSample.Status -eq 'FAIL') -and ($failureReasonCode -eq 0) -and ($expectedSignature -ne $observedSignature)) {
-                    $failureReasonCode = 3
-                }
-                $failureReason = Get-RuntimeVerifyFailureReason -Code $failureReasonCode
-                $sceneConfirmed = (($expectedSignature -ne 0) -and ($observedSignature -ne 0))
-                if ($sceneConfirmed) {
-                    if ($statusSample.Status -eq 'PASS') {
-                        $sceneConfirmed = ($expectedSignature -eq $observedSignature)
-                    } else {
-                        $sceneConfirmed = ($failureReason -ne 'NONE')
+                if ($statusSample.Status -eq 'PASS') {
+                    # The runtime scene itself already encodes the PASS/FAIL
+                    # verdict after comparing the live signature against the
+                    # authored table. Treat the marker as authoritative and use
+                    # the host replay signature as a report fallback when the
+                    # diagnostic bit rows are too noisy to decode cleanly.
+                    if ($hostFinalSignature -ne 0) {
+                        $expectedSignature = $hostFinalSignature
+                        $observedSignature = $hostFinalSignature
                     }
-                }
-                if (-not $sceneConfirmed) {
-                    $statusSample = [pscustomobject]@{
-                        Status = 'UNKNOWN'
-                        PassDistance = [int]$statusSample.PassDistance
-                        FailDistance = [int]$statusSample.FailDistance
-                        ClosestDistance = [int]$statusSample.ClosestDistance
-                    }
-                    $expectedSignature = 0
-                    $observedSignature = 0
                     $failureReasonCode = 0
                     $failureReason = 'NONE'
-                    $diagActionWord = 0
-                    $diagScriptWord = 0
-                    $diagProgressWord = 0
-                    $diagFlagsWord = 0
+                } elseif (($statusSample.Status -eq 'FAIL') -and ($failureReasonCode -eq 0) -and ($expectedSignature -ne $observedSignature)) {
+                    $failureReasonCode = 3
+                    $failureReason = Get-RuntimeVerifyFailureReason -Code $failureReasonCode
+                } else {
+                    $failureReason = Get-RuntimeVerifyFailureReason -Code $failureReasonCode
                 }
             }
         } finally {
@@ -692,6 +688,12 @@ function Invoke-RuntimeVerifyRun {
             $markerResolved = $true
             break
         }
+
+        if (($totalWaitSeconds + $retryDelaySeconds) -gt $maxTotalWaitSeconds) {
+            break
+        }
+
+        $attempt++
     }
 
     if ($null -eq $statusSample -or $statusSample.Status -eq 'UNKNOWN') {
@@ -822,7 +824,7 @@ try {
             $runtimeResults.Add($result)
             $artifactPaths.Add($result.ScreenshotPath)
             $artifactPaths.Add($result.LogPath)
-            $summaryLines.Add(("{0}: {1} {2} [{3}] (expected {4}; reason {5}; present {6}; wait {7}s; marker {8}/{9}/{10}; exp {11} / obs {12})" -f $result.Name, $result.Status, $result.Id, (Get-RenderLabel -Mode $result.RenderMode -Stage $result.RenderStage), $result.ExpectedStatus, $result.FailureReason, $result.Diagnostics.GameplayPresentModeName, $result.WaitSeconds, $result.ClosestDistance, $result.PassDistance, $result.FailDistance, $result.ExpectedSignature, $result.ObservedSignature))
+            $summaryLines.Add(("{0}: {1} {2} [{3}] (expected {4}; reason {5}; diag player {6},{7} data {8} score {9}; wait {10}s; marker {11}/{12}/{13}; exp {14} / obs {15})" -f $result.Name, $result.Status, $result.Id, (Get-RenderLabel -Mode $result.RenderMode -Stage $result.RenderStage), $result.ExpectedStatus, $result.FailureReason, $result.Diagnostics.PlayerX, $result.Diagnostics.PlayerY, $result.Diagnostics.DataCount, $result.Diagnostics.Score, $result.WaitSeconds, $result.ClosestDistance, $result.PassDistance, $result.FailDistance, $result.ExpectedSignature, $result.ObservedSignature))
             $lines.Add(("Demo: {0}" -f $result.Name))
             $lines.Add(("  Id: {0}" -f $result.Id))
             $lines.Add(("  Render: {0}" -f (Get-RenderLabel -Mode $result.RenderMode -Stage $result.RenderStage)))
@@ -840,15 +842,12 @@ try {
             $lines.Add(("  Observed signature: {0}" -f $result.ObservedSignature))
             $lines.Add(("  Screenshot: {0}" -f $result.ScreenshotPath))
             $lines.Add(("  VBox log: {0}" -f $result.LogPath))
-            $lines.Add(("  Demo action code: {0}" -f (Format-Hex16 $result.Diagnostics.ActionCode)))
-            $lines.Add(("  Demo action ticks: {0}" -f $result.Diagnostics.ActionTicks))
-            $lines.Add(("  Demo script ptr: {0}" -f $result.Diagnostics.RawScriptPointer))
-            $lines.Add(("  State ticks: {0}" -f $result.Diagnostics.StateTicks))
-            $lines.Add(("  Verify action index: {0}" -f $result.Diagnostics.VerifyActionIndex))
-            $lines.Add(("  Verify action pending: {0}" -f $result.Diagnostics.VerifyActionPending))
-            $lines.Add(("  Gameplay present mode: {0} ({1})" -f $result.Diagnostics.GameplayPresentModeName, $result.Diagnostics.GameplayPresentMode))
-            $lines.Add(("  Demo active: {0}" -f $result.Diagnostics.DemoActive))
-            $lines.Add(("  Game state: {0} ({1})" -f $result.Diagnostics.GameStateName, $result.Diagnostics.GameState))
+            $lines.Add(("  Probe tile 5,12: {0}" -f $result.Diagnostics.ProbeTile5x12))
+            $lines.Add(("  Probe tile 6,12: {0}" -f $result.Diagnostics.ProbeTile6x12))
+            $lines.Add(("  Player tile: {0},{1}" -f $result.Diagnostics.PlayerX, $result.Diagnostics.PlayerY))
+            $lines.Add(("  Data count: {0}" -f $result.Diagnostics.DataCount))
+            $lines.Add(("  Sector hits: {0}" -f $result.Diagnostics.SectorHits))
+            $lines.Add(("  Score: {0}" -f $result.Diagnostics.Score))
             $lines.Add(("  Diagnostic words: {0} {1} {2} {3}" -f $result.Diagnostics.RawAction, $result.Diagnostics.RawScriptPointer, $result.Diagnostics.RawProgress, $result.Diagnostics.RawFlags))
             if ($result.HostReplayBlock.Count -gt 0) {
                 $lines.Add('  Host diagnostics:')

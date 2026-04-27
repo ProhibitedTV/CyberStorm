@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1060" height="560" viewBox="0 0 1060 560" role="img" aria-labelledby="title desc">
   <title id="title">CyberStorm runtime modules</title>
-  <desc id="desc">A module map showing game.asm as the composition root, the system and gameplay modules around the main loop, and the render stack that draws into VGA mode 13h.</desc>
+  <desc id="desc">A module map showing game.asm as the composition root, the system and gameplay modules around the main loop, and the render stack that draws into the shared backbuffer before presenting through VGA or enhanced VBE.</desc>
   <defs>
     <style>
       .title { font: 700 28px 'Segoe UI', Arial, sans-serif; fill: #0f172a; }
@@ -26,9 +26,9 @@
   <text x="84" y="246" class="label">System + cross-cutting modules</text>
   <text x="84" y="272" class="body">constants.inc</text>
   <text x="84" y="292" class="body">debug_config.inc</text>
-  <text x="84" y="312" class="body">generated_bank_layout.inc</text>
+  <text x="84" y="312" class="body">generated_machine_code.inc</text>
   <text x="84" y="332" class="body">input.asm</text>
-  <text x="84" y="352" class="body">banks.asm</text>
+  <text x="84" y="352" class="body">machine_kernels.asm</text>
   <text x="84" y="372" class="body">audio.asm + feedback.asm</text>
 
   <rect x="400" y="214" width="260" height="180" rx="18" fill="#0f172a" stroke="#f59e0b" stroke-width="2"/>
@@ -46,8 +46,8 @@
   <text x="764" y="292" class="body">palette.asm + text.asm + sprites.asm</text>
   <text x="764" y="312" class="body">scenes.asm + hud.asm</text>
   <text x="764" y="332" class="body">tiles.asm + entities.asm + effects.asm</text>
-  <text x="764" y="356" class="body">Draws into 9000:0000, then</text>
-  <text x="764" y="376" class="body">presents to A000:0000</text>
+  <text x="764" y="356" class="body">Draws into 9000:0000 + 8600:0000, then</text>
+  <text x="764" y="376" class="body">presents via VGA or enhanced VBE</text>
 
   <rect x="240" y="434" width="240" height="72" rx="18" fill="#0f172a" stroke="#38bdf8" stroke-width="2"/>
   <text x="264" y="466" class="label">Data + generated content</text>
@@ -59,7 +59,7 @@
 
   <rect x="820" y="438" width="180" height="64" rx="18" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"/>
   <text x="844" y="468" class="mono">Outputs</text>
-  <text x="844" y="490" class="note">VGA frame + PC speaker</text>
+  <text x="844" y="490" class="note">Video frame + PC speaker</text>
 
   <line x1="530" y1="164" x2="190" y2="214" stroke="#22d3ee" stroke-width="4" marker-end="url(#arrow)"/>
   <line x1="530" y1="164" x2="530" y2="214" stroke="#22d3ee" stroke-width="4" marker-end="url(#arrow)"/>

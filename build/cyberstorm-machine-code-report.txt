@@ -1,40 +1,10 @@
 CyberStorm Machine Code Report
-Generated: 2026-04-24 12:18:22 -06:00
+Generated: 2026-04-26 19:40:07 -06:00
 Source: C:\Users\RhythmicCarnage\Desktop\CyberStorm\assets\machine_code.psd1
 
-Kernel: world_transform_project
-  Stage: transform
-  Entry offset: 0x0000
-  Byte count: 1
-  Param block: 24 bytes
-  Fallback: scene3d_project_vertices
-  Clobbers: AX, BX, CX, DX, SI, DI, FLAGS
-  SHA256: 383E5D7D58CAA41CE723CF16AF471B38F6EE9065C032D07FA6BEF1678CB72F1D
-  Bytes: CB
-
-Kernel: affine_textured_triangle
-  Stage: raster
-  Entry offset: 0x0010
-  Byte count: 1
-  Param block: 40 bytes
-  Fallback: scene3d_draw_triangle
-  Clobbers: AX, BX, CX, DX, SI, DI, FLAGS
-  SHA256: 383E5D7D58CAA41CE723CF16AF471B38F6EE9065C032D07FA6BEF1678CB72F1D
-  Bytes: CB
-
-Kernel: flat_shaded_triangle_fallback
-  Stage: raster
-  Entry offset: 0x0020
-  Byte count: 1
-  Param block: 32 bytes
-  Fallback: scene3d_draw_triangle
-  Clobbers: AX, BX, CX, DX, SI, DI, FLAGS
-  SHA256: 383E5D7D58CAA41CE723CF16AF471B38F6EE9065C032D07FA6BEF1678CB72F1D
-  Bytes: CB
-
-Kernel: shadow_decal_blit
+Helper: shadow_decal_blit
   Stage: effects
-  Entry offset: 0x0030
+  Entry offset: 0x0000
   Byte count: 72
   Param block: 9 bytes
   Fallback: fill_rect_reference
@@ -42,18 +12,8 @@ Kernel: shadow_decal_blit
   SHA256: 03DE2045278908DB01AB96E52A2AB92393CAAFA2F2205ACE18240438DACDE71D
   Bytes: 55 8B 1C 8B 54 02 8B 4C 04 8B 6C 06
 
-Kernel: actor_pose_step_interpolation
-  Stage: animation
-  Entry offset: 0x0080
-  Byte count: 35
-  Param block: 8 bytes
-  Fallback: machine_pose_step_reference
-  Clobbers: AX, DX, FLAGS
-  SHA256: B8AF6224C0CDA6211DE845C1F5FBB9AFB272ACCBF34FCBD943CC8392D237198F
-  Bytes: 8B 04 8B 54 02 39 D0 74 16 7C 0B 2B
-
 Table: sin_table_88
-  Offset: 0x00A4
+  Offset: 0x0048
   Elements: 256
   Element size: 2
   Signed: yes

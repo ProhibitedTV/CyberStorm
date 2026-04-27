@@ -23,6 +23,39 @@ draw_text_small_space:
 draw_text_small_done:
     ret
 
+draw_text_small_clipped:
+    mov [text_cursor_x], bx
+    mov [text_cursor_y], dx
+    mov [text_color], ah
+    mov [text_clip_right], cx
+
+draw_text_small_clipped_loop:
+    lodsb
+    or al, al
+    jz draw_text_small_clipped_done
+    cmp al, ' '
+    je draw_text_small_clipped_space
+    push si
+    mov ax, [text_cursor_x]
+    add ax, 4
+    cmp ax, [text_clip_right]
+    ja draw_text_small_clipped_stop
+    mov bx, [text_cursor_x]
+    mov dx, [text_cursor_y]
+    mov ah, [text_color]
+    call draw_char_1x
+    pop si
+
+draw_text_small_clipped_space:
+    add word ptr [text_cursor_x], 6
+    jmp draw_text_small_clipped_loop
+
+draw_text_small_clipped_stop:
+    pop si
+
+draw_text_small_clipped_done:
+    ret
+
 draw_text_big:
     mov [text_cursor_x], bx
     mov [text_cursor_y], dx

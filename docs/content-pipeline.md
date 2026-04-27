@@ -3,30 +3,41 @@
 CyberStorm now has two layers of authored content tooling:
 
 - [assets/visuals.psd1](../assets/visuals.psd1) for sprites and tiles
-- [assets/presentation.psd1](../assets/presentation.psd1), [assets/sectors.psd1](../assets/sectors.psd1), and [assets/music.psd1](../assets/music.psd1) for gameplay-facing and presentation-facing authored content
+- [assets/machine_code.psd1](../assets/machine_code.psd1), [assets/presentation.psd1](../assets/presentation.psd1), [assets/sectors.psd1](../assets/sectors.psd1), [assets/geometry.psd1](../assets/geometry.psd1), and [assets/music.psd1](../assets/music.psd1) for gameplay-facing and presentation-facing authored content
 
 The build keeps those source files as the truth, then generates compact MASM includes into `build\` before stage two is assembled.
 
 ## Generated Outputs
 
 - `build\generated_art.inc`
+- `build\generated_machine_code.inc`
 - `build\generated_presentation_content.inc`
+- `build\generated_geometry.inc`
 - `build\generated_sector_content.inc`
 - `build\generated_maps.inc`
 - `build\generated_music.inc`
 - `build\generated_bank_layout.inc`
+- `build\cyberstorm-code-bank.bin`
+- `build\cyberstorm-texture-bank.bin`
+- `build\cyberstorm-texture-bank-b.bin`
 - `build\cyberstorm-map-bank.bin`
 - `build\cyberstorm-presentation-bank.bin`
+- `build\cyberstorm-geometry-bank.bin`
 
 The include files are intended to stay readable. If a build or runtime behavior looks wrong, open the generated include first to see the exact assembly data that MASM consumed.
 
-The asset-bank system now emits two raw runtime payloads:
+The asset-bank system now emits the full runtime bank set:
 
+- `build\generated_machine_code.inc` remains the human-reviewable rendering of the code-bank helper/table offsets
+- `build\cyberstorm-code-bank.bin` is the runtime payload for real machine-code helpers and lookup tables
+- `build\cyberstorm-texture-bank.bin` and `build\cyberstorm-texture-bank-b.bin` are the two runtime texture pages
 - `build\generated_maps.inc` remains the human-reviewable rendering of the authored map pool
-- `build\cyberstorm-map-bank.bin` is the runtime payload copied into later floppy sectors
+- `build\cyberstorm-map-bank.bin` is the runtime payload copied into later BIOS HDD sectors
 - `build\generated_presentation_content.inc` remains the human-reviewable rendering of the banked scene-banner offsets
 - `build\cyberstorm-presentation-bank.bin` is the runtime payload for the banked presentation scene kit used by splash/title/demo/sector-entry/end scenes
-- `build\generated_bank_layout.inc` tells stage two where that bank lives on disk and how large it is
+- `build\generated_geometry.inc` remains the human-reviewable rendering of banked scene/gameplay geometry and texture metadata
+- `build\cyberstorm-geometry-bank.bin` is the runtime geometry payload
+- `build\generated_bank_layout.inc` tells the bootstrap where every bank lives on disk, how large it is, and which segment to load it into
 
 ## Presentation Source
 

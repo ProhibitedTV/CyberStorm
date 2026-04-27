@@ -124,22 +124,22 @@ function Get-ShowcaseCapturePlan {
     )
 
     $sectorData = Import-StructuredDataFile -SourcePath $SectorSourcePath -Label 'sector source'
-    if (-not $sectorData.ContainsKey('AdventureRealm')) {
-        throw ("Sector source does not define AdventureRealm capture data: {0}" -f $SectorSourcePath)
+    if (-not $sectorData.ContainsKey('Campaign')) {
+        throw ("Sector source does not define Campaign showcase data: {0}" -f $SectorSourcePath)
     }
 
-    $realm = $sectorData['AdventureRealm']
-    if (-not ($realm -is [System.Collections.IDictionary])) {
-        throw ("AdventureRealm in {0} must be a hashtable." -f $SectorSourcePath)
+    $campaign = $sectorData['Campaign']
+    if (-not ($campaign -is [System.Collections.IDictionary])) {
+        throw ("Campaign in {0} must be a hashtable." -f $SectorSourcePath)
     }
 
-    if (-not $realm.ContainsKey('CaptureAnchors')) {
-        throw ("AdventureRealm in {0} is missing CaptureAnchors." -f $SectorSourcePath)
+    if (-not $campaign.ContainsKey('Showcase')) {
+        throw ("Campaign in {0} is missing Showcase." -f $SectorSourcePath)
     }
 
-    $captureAnchors = $realm['CaptureAnchors']
+    $captureAnchors = $campaign['Showcase']
     if (-not ($captureAnchors -is [System.Collections.IDictionary])) {
-        throw ("AdventureRealm.CaptureAnchors in {0} must be a hashtable." -f $SectorSourcePath)
+        throw ("Campaign.Showcase in {0} must be a hashtable." -f $SectorSourcePath)
     }
 
     $demoData = Import-StructuredDataFile -SourcePath $DemoSourcePath -Label 'demo source'
@@ -160,12 +160,12 @@ function Get-ShowcaseCapturePlan {
     $plan = New-Object 'System.Collections.Generic.List[object]'
     foreach ($anchorKey in @('Beauty', 'Action')) {
         if (-not $captureAnchors.ContainsKey($anchorKey)) {
-            throw ("AdventureRealm.CaptureAnchors in {0} is missing '{1}'." -f $SectorSourcePath, $anchorKey)
+            throw ("Campaign.Showcase in {0} is missing '{1}'." -f $SectorSourcePath, $anchorKey)
         }
 
         $demoId = ([string]$captureAnchors[$anchorKey]).Trim()
         if (-not $demoIndexById.ContainsKey($demoId)) {
-            throw ("AdventureRealm.CaptureAnchors.{0} references missing demo '{1}'." -f $anchorKey, $demoId)
+            throw ("Campaign.Showcase.{0} references missing demo '{1}'." -f $anchorKey, $demoId)
         }
 
         $demoIndex = [int]$demoIndexById[$demoId]
@@ -173,7 +173,7 @@ function Get-ShowcaseCapturePlan {
         $expectedRole = $anchorKey.ToLowerInvariant()
         $captureRole = ([string]$demo['CaptureRole']).Trim().ToLowerInvariant()
         if ($captureRole -ne $expectedRole) {
-            throw ("Demo '{0}' must use CaptureRole '{1}' to satisfy AdventureRealm.CaptureAnchors.{2}." -f $demoId, $expectedRole, $anchorKey)
+            throw ("Demo '{0}' must use CaptureRole '{1}' to satisfy Campaign.Showcase.{2}." -f $demoId, $expectedRole, $anchorKey)
         }
         if (($demo.ContainsKey('RuntimeVerify')) -and [bool]$demo['RuntimeVerify']) {
             throw ("Demo '{0}' cannot be used as a public capture anchor because RuntimeVerify is enabled." -f $demoId)
@@ -588,7 +588,7 @@ try {
     $artifactPaths.Add($beautyCapture.RawScreenshotPath)
     $artifactPaths.Add($beautyCapture.LogPath)
     $detailLines.Add('Role: beauty')
-    $detailLines.Add(("  Source: AdventureRealm.CaptureAnchors.Beauty -> {0}" -f $beautyPlan.DemoId))
+    $detailLines.Add(("  Source: Campaign.Showcase.Beauty -> {0}" -f $beautyPlan.DemoId))
     $detailLines.Add(("  Demo: {0}" -f ([string]$beautyPlan.Demo.Name)))
     $detailLines.Add(("  Wait: {0}s" -f $beautyCapture.WaitSeconds))
     $detailLines.Add(("  Screenshot: {0}" -f $beautyCapture.ScreenshotPath))
@@ -603,7 +603,7 @@ try {
     $artifactPaths.Add($actionCapture.RawScreenshotPath)
     $artifactPaths.Add($actionCapture.LogPath)
     $detailLines.Add('Role: action')
-    $detailLines.Add(("  Source: AdventureRealm.CaptureAnchors.Action -> {0}" -f $actionPlan.DemoId))
+    $detailLines.Add(("  Source: Campaign.Showcase.Action -> {0}" -f $actionPlan.DemoId))
     $detailLines.Add(("  Demo: {0}" -f ([string]$actionPlan.Demo.Name)))
     $detailLines.Add(("  Wait: {0}s" -f $actionCapture.WaitSeconds))
     $detailLines.Add(("  Screenshot: {0}" -f $actionCapture.ScreenshotPath))

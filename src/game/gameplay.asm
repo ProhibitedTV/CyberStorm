@@ -98,6 +98,9 @@ ENDIF
 process_adventure_play_input:
     mov byte ptr [action_taken], 0
     mov byte ptr [frontend_action], FRONTEND_ACTION_NONE
+IF DEBUG_RUNTIME_VERIFY
+    mov byte ptr [verify_action_pending], 0
+ENDIF
 
     cmp byte ptr [game_state], STATE_PLAYING
     jne adventure_input_done
@@ -129,6 +132,15 @@ adventure_skip_reset:
     call adventure_maybe_step_enemies
 
 adventure_input_done:
+IF DEBUG_RUNTIME_VERIFY
+    cmp byte ptr [demo_active], 0
+    je adventure_input_done_ready
+    cmp byte ptr [verify_action_pending], 0
+    je adventure_input_done_ready
+    call verify_runtime_checkpoint
+
+adventure_input_done_ready:
+ENDIF
     call clear_pressed_latches
     ret
 
@@ -764,6 +776,10 @@ adventure_speed_stop:
     ret
 
 adventure_try_move_to_world:
+    ; Collision tests need tile coordinates, but callers still expect AX/DX to
+    ; come back as the original candidate world position on success.
+    push ax
+    push dx
     push bx
     push di
     call adventure_world_to_tile
@@ -793,12 +809,16 @@ adventure_try_move_to_world:
 adventure_try_move_ok:
     pop di
     pop bx
+    pop dx
+    pop ax
     stc
     ret
 
 adventure_try_move_fail:
     pop di
     pop bx
+    pop dx
+    pop ax
     clc
     ret
 
@@ -1299,6 +1319,8 @@ adventure_maybe_step_enemies:
     jne adventure_enemy_step_done
     cmp byte ptr [game3d_end_state_pending], 0
     jne adventure_enemy_step_done
+    cmp byte ptr [action_taken], 0
+    je adventure_enemy_step_done
     inc byte ptr [adventure_enemy_tick]
     cmp byte ptr [adventure_enemy_tick], ADVENTURE_ENEMY_STEP_TICKS
     jb adventure_enemy_step_done
@@ -1956,6 +1978,9 @@ step_hit_surge:
     ret
 
 step_fail:
+    ; Keep the enemy-turn iterator anchored on the current slot even when the
+    ; attempted step was blocked by another live enemy.
+    mov si, di
     clc
     ret
 

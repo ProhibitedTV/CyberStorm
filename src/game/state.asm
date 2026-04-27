@@ -51,9 +51,6 @@ adventure_chunk_min_x    db 0
 adventure_chunk_max_x    db MAP_W - 1
 adventure_chunk_min_y    db 0
 adventure_chunk_max_y    db MAP_H - 1
-; Boot drive is captured from DL on stage-two entry so post-boot bank reads do
-; not depend on the boot sector staying resident.
-boot_drive   db 0
 video_output_mode db ENHANCED_OUTPUT_MODE_OFF
 video_pitch dw SCREEN_W
 video_output_w dw SCREEN_W
@@ -221,6 +218,7 @@ key_pressed db KEY_STATE_TABLE_BYTES dup (0)
 
 text_cursor_x  dw 0
 text_cursor_y  dw 0
+text_clip_right dw SCREEN_W - 1
 glyph_base_x   dw 0
 glyph_base_y   dw 0
 rect_w         dw 0
@@ -320,7 +318,7 @@ gate_text     db 'GATE', 0
 relay_text    db 'RELAY', 0
 key_text      db 'KEY', 0
 controls_text db 'MOVE WASD OR ARROWS  C EMP  R RESET', 0
-adventure_controls_text db 'WS RUN  AD TURN  SPC GLIDE  SHF DASH  C OVERLOAD  ENT BREACH', 0
+adventure_controls_text db 'WS RUN  AD TURN  SPC GLIDE  SHF DASH  C FLAME  R RESET', 0
 realm_text db 'DIST', 0
 gems_text db 'SHRD', 0
 goals_text db 'GOALS', 0
@@ -445,6 +443,8 @@ frontend_verify_vt_tag db 'VT', 0
 frontend_verify_ti_tag db 'TI', 0
 frontend_verify_vf_tag db 'VF', 0
 frontend_verify_fa_tag db 'FA', 0
+ENDIF
+IF DEBUG_RUNTIME_VERIFY
 ENDIF
 IF DEBUG_OVERLAY
 debug_tag_text   db 'DBG', 0

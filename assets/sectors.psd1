@@ -329,6 +329,10 @@
         }
     )
     Campaign = @{
+        Showcase = @{
+            Beauty = 'thermal-attract-a'
+            Action = 'vault-attract-b'
+        }
         Districts = @(
             @{
                 Id = 'subgrid-ingress'
@@ -769,124 +773,6 @@
                     @{ X = 8; Y = 13; Mesh = 'vault_buttress'; YawDegrees = 0.0 }
                 )
             }
-        )
-    }
-    AdventureRealm = @{
-        Title = 'SUNSPARK GLADE'
-        Intro = 'FOLLOW THE GEM TRAIL, SPARK THE PEDESTAL, CLAIM THE HILLTOP KEY, AND WAKE THE PORTAL.'
-        Start = '4,12'
-        Portal = '24,2'
-        RequiredGems = 20
-        MacroZones = @(
-            @{ Id = 'start-glade'; Label = 'Start Glade'; Bounds = '2,10,10,13' }
-            @{ Id = 'first-loop'; Label = 'First Loop'; Bounds = '8,8,16,11' }
-            @{ Id = 'charge-lane'; Label = 'Charge Lane'; Bounds = '6,11,12,13' }
-            @{ Id = 'high-key-terrace'; Label = 'High Key Terrace'; Bounds = '14,3,22,6' }
-            @{ Id = 'glide-return'; Label = 'Glide Return'; Bounds = '18,7,25,10' }
-            @{ Id = 'portal-plaza'; Label = 'Portal Plaza'; Bounds = '21,1,25,4' }
-        )
-        RouteBeats = @(
-            @{ Zone = 'start-glade'; Sequence = 1; Summary = 'Opening gem ribbon and a clean first read of the portal tower.' }
-            @{ Zone = 'first-loop'; Sequence = 2; Summary = 'A broad first bend that teaches the realm without crowding the player.' }
-            @{ Zone = 'charge-lane'; Sequence = 3; Summary = 'One obvious rusher and the flame pedestal in an open teaching lane.' }
-            @{ Zone = 'high-key-terrace'; Sequence = 4; Summary = 'The visible hilltop key route framed against the skyline.' }
-            @{ Zone = 'glide-return'; Sequence = 5; Summary = 'A return lane with one hazard lesson and a late combat beat.' }
-            @{ Zone = 'portal-plaza'; Sequence = 6; Summary = 'The unlocked arch, the sparse warden set-piece, and the finish.' }
-        )
-        Chunks = @(
-            @{ Id = 'glade-west'; Zone = 'start-glade'; Bounds = '2,10,7,13'; Role = 'start-lane'; BaseHeight = 0; ShelfHeight = 0; RampDir = 'none'; CliffSide = 'north'; BridgeSpan = 'none'; LandmarkAnchor = '24,2'; PropBudget = 1 }
-            @{ Id = 'glade-east'; Zone = 'start-glade'; Bounds = '8,10,12,13'; Role = 'intro-turn'; BaseHeight = 0; ShelfHeight = 64; RampDir = 'east'; CliffSide = 'north'; BridgeSpan = 'none'; LandmarkAnchor = '18,6'; PropBudget = 1 }
-            @{ Id = 'loop-bend'; Zone = 'first-loop'; Bounds = '10,8,16,11'; Role = 'route-read'; BaseHeight = 64; ShelfHeight = 96; RampDir = 'north'; CliffSide = 'east'; BridgeSpan = 'none'; LandmarkAnchor = '18,4'; PropBudget = 1 }
-            @{ Id = 'charge-teach'; Zone = 'charge-lane'; Bounds = '6,11,12,13'; Role = 'charge-lesson'; BaseHeight = 64; ShelfHeight = 112; RampDir = 'north'; CliffSide = 'south'; BridgeSpan = 'east-west'; LandmarkAnchor = '10,12'; PropBudget = 1 }
-            @{ Id = 'terrace-climb'; Zone = 'high-key-terrace'; Bounds = '14,5,18,8'; Role = 'climb'; BaseHeight = 112; ShelfHeight = 176; RampDir = 'east'; CliffSide = 'north'; BridgeSpan = 'none'; LandmarkAnchor = '18,5'; PropBudget = 1 }
-            @{ Id = 'terrace-key'; Zone = 'high-key-terrace'; Bounds = '18,3,22,5'; Role = 'key-reveal'; BaseHeight = 176; ShelfHeight = 208; RampDir = 'north'; CliffSide = 'west'; BridgeSpan = 'none'; LandmarkAnchor = '18,4'; PropBudget = 1 }
-            @{ Id = 'glide-ramp'; Zone = 'glide-return'; Bounds = '18,7,22,10'; Role = 'glide-setup'; BaseHeight = 128; ShelfHeight = 176; RampDir = 'west'; CliffSide = 'south'; BridgeSpan = 'none'; LandmarkAnchor = '23,3'; PropBudget = 1 }
-            @{ Id = 'return-lane'; Zone = 'glide-return'; Bounds = '22,7,25,10'; Role = 'return-pressure'; BaseHeight = 96; ShelfHeight = 128; RampDir = 'east'; CliffSide = 'south'; BridgeSpan = 'none'; LandmarkAnchor = '23,2'; PropBudget = 1 }
-            @{ Id = 'portal-front'; Zone = 'portal-plaza'; Bounds = '21,1,23,4'; Role = 'portal-read'; BaseHeight = 96; ShelfHeight = 144; RampDir = 'north'; CliffSide = 'west'; BridgeSpan = 'none'; LandmarkAnchor = '23,2'; PropBudget = 2 }
-            @{ Id = 'portal-arch'; Zone = 'portal-plaza'; Bounds = '23,1,25,3'; Role = 'finish'; BaseHeight = 144; ShelfHeight = 176; RampDir = 'none'; CliffSide = 'south'; BridgeSpan = 'none'; LandmarkAnchor = '24,2'; PropBudget = 2 }
-        )
-        EncounterLanes = @(
-            @{ Id = 'charge-lane-rusher'; Zone = 'charge-lane'; Enemy = 'RUSHER'; Summary = 'Open frontal lane that teaches the charge counter clearly.' }
-            @{ Id = 'switch-flanker'; Zone = 'first-loop'; Enemy = 'FLANKER'; Summary = 'Side pressure near the pedestal without crowding the route read.' }
-            @{ Id = 'portal-warden'; Zone = 'portal-plaza'; Enemy = 'WARDEN'; Summary = 'Late sparse set-piece that only activates near the finish.' }
-        )
-        LandmarkSightlines = @(
-            @{ From = 'start-glade'; To = 'portal-plaza'; Subject = 'portal-arch'; Summary = 'The tower and arch peek over the upper cliff from the opening lane.' }
-            @{ From = 'first-loop'; To = 'high-key-terrace'; Subject = 'sun-key'; Summary = 'The key terrace stays visible while the player rounds the first bend.' }
-            @{ From = 'glide-return'; To = 'portal-plaza'; Subject = 'portal-arch'; Summary = 'The final glide points directly back into the portal silhouette.' }
-        )
-        CaptureAnchors = @{
-            Beauty = 'thermal-attract-a'
-            Action = 'vault-attract-b'
-        }
-        Key = @(
-            '18,4'
-        )
-        Rows = @(
-            '############################'
-            '#..........................#'
-            '#..######.............##...#'
-            '#..#....#.............##...#'
-            '#..#....#.............##...#'
-            '#..#....#####....####......#'
-            '#..#.............#.........#'
-            '#..######...##...#..#####..#'
-            '#................#......#..#'
-            '#..#####..#....#####...#...#'
-            '#..#......#...........##...#'
-            '#..#..##########......##...#'
-            '#..#.................###...#'
-            '#..........................#'
-            '############################'
-        )
-        Gems = @(
-            '5,12'
-            '6,12'
-            '7,12'
-            '8,12'
-            '9,12'
-            '10,10'
-            '10,11'
-            '8,10'
-            '12,9'
-            '14,8'
-            '16,8'
-            '18,8'
-            '14,6'
-            '16,5'
-            '17,4'
-            '19,4'
-            '21,4'
-            '24,5'
-            '24,7'
-            '23,8'
-            '22,9'
-            '21,3'
-            '23,3'
-            '25,2'
-        )
-        Switches = @(
-            '10,12'
-        )
-        Hazards = @(
-            '21,6'
-        )
-        Enemies = @(
-            @{ X = 8; Y = 12; Kind = 'RUSHER' }
-            @{ X = 13; Y = 9; Kind = 'FLANKER' }
-            @{ X = 22; Y = 3; Kind = 'WARDEN' }
-        )
-        Props = @(
-            @{ X = 3; Y = 12; Mesh = 'tree_round'; YawDegrees = 22.0 }
-            @{ X = 7; Y = 13; Mesh = 'tree_round'; YawDegrees = 214.0 }
-            @{ X = 12; Y = 10; Mesh = 'bridge_span'; YawDegrees = 0.0 }
-            @{ X = 17; Y = 8; Mesh = 'bridge_span'; YawDegrees = 0.0 }
-            @{ X = 18; Y = 4; Mesh = 'stone_stack'; YawDegrees = 96.0 }
-            @{ X = 10; Y = 12; Mesh = 'switch_pedestal'; YawDegrees = 0.0 }
-            @{ X = 23; Y = 2; Mesh = 'portal_arch'; YawDegrees = 0.0 }
-            @{ X = 24; Y = 2; Mesh = 'tower_toy'; YawDegrees = 0.0 }
-            @{ X = 21; Y = 2; Mesh = 'stone_stack'; YawDegrees = 0.0 }
-            @{ X = 5; Y = 3; Mesh = 'tree_round'; YawDegrees = 148.0 }
         )
     }
 }

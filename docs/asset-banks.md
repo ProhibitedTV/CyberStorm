@@ -1,92 +1,94 @@
 # Asset Banks
 
-CyberStorm still boots with the same contract:
+CyberStorm now boots through a tiny bootstrap, not a stage-two self-loader:
 
-- boot sector at LBA `0`
-- stage two immediately after it
-- stage two loaded to `1000:0000`
-- far-return into offset `0000`
-
-The bank system adds a second content path after that handoff: once stage two starts, it can load additional read-only payloads from later floppy sectors into their own conventional-memory segments.
+- boot sector at `LBA 0`
+- bootstrap immediately after it
+- stage two after the bootstrap
+- bootstrap loads every post-boot bank before far-returning into stage two at `1000:0000`
 
 ## Why This Exists
 
-Stage two still has to fit in one 64 KiB load segment because the boot sector never moves `ES` while reading it. That is the hard ceiling for code plus in-segment data.
+Stage two still has to fit in one `64 KiB` load segment. That is the hard ceiling for live code plus in-segment data.
 
-Asset banks are the path beyond that ceiling:
+Asset banks are the release path beyond that ceiling:
 
-- keep boot simple
+- keep the boot sector simple
 - keep stage two BIOS-friendly
-- move bulky read-only content out of the initial stage-two segment
-- make later growth possible without redesigning the bootloader first
+- move bulky read-only payloads out of the resident stage-two segment
+- make later growth possible without redesigning the runtime model first
 
 ## Current Scope
 
-CyberStorm now banks three authored payloads:
+CyberStorm currently banks six payloads:
 
+- the machine-code helper bank
+- texture bank A
+- texture bank B
 - the sector map pool
-- fixed-size 64x24 transparent presentation assets for splash, title, attract/demo, sector-entry, and ending scenes
-- low-poly scene, prop, actor, and gameplay-kit geometry for the 3D render path
+- the fixed-size presentation scene kit
+- low-poly gameplay and frontend geometry
 
 That means:
 
-- `assets/sectors.psd1` still owns the source-of-truth maps
-- `assets/presentation.psd1` now owns the source-of-truth scene banners
-- `assets/geometry.psd1` now owns the source-of-truth low-poly scene and gameplay geometry
-- `build/generated_maps.inc` still exists for review
-- `build/generated_presentation_content.inc` still exists for review
-- `build/generated_geometry.inc` still exists for review
-- `build/cyberstorm-map-bank.bin` now carries the runtime map payload
-- `build/cyberstorm-presentation-bank.bin` now carries the runtime presentation payload
-- `build/cyberstorm-geometry-bank.bin` now carries the runtime geometry payload
-- `build/generated_bank_layout.inc` tells stage two where that payload lives on disk
-- stage two loads the map bank into `MAP_BANK_SEG`
-- stage two loads the presentation bank into `PRESENT_BANK_SEG`
-- stage two loads the geometry bank into `GEOMETRY_BANK_SEG`
-
-The benefits are immediate:
-
-- all authored map templates no longer consume stage-two resident bytes, but gameplay still picks and copies them the same way at runtime
-- splash/title/end scenes, attract/demo overlays, and sector-entry cards can use richer art without growing stage two or touching the boot sector
-- the software 3D scene/gameplay path can keep richer meshes and kit data out of resident stage-two memory
+- `assets/machine_code.psd1` is the source of truth for code-bank helpers and lookup tables
+- `assets/sectors.psd1` is still the source of truth for authored maps and campaign metadata
+- `assets/presentation.psd1` owns the banked scene banners
+- `assets/geometry.psd1` owns low-poly scene, prop, actor, gameplay-kit, and texture-bank content
+- `build/generated_machine_code.inc`, `build/generated_maps.inc`, `build/generated_presentation_content.inc`, and `build/generated_geometry.inc` stay readable for review
+- `build/generated_bank_layout.inc` tells the bootstrap where every bank lives on disk and where it should be loaded in memory
 
 ## Runtime Contract
 
-The minimal bank loader lives in [src/game/banks.asm](../src/game/banks.asm).
+The bootstrap path lives in [src/bootstrap.asm](../src/bootstrap.asm).
 
 Important assumptions:
 
-- `start` stores BIOS boot drive `DL` into `boot_drive` before any BIOS calls clobber it
-- the loader uses BIOS `INT 13h` sector reads after stage two starts
-- LBA is converted to CHS using the same `18 sectors/track, 2 heads` geometry the bootloader already assumes
-- each bank currently loads into one destination segment, so padded bank size must stay within 64 KiB
+- the bootstrap preserves the BIOS boot drive and performs all post-boot `INT 13h` reads
+- `generated_bank_layout.inc` must agree with the actual image layout
+- each bank currently loads into one destination segment, so padded bank size must stay within `64 KiB`
+- texture bank A and texture bank B are already close to that per-segment ceiling
 
-If a required bank fails to load, stage two drops back to text mode and prints a fatal bank error instead of continuing with half-initialized content.
+Current load segments:
+
+- code bank -> `2000:0000`
+- map bank -> `2800:0000`
+- presentation bank -> `3000:0000`
+- geometry bank -> `3800:0000`
+- texture bank A -> `4000:0000`
+- texture bank B -> `5000:0000`
+
+If a required bank fails to load, the bootstrap prints a fatal error instead of handing stage two a half-initialized runtime.
 
 ## Build Layout
 
-The build now resolves banks in two passes:
+The build resolves bank layout in two passes:
 
-1. generate content and a provisional bank layout include
+1. generate content and a provisional bank-layout include
 2. assemble stage two to learn its final sector count
-3. rewrite bank metadata so banks start immediately after stage two
-4. assemble stage two again until the bank metadata is stable
+3. rewrite bank metadata so the banks start immediately after stage two
+4. rebuild until the bootstrap and bank layout agree
 
-That keeps the existing boot contract while still letting stage two know the real post-boot LBA layout.
+That keeps the boot contract stable while still letting the repo grow beyond the stage-two segment.
 
 ## Current Files
 
+- [assets/machine_code.psd1](../assets/machine_code.psd1)
 - [assets/sectors.psd1](../assets/sectors.psd1)
 - [assets/presentation.psd1](../assets/presentation.psd1)
 - [assets/geometry.psd1](../assets/geometry.psd1)
+- [build/generated_machine_code.inc](../build/generated_machine_code.inc)
 - [build/generated_maps.inc](../build/generated_maps.inc)
 - [build/generated_presentation_content.inc](../build/generated_presentation_content.inc)
 - [build/generated_geometry.inc](../build/generated_geometry.inc)
+- [build/generated_bank_layout.inc](../build/generated_bank_layout.inc)
+- [build/cyberstorm-code-bank.bin](../build/cyberstorm-code-bank.bin)
+- [build/cyberstorm-texture-bank.bin](../build/cyberstorm-texture-bank.bin)
+- [build/cyberstorm-texture-bank-b.bin](../build/cyberstorm-texture-bank-b.bin)
 - [build/cyberstorm-map-bank.bin](../build/cyberstorm-map-bank.bin)
 - [build/cyberstorm-presentation-bank.bin](../build/cyberstorm-presentation-bank.bin)
 - [build/cyberstorm-geometry-bank.bin](../build/cyberstorm-geometry-bank.bin)
-- [build/generated_bank_layout.inc](../build/generated_bank_layout.inc)
-- [src/game/banks.asm](../src/game/banks.asm)
+- [src/bootstrap.asm](../src/bootstrap.asm)
 
 ## VirtualBox Test Steps
 
@@ -97,34 +99,29 @@ powershell -ExecutionPolicy Bypass -File .\scripts\build.ps1
 ```
 
 2. Open `build\cyberstorm-build-report.txt` and confirm:
-   - `Map bank`, `Presentation bank`, and `Geometry bank` entries all exist
-   - all three banks have their own LBA ranges after stage two
-   - the load segments are `7000:0000`, `7800:0000`, and `8000:0000`
+   - code, texture, map, presentation, and geometry bank entries all exist
+   - all banks have their own LBA ranges after stage two
+   - the load segments match the addresses above
 
 3. Boot `build\cyberstorm.vfd` in VirtualBox.
 
-4. Start several new runs and sectors. The game should behave normally, which now proves:
-   - stage two booted correctly
-   - the post-boot banks loaded successfully
-   - sector templates are being copied from the banked map payload rather than stage-two labels
-   - splash/title/end scenes, attract/demo overlays, and sector-entry cards can read their scene-kit art from the presentation bank
-   - the grouped scene renderer and gameplay 3D path can read their geometry from the geometry bank
+4. Verify that splash/title, gameplay, and sector-entry scenes behave normally. That proves:
+   - the bootstrap loaded every bank
+   - stage two is reading authored maps from the map bank
+   - frontend scenes are reading presentation assets from the presentation bank
+   - the renderer is reading geometry, texture, and code-bank assets from the preloaded segments
 
-5. If startup fails with a text-mode bank error, inspect:
+5. If startup fails, inspect:
    - `build/generated_bank_layout.inc`
+   - `build/cyberstorm-build-report.txt`
+   - `build/cyberstorm-code-bank.bin`
+   - `build/cyberstorm-texture-bank.bin`
+   - `build/cyberstorm-texture-bank-b.bin`
    - `build/cyberstorm-map-bank.bin`
    - `build/cyberstorm-presentation-bank.bin`
    - `build/cyberstorm-geometry-bank.bin`
-   - `build/cyberstorm-build-report.txt`
-   - `build/game.lst`
+   - `build/bootstrap.lst`
 
 ## Next Steps
 
-The same path can later bank:
-
-- larger intro/splash art beyond the fixed banner format
-- extra sector families
-- scripted demo/replay input streams
-- bigger music tables or alternate theme sets
-
-without touching the boot sector again.
+This path still leaves room for later bank growth, but the immediate rule is simple: prefer deleting stale payloads and fake helpers before inventing new bank consumers.

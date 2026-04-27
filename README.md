@@ -120,10 +120,10 @@ This section is intentionally stable. Exact byte counts, LBA ranges, and generat
 | --- | --- |
 | Boot path | Boot sector at `LBA 0`, tiny bootstrap immediately after it, then stage two and the asset packs follow on the BIOS HDD image. |
 | Stage-two contract | Stage two still fits a single `64 KiB` real-mode load segment, with exact current headroom reported by the build. |
-| Banked payloads | Map, presentation, and geometry payloads load into `7000:0000`, `7800:0000`, and `8000:0000`. |
+| Banked payloads | Code, map, presentation, geometry, and texture payloads load into `2000:0000`, `2800:0000`, `3000:0000`, `3800:0000`, `4000:0000`, and `5000:0000`. |
 | Public gallery | `title`, `beauty`, and `action` README slots are sourced from the verified showcase manifest under [build/showcase/](build/showcase). |
 | Validation stack | Build, balance, replay, regression, frontend verify, VM smoke, runtime verify, and showcase capture all write reviewable reports. |
-| Release defaults | `MUSIC` audio policy, grouped low-poly scenes, camera-relative gameplay-room 3D rendering, and an enhanced VBE present path that now displays the `320x240` gameplay surface at exact `2x` inside the new boot chain. |
+| Release defaults | `MUSIC` audio policy, grouped low-poly frontend scenes, the stable reference gameplay 3D path by default, the experimental machine path only when explicitly requested, and an enhanced VBE present path that displays the `320x240` gameplay surface at exact `2x` when the handoff marks it safe. |
 
 ## Why This Is A Strong AI-Assisted Development Example
 
@@ -229,6 +229,7 @@ The replay harness turns the authored attract demos into deterministic gameplay 
 - simulates authored anchor placement, scenario shard-pool selection, movement, EMP use, hunter turns, spoof routing, surge hits, sector exits, and scoring
 - compares the observed end state against the `Expected` block stored beside each demo in [assets/demos.psd1](assets/demos.psd1)
 - writes a report with suggested replacement expectation blocks if an intentional gameplay change shifted the result
+- keeps the runtime-verify lane focused on stable opening-run checkpoints instead of carrying stale key/portal scripts that no longer match the shipped movement path
 
 The normal build runs this automatically and writes [build/cyberstorm-replay-report.txt](build/cyberstorm-replay-report.txt).
 
@@ -321,6 +322,7 @@ This is the new closed-loop proof lane. It does not trust only the PowerShell re
 - waits for a dedicated `REPLAY PASS` or `REPLAY FAIL` scene
 - samples fixed verification markers from the screenshot instead of relying on OCR
 - records the expected and observed runtime signatures beside the VBox log
+- only gates the stable opening Subgrid checkpoints right now; longer late-route demos were removed from this lane once they stopped representing truthful shipped behavior
 
 Artifacts:
 
@@ -342,8 +344,8 @@ powershell -ExecutionPolicy Bypass -File .\scripts\build.ps1 -CaptureShowcase
 This turns deterministic demos into reproducible public-facing captures:
 
 - a verified `title` shot from the VM smoke title frame
-- a verified `beauty` shot from the configured AdventureRealm beauty anchor in `assets/sectors.psd1` (currently `thermal-attract-a`)
-- a verified `action` shot from the configured AdventureRealm action anchor in `assets/sectors.psd1` (currently `vault-attract-b`)
+- a verified `beauty` shot from `Campaign.Showcase.Beauty` in `assets/sectors.psd1` (currently `thermal-attract-a`)
+- a verified `action` shot from `Campaign.Showcase.Action` in `assets/sectors.psd1` (currently `vault-attract-b`)
 - a machine-readable gallery manifest under `build/showcase/` so the README can publish fresh captures or preserve the last verified set without rotating manual screenshots
 
 Artifacts:
@@ -371,11 +373,15 @@ CyberStorm now has a layered confidence model:
 - [build/generated_art.inc](build/generated_art.inc)
 - [build/generated_presentation_content.inc](build/generated_presentation_content.inc)
 - [build/generated_geometry.inc](build/generated_geometry.inc)
+- [build/generated_machine_code.inc](build/generated_machine_code.inc)
 - [build/generated_sector_content.inc](build/generated_sector_content.inc)
 - [build/generated_maps.inc](build/generated_maps.inc)
 - [build/generated_demos.inc](build/generated_demos.inc)
 - [build/generated_music.inc](build/generated_music.inc)
 - [build/generated_bank_layout.inc](build/generated_bank_layout.inc)
+- [build/cyberstorm-code-bank.bin](build/cyberstorm-code-bank.bin)
+- [build/cyberstorm-texture-bank.bin](build/cyberstorm-texture-bank.bin)
+- [build/cyberstorm-texture-bank-b.bin](build/cyberstorm-texture-bank-b.bin)
 - [build/cyberstorm-map-bank.bin](build/cyberstorm-map-bank.bin)
 - [build/cyberstorm-presentation-bank.bin](build/cyberstorm-presentation-bank.bin)
 - [build/cyberstorm-geometry-bank.bin](build/cyberstorm-geometry-bank.bin)
@@ -399,8 +405,13 @@ CyberStorm now has a layered confidence model:
 - [build/generated_art.inc](build/generated_art.inc): generated sprite/tile data as MASM sees it
 - [build/generated_presentation_content.inc](build/generated_presentation_content.inc): generated scene-kit asset offsets and sizes as MASM sees them
 - [build/generated_geometry.inc](build/generated_geometry.inc): generated scene/camera tables, gameplay-kit tables, and mesh offsets as MASM sees them
+- [build/generated_machine_code.inc](build/generated_machine_code.inc): generated code-bank helper/table offsets as MASM sees them
 - [build/generated_demos.inc](build/generated_demos.inc): generated attract-mode scripts as MASM sees them
-- [build/generated_bank_layout.inc](build/generated_bank_layout.inc): runtime bank metadata
+- [build/generated_bank_layout.inc](build/generated_bank_layout.inc): bootstrap bank layout metadata
+- [build/cyberstorm-machine-code-report.txt](build/cyberstorm-machine-code-report.txt): generated helper/table inventory for the code bank
+- [build/cyberstorm-code-bank.bin](build/cyberstorm-code-bank.bin): raw machine-code helper and table payload
+- [build/cyberstorm-texture-bank.bin](build/cyberstorm-texture-bank.bin): raw texture page A payload
+- [build/cyberstorm-texture-bank-b.bin](build/cyberstorm-texture-bank-b.bin): raw texture page B payload
 - [build/cyberstorm-map-bank.bin](build/cyberstorm-map-bank.bin): raw post-boot map payload
 - [build/cyberstorm-presentation-bank.bin](build/cyberstorm-presentation-bank.bin): raw post-boot presentation payload
 - [build/cyberstorm-geometry-bank.bin](build/cyberstorm-geometry-bank.bin): raw post-boot low-poly scene and mesh payload

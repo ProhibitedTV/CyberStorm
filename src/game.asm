@@ -9,13 +9,11 @@ jmp start
 include game\constants.inc
 include debug_config.inc
 include audio_config.inc
-include generated_bank_layout.inc
 include generated_machine_code.inc
 include generated_presentation_content.inc
 include game\audio.asm
 include game\feedback.asm
 include game\input.asm
-include game\banks.asm
 include game\main.asm
 include game\gameplay.asm
 include game\render\framebuffer.asm
@@ -35,7 +33,6 @@ include game\render\entities.asm
 include game\render\effects.asm
 include game\state.asm
 include game\art.asm
-include game\maps.asm
 include game\render\enhanced_present.asm
 
 end start

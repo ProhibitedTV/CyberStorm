@@ -3,30 +3,25 @@
 ; demo scripts are compact [action, repeat-count] byte pairs
 ; edit the demo source file instead of this generated include
 
-DEMO_COUNT EQU 17
+DEMO_COUNT EQU 14
 
 demo_start_sector_table db 1, 1, 1, 1, 1, 1, 1, 1
-                        db 1, 1, 1, 2, 2, 3, 3, 4
-                        db 4
+                        db 2, 2, 3, 3, 4, 4
 demo_seed_table dw 1234h, 2468h, 1357h, 1357h, 1357h, 1357h
-                dw 1357h, 1357h, 1357h, 1357h, 1357h, 3579h
-                dw 468Ah, 579Bh, 68ACh, 79BDh, 8ACEh
+                dw 1357h, 1357h, 3579h, 468Ah, 579Bh, 68ACh
+                dw 79BDh, 8ACEh
 demo_script_table dw offset demo_script_0, offset demo_script_1, offset demo_script_2, offset demo_script_3
                   dw offset demo_script_4, offset demo_script_5, offset demo_script_6, offset demo_script_7
                   dw offset demo_script_8, offset demo_script_9, offset demo_script_10, offset demo_script_11
-                  dw offset demo_script_12, offset demo_script_13, offset demo_script_14, offset demo_script_15
-                  dw offset demo_script_16
+                  dw offset demo_script_12, offset demo_script_13
 demo_name_table dw offset demo_name_0, offset demo_name_1, offset demo_name_2, offset demo_name_3
                 dw offset demo_name_4, offset demo_name_5, offset demo_name_6, offset demo_name_7
                 dw offset demo_name_8, offset demo_name_9, offset demo_name_10, offset demo_name_11
-                dw offset demo_name_12, offset demo_name_13, offset demo_name_14, offset demo_name_15
-                dw offset demo_name_16
+                dw offset demo_name_12, offset demo_name_13
 demo_attract_flag_table db 1, 1, 0, 0, 0, 0, 0, 0
-                        db 0, 0, 0, 1, 1, 1, 1, 1
-                        db 1
+                        db 1, 1, 1, 1, 1, 1
 demo_capture_tick_table db 52, 50, 46, 48, 56, 64, 58, 66
-                        db 92, 120, 136, 58, 54, 60, 56, 62
-                        db 58
+                        db 58, 54, 60, 56, 62, 58
 
 ; Demo 1: SUBGRID BEAUTY PASS
 demo_script_0 db DEMO_ACTION_WAIT, 40
@@ -77,78 +72,38 @@ demo_script_6 db DEMO_ACTION_WAIT, 40
 demo_script_7 db DEMO_ACTION_WAIT, 40
               db DEMO_ACTION_CHARGE, 1
               db DEMO_ACTION_WAIT, 10
-              db DEMO_ACTION_FORWARD, 2
+              db DEMO_ACTION_FORWARD, 10
               db DEMO_ACTION_FLAME, 1
               db DEMO_ACTION_WAIT, 4
               db DEMO_ACTION_END, 0
 
-; Demo 9: ADVENTURE KEY VERIFY
-demo_script_8 db DEMO_ACTION_WAIT, 40
-              db DEMO_ACTION_CHARGE, 1
-              db DEMO_ACTION_WAIT, 10
-              db DEMO_ACTION_TURN_RIGHT, 4
-              db DEMO_ACTION_FORWARD, 18
+; Demo 9: SWITCHYARD BEAUTY PASS
+demo_script_8 db DEMO_ACTION_WAIT, 28
+              db DEMO_ACTION_FORWARD, 10
               db DEMO_ACTION_TURN_LEFT, 4
-              db DEMO_ACTION_FORWARD, 14
-              db DEMO_ACTION_WAIT, 2
-              db DEMO_ACTION_END, 0
-
-; Demo 10: ADVENTURE PORTAL UNLOCK VERIFY
-demo_script_9 db DEMO_ACTION_WAIT, 40
-              db DEMO_ACTION_CHARGE, 1
-              db DEMO_ACTION_WAIT, 10
-              db DEMO_ACTION_TURN_RIGHT, 4
-              db DEMO_ACTION_FORWARD, 18
-              db DEMO_ACTION_TURN_LEFT, 4
-              db DEMO_ACTION_FORWARD, 16
-              db DEMO_ACTION_FLAME, 1
-              db DEMO_ACTION_TURN_RIGHT, 4
-              db DEMO_ACTION_FORWARD, 14
+              db DEMO_ACTION_FORWARD, 12
               db DEMO_ACTION_WAIT, 8
               db DEMO_ACTION_END, 0
 
-; Demo 11: ADVENTURE PORTAL COMPLETE VERIFY
-demo_script_10 db DEMO_ACTION_WAIT, 40
-               db DEMO_ACTION_CHARGE, 1
-               db DEMO_ACTION_WAIT, 10
-               db DEMO_ACTION_TURN_RIGHT, 4
-               db DEMO_ACTION_FORWARD, 18
-               db DEMO_ACTION_TURN_LEFT, 4
-               db DEMO_ACTION_FORWARD, 16
-               db DEMO_ACTION_FLAME, 1
-               db DEMO_ACTION_TURN_RIGHT, 4
-               db DEMO_ACTION_FORWARD, 14
-               db DEMO_ACTION_ENTER, 1
-               db DEMO_ACTION_WAIT, 12
-               db DEMO_ACTION_END, 0
+; Demo 10: SWITCHYARD ACTION PASS
+demo_script_9 db DEMO_ACTION_WAIT, 24
+              db DEMO_ACTION_FORWARD, 8
+              db DEMO_ACTION_CHARGE, 1
+              db DEMO_ACTION_WAIT, 10
+              db DEMO_ACTION_FLAME, 1
+              db DEMO_ACTION_WAIT, 10
+              db DEMO_ACTION_END, 0
 
-; Demo 12: SWITCHYARD BEAUTY PASS
-demo_script_11 db DEMO_ACTION_WAIT, 28
-               db DEMO_ACTION_FORWARD, 10
-               db DEMO_ACTION_TURN_LEFT, 4
-               db DEMO_ACTION_FORWARD, 12
-               db DEMO_ACTION_WAIT, 8
-               db DEMO_ACTION_END, 0
-
-; Demo 13: SWITCHYARD ACTION PASS
-demo_script_12 db DEMO_ACTION_WAIT, 24
-               db DEMO_ACTION_FORWARD, 8
-               db DEMO_ACTION_CHARGE, 1
-               db DEMO_ACTION_WAIT, 10
-               db DEMO_ACTION_FLAME, 1
-               db DEMO_ACTION_WAIT, 10
-               db DEMO_ACTION_END, 0
-
-; Demo 14: THERMAL BEAUTY PASS
-demo_script_13 db DEMO_ACTION_WAIT, 30
+; Demo 11: THERMAL BEAUTY PASS
+demo_script_10 db DEMO_ACTION_WAIT, 30
                db DEMO_ACTION_FORWARD, 12
                db DEMO_ACTION_TURN_LEFT, 4
                db DEMO_ACTION_FORWARD, 10
                db DEMO_ACTION_WAIT, 8
                db DEMO_ACTION_END, 0
 
-; Demo 15: THERMAL ACTION PASS
-demo_script_14 db DEMO_ACTION_WAIT, 22
+; Demo 12: THERMAL ACTION PASS
+demo_script_11 db DEMO_ACTION_WAIT, 22
                db DEMO_ACTION_FORWARD, 8
                db DEMO_ACTION_FLAME, 1
                db DEMO_ACTION_WAIT, 8
@@ -156,8 +111,8 @@ demo_script_14 db DEMO_ACTION_WAIT, 22
                db DEMO_ACTION_WAIT, 10
                db DEMO_ACTION_END, 0
 
-; Demo 16: VAULT BEAUTY PASS
-demo_script_15 db DEMO_ACTION_WAIT, 30
+; Demo 13: VAULT BEAUTY PASS
+demo_script_12 db DEMO_ACTION_WAIT, 30
                db DEMO_ACTION_FORWARD, 10
                db DEMO_ACTION_TURN_RIGHT, 4
                db DEMO_ACTION_WAIT, 6
@@ -165,8 +120,8 @@ demo_script_15 db DEMO_ACTION_WAIT, 30
                db DEMO_ACTION_WAIT, 8
                db DEMO_ACTION_END, 0
 
-; Demo 17: VAULT ACTION PASS
-demo_script_16 db DEMO_ACTION_WAIT, 24
+; Demo 14: VAULT ACTION PASS
+demo_script_13 db DEMO_ACTION_WAIT, 24
                db DEMO_ACTION_FORWARD, 8
                db DEMO_ACTION_CHARGE, 1
                db DEMO_ACTION_WAIT, 8
@@ -184,12 +139,9 @@ demo_name_4 db 'ADVENTURE RUN VERIFY', 0
 demo_name_5 db 'ADVENTURE JUMP GLIDE VERIFY', 0
 demo_name_6 db 'ADVENTURE CHARGE HIT VERIFY', 0
 demo_name_7 db 'ADVENTURE SWITCH VERIFY', 0
-demo_name_8 db 'ADVENTURE KEY VERIFY', 0
-demo_name_9 db 'ADVENTURE PORTAL UNLOCK VERIFY', 0
-demo_name_10 db 'ADVENTURE PORTAL COMPLETE VERIFY', 0
-demo_name_11 db 'SWITCHYARD BEAUTY PASS', 0
-demo_name_12 db 'SWITCHYARD ACTION PASS', 0
-demo_name_13 db 'THERMAL BEAUTY PASS', 0
-demo_name_14 db 'THERMAL ACTION PASS', 0
-demo_name_15 db 'VAULT BEAUTY PASS', 0
-demo_name_16 db 'VAULT ACTION PASS', 0
+demo_name_8 db 'SWITCHYARD BEAUTY PASS', 0
+demo_name_9 db 'SWITCHYARD ACTION PASS', 0
+demo_name_10 db 'THERMAL BEAUTY PASS', 0
+demo_name_11 db 'THERMAL ACTION PASS', 0
+demo_name_12 db 'VAULT BEAUTY PASS', 0
+demo_name_13 db 'VAULT ACTION PASS', 0

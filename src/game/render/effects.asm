@@ -615,21 +615,24 @@ draw_sector_entry_card_overlay:
     mov bx, 108
     mov dx, 58
     call get_sector_name_ptr
+    mov cx, 192
     call get_sector_title_color
     mov ah, al
-    call draw_text_small
+    call draw_text_small_clipped
     ; Scenario callouts sit on the existing sector-entry card so authored
     ; breach routes read as part of the same intro beat as the transition wipe.
     mov bx, 90
     mov dx, 72
     call get_current_template_scenario_name_ptr
     mov ah, PAL_WHITE
-    call draw_text_small
+    mov cx, 192
+    call draw_text_small_clipped
     mov bx, 76
     mov dx, 84
     call get_current_template_scenario_entry_ptr
     mov ah, PAL_WHITE
-    call draw_text_small
+    mov cx, 192
+    call draw_text_small_clipped
     pop ax
 
 sector_entry_card_done:

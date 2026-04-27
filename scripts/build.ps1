@@ -1469,44 +1469,34 @@ function Write-GeneratedSectorIncludes {
     }
 
     $campaignDistricts = @()
+    $campaignShowcaseSummary = 'none'
     if ($contentData.ContainsKey('Campaign')) {
         $campaignData = $contentData['Campaign']
         if (-not ($campaignData -is [System.Collections.IDictionary])) {
             throw ("Campaign in {0} must be a hashtable." -f $SourcePath)
         }
+        if (-not $campaignData.ContainsKey('Showcase')) {
+            throw ("Campaign in {0} must define a 'Showcase' table." -f $SourcePath)
+        }
         if (-not $campaignData.ContainsKey('Districts')) {
             throw ("Campaign in {0} must define a 'Districts' array." -f $SourcePath)
         }
-        $campaignDistricts = @($campaignData['Districts'])
-    } elseif ($contentData.ContainsKey('AdventureRealm')) {
-        $legacyRealm = $contentData['AdventureRealm']
-        if (-not ($legacyRealm -is [System.Collections.IDictionary])) {
-            throw ("AdventureRealm in {0} must be a hashtable." -f $SourcePath)
+        $campaignShowcase = $campaignData['Showcase']
+        if (-not ($campaignShowcase -is [System.Collections.IDictionary])) {
+            throw ("Campaign.Showcase in {0} must be a hashtable." -f $SourcePath)
         }
-        $campaignDistricts = @([ordered]@{
-                Id = 'legacy-realm'
-                Title = [string]$legacyRealm['Title']
-                Intro = [string]$legacyRealm['Intro']
-                Start = [string]$legacyRealm['Start']
-                Exit = [string]$legacyRealm['Portal']
-                ObjectiveCounts = @{
-                    RequiredDataShards = [int]$legacyRealm['RequiredGems']
-                    RelayCount = @($legacyRealm['Switches']).Count
-                    KeycardCount = @($legacyRealm['Key']).Count
-                }
-                Rows = @($legacyRealm['Rows'])
-                MacroZones = @($legacyRealm['MacroZones'])
-                RouteBeats = @($legacyRealm['RouteBeats'])
-                Chunks = @($legacyRealm['Chunks'])
-                CaptureAnchors = $legacyRealm['CaptureAnchors']
-                NextDistrict = 0
-                Gems = @($legacyRealm['Gems'])
-                Switches = @($legacyRealm['Switches'])
-                Key = @($legacyRealm['Key'])
-                Hazards = @($legacyRealm['Hazards'])
-                Enemies = @($legacyRealm['Enemies'])
-                Props = @($legacyRealm['Props'])
-            })
+        foreach ($captureKey in @('Beauty', 'Action')) {
+            if (-not $campaignShowcase.ContainsKey($captureKey)) {
+                throw ("Campaign.Showcase in {0} is missing '{1}'." -f $SourcePath, $captureKey)
+            }
+
+            $captureId = ([string]$campaignShowcase[$captureKey]).Trim()
+            if ([string]::IsNullOrWhiteSpace($captureId) -or $captureId -notmatch '^[a-z0-9]+(?:-[a-z0-9]+)*$') {
+                throw ("Campaign.Showcase.{0} in {1} must reference a lowercase demo Id. Found '{2}'." -f $captureKey, $SourcePath, $campaignShowcase[$captureKey])
+            }
+        }
+        $campaignShowcaseSummary = ("beauty={0}, action={1}" -f ([string]$campaignShowcase['Beauty']).Trim(), ([string]$campaignShowcase['Action']).Trim())
+        $campaignDistricts = @($campaignData['Districts'])
     }
 
     if ($campaignDistricts.Count -gt 0) {
@@ -1984,12 +1974,13 @@ function Write-GeneratedSectorIncludes {
         AnchorSummary = ($anchorSummary -join ' | ')
         ScenarioSummary = ($scenarioSummary -join ' | ')
         ShardPoolSummary = ($shardPoolSummary -join ' | ')
-        AdventureRealmSummary = if ($campaignDistrictSummary.Count -gt 0) { ($campaignDistrictSummary -join ' | ') } else { 'none' }
-        AdventureZoneSummary = if ($campaignZoneSummary.Count -gt 0) { ($campaignZoneSummary -join ' | ') } else { 'none' }
-        AdventureRouteSummary = if ($campaignRouteSummary.Count -gt 0) { ($campaignRouteSummary -join ' | ') } else { 'none' }
-        AdventureChunkSummary = if ($campaignChunkSummary.Count -gt 0) { ($campaignChunkSummary -join ' | ') } else { 'none' }
-        AdventureCaptureSummary = if ($campaignCaptureSummary.Count -gt 0) { ($campaignCaptureSummary -join ' | ') } else { 'none' }
-        AdventureRealmPresent = ($campaignDistrictSummary.Count -gt 0)
+        CampaignDistrictSummary = if ($campaignDistrictSummary.Count -gt 0) { ($campaignDistrictSummary -join ' | ') } else { 'none' }
+        CampaignZoneSummary = if ($campaignZoneSummary.Count -gt 0) { ($campaignZoneSummary -join ' | ') } else { 'none' }
+        CampaignRouteSummary = if ($campaignRouteSummary.Count -gt 0) { ($campaignRouteSummary -join ' | ') } else { 'none' }
+        CampaignChunkSummary = if ($campaignChunkSummary.Count -gt 0) { ($campaignChunkSummary -join ' | ') } else { 'none' }
+        CampaignCaptureSummary = if ($campaignCaptureSummary.Count -gt 0) { ($campaignCaptureSummary -join ' | ') } else { 'none' }
+        CampaignShowcaseSummary = $campaignShowcaseSummary
+        CampaignPresent = ($campaignDistrictSummary.Count -gt 0)
     }
 }
 
@@ -2207,7 +2198,7 @@ function Write-GeneratedRuntimeVerifyInclude {
 
     $lines = New-Object 'System.Collections.Generic.List[string]'
     $lines.Add('; generated by scripts/build.ps1')
-    $lines.Add('; source: replay-harness results')
+    $lines.Add('; source: authored demo expectations (replay harness checkpoints when present)')
     $lines.Add('; edit assets/demos.psd1 or gameplay constants instead of this include')
     $lines.Add('')
     $lines.Add(("VERIFY_DEMO_COUNT EQU {0}" -f @($ReplayResults).Count))
@@ -2226,7 +2217,11 @@ function Write-GeneratedRuntimeVerifyInclude {
         $checkpointValues = @($result.CheckpointSignatures | ForEach-Object { [int]$_ })
         $checkpointLabel = if ($checkpointValues.Count -gt 0) { "verify_demo_{0}_checkpoints" -f $demoIndex } else { $null }
 
-        $finalSignature = [int]$result.RuntimeFinalSignature
+        $finalSignature = if ($result.PSObject.Properties.Name -contains 'ExpectedRuntimeFinalSignature') {
+            [int]$result.ExpectedRuntimeFinalSignature
+        } else {
+            [int]$result.RuntimeFinalSignature
+        }
         if ($demoIndex -eq $corruptIndex) {
             if ($checkpointValues.Count -gt 0) {
                 $checkpointValues[0] = (($checkpointValues[0] -bxor 0x00FF) -band 0xFFFF)
@@ -2683,7 +2678,7 @@ function Write-GeneratedMachineCodeAssets {
     $lines = New-Object 'System.Collections.Generic.List[string]'
     $lines.Add('; generated by scripts/build.ps1')
     $lines.Add(("; source: {0}" -f $SourcePath))
-    $lines.Add('; raw machine-code kernels and code-bank tables')
+    $lines.Add('; raw machine-code helpers and code-bank tables')
     $lines.Add('')
 
     $reportLines = New-Object 'System.Collections.Generic.List[string]'
@@ -2756,7 +2751,7 @@ function Write-GeneratedMachineCodeAssets {
         $lines.Add('')
 
         $kernelSummary.Add(("{0}@{1} ({2} bytes, {3})" -f $kernelId, (Format-Hex16 $entryOffset), $bytes.Count, $stageKey))
-        $reportLines.Add(("Kernel: {0}" -f $kernelId))
+        $reportLines.Add(("Helper: {0}" -f $kernelId))
         $reportLines.Add(("  Stage: {0}" -f $stageKey))
         $reportLines.Add(("  Entry offset: {0}" -f (Format-Hex16 $entryOffset)))
         $reportLines.Add(("  Byte count: {0}" -f $bytes.Count))
@@ -4705,27 +4700,6 @@ function Get-CampaignGameplayArtSummary {
     }
 }
 
-function Get-AdventureShowcaseCaptureSummary {
-    param(
-        [string]$SectorSourcePath
-    )
-
-    $sectorData = Import-StructuredDataFile -SourcePath $SectorSourcePath -Label 'sector source'
-    if (-not $sectorData.ContainsKey('AdventureRealm')) {
-        return 'none'
-    }
-
-    $adventureData = $sectorData['AdventureRealm']
-    if ($null -eq $adventureData -or -not ($adventureData -is [System.Collections.IDictionary]) -or -not $adventureData.ContainsKey('CaptureAnchors')) {
-        return 'none'
-    }
-
-    $captureAnchors = $adventureData['CaptureAnchors']
-    $beauty = if ($captureAnchors.ContainsKey('Beauty')) { [string]$captureAnchors['Beauty'] } else { 'n/a' }
-    $action = if ($captureAnchors.ContainsKey('Action')) { [string]$captureAnchors['Action'] } else { 'n/a' }
-    return ("beauty={0}, action={1}" -f $beauty, $action)
-}
-
 function Write-GeneratedArtInclude {
     param(
         [string]$SourcePath,
@@ -5508,8 +5482,8 @@ if ($render2DOverride) {
 } else {
     $sceneRenderModeValue = 1
     $sceneRenderModeName = 'SCENES_3D_REFERENCE'
-    $gameplayRenderModeValue = 2
-    $gameplayRenderModeName = 'GAMEPLAY_3D_MACHINE'
+    $gameplayRenderModeValue = 1
+    $gameplayRenderModeName = 'GAMEPLAY_3D_REFERENCE'
 }
 $debugConfigLines = @(
     '; generated by scripts/build.ps1'
@@ -5567,7 +5541,7 @@ $renderSummaryLines = @(
     'Primary output: BIOS HDD boot + VBE 640x480x16 LFB present when available, with legacy VGA fallback; gameplay now renders to a 320x240 surface and presents at exact 2x when the enhanced path is active.'
     'Gameplay VBE present: page-flip only when the enhanced handoff opts into a verified extra image page; degraded whole-frame blit otherwise.'
     ("3D render stage: {0}" -f $debugRenderStageValue)
-    'Debug switches: -DebugRender2D uses the oracle path, -DebugRenderReference forces stage-two MASM kernels, and -DebugRenderMachine (or legacy -DebugRender3D) enables the banked raw machine-code rail.'
+    'Debug switches: -DebugRender2D uses the oracle path, -DebugRenderReference keeps the stable stage-two 3D path active, and -DebugRenderMachine (or legacy -DebugRender3D) opts into the experimental banked raw machine-code rail.'
 )
 
 Write-Section -Title 'Toolchain'
@@ -5672,7 +5646,7 @@ $campaignGameplayArt = Get-CampaignGameplayArtSummary `
     -ExpectedMapHeight $expectedMapHeight `
     -FaceBudget $game3dFaceBudget `
     -OptionalFaceBudget $game3dOptionalFaceBudget
-$adventureShowcaseCapture = Get-AdventureShowcaseCaptureSummary -SectorSourcePath $sectorSourcePath
+$campaignShowcaseCapture = $generatedSectors.CampaignShowcaseSummary
 $generatedDemos = Write-GeneratedDemoInclude `
     -SourcePath $demoSourcePath `
     -OutputPath $generatedDemosPath `
@@ -5755,7 +5729,7 @@ Write-Host ("Include : {0}" -f $generatedArt.OutputPath)
 Write-Host ("Bitmaps : {0}" -f $generatedArt.AssetCount)
 Write-Host ("Bytes   : {0}" -f $generatedArt.TotalBytes)
 Write-Host ("Sizes   : {0}" -f $generatedArt.SizeSummary)
-Write-Host ("Code kernels: {0}, tables: {1}, code-bank bytes: {2}" -f $generatedMachineCode.KernelCount, $generatedMachineCode.TableCount, $generatedMachineCode.TotalBytes)
+Write-Host ("Machine-code helpers: {0}, tables: {1}, code-bank bytes: {2}" -f $generatedMachineCode.KernelCount, $generatedMachineCode.TableCount, $generatedMachineCode.TotalBytes)
 Write-Host ("Texture banks: {0} entries total, page A {1}/{2}, page B {3}/{4}, {5} bytes" -f $generatedTextureBank.TextureCount, $generatedTextureBank.PageATextureCount, $generatedTextureBank.PageATextureCapacity, $generatedTextureBank.PageBTextureCount, $generatedTextureBank.PageBTextureCapacity, $generatedTextureBank.TotalBytes)
 Write-Host ("Geometry scenes: {0}, groups: {1}, meshes: {2}, kits: {3}, tris: {4}" -f $generatedGeometry.SceneCount, $generatedGeometry.SceneGroupCount, $generatedGeometry.MeshCount, $generatedGeometry.KitCount, $generatedGeometry.TriangleCount)
 
@@ -5763,11 +5737,11 @@ $generatedContentLines = @(
     ("Machine-code source: {0}" -f $generatedMachineCode.SourcePath)
     ("Machine-code include: {0}" -f $generatedMachineCode.OutputPath)
     ("Machine-code report: {0}" -f $generatedMachineCode.ReportPath)
-    ("Machine-code kernels: {0}" -f $generatedMachineCode.KernelCount)
+    ("Machine-code helpers: {0}" -f $generatedMachineCode.KernelCount)
     ("Machine-code tables: {0}" -f $generatedMachineCode.TableCount)
     ("Code bank bytes: {0}" -f $generatedMachineCode.TotalBytes)
-    ("Machine-code summary: {0}" -f $generatedMachineCode.KernelSummary)
-    ("Machine-code tables: {0}" -f $generatedMachineCode.TableSummary)
+    ("Machine-code helper summary: {0}" -f $generatedMachineCode.KernelSummary)
+    ("Machine-code table summary: {0}" -f $generatedMachineCode.TableSummary)
     ("Texture bank report: {0}" -f $generatedTextureBank.ReportPath)
     ("Texture bank bytes: {0}" -f $generatedTextureBank.TotalBytes)
     ("Texture page A: {0}x{1} ({2}/{3} used)" -f $generatedTextureBank.AtlasWidth, $generatedTextureBank.AtlasHeight, $generatedTextureBank.PageATextureCount, $generatedTextureBank.PageATextureCapacity)
@@ -5802,7 +5776,7 @@ $generatedContentLines = @(
     ("Frontend identity lane: splash/title now favor textured geometry, banked materials, and open-frame overlays")
     ("Frontend splash timing: pylons {0}, logo {1}, wordmark {2}, ui {3}" -f $splashRevealPylons, $splashRevealLogo, $splashRevealWordmark, $splashRevealUi)
     ("Gameplay renderer default mode: {0}" -f $gameplayRenderModeName)
-    ("Gameplay camera: quadrant-aware chase presets with authored projection, structure depth, horizon bands, per-kit fog, and machine textured surfaces")
+    ("Gameplay camera: quadrant-aware chase presets with authored projection, structure depth, horizon bands, per-kit fog, and banked textured surfaces")
     ("Gameplay surface: {0}x{1}" -f 320, $gameplaySurfaceH)
     ("Gameplay present path: exact 2x VBE page-flip only when the enhanced handoff marks it safe; degraded-blit fallback otherwise; legacy VGA path downsamples to 320x200")
     ("Enhanced handoff: width/height/pitch/lfb + frame-bytes/image-pages/present-flags")
@@ -5820,12 +5794,12 @@ $generatedContentLines = @(
     ("Anchors: {0}" -f $generatedSectors.AnchorSummary)
     ("Scenarios: {0}" -f $generatedSectors.ScenarioSummary)
     ("Shard pools: {0}" -f $generatedSectors.ShardPoolSummary)
-    ("Campaign districts: {0}" -f $generatedSectors.AdventureRealmSummary)
-    ("Campaign zones: {0}" -f $generatedSectors.AdventureZoneSummary)
-    ("Campaign beats: {0}" -f $generatedSectors.AdventureRouteSummary)
-    ("Campaign chunks: {0}" -f $generatedSectors.AdventureChunkSummary)
-    ("Campaign capture: {0}" -f $generatedSectors.AdventureCaptureSummary)
-    ("Gameplay showcase slots: title=splash-lockup, {0}" -f $adventureShowcaseCapture)
+    ("Campaign districts: {0}" -f $generatedSectors.CampaignDistrictSummary)
+    ("Campaign zones: {0}" -f $generatedSectors.CampaignZoneSummary)
+    ("Campaign beats: {0}" -f $generatedSectors.CampaignRouteSummary)
+    ("Campaign chunks: {0}" -f $generatedSectors.CampaignChunkSummary)
+    ("Campaign district capture anchors: {0}" -f $generatedSectors.CampaignCaptureSummary)
+    ("Gameplay showcase slots: title=splash-lockup, {0}" -f $campaignShowcaseCapture)
     ("Demo source: {0}" -f $generatedDemos.SourcePath)
     ("Demo include: {0}" -f $generatedDemos.OutputPath)
     ("Demos: {0}" -f $generatedDemos.DemoCount)
@@ -6199,7 +6173,7 @@ foreach ($runtimeVerifyLine in $runtimeVerifyLines) {
 }
 
 $showcaseArtifacts = @()
-$showcaseSourceSelection = 'Selection: the public gallery uses verified title, beauty, and action slots sourced from the BitRiver splash lockup plus the configured AdventureRealm beauty/action anchors in assets/sectors.psd1.'
+$showcaseSourceSelection = 'Selection: the public gallery uses verified title, beauty, and action slots sourced from the BitRiver splash lockup plus Campaign.Showcase in assets/sectors.psd1.'
 $showcaseSyncStatus = 'skipped'
 $showcaseSyncReason = 'Verified showcase capture was skipped for this build.'
 $showcaseFailure = $null

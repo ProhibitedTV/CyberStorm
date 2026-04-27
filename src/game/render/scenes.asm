@@ -1809,13 +1809,14 @@ draw_verify_word_bits:
     push si
     push di
     push bp
+    push ax
+    mov [text_cursor_x], bx
+    mov [text_cursor_y], dx
     mov cx, (VERIFY_BIT_PITCH * 15) + VERIFY_BIT_SIZE
     mov bp, VERIFY_BIT_SIZE
     mov al, PAL_BG0
     call fill_rect
-    mov si, ax
-    mov [text_cursor_x], bx
-    mov [text_cursor_y], dx
+    pop si
     mov di, 16
 
 verify_word_bits_loop:

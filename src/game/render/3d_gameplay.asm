@@ -599,6 +599,12 @@ ENDIF
 IF DEBUG_RENDER_STAGE GE 5
     call render_gameplay_overlay_effects_3d
 ENDIF
+IF DEBUG_RUNTIME_VERIFY
+    cmp byte ptr [verify_mode], VERIFY_MODE_REPLAY
+    jne render_gameplay_adventure_done
+
+render_gameplay_adventure_done:
+ENDIF
     ret
 
 draw_debug_render_sentinel_backbuffer:

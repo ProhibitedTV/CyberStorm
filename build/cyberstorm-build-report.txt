@@ -1,5 +1,5 @@
 CyberStorm Build Report
-Generated: 2026-04-24 12:18:44 -06:00
+Generated: 2026-04-26 19:40:27 -06:00
 
 Toolchain
   Assembler: MASM
@@ -21,11 +21,11 @@ Audio Policy
 
 Render Path
   Scene renderer: SCENES_3D_REFERENCE
-  Gameplay renderer: GAMEPLAY_3D_MACHINE
+  Gameplay renderer: GAMEPLAY_3D_REFERENCE
   Primary output: BIOS HDD boot + VBE 640x480x16 LFB present when available, with legacy VGA fallback; gameplay now renders to a 320x240 surface and presents at exact 2x when the enhanced path is active.
   Gameplay VBE present: page-flip only when the enhanced handoff opts into a verified extra image page; degraded whole-frame blit otherwise.
   3D render stage: 5
-  Debug switches: -DebugRender2D uses the oracle path, -DebugRenderReference forces stage-two MASM kernels, and -DebugRenderMachine (or legacy -DebugRender3D) enables the banked raw machine-code rail.
+  Debug switches: -DebugRender2D uses the oracle path, -DebugRenderReference keeps the stable stage-two 3D path active, and -DebugRenderMachine (or legacy -DebugRender3D) opts into the experimental banked raw machine-code rail.
 
 Generated Art
   Source file: C:\Users\RhythmicCarnage\Desktop\CyberStorm\assets\visuals.psd1
@@ -52,11 +52,11 @@ Generated Content
   Machine-code source: C:\Users\RhythmicCarnage\Desktop\CyberStorm\assets\machine_code.psd1
   Machine-code include: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\generated_machine_code.inc
   Machine-code report: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-machine-code-report.txt
-  Machine-code kernels: 5
+  Machine-code helpers: 1
   Machine-code tables: 1
-  Code bank bytes: 676
-  Machine-code summary: world_transform_project@0x0000 (1 bytes, transform) | affine_textured_triangle@0x0010 (1 bytes, raster) | flat_shaded_triangle_fallback@0x0020 (1 bytes, raster) | shadow_decal_blit@0x0030 (72 bytes, effects) | actor_pose_step_interpolation@0x0080 (35 bytes, animation)
-  Machine-code tables: sin_table_88@0x00A4 (256 x 2 bytes)
+  Code bank bytes: 584
+  Machine-code helper summary: shadow_decal_blit@0x0000 (72 bytes, effects)
+  Machine-code table summary: sin_table_88@0x0048 (256 x 2 bytes)
   Texture bank report: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-texture-bank-report.txt
   Texture bank bytes: 131072
   Texture page A: 256x256 (26/60 used)
@@ -90,8 +90,8 @@ Generated Content
   Textured realm showcase path: active
   Frontend identity lane: splash/title now favor textured geometry, banked materials, and open-frame overlays
   Frontend splash timing: pylons 8, logo 24, wordmark 32, ui 60
-  Gameplay renderer default mode: GAMEPLAY_3D_MACHINE
-  Gameplay camera: quadrant-aware chase presets with authored projection, structure depth, horizon bands, per-kit fog, and machine textured surfaces
+  Gameplay renderer default mode: GAMEPLAY_3D_REFERENCE
+  Gameplay camera: quadrant-aware chase presets with authored projection, structure depth, horizon bands, per-kit fog, and banked textured surfaces
   Gameplay surface: 320x240
   Gameplay present path: exact 2x VBE page-flip only when the enhanced handoff marks it safe; degraded-blit fallback otherwise; legacy VGA path downsamples to 320x200
   Enhanced handoff: width/height/pitch/lfb + frame-bytes/image-pages/present-flags
@@ -113,13 +113,13 @@ Generated Content
   Campaign zones: subgrid-ingress:dock-ramp (Dock Ramp, 2,10,10,13) | subgrid-ingress:relay-loop (Relay Loop, 8,8,16,11) | subgrid-ingress:charge-bridge (Charge Bridge, 6,11,12,13) | subgrid-ingress:vault-terrace (Vault Terrace, 14,3,22,6) | subgrid-ingress:return-span (Return Span, 18,7,25,10) | subgrid-ingress:storm-gate (Storm Gate, 21,1,25,4) | switchyard-spine:rail-dock (Rail Dock, 1,11,8,13) | switchyard-spine:crosslane (Crosslane, 8,7,15,10) | switchyard-spine:hinge-yard (Hinge Yard, 15,7,22,10) | switchyard-spine:upper-switch (Upper Switch, 8,1,20,6) | switchyard-spine:spur-run (Spur Run, 20,9,25,13) | switchyard-spine:breach-lock (Breach Lock, 21,1,25,4) | thermal-foundry:coolant-dock (Coolant Dock, 1,11,8,13) | thermal-foundry:ember-loop (Ember Loop, 8,7,15,10) | thermal-foundry:heat-spine (Heat Spine, 15,7,22,10) | thermal-foundry:smelter-rise (Smelter Rise, 8,1,20,6) | thermal-foundry:slag-return (Slag Return, 20,9,25,13) | thermal-foundry:forge-gate (Forge Gate, 21,1,25,4) | apex-vault:vault-dock (Vault Dock, 1,11,8,13) | apex-vault:corridor-spine (Corridor Spine, 8,7,16,10) | apex-vault:seal-run (Seal Run, 16,7,22,10) | apex-vault:warden-rise (Warden Rise, 8,1,20,6) | apex-vault:key-branch (Key Branch, 18,1,23,6) | apex-vault:final-breach (Final Breach, 21,1,25,4)
   Campaign beats: subgrid-ingress: #1 dock-ramp - Open on a readable shard ribbon with the storm gate already peeking over the canal. | subgrid-ingress: #2 relay-loop - The first relay reveal should land across the bridge so the objective and return route read together. | subgrid-ingress: #3 charge-bridge - The first committed burst stays obvious, safe, and worth taking. | subgrid-ingress: #4 vault-terrace - The key terrace should read like a skyline prize instead of a hidden errand. | subgrid-ingress: #5 return-span - Fold one hazard lesson into the escape without muddying the line back out. | subgrid-ingress: #6 storm-gate - The gate should feel like the destination the player has been chasing since the opening glance. | switchyard-spine: #1 rail-dock - Kick off in a broad loading lane with the first relay sightline already visible. | switchyard-spine: #2 crosslane - The main spine should ask for a clean commit through readable crossfire instead of random clutter. | switchyard-spine: #3 hinge-yard - This is the setpiece: the player sees the safe loop and the hot hinge together, then chooses. | switchyard-spine: #4 upper-switch - Upper switchbacks compress the route while the second relay stays visible enough to pull the run forward. | switchyard-spine: #5 spur-run - The return sprint should feel tighter and meaner than the opening commit. | switchyard-spine: #6 breach-lock - The lock should hand the player into district three with one final clean read of the lattice. | thermal-foundry: #1 coolant-dock - Open with clean footing before the furnace lanes start to punish delay. | thermal-foundry: #2 ember-loop - The first hot lane should teach controlled overload timing without choking the run. | thermal-foundry: #3 heat-spine - Mid-route heat and crossfire should force a sharper line than switchyard ever asked for. | thermal-foundry: #4 smelter-rise - This is the signature climb: the keycard sits high and obvious while the player commits upward. | thermal-foundry: #5 slag-return - The lower return should feel like a deliberate recovery test, not just denser clutter. | thermal-foundry: #6 forge-gate - Once unlocked, the forge gate should resolve into the cleanest sprint in the district. | apex-vault: #1 vault-dock - Start in a calm dock so the monument space reads before the pressure arrives. | apex-vault: #2 corridor-spine - The center corridor is the last honest runway before the lockdown closes in. | apex-vault: #3 seal-run - Seal-run should tighten the lane and make hesitation expensive. | apex-vault: #4 warden-rise - This is the reveal: the warden and the final gate should read together in one glance. | apex-vault: #5 key-branch - The key branch is short, exposed, and worth the fear it creates. | apex-vault: #6 final-breach - Once unlocked, the last sprint should feel cleaner, faster, and more final than anything before it.
   Campaign chunks: subgrid-ingress:dock-west 2,10->7,13 h0/0 ramp=none cliff=north bridge=none prop=2 | subgrid-ingress:dock-east 8,10->12,13 h0/64 ramp=east cliff=north bridge=none prop=3 | subgrid-ingress:relay-bend 10,8->16,11 h64/96 ramp=north cliff=east bridge=none prop=3 | subgrid-ingress:charge-teach 6,11->12,13 h64/112 ramp=north cliff=south bridge=east-west prop=2 | subgrid-ingress:vault-climb 14,5->18,8 h112/176 ramp=east cliff=north bridge=none prop=2 | subgrid-ingress:vault-key 18,3->22,5 h176/208 ramp=north cliff=west bridge=none prop=3 | subgrid-ingress:return-ramp 18,7->22,10 h128/176 ramp=west cliff=south bridge=none prop=3 | subgrid-ingress:return-lane 22,7->25,10 h96/128 ramp=east cliff=south bridge=none prop=2 | subgrid-ingress:gate-front 21,1->23,4 h96/144 ramp=north cliff=west bridge=none prop=3 | subgrid-ingress:gate-arch 23,1->25,3 h144/176 ramp=none cliff=south bridge=none prop=3 | switchyard-spine:dock-lane 1,11->8,13 h0/32 ramp=east cliff=north bridge=none prop=2 | switchyard-spine:crosslane-core 8,7->15,10 h32/96 ramp=north cliff=east bridge=east-west prop=3 | switchyard-spine:hinge-yard 15,7->22,10 h64/128 ramp=west cliff=south bridge=none prop=2 | switchyard-spine:upper-switch 8,1->20,6 h96/160 ramp=north cliff=west bridge=north-south prop=3 | switchyard-spine:spur-run 20,9->25,13 h64/112 ramp=east cliff=south bridge=none prop=2 | switchyard-spine:breach-lock 21,1->25,4 h128/176 ramp=north cliff=west bridge=none prop=3 | thermal-foundry:coolant-dock 1,11->8,13 h0/32 ramp=east cliff=north bridge=none prop=2 | thermal-foundry:ember-loop 8,7->15,10 h32/96 ramp=north cliff=east bridge=none prop=3 | thermal-foundry:heat-spine 15,7->22,10 h64/128 ramp=west cliff=south bridge=east-west prop=2 | thermal-foundry:smelter-rise 8,1->20,6 h96/176 ramp=north cliff=west bridge=north-south prop=3 | thermal-foundry:slag-return 20,9->25,13 h64/112 ramp=east cliff=south bridge=none prop=2 | thermal-foundry:forge-gate 21,1->25,4 h144/192 ramp=north cliff=west bridge=none prop=3 | apex-vault:vault-dock 1,11->8,13 h0/32 ramp=east cliff=north bridge=none prop=2 | apex-vault:corridor-spine 8,7->16,10 h32/96 ramp=north cliff=east bridge=none prop=3 | apex-vault:seal-run 16,7->22,10 h64/128 ramp=west cliff=south bridge=east-west prop=2 | apex-vault:warden-rise 8,1->20,6 h112/192 ramp=north cliff=west bridge=north-south prop=4 | apex-vault:key-branch 18,1->23,6 h160/208 ramp=east cliff=south bridge=none prop=2 | apex-vault:final-breach 21,1->25,4 h176/224 ramp=north cliff=west bridge=none prop=3
-  Campaign capture: subgrid-ingress: beauty=subgrid-attract-a, action=subgrid-attract-b | switchyard-spine: beauty=switchyard-attract-a, action=switchyard-attract-b | thermal-foundry: beauty=thermal-attract-a, action=thermal-attract-b | apex-vault: beauty=vault-attract-a, action=vault-attract-b
+  Campaign district capture anchors: subgrid-ingress: beauty=subgrid-attract-a, action=subgrid-attract-b | switchyard-spine: beauty=switchyard-attract-a, action=switchyard-attract-b | thermal-foundry: beauty=thermal-attract-a, action=thermal-attract-b | apex-vault: beauty=vault-attract-a, action=vault-attract-b
   Gameplay showcase slots: title=splash-lockup, beauty=thermal-attract-a, action=vault-attract-b
   Demo source: C:\Users\RhythmicCarnage\Desktop\CyberStorm\assets\demos.psd1
   Demo include: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\generated_demos.inc
-  Demos: 17
-  Demo steps: 96
-  Demo summary: SUBGRID BEAUTY PASS [beauty] (SUBGRID INGRESS, Storm-gate reveal, capture 52t, 5 steps), SUBGRID ACTION PASS [action] (SUBGRID INGRESS, Dash-strike pass, capture 50t, 4 steps), ADVENTURE IDLE VERIFY [technical] (DISTRICT 1, TECHNICAL, capture 46t, 1 steps), ADVENTURE TURN VERIFY [technical] (DISTRICT 1, TECHNICAL, capture 48t, 3 steps), ADVENTURE RUN VERIFY [technical] (DISTRICT 1, TECHNICAL, capture 56t, 3 steps), ADVENTURE JUMP GLIDE VERIFY [technical] (DISTRICT 1, TECHNICAL, capture 64t, 4 steps), ADVENTURE CHARGE HIT VERIFY [technical] (DISTRICT 1, TECHNICAL, capture 58t, 4 steps), ADVENTURE SWITCH VERIFY [technical] (DISTRICT 1, TECHNICAL, capture 66t, 6 steps), ADVENTURE KEY VERIFY [technical] (DISTRICT 1, TECHNICAL, capture 92t, 8 steps), ADVENTURE PORTAL UNLOCK VERIFY [technical] (DISTRICT 1, TECHNICAL, capture 120t, 11 steps), ADVENTURE PORTAL COMPLETE VERIFY [technical] (DISTRICT 1, TECHNICAL, capture 136t, 12 steps), SWITCHYARD BEAUTY PASS [beauty] (SWITCHYARD SPINE, Hinge-yard reveal, capture 58t, 5 steps), SWITCHYARD ACTION PASS [action] (SWITCHYARD SPINE, Combat pass, capture 54t, 6 steps), THERMAL BEAUTY PASS [beauty] (THERMAL FOUNDRY, Smelter-rise reveal, capture 60t, 5 steps), THERMAL ACTION PASS [action] (THERMAL FOUNDRY, Hazard pass, capture 56t, 6 steps), VAULT BEAUTY PASS [beauty] (APEX VAULT, Final-breach reveal, capture 62t, 6 steps), VAULT ACTION PASS [action] (APEX VAULT, Warden finale pass, capture 58t, 7 steps)
+  Demos: 14
+  Demo steps: 65
+  Demo summary: SUBGRID BEAUTY PASS [beauty] (SUBGRID INGRESS, Storm-gate reveal, capture 52t, 5 steps), SUBGRID ACTION PASS [action] (SUBGRID INGRESS, Dash-strike pass, capture 50t, 4 steps), ADVENTURE IDLE VERIFY [technical] (DISTRICT 1, TECHNICAL, capture 46t, 1 steps), ADVENTURE TURN VERIFY [technical] (DISTRICT 1, TECHNICAL, capture 48t, 3 steps), ADVENTURE RUN VERIFY [technical] (DISTRICT 1, TECHNICAL, capture 56t, 3 steps), ADVENTURE JUMP GLIDE VERIFY [technical] (DISTRICT 1, TECHNICAL, capture 64t, 4 steps), ADVENTURE CHARGE HIT VERIFY [technical] (DISTRICT 1, TECHNICAL, capture 58t, 4 steps), ADVENTURE SWITCH VERIFY [technical] (DISTRICT 1, TECHNICAL, capture 66t, 6 steps), SWITCHYARD BEAUTY PASS [beauty] (SWITCHYARD SPINE, Hinge-yard reveal, capture 58t, 5 steps), SWITCHYARD ACTION PASS [action] (SWITCHYARD SPINE, Combat pass, capture 54t, 6 steps), THERMAL BEAUTY PASS [beauty] (THERMAL FOUNDRY, Smelter-rise reveal, capture 60t, 5 steps), THERMAL ACTION PASS [action] (THERMAL FOUNDRY, Hazard pass, capture 56t, 6 steps), VAULT BEAUTY PASS [beauty] (APEX VAULT, Final-breach reveal, capture 62t, 6 steps), VAULT ACTION PASS [action] (APEX VAULT, Warden finale pass, capture 58t, 7 steps)
   Runtime verify include: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\generated_runtime_verify.inc
   Music source: C:\Users\RhythmicCarnage\Desktop\CyberStorm\assets\music.psd1
   Music include: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\generated_music.inc
@@ -129,24 +129,21 @@ Generated Content
 
 Replay Harness
   Report: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-replay-report.txt
-  Scenarios: 17
-  SUBGRID BEAUTY PASS: final 0xEEC7
-  SUBGRID ACTION PASS: final 0xCABA
-  ADVENTURE IDLE VERIFY: final 0x8A8A
-  ADVENTURE TURN VERIFY: final 0x8B0A
-  ADVENTURE RUN VERIFY: final 0x99D3
-  ADVENTURE JUMP GLIDE VERIFY: final 0x2A86
-  ADVENTURE CHARGE HIT VERIFY: final 0x9E2A
-  ADVENTURE SWITCH VERIFY: final 0x9E2A
-  ADVENTURE KEY VERIFY: final 0xCA97
-  ADVENTURE PORTAL UNLOCK VERIFY: final 0xF417
-  ADVENTURE PORTAL COMPLETE VERIFY: final 0xF417
-  SWITCHYARD BEAUTY PASS: final 0xA496
-  SWITCHYARD ACTION PASS: final 0x74E3
-  THERMAL BEAUTY PASS: final 0xAD86
-  THERMAL ACTION PASS: final 0x92E7
-  VAULT BEAUTY PASS: final 0xC3A7
-  VAULT ACTION PASS: final 0x74E3
+  Scenarios: 14
+  SUBGRID BEAUTY PASS: expected 0xF2B8, simulated 0x85DF (mismatch)
+  SUBGRID ACTION PASS: expected 0x4DA1, simulated 0xC130 (mismatch)
+  ADVENTURE IDLE VERIFY: expected 0x361D (simulation matches)
+  ADVENTURE TURN VERIFY: expected 0xF61E (simulation matches)
+  ADVENTURE RUN VERIFY: expected 0x32B9, simulated 0xA8EA (mismatch)
+  ADVENTURE JUMP GLIDE VERIFY: expected 0x361D (simulation matches)
+  ADVENTURE CHARGE HIT VERIFY: expected 0x4DA1, simulated 0xD5C0 (mismatch)
+  ADVENTURE SWITCH VERIFY: expected 0x49AD, simulated 0x963D (mismatch)
+  SWITCHYARD BEAUTY PASS: expected 0x442A, simulated 0x8254 (mismatch)
+  SWITCHYARD ACTION PASS: expected 0x442A, simulated 0x950A (mismatch)
+  THERMAL BEAUTY PASS: expected 0x5422, simulated 0xA744 (mismatch)
+  THERMAL ACTION PASS: expected 0x5422, simulated 0x16A9 (mismatch)
+  VAULT BEAUTY PASS: expected 0x445A, simulated 0x6CBB (mismatch)
+  VAULT ACTION PASS: expected 0x445A, simulated 0x192A (mismatch)
 
 Balance Harness
   Report: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-balance-report.txt
@@ -169,14 +166,14 @@ Regression Harness
   Report: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-regression-report.txt
   Boot sector: 512 bytes, signature 0x55AA, LBA 0 matches the disk image
   Bootstrap: 1500 bytes, 3 sectors, LBA 1..3
-  Stage two: 65218 bytes, 128 sectors, STAGE2_LBA matches, entry near jmp to 0x152B
-  Code bank: 676 bytes (1024 padded), 2 sectors, LBA 132..133
-  Texture bank A: 65536 bytes (65536 padded), 128 sectors, LBA 134..261
-  Texture bank B: 65536 bytes (65536 padded), 128 sectors, LBA 262..389
-  Map bank: 6853 bytes (7168 padded), 14 sectors, LBA 390..403
-  Presentation bank: 19968 bytes (19968 padded), 39 sectors, LBA 404..442
-  Geometry bank: 13130 bytes (13312 padded), 26 sectors, LBA 443..468
-  Disk image: 33554432 bytes, occupied through byte 240127, unused tail zero-filled
+  Stage two: 64698 bytes, 127 sectors, STAGE2_LBA matches, entry near jmp to 0x139A
+  Code bank: 584 bytes (1024 padded), 2 sectors, LBA 131..132
+  Texture bank A: 65536 bytes (65536 padded), 128 sectors, LBA 133..260
+  Texture bank B: 65536 bytes (65536 padded), 128 sectors, LBA 261..388
+  Map bank: 6853 bytes (7168 padded), 14 sectors, LBA 389..402
+  Presentation bank: 19968 bytes (19968 padded), 39 sectors, LBA 403..441
+  Geometry bank: 13130 bytes (13312 padded), 26 sectors, LBA 442..467
+  Disk image: 33554432 bytes, occupied through byte 239615, unused tail zero-filled
   Diagnostics: boot.lst, bootstrap.lst, and game.lst are present for post-failure inspection
 
 Frontend Verify
@@ -190,16 +187,16 @@ Runtime Verify
 
 Showcase Capture
   Status: skipped (use -CaptureShowcase to generate deterministic title/beauty/action screenshots).
-  Selection: the public gallery uses verified title, beauty, and action slots sourced from the BitRiver splash lockup plus the configured AdventureRealm beauty/action anchors in assets/sectors.psd1.
+  Selection: the public gallery uses verified title, beauty, and action slots sourced from the BitRiver splash lockup plus Campaign.Showcase in assets/sectors.psd1.
 
 Asset Banks
   Layout include: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\generated_bank_layout.inc
-  Code bank: 676 bytes (1024 padded), 2 sectors, LBA 132..133, load 0x2000:0000, payload C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-code-bank.bin
-  Texture bank A: 65536 bytes (65536 padded), 128 sectors, LBA 134..261, load 0x4000:0000, payload C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-texture-bank.bin
-  Texture bank B: 65536 bytes (65536 padded), 128 sectors, LBA 262..389, load 0x5000:0000, payload C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-texture-bank-b.bin
-  Map bank: 6853 bytes (7168 padded), 14 sectors, LBA 390..403, load 0x2800:0000, payload C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-map-bank.bin
-  Presentation bank: 19968 bytes (19968 padded), 39 sectors, LBA 404..442, load 0x3000:0000, payload C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-presentation-bank.bin
-  Geometry bank: 13130 bytes (13312 padded), 26 sectors, LBA 443..468, load 0x3800:0000, payload C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-geometry-bank.bin
+  Code bank: 584 bytes (1024 padded), 2 sectors, LBA 131..132, load 0x2000:0000, payload C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-code-bank.bin
+  Texture bank A: 65536 bytes (65536 padded), 128 sectors, LBA 133..260, load 0x4000:0000, payload C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-texture-bank.bin
+  Texture bank B: 65536 bytes (65536 padded), 128 sectors, LBA 261..388, load 0x5000:0000, payload C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-texture-bank-b.bin
+  Map bank: 6853 bytes (7168 padded), 14 sectors, LBA 389..402, load 0x2800:0000, payload C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-map-bank.bin
+  Presentation bank: 19968 bytes (19968 padded), 39 sectors, LBA 403..441, load 0x3000:0000, payload C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-presentation-bank.bin
+  Geometry bank: 13130 bytes (13312 padded), 26 sectors, LBA 442..467, load 0x3800:0000, payload C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-geometry-bank.bin
 
 Screenshots
   Housekeeping: kept 6 source screenshots, removed 0, public gallery status is missing
@@ -216,25 +213,25 @@ Layout
   Bootstrap bytes: 1500
   Bootstrap padded bytes: 1536
   Bootstrap sectors: 3
-  Stage2 bytes: 65218
-  Stage2 free bytes before 64 KiB limit: 318
-  Stage2 padded bytes: 65536
-  Stage2 sectors: 128
-  Disk image bytes used: 238929 / 33554432
-  Disk image free bytes: 33315503
-  Occupied sector bytes: 240128 / 33554432
-  Occupied sector free bytes: 33314304
+  Stage2 bytes: 64698
+  Stage2 free bytes before 64 KiB limit: 838
+  Stage2 padded bytes: 65024
+  Stage2 sectors: 127
+  Disk image bytes used: 238317 / 33554432
+  Disk image free bytes: 33316115
+  Occupied sector bytes: 239616 / 33554432
+  Occupied sector free bytes: 33314816
   Boot load address: 0000:7C00 (phys 0x00007C00)
   Bootstrap load address: 0x0800:0000 (phys 0x00008000)
   Stage2 load address: 0x1000:0x0000 (phys 0x00010000)
   Boot signature: 0x55AA @ byte 510
   Bootstrap LBA range: 1..3
-  Stage2 LBA range: 4..131
+  Stage2 LBA range: 4..130
   Boot section: .text$mn (relocations applied: 6)
-  Stage2 section: .text$mn (relocations applied: 3751)
+  Stage2 section: .text$mn (relocations applied: 3742)
   Assembler warnings: boot=1, stage2=1
   Boot 'start' symbol offset: 0x0000
-  Stage2 'start' symbol offset: 0x152B
+  Stage2 'start' symbol offset: 0x139A
 
 Artifacts
   C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\generated_art.inc
@@ -274,7 +271,7 @@ Artifacts
   C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm.img
 
 Warnings
-  Stage two is within 318 bytes of the 64 KiB load limit.
-  Stage two uses 128 sectors; that is close to the 128-sector single-segment load limit.
+  Stage two is within 838 bytes of the 64 KiB load limit.
+  Stage two uses 127 sectors; that is close to the 128-sector single-segment load limit.
   Asset bank 'Texture bank A' is within 4096 bytes of the current single-segment runtime load limit.
   Asset bank 'Texture bank B' is within 4096 bytes of the current single-segment runtime load limit.

@@ -1,30 +1,6 @@
 @{
     Kernels = @(
         @{
-            Id = 'world_transform_project'
-            Stage = 'transform'
-            ParamBlockSize = 24
-            Clobbers = @('AX', 'BX', 'CX', 'DX', 'SI', 'DI', 'FLAGS')
-            FallbackSymbol = 'scene3d_project_vertices'
-            Bytes = @(0xCB)
-        }
-        @{
-            Id = 'affine_textured_triangle'
-            Stage = 'raster'
-            ParamBlockSize = 40
-            Clobbers = @('AX', 'BX', 'CX', 'DX', 'SI', 'DI', 'FLAGS')
-            FallbackSymbol = 'scene3d_draw_triangle'
-            Bytes = @(0xCB)
-        }
-        @{
-            Id = 'flat_shaded_triangle_fallback'
-            Stage = 'raster'
-            ParamBlockSize = 32
-            Clobbers = @('AX', 'BX', 'CX', 'DX', 'SI', 'DI', 'FLAGS')
-            FallbackSymbol = 'scene3d_draw_triangle'
-            Bytes = @(0xCB)
-        }
-        @{
             Id = 'shadow_decal_blit'
             Stage = 'effects'
             ParamBlockSize = 9
@@ -67,31 +43,6 @@
                 0x4D,
                 0xEB, 0xED,
                 0x5D,
-                0xCB
-            )
-        }
-        @{
-            Id = 'actor_pose_step_interpolation'
-            Stage = 'animation'
-            ParamBlockSize = 8
-            Clobbers = @('AX', 'DX', 'FLAGS')
-            FallbackSymbol = 'machine_pose_step_reference'
-            Bytes = @(
-                0x8B, 0x04,
-                0x8B, 0x54, 0x02,
-                0x39, 0xD0,
-                0x74, 0x16,
-                0x7C, 0x0B,
-                0x2B, 0x44, 0x04,
-                0x39, 0xD0,
-                0x7D, 0x0D,
-                0x8B, 0xC2,
-                0xEB, 0x09,
-                0x03, 0x44, 0x04,
-                0x39, 0xD0,
-                0x7E, 0x02,
-                0x8B, 0xC2,
-                0x89, 0x44, 0x06,
                 0xCB
             )
         }

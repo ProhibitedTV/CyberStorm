@@ -16,7 +16,7 @@ Practical consequences:
 - Stage two must fit inside one 64 KiB segment. The build validates this because the bootloader never updates `ES` while reading.
 - The bootloader clears the direction flag and stage two relies on that for `lodsb`, `stosb`, and `movsb`-based code.
 - Stage two still inherits the boot lineage from the BIOS/bootloader stack, but the bootstrap re-establishes its own temporary stack before handing off.
-- Stage two now captures the BIOS boot drive from `DL` on entry while also consuming the bootstrap's enhanced-output handoff block.
+- The bootstrap now owns the BIOS boot drive and loads the post-boot banks before handoff; stage two consumes the enhanced-output handoff block plus those preloaded bank segments.
 
 ## 2. Memory And Segment Layout
 
@@ -27,9 +27,12 @@ Practical consequences:
 | `0000:7C00` downward | Boot stack lineage | Created by the boot sector; the bootstrap temporarily switches to its own stack before stage two resumes the legacy runtime model. |
 | `0800:0000` | Bootstrap + enhanced handoff block | Tiny real-mode loader plus VBE handoff metadata. |
 | `1000:0000` upward | Stage two code + data | `DS` is set to `CS` on entry and the whole game assumes one shared segment. |
-| `7000:0000` | Map bank | Read-only authored map payload loaded by stage two after boot. |
-| `7800:0000` | Presentation bank | Read-only scene-kit payload for splash, title, attract/demo, sector-entry, and end screens. |
-| `8000:0000` | Geometry bank | Read-only low-poly scene, prop, actor, and gameplay-kit payload for the 3D renderer. |
+| `2000:0000` | Code bank | Read-only machine-code helper payload plus shared lookup tables. |
+| `2800:0000` | Map bank | Read-only authored map payload loaded by the bootstrap before stage-two handoff. |
+| `3000:0000` | Presentation bank | Read-only scene-kit payload for splash, title, attract/demo, sector-entry, and end screens. |
+| `3800:0000` | Geometry bank | Read-only low-poly scene, prop, actor, and gameplay-kit payload for the 3D renderer. |
+| `4000:0000` | Texture bank A | Shared/core 256x256 gameplay texture page. |
+| `5000:0000` | Texture bank B | Gameplay-first 256x256 texture page. |
 | `8600:0000` | Gameplay backbuffer high rows | Extra `320x40` gameplay rows used when the live run renders to the taller `320x240` surface. |
 | `9000:0000` | Backbuffer | Primary `320x200` framebuffer plus the low rows for all frontend scenes and legacy VGA presentation. |
 | VBE LFB (physical) | Enhanced present target | Final `640x480x16` output target when the bootstrap VBE handoff succeeds; the legacy VGA presenter remains the compatibility fallback. |
@@ -46,7 +49,7 @@ Register assumptions that matter:
 [src/game.asm](../src/game.asm) is the composition root. It is not a normal linker entrypoint; it is the literal byte sequence loaded by the boot sector. Module ordering only matters at a few boundaries:
 
 - The first byte must remain executable because boot jumps to offset `0`.
-- `generated_bank_layout.inc` is build output, not source. It gives stage two the on-disk LBA/size contract for post-boot banks.
+- `generated_machine_code.inc` is build output, not source. It gives stage two the code-bank helper/table offsets that live in the post-boot code payload.
 - `generated_presentation_content.inc` is build output, not source. It gives scenes the offsets of the banked presentation scene kit.
 - `generated_geometry.inc` is build output, not source. It gives the 3D renderer scene/camera tables, scene-group timelines, material FX tables, gameplay-kit tables, and geometry-bank offsets/counts.
 - `audio_config.inc` is build output, not source. It makes the release audio contract explicit before [src/game/audio.asm](../src/game/audio.asm) is assembled.
@@ -55,9 +58,7 @@ Register assumptions that matter:
 - [src/game/art.asm](../src/game/art.asm) is the visual-data wrapper and includes the build-generated sprite/tile bitmap include before the hand-authored palette/font data.
 - [src/game/state.asm](../src/game/state.asm) now includes generated sector metadata/rule tables from the content pipeline.
 - [src/game/state.asm](../src/game/state.asm) also includes generated attract/demo scripts from the content pipeline.
-- [src/bootstrap.asm](../src/bootstrap.asm) owns the new BIOS HDD/VBE bootstrap work: stage-two load, asset-pack load, VBE probe, and the enhanced handoff block.
-- [src/game/banks.asm](../src/game/banks.asm) is now effectively legacy documentation for the older post-boot bank-loading path; the enhanced boot chain is moving that responsibility earlier.
-- [src/game/maps.asm](../src/game/maps.asm) is now documentation only; the authored map pool lives in a bank payload instead of stage two.
+- [src/bootstrap.asm](../src/bootstrap.asm) owns the BIOS HDD/VBE bootstrap work: stage-two load, code/texture/map/presentation/geometry bank load, VBE probe, and the enhanced handoff block. It consumes `generated_bank_layout.inc`.
 - [src/game/audio.asm](../src/game/audio.asm) keeps the playback logic in-source, but includes generated theme data from the content pipeline.
 - `build\audio_config.inc` now compiles the runtime in `MUSIC` mode by default. `-SfxOnly` is the explicit quiet build profile when you want one-shot effects without looping themes.
 
@@ -75,7 +76,6 @@ Important layout contracts:
 
 - `enemies` is a packed table of `MAX_ENEMIES` records, each `[alive, x, y, kind]`.
 - `map_tiles` is a linear `MAP_W * MAP_H` tile buffer.
-- `boot_drive` is initialized from `DL` at stage-two entry and must remain valid for any later `INT 13h` bank reads.
 - `score_total`, `sector_score`, and `sector_score_table` back the mastery layer. The sector counters are reset per zone and the score table is meant to stay comparable on end screens.
 - `spoof_timer` / `spoof_x` / `spoof_y` are gameplay state, not render scratch. Hunter AI reads them during enemy turns and effects/HUD read them during rendering.
 - `title_idle_ticks` is frontend-only state for the attract timer. `demo_active`, `demo_action_*`, and `demo_script_ptr` drive scripted playback through the normal gameplay input path.
@@ -111,7 +111,7 @@ Input flow:
 Render flow:
 
 - [src/game/render/scenes.asm](../src/game/render/scenes.asm) selects the scene for the current `game_state`.
-- In the default release build, splash/title/sector-entry/end scenes go through the grouped flat-shaded 3D path, and gameplay now uses the room-mesh 3D renderer with a chase-style camera plus sector-specific viewport mood fills. `DEBUG_SCENE_RENDER_MODE = 0` plus `DEBUG_GAMEPLAY_RENDER_MODE = 0` keep the older 2D scene/gameplay implementation available as a compile-time oracle.
+- In the default release build, splash/title/sector-entry/end scenes go through the grouped flat-shaded 3D path, and gameplay uses the stable reference room-mesh 3D renderer with a chase-style camera plus sector-specific viewport mood fills. `DEBUG_SCENE_RENDER_MODE = 0` plus `DEBUG_GAMEPLAY_RENDER_MODE = 1` keep the older 2D oracle and the experimental machine gameplay path available as explicit compile-time choices.
 - Frontend scenes render into the primary `320x200` backbuffer, while live gameplay now renders into a split `320x240` surface backed by `BACKBUFFER_SEG` plus `BACKBUFFER_HIGH_SEG`.
 - [src/game/render/framebuffer.asm](../src/game/render/framebuffer.asm) waits for vertical blank, then either downscales the gameplay frame to legacy VGA or presents the exact-2x gameplay image through the VBE lane.
 - Primitive draw helpers compute offsets into whatever segment is currently loaded into `ES`.
@@ -156,11 +156,12 @@ The gameplay runtime in [src/game/gameplay.asm](../src/game/gameplay.asm) is int
 
 ## 8. Asset Banks
 
-CyberStorm now has three narrow post-boot bank paths:
+CyberStorm now has six post-boot bank payloads:
 
-- The build appends `cyberstorm-map-bank.bin`, `cyberstorm-presentation-bank.bin`, and `cyberstorm-geometry-bank.bin` after stage two on the floppy image.
-- `generated_bank_layout.inc` records each bank's starting LBA, size in sectors, and byte count.
-- [src/game/banks.asm](../src/game/banks.asm) loads the map bank into `MAP_BANK_SEG`, the presentation bank into `PRESENT_BANK_SEG`, and the geometry bank into `GEOMETRY_BANK_SEG` during `start`, before VGA mode is enabled.
+- The build appends `cyberstorm-code-bank.bin`, `cyberstorm-texture-bank.bin`, `cyberstorm-texture-bank-b.bin`, `cyberstorm-map-bank.bin`, `cyberstorm-presentation-bank.bin`, and `cyberstorm-geometry-bank.bin` after stage two on the BIOS HDD image.
+- `generated_bank_layout.inc` records each bank's starting LBA, padded size, byte count, and load segment for the bootstrap.
+- [src/bootstrap.asm](../src/bootstrap.asm) loads the code bank into `CODE_BANK_SEG`, the texture pages into `TEXTURE_BANK_SEG` / `TEXTURE_BANK_B_SEG`, the map bank into `MAP_BANK_SEG`, the presentation bank into `PRESENT_BANK_SEG`, and the geometry bank into `GEOMETRY_BANK_SEG` before stage two starts.
+- Stage two reads the generated machine-code helper offsets from `generated_machine_code.inc` rather than discovering code-bank contents dynamically.
 - Gameplay reads map templates through `template_offset_table` offsets into the map bank instead of embedding every map into stage two.
 - Splash/title/win/lose scenes, the attract HUD, and sector-entry presentation all read fixed-size 64x24 transparent assets from the presentation bank through generated offset constants.
 - The banked 3D scene renderer copies the active scene groups out of the geometry bank into bounded scratch buffers in [src/game/state.asm](../src/game/state.asm), applies group motion/yaw based on the current timeline tick, then projects and painter-sorts them inside stage two.
@@ -171,8 +172,8 @@ Current scope and limits:
 
 - Banks are read-only.
 - Each bank currently loads into one destination segment, so each bank must fit within 64 KiB padded to sectors.
-- The bank loader assumes the same `18 sectors/track, 2 heads` floppy geometry as [src/boot.asm](../src/boot.asm).
-- The runtime currently loads all three banks up front during `start`, but the build/report structure is still set up so later banks can be added without changing the boot sector.
+- Texture bank A and texture bank B already sit at the edge of that single-segment limit, so texture growth has to be deliberate.
+- The bootstrap currently loads all banks up front during handoff, but the build/report structure is still set up so later banks can be added without changing the boot sector contract.
 
 ## 9. Extension Checklist
 
@@ -180,7 +181,7 @@ Before changing the runtime, keep these contracts intact:
 
 - Do not remove the executable jump at byte `0` of stage two.
 - Do not move stage two out of the single load segment unless the bootloader changes too.
-- Do not change the stage-two bank helper's floppy geometry unless [src/boot.asm](../src/boot.asm) and the build layout logic change with it.
+- Do not change the bootstrap bank-loading geometry/layout contract unless [src/bootstrap.asm](../src/bootstrap.asm) and the build layout logic change with it.
 - Do not change `SS:SP`, `DS`, or `DF` assumptions without auditing every string op and interrupt path.
 - Do not reorder `key_down` / `key_pressed` without updating the reset routine.
 - Do not change enemy record width or field order without updating gameplay and render code together.
@@ -229,6 +230,7 @@ The important contract is:
 - Each demo still defines `Name`, `StartSector`, `Seed`, and `Steps`.
 - Each demo also carries an `Expected` block describing the replay end state that should result from the current rules and content.
 - The replay harness simulates the same seeded sector load, map selection, authored-anchor placement, scenario shard-pool selection, movement, EMP use, hunter turns, spoof windows, surge hits, exits, and scoring that the runtime uses.
+- The checked-in runtime-verify subset is intentionally narrower than the full demo catalog now: it only keeps the stable opening Subgrid checkpoints that still reflect the shipped movement route.
 
 This is intentionally lightweight rather than emulator-driven. It is meant to catch "we changed a rule and the demos no longer land where we think they do" before someone boots a VM.
 
@@ -289,11 +291,10 @@ The runtime verification signature intentionally stays compact but meaningful. I
 - `sector_num`
 - `current_template_index`
 - player position
-- shields, pulses, shards, kills, score
-- sector mastery counters
+- adventure heading and derived room variant
+- shields, pulses, shards, objectives, key state, exit tile, kills, and score
+- sector mastery counters (`sector_actions`, `sector_hits`, `sector_pulses_used`)
 - `spoof_timer`
-- the current RNG word
-- every enemy record `[alive, x, y, kind]`
 
 That signature is computed after every consumed demo action and compared against the generated checkpoint table. A mismatch lands on the fail scene with both signatures visible.
 
@@ -304,7 +305,7 @@ That signature is computed after every consumed demo action and compared against
 Its contract is:
 
 - use the verified splash lockup for the branding shot
-- use the configured AdventureRealm beauty/action anchors from `assets\sectors.psd1` for the public gameplay captures (currently `switchyard-attract-a` / `vault-attract-b`)
+- use `Campaign.Showcase` from `assets\sectors.psd1` for the public gameplay captures (currently `thermal-attract-a` / `vault-attract-b`)
 - write stable captures under `build\showcase\`
 - publish a machine-readable verified-gallery manifest under `build\showcase\`
 - let `build.ps1` refresh the README slots from that manifest when capture succeeds, or preserve the last verified gallery when capture is unavailable

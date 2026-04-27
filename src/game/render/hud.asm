@@ -31,6 +31,9 @@ ENDIF
 IF DEBUG_OVERLAY
     call render_debug_overlay
 ENDIF
+IF DEBUG_RUNTIME_VERIFY
+    call render_runtime_verify_probe
+ENDIF
 IF DEBUG_SMOKE_SENTINEL
     mov bx, SMOKE_SENTINEL_X
     mov dx, SMOKE_SENTINEL_Y
@@ -196,11 +199,12 @@ ENDIF
 
     call draw_message_banner
     call get_message_text_ptr
-    mov bx, 18
+    mov bx, GAME_HUD_BANNER_TEXT_X
     mov dx, GAME_HUD_MESSAGE_Y
+    mov cx, GAME_HUD_BANNER_TEXT_RIGHT
     call get_message_text_color
     mov ah, al
-    call draw_text_small
+    call draw_text_small_clipped
 
     mov bx, 18
     mov dx, GAME_HUD_CONTROLS_Y
@@ -215,7 +219,8 @@ game_status_controls_normal:
 game_status_controls_draw:
     call get_sector_accent_color
     mov ah, al
-    call draw_text_small
+    mov cx, GAME_HUD_CONTROLS_RIGHT
+    call draw_text_small_clipped
     ret
 
 render_adventure_status:
@@ -300,11 +305,12 @@ render_adventure_status:
 
     call draw_message_banner
     call get_message_text_ptr
-    mov bx, 18
+    mov bx, GAME_HUD_BANNER_TEXT_X
     mov dx, GAME_HUD_MESSAGE_Y
+    mov cx, GAME_HUD_BANNER_TEXT_RIGHT
     call get_message_text_color
     mov ah, al
-    call draw_text_small
+    call draw_text_small_clipped
 
     mov bx, 188
     mov dx, GAME_HUD_MESSAGE_Y
@@ -394,7 +400,8 @@ adventure_status_controls_normal:
 adventure_status_controls_ready:
     call get_sector_accent_color
     mov ah, al
-    call draw_text_small
+    mov cx, GAME_HUD_CONTROLS_RIGHT
+    call draw_text_small_clipped
     ret
 
 draw_spoof_status:
@@ -588,6 +595,12 @@ render_adventure_intro_overlay:
     jne adventure_intro_overlay_done
     cmp byte ptr [adventure_intro_timer], 0
     je adventure_intro_overlay_done
+    cmp byte ptr [feedback_timer], 0
+    je adventure_intro_overlay_ready
+    cmp byte ptr [message_id], MSG_SECTOR
+    je adventure_intro_overlay_done
+
+adventure_intro_overlay_ready:
 
     mov bx, 34
     mov dx, 38
@@ -638,15 +651,17 @@ adventure_intro_frame_ready:
     mov bx, 94
     mov dx, 42
     mov si, offset adventure_realm_title
+    mov cx, 278
     call get_sector_title_color
     mov ah, al
-    call draw_text_small
+    call draw_text_small_clipped
 
     mov bx, 42
     mov dx, 54
     mov si, offset adventure_realm_intro
     mov ah, PAL_WHITE
-    call draw_text_small
+    mov cx, 278
+    call draw_text_small_clipped
 
     mov bx, 42
     mov dx, 66
@@ -660,7 +675,8 @@ adventure_intro_shift_base:
     mov ah, PAL_AMBER
 
 adventure_intro_shift_ready:
-    call draw_text_small
+    mov cx, 278
+    call draw_text_small_clipped
 
 adventure_intro_overlay_done:
     ret
@@ -878,9 +894,9 @@ gate_meter_done:
 draw_message_banner:
     cmp byte ptr [feedback_timer], 0
     je message_banner_done
-    mov bx, 16
+    mov bx, GAME_HUD_BANNER_X
     mov dx, GAME_HUD_BANNER_Y
-    mov cx, 164
+    mov cx, GAME_HUD_BANNER_W
     mov bp, 8
     call get_message_banner_color
     call fill_rect
@@ -1021,6 +1037,38 @@ message_text_danger_base:
 message_text_default:
     mov al, PAL_WHITE
     ret
+
+IF DEBUG_RUNTIME_VERIFY
+render_runtime_verify_probe:
+    ; Runtime-verify captures can timeout while the game is still presenting a
+    ; gameplay frame, so stamp the raw diagnostic words directly into those
+    ; frames for focused repros.
+    call capture_runtime_verify_diagnostics
+    mov ax, [verify_diag_action]
+    mov bx, 12
+    mov dx, 202
+    mov cl, PAL_AMBER
+    call draw_word_hex_small
+
+    mov ax, [verify_diag_script_ptr]
+    mov bx, 36
+    mov dx, 202
+    mov cl, PAL_CYAN
+    call draw_word_hex_small
+
+    mov ax, [verify_diag_progress]
+    mov bx, 12
+    mov dx, 210
+    mov cl, PAL_WHITE
+    call draw_word_hex_small
+
+    mov ax, [verify_diag_flags]
+    mov bx, 36
+    mov dx, 210
+    mov cl, PAL_GATE
+    call draw_word_hex_small
+    ret
+ENDIF
 
 IF DEBUG_OVERLAY
 render_debug_overlay:

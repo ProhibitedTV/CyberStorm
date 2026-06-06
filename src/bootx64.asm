@@ -1227,12 +1227,12 @@ DrawMenuOptions PROC
 
 menu_select_log:
     cmp dword ptr [MenuSelection], 1
-    jne menu_select_panic
+    jne menu_select_credits
     FILL_GOP_RECT 420, 86, 152, 24, DIAG_ACCENT
     FILL_GOP_RECT 414, 92, 4, 12, 00FF90FFh
     jmp menu_highlight_done
 
-menu_select_panic:
+menu_select_credits:
     FILL_GOP_RECT 420, 118, 152, 24, DIAG_ACCENT
     FILL_GOP_RECT 414, 124, 4, 12, 00FF90FFh
 
@@ -1251,17 +1251,17 @@ menu_highlight_done:
 
 panel_check_log:
     cmp dword ptr [MenuPanel], 2
-    jne panel_check_panic
+    jne panel_check_credits
     lea r8, MenuPanelLog
     jmp panel_ready
 
-panel_check_panic:
+panel_check_credits:
     cmp dword ptr [MenuPanel], 3
     jne panel_ready
-    lea r8, MenuPanelPanic
+    lea r8, MenuPanelCredits
 
 panel_ready:
-    mov ecx, 552
+    mov ecx, 560
     mov edx, 32
     mov r9d, DIAG_WARN
     call DrawString
@@ -1288,12 +1288,12 @@ draw_menu_log:
 
     mov ecx, 428
     mov edx, 122
-    lea r8, MenuOptionPanic
+    lea r8, MenuOptionCredits
     mov r9d, DIAG_TEXT
     cmp dword ptr [MenuSelection], 2
-    jne draw_menu_panic
+    jne draw_menu_credits
     mov r9d, DIAG_BG
-draw_menu_panic:
+draw_menu_credits:
     call DrawString
 
     add rsp, 20h
@@ -1307,18 +1307,24 @@ DrawTitleScreen PROC
 
     call DrawEngine64Showcase
 
-    FILL_GOP_RECT 28, 24, 360, 104, 00070B12h
-    FILL_GOP_RECT 42, 86, 286, 5, DIAG_ACCENT
-    FILL_GOP_RECT 42, 94, 192, 2, 00FFE66Dh
-
-    mov ecx, 42
-    mov edx, 42
-    lea r8, TitleLine
-    mov r9d, DIAG_TEXT
-    call DrawString
+    FILL_GOP_RECT 28, 24, 374, 112, 00070B12h
+    FILL_GOP_RECT 42, 88, 286, 5, DIAG_ACCENT
+    FILL_GOP_RECT 42, 96, 192, 2, 00FFE66Dh
 
     mov ecx, 44
-    mov edx, 100
+    mov edx, 40
+    lea r8, TitleLine
+    mov r9d, DIAG_MAGENTA
+    call DrawString4x
+
+    mov ecx, 42
+    mov edx, 38
+    lea r8, TitleLine
+    mov r9d, DIAG_TEXT
+    call DrawString4x
+
+    mov ecx, 44
+    mov edx, 106
     lea r8, SubtitleLine
     mov r9d, DIAG_MUTED
     call DrawString
@@ -2392,6 +2398,130 @@ glyph_done:
     ret
 DrawGlyph ENDP
 
+DrawString4x PROC
+    push rbp
+    mov rbp, rsp
+    push rbx
+    push rsi
+    push r12
+    push r13
+    push r14
+    push r15
+    sub rsp, 20h
+
+    mov r12d, ecx
+    mov r13d, edx
+    mov r14, r8
+    mov r15d, r9d
+
+string4_loop:
+    movzx eax, byte ptr [r14]
+    test al, al
+    jz string4_done
+    inc r14
+
+    mov ecx, r12d
+    mov edx, r13d
+    mov r8d, eax
+    mov r9d, r15d
+    call DrawGlyph4x
+    add r12d, 34
+    jmp string4_loop
+
+string4_done:
+    add rsp, 20h
+    pop r15
+    pop r14
+    pop r13
+    pop r12
+    pop rsi
+    pop rbx
+    pop rbp
+    ret
+DrawString4x ENDP
+
+DrawGlyph4x PROC
+    push rbx
+    push rsi
+    push rdi
+    push r12
+    push r13
+    push r14
+    push r15
+
+    mov r12d, ecx
+    mov r13d, edx
+    mov eax, r9d
+    call ConvertXrgbToGop
+    mov r14d, eax
+
+    mov eax, r8d
+    call GetGlyphPtr
+    mov rsi, rax
+
+    xor r10d, r10d
+glyph4_row_loop:
+    cmp r10d, 8
+    jae glyph4_done
+
+    movzx ebx, byte ptr [rsi + r10]
+    xor r11d, r11d
+glyph4_col_loop:
+    cmp r11d, 8
+    jae glyph4_next_row
+
+    mov eax, 80h
+    mov ecx, r11d
+    shr eax, cl
+    test ebx, eax
+    jz glyph4_skip_pixel
+
+    mov eax, r13d
+    mov edx, r10d
+    shl edx, 2
+    add eax, edx
+    mov edx, dword ptr [GopStride]
+    imul rax, rdx
+    mov edx, r12d
+    mov ecx, r11d
+    shl ecx, 2
+    add edx, ecx
+    add rax, rdx
+    shl rax, 2
+
+    mov rdi, qword ptr [GopFrameBase]
+    add rdi, rax
+    mov r15d, 4
+
+glyph4_pixel_row:
+    mov eax, r14d
+    mov dword ptr [rdi], eax
+    mov dword ptr [rdi + 4], eax
+    mov dword ptr [rdi + 8], eax
+    mov dword ptr [rdi + 12], eax
+    add rdi, qword ptr [GopStrideBytes]
+    dec r15d
+    jnz glyph4_pixel_row
+
+glyph4_skip_pixel:
+    inc r11d
+    jmp glyph4_col_loop
+
+glyph4_next_row:
+    inc r10d
+    jmp glyph4_row_loop
+
+glyph4_done:
+    pop r15
+    pop r14
+    pop r13
+    pop r12
+    pop rdi
+    pop rsi
+    pop rbx
+    ret
+DrawGlyph4x ENDP
+
 GetGlyphPtr PROC
     cmp al, '0'
     jb glyph_check_letter
@@ -2589,7 +2719,7 @@ MenuSelection dd 0
 MenuPanel dd 0
 
 TitleLine db 'CYBERSTORM',0
-SubtitleLine db 'X64 NEON DISTRICT',0
+SubtitleLine db 'NEON DISTRICT',0
 ResLine db 'RES: 00000000X00000000',0
 PixelLine db 'PXFMT: 00000000',0
 FrameLine db 'FB: 0000000000000000',0
@@ -2607,16 +2737,16 @@ InputLine db 'KEY SC0000 CH0000 ACT0000',0
 CountsLine db 'OK 00000000 BACK 00000000',0
 StatusLine db 'STATUS: TITLE READY',0
 MenuLine db 'X64 START',0
-StartHintLine db 'W S SELECT  ENTER CONFIRM',0
+StartHintLine db 'W S SELECT  ENTER GO',0
 BuildHintLine db 'ESC BACK  OPTIONS  CREDITS',0
 MenuTitleLine db 'SELECT',0
 MenuOptionDiag db 'NEW GAME',0
 MenuOptionLog db 'OPTIONS',0
-MenuOptionPanic db 'CREDITS',0
-MenuPanelIdle db 'LIVE',0
+MenuOptionCredits db 'CREDITS',0
+MenuPanelIdle db 'ON',0
 MenuPanelDiag db 'RUN',0
-MenuPanelLog db 'TUNE',0
-MenuPanelPanic db 'CREDS',0
+MenuPanelLog db 'FX',0
+MenuPanelCredits db 'CR',0
 PanicTitleLine db 'CYBERSTORM X64 BOOT ALERT',0
 PanicArenaLine db 'ARENA ALLOC FAIL',0
 PanicForcedLine db 'BOOT ALERT CHECK',0

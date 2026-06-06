@@ -86,15 +86,29 @@ powershell -ExecutionPolicy Bypass -File .\scripts\build.ps1 -Target x64-uefi
 
 The x64 artifact is [build/cyberstorm-x64.iso](build/cyberstorm-x64.iso). It remains packageable as physical optical media through the UEFI El Torito path and carries the FAT boot image plus pack payloads needed by `BOOTX64.EFI`.
 
-### Boot It In VirtualBox
+### Boot The x64 ISO In VirtualBox
 
-The supported path is the included deployment script, which refreshes a VirtualBox-ready disk from [build/cyberstorm.img](build/cyberstorm.img) and also attaches [build/cyberstorm-expanded.iso](build/cyberstorm-expanded.iso) when present:
+The forward demo path is the included x64 deployment script. It creates or refreshes a UEFI VirtualBox VM, attaches [build/cyberstorm-x64.iso](build/cyberstorm-x64.iso), and boots the GOP title-screen runtime:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\deploy-x64-vm.ps1 -Frontend gui
+```
+
+For a repeatable title capture plus a quick menu input smoke, add `-Capture -InputSmoke`:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\deploy-x64-vm.ps1 -Frontend gui -Capture -InputSmoke
+```
+
+### Boot The Legacy x86 Image In VirtualBox
+
+The legacy path uses the existing deployment script, which refreshes a VirtualBox-ready disk from [build/cyberstorm.img](build/cyberstorm.img) and also attaches [build/cyberstorm-expanded.iso](build/cyberstorm-expanded.iso) when present:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\deploy-vm.ps1
 ```
 
-If you wire a VM manually, use a BIOS VM and attach a hard disk derived from [build/cyberstorm.img](build/cyberstorm.img). The ISO contains the boot image, pack directory, and manifest for burnable-media distribution.
+If you wire a VM manually for the legacy path, use a BIOS VM and attach a hard disk derived from [build/cyberstorm.img](build/cyberstorm.img). The expanded ISO contains the boot image, pack directory, and manifest for burnable-media distribution.
 
 ### Use The Included Workspace VM
 

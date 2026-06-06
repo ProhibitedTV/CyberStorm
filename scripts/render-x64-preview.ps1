@@ -132,7 +132,7 @@ try {
     $magentaPen = New-Object System.Drawing.Pen (New-XrgbColor 0x00FF90FF), 2
     $amberPen = New-Object System.Drawing.Pen (New-XrgbColor 0x00FFE66D), 2
 
-    $titleFont = New-Object System.Drawing.Font 'Segoe UI', 36, ([System.Drawing.FontStyle]::Bold), ([System.Drawing.GraphicsUnit]::Pixel)
+    $titleFont = New-Object System.Drawing.Font 'Segoe UI', 44, ([System.Drawing.FontStyle]::Bold), ([System.Drawing.GraphicsUnit]::Pixel)
     $uiFont = New-Object System.Drawing.Font 'Segoe UI', 15, ([System.Drawing.FontStyle]::Bold), ([System.Drawing.GraphicsUnit]::Pixel)
     $smallFont = New-Object System.Drawing.Font 'Segoe UI', 12, ([System.Drawing.FontStyle]::Regular), ([System.Drawing.GraphicsUnit]::Pixel)
 
@@ -178,17 +178,18 @@ try {
     $graphics.DrawLine($cyanPen, 96, 288, 544, 288)
     $graphics.FillRectangle($amberBrush, 286, 258, 78, 6)
 
-    $graphics.FillRectangle($panelBrush, 28, 24, 360, 104)
-    $graphics.FillRectangle($accentBrush, 42, 86, 286, 5)
-    $graphics.FillRectangle($amberBrush, 42, 94, 192, 2)
-    $graphics.DrawString('CYBERSTORM', $titleFont, $textBrush, 42, 36)
-    $graphics.DrawString('X64 NEON DISTRICT', $uiFont, $mutedBrush, 44, 100)
+    $graphics.FillRectangle($panelBrush, 28, 24, 374, 112)
+    $graphics.FillRectangle($accentBrush, 42, 88, 286, 5)
+    $graphics.FillRectangle($amberBrush, 42, 96, 192, 2)
+    $graphics.DrawString('CYBERSTORM', $titleFont, $purpleBrush, 44, 38)
+    $graphics.DrawString('CYBERSTORM', $titleFont, $textBrush, 42, 34)
+    $graphics.DrawString('NEON DISTRICT', $uiFont, $mutedBrush, 44, 106)
 
     $graphics.FillRectangle($menuBrush, 404, 22, 212, 136)
     $graphics.FillRectangle($accentBrush, 408, 28, 4, 124)
     $graphics.FillRectangle($magentaBrush, 416, 150, 184, 2)
     $graphics.DrawString('SELECT', $smallFont, $mutedBrush, 424, 32)
-    $graphics.DrawString('LIVE', $smallFont, $amberBrush, 552, 32)
+    $graphics.DrawString('ON', $smallFont, $amberBrush, 560, 32)
     $graphics.FillRectangle($accentBrush, 420, 54, 152, 24)
     $graphics.FillRectangle($magentaBrush, 414, 60, 4, 12)
     $graphics.DrawString('NEW GAME', $uiFont, $darkBrush, 428, 58)
@@ -197,7 +198,7 @@ try {
 
     $graphics.FillRectangle($panelBrush, 28, 402, 412, 52)
     $graphics.FillRectangle($magentaBrush, 28, 404, 412, 2)
-    $graphics.DrawString('W S SELECT  ENTER CONFIRM', $smallFont, $textBrush, 42, 414)
+    $graphics.DrawString('W S SELECT  ENTER GO', $smallFont, $textBrush, 42, 414)
     $graphics.DrawString('ESC BACK  OPTIONS  CREDITS', $smallFont, $mutedBrush, 42, 436)
 }
 finally {

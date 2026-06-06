@@ -185,10 +185,9 @@ IFDEF X64_FORCE_PANIC
 ENDIF
 
     call LoadX64Pack
-    call DrawEngine64Showcase
+    call DrawTitleScreen
     mov ecx, dword ptr [PackStatusCode]
     call WriteRuntimeLog
-    call DrawDiagnosticsScreen
     call RunInputLoop
     jmp done
 
@@ -1058,7 +1057,7 @@ input_loop:
     test eax, eax
     jz input_stall
 
-    call DrawDiagnosticsScreen
+    call DrawTitleScreen
 
 input_stall:
     mov ecx, INPUT_POLL_STALL_USEC
@@ -1292,6 +1291,48 @@ draw_menu_panic:
     pop rdi
     ret
 DrawMenuOptions ENDP
+
+DrawTitleScreen PROC
+    push rdi
+    sub rsp, 20h
+
+    call DrawEngine64Showcase
+
+    FILL_GOP_RECT 28, 24, 360, 96, 00101820h
+    FILL_GOP_RECT 42, 84, 348, 5, DIAG_ACCENT
+
+    mov ecx, 42
+    mov edx, 42
+    lea r8, TitleLine
+    mov r9d, DIAG_TEXT
+    call DrawString
+
+    mov ecx, 44
+    mov edx, 92
+    lea r8, SubtitleLine
+    mov r9d, DIAG_MUTED
+    call DrawString
+
+    call DrawMenuOptions
+
+    FILL_GOP_RECT 28, 392, 584, 64, 00101820h
+
+    mov ecx, 42
+    mov edx, 406
+    lea r8, StartHintLine
+    mov r9d, DIAG_TEXT
+    call DrawString
+
+    mov ecx, 42
+    mov edx, 430
+    lea r8, BuildHintLine
+    mov r9d, DIAG_MUTED
+    call DrawString
+
+    add rsp, 20h
+    pop rdi
+    ret
+DrawTitleScreen ENDP
 
 DrawDiagnosticsScreen PROC
     push rdi
@@ -1601,58 +1642,176 @@ RenderEngine64Frame PROC
     ja render_header_fail
     lea r12, [rsi + rdx]
 
-    mov eax, ENGINE64_EXPECTED_WIDTH
-    xor edx, edx
-    mov ecx, ebx
-    div ecx
-    test eax, eax
-    jz render_header_fail
-    mov r13d, eax
-
-    xor r14d, r14d
-
-render_bar_loop:
-    cmp r14d, ebx
-    jae render_ok
-
-    mov r15d, dword ptr [r12 + r14 * 4]
-
-    mov eax, r14d
-    imul eax, r13d
-    mov r10d, eax
-    mov r9d, r13d
-
-    mov eax, ebx
-    dec eax
-    cmp r14d, eax
-    jne render_width_ready
-    mov r9d, ENGINE64_EXPECTED_WIDTH
-    sub r9d, r10d
-
-render_width_ready:
     xor r8d, r8d
 
-render_bar_row_loop:
+render_sky_row_loop:
     cmp r8d, ENGINE64_EXPECTED_HEIGHT
-    jae render_next_bar
+    jae render_scene_overlays
 
     mov eax, r8d
     imul eax, eax, ENGINE64_EXPECTED_WIDTH
-    add eax, r10d
     shl rax, 2
     mov rdi, qword ptr [FrameArenaBase]
     add rdi, rax
 
-    mov eax, r15d
-    mov ecx, r9d
+    mov eax, dword ptr [r12]
+    cmp r8d, 122
+    jb render_sky_color_ready
+    mov eax, dword ptr [r12 + 4]
+    cmp r8d, 246
+    jb render_sky_color_ready
+    mov eax, 000B1924h
+    cmp r8d, 330
+    jb render_sky_color_ready
+    mov eax, 00101016h
+
+render_sky_color_ready:
+    mov ecx, ENGINE64_EXPECTED_WIDTH
     rep stosd
 
     inc r8d
-    jmp render_bar_row_loop
+    jmp render_sky_row_loop
 
-render_next_bar:
-    inc r14d
-    jmp render_bar_loop
+render_scene_overlays:
+    mov ecx, 0
+    mov edx, 286
+    mov r8d, 640
+    mov r9d, 5
+    mov eax, dword ptr [r12 + 12]
+    call FillFrameRect
+
+    mov ecx, 0
+    mov edx, 332
+    mov r8d, 640
+    mov r9d, 2
+    mov eax, 003080D0h
+    call FillFrameRect
+
+    mov ecx, 0
+    mov edx, 386
+    mov r8d, 640
+    mov r9d, 2
+    mov eax, 00A020B0h
+    call FillFrameRect
+
+    mov ecx, 0
+    mov edx, 438
+    mov r8d, 640
+    mov r9d, 3
+    mov eax, 00D8FFFFh
+    call FillFrameRect
+
+    mov ecx, 314
+    mov edx, 286
+    mov r8d, 4
+    mov r9d, 194
+    mov eax, 003080D0h
+    call FillFrameRect
+
+    mov ecx, 222
+    mov edx, 330
+    mov r8d, 3
+    mov r9d, 150
+    mov eax, 00182A38h
+    call FillFrameRect
+
+    mov ecx, 442
+    mov edx, 330
+    mov r8d, 3
+    mov r9d, 150
+    mov eax, 00182A38h
+    call FillFrameRect
+
+    mov ecx, 42
+    mov edx, 178
+    mov r8d, 46
+    mov r9d, 110
+    mov eax, 00081018h
+    call FillFrameRect
+
+    mov ecx, 106
+    mov edx, 150
+    mov r8d, 62
+    mov r9d, 138
+    mov eax, 0009121Ch
+    call FillFrameRect
+
+    mov ecx, 182
+    mov edx, 198
+    mov r8d, 36
+    mov r9d, 90
+    mov eax, 00081018h
+    call FillFrameRect
+
+    mov ecx, 472
+    mov edx, 166
+    mov r8d, 48
+    mov r9d, 122
+    mov eax, 0009121Ch
+    call FillFrameRect
+
+    mov ecx, 540
+    mov edx, 194
+    mov r8d, 32
+    mov r9d, 94
+    mov eax, 00081018h
+    call FillFrameRect
+
+    mov ecx, 62
+    mov edx, 214
+    mov r8d, 8
+    mov r9d, 34
+    mov eax, 00D8FFFFh
+    call FillFrameRect
+
+    mov ecx, 130
+    mov edx, 190
+    mov r8d, 8
+    mov r9d, 52
+    mov eax, 0020D060h
+    call FillFrameRect
+
+    mov ecx, 490
+    mov edx, 206
+    mov r8d, 8
+    mov r9d, 42
+    mov eax, 00FF90FFh
+    call FillFrameRect
+
+    mov ecx, 246
+    mov edx, 226
+    mov r8d, 56
+    mov r9d, 10
+    mov eax, 00060C14h
+    call FillFrameRect
+
+    mov ecx, 274
+    mov edx, 212
+    mov r8d, 92
+    mov r9d, 28
+    mov eax, 00101820h
+    call FillFrameRect
+
+    mov ecx, 356
+    mov edx, 220
+    mov r8d, 38
+    mov r9d, 12
+    mov eax, 00060C14h
+    call FillFrameRect
+
+    mov ecx, 296
+    mov edx, 220
+    mov r8d, 38
+    mov r9d, 8
+    mov eax, 00D8FFFFh
+    call FillFrameRect
+
+    mov ecx, 238
+    mov edx, 238
+    mov r8d, 172
+    mov r9d, 3
+    mov eax, 00A020B0h
+    call FillFrameRect
 
 render_ok:
     mov qword ptr [FrameArenaUsed], ENGINE64_FRAME_BYTES
@@ -1685,6 +1844,47 @@ render_done:
     pop rbx
     ret
 RenderEngine64Frame ENDP
+
+FillFrameRect PROC
+    push rbx
+    push rdi
+    push r12
+    push r13
+    push r14
+
+    mov r11d, eax
+    mov r13d, ecx
+    mov r14d, edx
+    mov ebx, r8d
+    mov r12d, r9d
+
+frame_rect_row:
+    test r12d, r12d
+    jz frame_rect_done
+
+    mov eax, r14d
+    imul eax, eax, ENGINE64_EXPECTED_WIDTH
+    add eax, r13d
+    shl rax, 2
+    mov rdi, qword ptr [FrameArenaBase]
+    add rdi, rax
+
+    mov eax, r11d
+    mov ecx, ebx
+    rep stosd
+
+    inc r14d
+    dec r12d
+    jmp frame_rect_row
+
+frame_rect_done:
+    pop r14
+    pop r13
+    pop r12
+    pop rdi
+    pop rbx
+    ret
+FillFrameRect ENDP
 
 PresentInternalFrameToGop PROC
     push rsi
@@ -2163,6 +2363,8 @@ InputLine db 'KEY SC0000 CH0000 ACT0000',0
 CountsLine db 'OK 00000000 BACK 00000000',0
 StatusLine db 'STATUS: TITLE READY',0
 MenuLine db 'X64 START',0
+StartHintLine db 'PURE ASM UEFI X64 SOFTWARE 3D',0
+BuildHintLine db 'NEW GAME OPTIONS CREDITS',0
 MenuTitleLine db 'MENU',0
 MenuOptionDiag db 'NEW GAME',0
 MenuOptionLog db 'OPTIONS',0
@@ -2171,9 +2373,9 @@ MenuPanelIdle db 'READY',0
 MenuPanelDiag db 'START',0
 MenuPanelLog db 'OPTS',0
 MenuPanelPanic db 'CREDS',0
-PanicTitleLine db 'CYBERSTORM X64 PANIC',0
+PanicTitleLine db 'CYBERSTORM X64 BOOT ALERT',0
 PanicArenaLine db 'ARENA ALLOC FAIL',0
-PanicForcedLine db 'FORCED PANIC TEST',0
+PanicForcedLine db 'BOOT ALERT CHECK',0
 
 PackFileName LABEL WORD
     dw 'X','6','4','P','A','C','K','.','B','I','N',0

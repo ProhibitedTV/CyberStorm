@@ -8,10 +8,10 @@ Engine64PayloadStart LABEL BYTE
     dd 00000001h        ; payload format version
     dd 00000280h        ; target width: 640
     dd 000001E0h        ; target height: 480
-    dd 00000008h        ; deterministic title/backdrop color bars
-    dd 0000001Fh        ; GOP, xRGB8888, bars, pack, diagnostics
-    dd 00000040h        ; bar table offset
-    dd 00000004h        ; bytes per bar color
+    dd 00000008h        ; deterministic title-scene palette entries
+    dd 0000001Fh        ; GOP, xRGB8888, title scene, pack, diagnostics
+    dd 00000040h        ; palette table offset
+    dd 00000004h        ; bytes per palette color
     dd 00000000h        ; internal present format: xRGB8888
     dd 0012C000h        ; 640x480x4 frame arena budget
     dd 0012C000h        ; 640x480x4 depth arena budget
@@ -21,7 +21,7 @@ Engine64PayloadStart LABEL BYTE
     dd 00000000h
     dd 00000000h
 
-Engine64ColorBars LABEL DWORD
+Engine64TitlePalette LABEL DWORD
     dd 00101820h
     dd 00182A38h
     dd 003080D0h

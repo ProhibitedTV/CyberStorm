@@ -30,9 +30,9 @@ function Read-U32 {
 $version = Read-U32 8
 $width = [int](Read-U32 12)
 $height = [int](Read-U32 16)
-$barCount = [int](Read-U32 20)
+$paletteCount = [int](Read-U32 20)
 $flags = Read-U32 24
-$barOffset = [int](Read-U32 28)
+$paletteOffset = [int](Read-U32 28)
 $bytesPerColor = [int](Read-U32 32)
 
 if ($version -ne 1) {
@@ -41,14 +41,14 @@ if ($version -ne 1) {
 if ($width -ne 640 -or $height -ne 480) {
     throw "ENGINE64 preview expected 640x480, found ${width}x${height}."
 }
-if ($barCount -lt 1 -or $barCount -gt 16) {
-    throw "ENGINE64 preview bar count must be 1..16, found $barCount."
+if ($paletteCount -lt 1 -or $paletteCount -gt 16) {
+    throw "ENGINE64 preview palette count must be 1..16, found $paletteCount."
 }
 if ($bytesPerColor -ne 4) {
     throw "ENGINE64 preview expected 4-byte xRGB colors, found $bytesPerColor."
 }
-if (($barOffset + ($barCount * 4)) -gt $bytes.Length) {
-    throw "ENGINE64 preview color table extends past the payload."
+if (($paletteOffset + ($paletteCount * 4)) -gt $bytes.Length) {
+    throw "ENGINE64 preview palette table extends past the payload."
 }
 
 Add-Type -AssemblyName System.Drawing
@@ -58,9 +58,14 @@ if ($outputDirectory) {
     New-Item -ItemType Directory -Force -Path $outputDirectory | Out-Null
 }
 
-$colors = New-Object 'System.UInt32[]' $barCount
-for ($i = 0; $i -lt $barCount; $i++) {
-    $colors[$i] = Read-U32 ($barOffset + ($i * 4))
+$colors = New-Object 'System.UInt32[]' $paletteCount
+for ($i = 0; $i -lt $paletteCount; $i++) {
+    $colors[$i] = Read-U32 ($paletteOffset + ($i * 4))
+}
+
+function New-XrgbColor {
+    param([uint32]$Value, [byte]$Alpha = 255)
+    return [System.Drawing.Color]::FromArgb($Alpha, [byte](($Value -shr 16) -band 0xFF), [byte](($Value -shr 8) -band 0xFF), [byte]($Value -band 0xFF))
 }
 
 $bitmap = New-Object System.Drawing.Bitmap $width, $height, ([System.Drawing.Imaging.PixelFormat]::Format32bppRgb)
@@ -72,9 +77,19 @@ try {
     $buffer = New-Object byte[] ($stride * $height)
     for ($y = 0; $y -lt $height; $y++) {
         $row = $y * $stride
+        $color = if ($y -lt 122) {
+            $colors[0]
+        }
+        elseif ($y -lt 246) {
+            $colors[[Math]::Min(1, $colors.Length - 1)]
+        }
+        elseif ($y -lt 330) {
+            [uint32]0x000B1924
+        }
+        else {
+            [uint32]0x00101016
+        }
         for ($x = 0; $x -lt $width; $x++) {
-            $bar = [Math]::Min([int](($x * $barCount) / $width), $barCount - 1)
-            $color = $colors[$bar]
             $offset = $row + ($x * 4)
             $buffer[$offset] = [byte]($color -band 0xFF)
             $buffer[$offset + 1] = [byte](($color -shr 8) -band 0xFF)
@@ -99,10 +114,40 @@ try {
     $textBrush = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(255, 232, 248, 255))
     $mutedBrush = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(255, 136, 184, 216))
     $darkBrush = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(255, 16, 24, 32))
+    $skylineBrushA = New-Object System.Drawing.SolidBrush (New-XrgbColor 0x00081018)
+    $skylineBrushB = New-Object System.Drawing.SolidBrush (New-XrgbColor 0x0009121C)
+    $shipBrush = New-Object System.Drawing.SolidBrush (New-XrgbColor 0x00101820)
+    $shipDarkBrush = New-Object System.Drawing.SolidBrush (New-XrgbColor 0x00060C14)
+    $greenBrush = New-Object System.Drawing.SolidBrush (New-XrgbColor 0x0020D060)
+    $blueBrush = New-Object System.Drawing.SolidBrush (New-XrgbColor 0x003080D0)
+    $magentaBrush = New-Object System.Drawing.SolidBrush (New-XrgbColor 0x00A020B0)
 
     $titleFont = New-Object System.Drawing.Font 'Segoe UI', 34, ([System.Drawing.FontStyle]::Bold), ([System.Drawing.GraphicsUnit]::Pixel)
     $uiFont = New-Object System.Drawing.Font 'Segoe UI', 15, ([System.Drawing.FontStyle]::Bold), ([System.Drawing.GraphicsUnit]::Pixel)
     $smallFont = New-Object System.Drawing.Font 'Segoe UI', 12, ([System.Drawing.FontStyle]::Regular), ([System.Drawing.GraphicsUnit]::Pixel)
+
+    $graphics.FillRectangle($accentBrush, 0, 286, 640, 5)
+    $graphics.FillRectangle($blueBrush, 0, 332, 640, 2)
+    $graphics.FillRectangle($magentaBrush, 0, 386, 640, 2)
+    $graphics.FillRectangle($accentBrush, 0, 438, 640, 3)
+    $graphics.FillRectangle($blueBrush, 314, 286, 4, 194)
+    $graphics.FillRectangle($skylineBrushB, 222, 330, 3, 150)
+    $graphics.FillRectangle($skylineBrushB, 442, 330, 3, 150)
+
+    $graphics.FillRectangle($skylineBrushA, 42, 178, 46, 110)
+    $graphics.FillRectangle($skylineBrushB, 106, 150, 62, 138)
+    $graphics.FillRectangle($skylineBrushA, 182, 198, 36, 90)
+    $graphics.FillRectangle($skylineBrushB, 472, 166, 48, 122)
+    $graphics.FillRectangle($skylineBrushA, 540, 194, 32, 94)
+    $graphics.FillRectangle($accentBrush, 62, 214, 8, 34)
+    $graphics.FillRectangle($greenBrush, 130, 190, 8, 52)
+    $graphics.FillRectangle($magentaBrush, 490, 206, 8, 42)
+
+    $graphics.FillRectangle($shipDarkBrush, 246, 226, 56, 10)
+    $graphics.FillRectangle($shipBrush, 274, 212, 92, 28)
+    $graphics.FillRectangle($shipDarkBrush, 356, 220, 38, 12)
+    $graphics.FillRectangle($accentBrush, 296, 220, 38, 8)
+    $graphics.FillRectangle($magentaBrush, 238, 238, 172, 3)
 
     $graphics.FillRectangle($panelBrush, 28, 24, 584, 94)
     $graphics.FillRectangle($accentBrush, 42, 84, 348, 5)
@@ -132,6 +177,6 @@ $item = Get-Item -LiteralPath $OutputPath
     Bytes = $item.Length
     Width = $width
     Height = $height
-    Bars = $barCount
+    PaletteEntries = $paletteCount
     Flags = ('0x{0:X8}' -f $flags)
 }

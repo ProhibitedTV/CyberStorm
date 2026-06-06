@@ -2,13 +2,13 @@
 
 > No OS. No shell. Just the realm.
 >
-> CyberStorm is a bootable bare-metal 3D adventure campaign and engine project. The playable legacy path still emits an expanded BIOS boot image plus burnable CD/DVD ISO wrapper, while the forward path now builds a UEFI x64 ISO with a GOP diagnostics runtime, x64 pack loader, and assembly-built `ENGINE64` scaffold payload.
+> CyberStorm is a bootable bare-metal 3D adventure campaign and engine project. The playable legacy path still emits an expanded BIOS boot image plus burnable CD/DVD ISO wrapper, while the forward path now builds a UEFI x64 ISO with a GOP title-screen runtime, x64 pack loader, and assembly-built `ENGINE64` scaffold payload.
 
 ![CyberStorm hero](build/readme-shot-1.png)
 
 | Built for | Boots from | Video | Runtime |
 | --- | --- | --- | --- |
-| UEFI x64 + GOP | Burnable UEFI El Torito ISO (`cyberstorm-x64.iso`) | GOP framebuffer diagnostics now; CPU software-3D `640x480` renderer target | PE32+ `BOOTX64.EFI`, UEFI FAT payloads, `X64PACK.BIN`, assembly-built `ENGINE64.BIN` scaffold |
+| UEFI x64 + GOP | Burnable UEFI El Torito ISO (`cyberstorm-x64.iso`) | GOP-presented `640x480` title screen now; CPU software-3D renderer target | PE32+ `BOOTX64.EFI`, UEFI FAT payloads, `X64PACK.BIN`, assembly-built `ENGINE64.BIN` scaffold |
 | BIOS x86 + Oracle VirtualBox | Expanded raw image (`.img`) and burnable ISO wrapper (`cyberstorm-expanded.iso`) | VBE `640x480x16` present path over a `320x240` gameplay surface with exact 2x presentation when active, plus legacy VGA fallback | i386-targeted boot chain + current 16-bit stage-two runtime, with generated high-memory reservations for the engine migration |
 
 ## Key Features
@@ -25,7 +25,7 @@
 
 - **A real boot path.** The build emits a bootable BIOS disk image, not a host app wrapped in a fake shell.
 - **A forward x64 ISO path.** `-Target x64-uefi` emits `cyberstorm-x64.iso`, `BOOTX64.EFI`, `X64PACK.BIN`, `X64MAN.TXT`, and `ENGINE64.BIN` for the UEFI migration.
-- **An ENGINE64 framebuffer scaffold.** The UEFI build now renders the loaded `ENGINE64` color-bar payload into an internal `640x480` xRGB8888 frame arena, then presents it through GOP direct/swap conversion.
+- **An ENGINE64 framebuffer scaffold.** The UEFI build now renders the loaded `ENGINE64` title-scene palette into an internal `640x480` xRGB8888 frame arena, then presents it through GOP direct/swap conversion.
 - **Larger x64 memory budgets.** The UEFI path now allocates a 32 MiB engine-owned arena block and stages validated pack chunks into engine, texture, mesh/scene/script, audio, scratch, and log arenas.
 - **An expanded release surface.** The build now emits a larger mainline boot image, a typed pack-directory artifact, an expanded manifest, and a bootable ISO wrapper so future renderer/audio/content payloads are no longer planned around a floppy-sized ceiling.
 - **Generated content tooling.** Sprites, banked presentation assets, low-poly scene geometry, sectors, rules, demos, and music come from readable source files that generate MASM-friendly data at build time.

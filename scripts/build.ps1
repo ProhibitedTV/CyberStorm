@@ -707,31 +707,31 @@ function Write-X64BootstrapReports {
         ("Object: {0}" -f $ObjectPath)
         ("Listing: {0}" -f $ListPath)
         ("Link map: {0}" -f $MapPath)
-        ("Failure-test image: {0}" -f $ForcePanic)
+        ("Boot-alert check image: {0}" -f $ForcePanic)
         ("BOOTX64.EFI: {0} ({1} bytes)" -f $PeValidation.Path, $PeValidation.Bytes)
         ("Pack binary: {0} ({1} bytes)" -f $PackArtifacts.PackPath, $PackArtifacts.Bytes)
         ("Pack manifest: {0}" -f $PackArtifacts.ManifestPath)
         ("Pack chunks: {0}" -f $PackArtifacts.ChunkCount)
         ("ENGINE64 chunk: {0} bytes, assembly-built scaffold payload" -f $PackArtifacts.Engine64Bytes)
-        ("Host preview: {0} ({1} bytes, {2}x{3}, {4} bars)" -f $PreviewResult.Path, $PreviewResult.Bytes, $PreviewResult.Width, $PreviewResult.Height, $PreviewResult.Bars)
+        ("Host preview: {0} ({1} bytes, {2}x{3}, {4} palette entries)" -f $PreviewResult.Path, $PreviewResult.Bytes, $PreviewResult.Width, $PreviewResult.Height, $PreviewResult.PaletteEntries)
         ("Pack SHA256: {0}" -f $PackArtifacts.Sha256)
         ("PE machine: 0x{0:X4}" -f $PeValidation.Machine)
         ("PE optional header: 0x{0:X4}" -f $PeValidation.OptionalMagic)
         ("PE subsystem: {0} (EFI application)" -f $PeValidation.Subsystem)
         ("PE entry RVA: 0x{0:X8}" -f $PeValidation.EntryRva)
         ("Sections: {0}" -f $PeValidation.SectionCount)
-        'Diagnostics screen: 640x480 ENGINE64 framebuffer overlay presented through GOP'
-        'Diagnostics fields: resolution, pixel format, framebuffer base, stride, render/present status, input state'
-        'Input MVP: UEFI SimpleTextInput ReadKeyStroke diagnostic menu'
+        'Title screen: 640x480 ENGINE64 neon start screen presented through GOP'
+        'Title status fields: render/present status and input state are logged for VM smoke'
+        'Input MVP: UEFI SimpleTextInput title menu'
         'Input actions: arrows/W/S select, Enter/Space/Right/D confirm, Esc/Left/A/Backspace backs out'
         'Runtime pack loader: LoadedImage -> SimpleFileSystem -> X64PACK.BIN read into scratch arena'
         'Runtime pack validation: CSX64PK0 magic, version, record size, bounds, alignment, known chunk IDs, FNV-1a checksums'
-        'ENGINE64 validation: CS64ENG0 payload header, 640x480 xRGB8888 target, deterministic color-bar table'
-        'ENGINE64 render scaffold: loaded ENGINE64 chunk renders deterministic bars into the frame arena before GOP presentation'
+        'ENGINE64 validation: CS64ENG0 payload header, 640x480 xRGB8888 target, deterministic title-scene palette table'
+        'ENGINE64 render scaffold: loaded ENGINE64 chunk renders a deterministic neon title scene into the frame arena before GOP presentation'
         'Framebuffer abstraction: internal xRGB8888 frame arena with GOP direct/swap present modes for BGR, RGB, and matching bitmask layouts'
         'Host preview: deterministic PNG rendered from ENGINE64.BIN for release review while UEFI VM smoke remains the boot/input acceptance gate'
         'Runtime arenas: UEFI AllocatePages, 32 MiB engine-owned block, 64 KiB aligned sub-arenas'
-        'Runtime chunk staging: validated pack chunks are copied into engine, texture, mesh/scene/script, and audio arenas before diagnostics report success'
+        'Runtime chunk staging: validated pack chunks are copied into engine, texture, mesh/scene/script, and audio arenas before the title runtime reports success'
         'Runtime log: first 128 bytes of log arena contain magic, milestone, failure code, GOP base, arena base/end, frame/depth/log addresses, pack status/bytes/chunks/mask, engine64 status/size/target, staged chunks/bytes/mask, render/present status, and presented pixel count'
         'Failure path: firmware text fallback when GOP cannot be located or initialized'
         'Failure path: framebuffer failure screen when arena allocation or layout validation fails'
@@ -752,7 +752,7 @@ function Write-X64BootstrapReports {
         ("Generated: {0}" -f $timestamp)
         'Status: pass'
         'Target: x64-uefi'
-        'Milestone: M1 GOP diagnostics, arena bootstrap, failure/log channel, and input MVP'
+        'Milestone: M1 GOP title runtime, arena bootstrap, boot-alert/log channel, and input MVP'
         'Milestone: M2 deterministic pack scaffold and ENGINE64 framebuffer scaffold'
         ("Pack binary: {0}" -f $PackArtifacts.PackPath)
         ("Pack manifest: {0}" -f $PackArtifacts.ManifestPath)
@@ -783,7 +783,7 @@ function Write-X64BootstrapReports {
         'Runtime pack validation: magic/version/table shape, record bounds, 0x1000 alignment, known chunk IDs, full chunk mask, and FNV-1a checksums.'
         'Runtime log record: 0x80 bytes at the start of the log arena'
         'Runtime log fields: magic CS64/LOG0, milestone 0x00010008, failure code, GOP base, arena base/end, frame/depth/log addresses, pack status/bytes/chunks/mask, engine64 status/size/target, staged chunks/bytes/mask, render/present status, presented pixels'
-        'Input state: diagnostic menu stores last scan code, Unicode char, last action, confirm count, and back count.'
+        'Input state: title menu stores last scan code, Unicode char, last action, confirm count, and back count.'
     )
     Set-Content -LiteralPath $PackReportPath -Encoding ascii -Value $packReportLines
 
@@ -791,7 +791,7 @@ function Write-X64BootstrapReports {
         'CyberStorm x64 Smoke Report'
         ("Generated: {0}" -f $timestamp)
         'Status: not run'
-        'Reason: build path generated and statically validated the UEFI ISO; run the UEFI VM smoke lane to verify the GOP diagnostics screen and keyboard menu.'
+        'Reason: build path generated and statically validated the UEFI ISO; run the UEFI VM smoke lane to verify the GOP title screen and keyboard menu.'
         ("ISO: {0}" -f $IsoResult.IsoPath)
         ("BOOTX64.EFI: {0}" -f $PeValidation.Path)
         ("Host preview: {0}" -f $PreviewResult.Path)
@@ -874,7 +874,7 @@ function Build-X64UefiTarget {
 
     Write-Section -Title 'x64 Host Preview'
     $previewResult = & $PreviewScriptPath -Engine64BinaryPath $Engine64BinaryPath -OutputPath $PreviewPath
-    Write-Host ("Preview PNG: {0} ({1} bytes, {2}x{3}, {4} bars)" -f $previewResult.Path, $previewResult.Bytes, $previewResult.Width, $previewResult.Height, $previewResult.Bars)
+    Write-Host ("Preview PNG: {0} ({1} bytes, {2}x{3}, {4} palette entries)" -f $previewResult.Path, $previewResult.Bytes, $previewResult.Width, $previewResult.Height, $previewResult.PaletteEntries)
 
     Write-Section -Title 'x64 Pack'
     $packArtifacts = New-X64PackArtifacts -PackPath $PackBinaryPath -ManifestPath $PackManifestPath -Engine64PayloadPath $Engine64BinaryPath

@@ -188,7 +188,7 @@ try {
     $graphics.FillRectangle($accentBrush, 408, 28, 4, 124)
     $graphics.FillRectangle($magentaBrush, 416, 150, 184, 2)
     $graphics.DrawString('SELECT', $smallFont, $mutedBrush, 424, 32)
-    $graphics.DrawString('LIVE', $smallFont, $amberBrush, 522, 32)
+    $graphics.DrawString('LIVE', $smallFont, $amberBrush, 552, 32)
     $graphics.FillRectangle($accentBrush, 420, 54, 152, 24)
     $graphics.FillRectangle($magentaBrush, 414, 60, 4, 12)
     $graphics.DrawString('NEW GAME', $uiFont, $darkBrush, 428, 58)
@@ -197,7 +197,7 @@ try {
 
     $graphics.FillRectangle($panelBrush, 28, 402, 412, 52)
     $graphics.FillRectangle($magentaBrush, 28, 404, 412, 2)
-    $graphics.DrawString('W/S SELECT  ENTER CONFIRM', $smallFont, $textBrush, 42, 414)
+    $graphics.DrawString('W S SELECT  ENTER CONFIRM', $smallFont, $textBrush, 42, 414)
     $graphics.DrawString('ESC BACK  OPTIONS  CREDITS', $smallFont, $mutedBrush, 42, 436)
 }
 finally {

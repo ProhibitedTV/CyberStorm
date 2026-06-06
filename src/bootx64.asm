@@ -11,7 +11,7 @@ EFI_BOOT_SERVICES_HANDLE_PROTOCOL equ 152
 EFI_BOOT_SERVICES_STALL       equ 248
 EFI_BOOT_SERVICES_LOCATE      equ 320
 DIAGNOSTIC_STALL_USEC         equ 60000000
-INPUT_LOOP_TICKS              equ 6000
+INPUT_LOOP_TICKS              equ 0FFFFFFFFh
 INPUT_POLL_STALL_USEC         equ 10000
 EFI_ALLOCATE_ANY_PAGES        equ 0
 EFI_LOADER_DATA               equ 2
@@ -1060,11 +1060,15 @@ input_loop:
     call DrawTitleScreen
 
 input_stall:
+    mov rax, qword ptr [rbx + EFI_SYSTEM_TABLE_BOOTSERV]
+    test rax, rax
+    jz input_loop_done
     mov ecx, INPUT_POLL_STALL_USEC
-    call qword ptr [rsi + EFI_BOOT_SERVICES_STALL]
+    call qword ptr [rax + EFI_BOOT_SERVICES_STALL]
     dec r12d
     jnz input_loop
 
+input_loop_done:
     add rsp, 20h
     pop r12
     ret
@@ -1257,7 +1261,7 @@ panel_check_panic:
     lea r8, MenuPanelPanic
 
 panel_ready:
-    mov ecx, 522
+    mov ecx, 552
     mov edx, 32
     mov r9d, DIAG_WARN
     call DrawString
@@ -2141,8 +2145,18 @@ PresentInternalFrameToGop PROC
     cmp dword ptr [GopPresentMode], PRESENT_MODE_SWAP_RB
     ja present_format_fail
 
-    mov dword ptr [GopPresentX], 0
-    mov dword ptr [GopPresentY], 0
+    mov eax, dword ptr [GopWidth]
+    sub eax, ENGINE64_EXPECTED_WIDTH
+    shr eax, 1
+    mov dword ptr [GopPresentX], eax
+
+    mov eax, dword ptr [GopHeight]
+    sub eax, ENGINE64_EXPECTED_HEIGHT
+    shr eax, 1
+    mov dword ptr [GopPresentY], eax
+
+    mov eax, 00000000h
+    call FillScreen
 
     xor r12d, r12d
 
@@ -2593,7 +2607,7 @@ InputLine db 'KEY SC0000 CH0000 ACT0000',0
 CountsLine db 'OK 00000000 BACK 00000000',0
 StatusLine db 'STATUS: TITLE READY',0
 MenuLine db 'X64 START',0
-StartHintLine db 'W/S SELECT  ENTER CONFIRM',0
+StartHintLine db 'W S SELECT  ENTER CONFIRM',0
 BuildHintLine db 'ESC BACK  OPTIONS  CREDITS',0
 MenuTitleLine db 'SELECT',0
 MenuOptionDiag db 'NEW GAME',0

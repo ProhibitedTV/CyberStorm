@@ -10,7 +10,7 @@ Engine64PayloadStart LABEL BYTE
     dd 000001E0h        ; target height: 480
     dd 0000000Ch        ; deterministic title-scene palette entries
     dd 0000001Fh        ; GOP, xRGB8888, title scene, pack, boot logs
-    dd 00000040h        ; palette table offset
+    dd 00000044h        ; palette table offset
     dd 00000004h        ; bytes per palette color
     dd 00000000h        ; internal present format: xRGB8888
     dd 0012C000h        ; 640x480x4 frame arena budget

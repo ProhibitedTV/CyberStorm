@@ -7,9 +7,6 @@ start:
     call init_video_output
     call init_palette
     call init_audio
-IF DEBUG_LEGACY_GAMEPLAY EQ 0
-    call install_keyboard_handler
-ENDIF
     call reset_keyboard_state
     mov byte ptr [last_game_state], 0FFh
     mov byte ptr [feedback_timer], 0
@@ -79,6 +76,8 @@ IF DEBUG_RUNTIME_VERIFY
 main_loop_poll_keyboard:
 ENDIF
 IF DEBUG_LEGACY_GAMEPLAY EQ 0
+    call decay_bios_key_holds
+    call poll_bios_keyboard
     call poll_runtime_keyboard
 ELSE
     call poll_bios_keyboard
@@ -863,6 +862,7 @@ frontend_verify_scenario_ready:
 frontend_verify_check_attract:
     cmp al, FRONTEND_VERIFY_TITLE_TO_ATTRACT
     jne frontend_verify_check_start
+    mov byte ptr [session_idle_demo_enabled], 1
     mov byte ptr [title_idle_ticks], TITLE_INPUT_ARM_TICKS
     mov byte ptr [menu_idle_ticks], TITLE_ATTRACT_DELAY - 4
     ret

@@ -330,8 +330,8 @@
     )
     Campaign = @{
         Showcase = @{
-            Beauty = 'thermal-attract-a'
-            Action = 'vault-attract-b'
+            Beauty = 'subgrid-attract-a'
+            Action = 'subgrid-attract-b'
         }
         Districts = @(
             @{
@@ -343,7 +343,7 @@
                 Exit = '24,2'
                 NextDistrict = 2
                 ObjectiveCounts = @{
-                    RequiredDataShards = 20
+                    RequiredDataShards = 12
                     RelayCount = 1
                     KeycardCount = 1
                 }
@@ -364,16 +364,16 @@
                     @{ Zone = 'storm-gate'; Sequence = 6; Summary = 'The gate should feel like the destination the player has been chasing since the opening glance.' }
                 )
                 Chunks = @(
-                    @{ Id = 'dock-west'; Zone = 'dock-ramp'; Bounds = '2,10,7,13'; Role = 'start-lane'; BaseHeight = 0; ShelfHeight = 0; RampDir = 'none'; CliffSide = 'north'; BridgeSpan = 'none'; LandmarkAnchor = '24,2'; PropBudget = 2 }
-                    @{ Id = 'dock-east'; Zone = 'dock-ramp'; Bounds = '8,10,12,13'; Role = 'intro-turn'; BaseHeight = 0; ShelfHeight = 64; RampDir = 'east'; CliffSide = 'north'; BridgeSpan = 'none'; LandmarkAnchor = '18,6'; PropBudget = 3 }
-                    @{ Id = 'relay-bend'; Zone = 'relay-loop'; Bounds = '10,8,16,11'; Role = 'route-read'; BaseHeight = 64; ShelfHeight = 96; RampDir = 'north'; CliffSide = 'east'; BridgeSpan = 'none'; LandmarkAnchor = '18,4'; PropBudget = 3 }
-                    @{ Id = 'charge-teach'; Zone = 'charge-bridge'; Bounds = '6,11,12,13'; Role = 'dash-lesson'; BaseHeight = 64; ShelfHeight = 112; RampDir = 'north'; CliffSide = 'south'; BridgeSpan = 'east-west'; LandmarkAnchor = '10,12'; PropBudget = 2 }
-                    @{ Id = 'vault-climb'; Zone = 'vault-terrace'; Bounds = '14,5,18,8'; Role = 'climb'; BaseHeight = 112; ShelfHeight = 176; RampDir = 'east'; CliffSide = 'north'; BridgeSpan = 'none'; LandmarkAnchor = '18,5'; PropBudget = 2 }
-                    @{ Id = 'vault-key'; Zone = 'vault-terrace'; Bounds = '18,3,22,5'; Role = 'key-reveal'; BaseHeight = 176; ShelfHeight = 208; RampDir = 'north'; CliffSide = 'west'; BridgeSpan = 'none'; LandmarkAnchor = '18,4'; PropBudget = 3 }
-                    @{ Id = 'return-ramp'; Zone = 'return-span'; Bounds = '18,7,22,10'; Role = 'glide-setup'; BaseHeight = 128; ShelfHeight = 176; RampDir = 'west'; CliffSide = 'south'; BridgeSpan = 'none'; LandmarkAnchor = '23,3'; PropBudget = 3 }
-                    @{ Id = 'return-lane'; Zone = 'return-span'; Bounds = '22,7,25,10'; Role = 'return-pressure'; BaseHeight = 96; ShelfHeight = 128; RampDir = 'east'; CliffSide = 'south'; BridgeSpan = 'none'; LandmarkAnchor = '23,2'; PropBudget = 2 }
-                    @{ Id = 'gate-front'; Zone = 'storm-gate'; Bounds = '21,1,23,4'; Role = 'gate-read'; BaseHeight = 96; ShelfHeight = 144; RampDir = 'north'; CliffSide = 'west'; BridgeSpan = 'none'; LandmarkAnchor = '23,2'; PropBudget = 3 }
-                    @{ Id = 'gate-arch'; Zone = 'storm-gate'; Bounds = '23,1,25,3'; Role = 'finish'; BaseHeight = 144; ShelfHeight = 176; RampDir = 'none'; CliffSide = 'south'; BridgeSpan = 'none'; LandmarkAnchor = '24,2'; PropBudget = 3 }
+                    @{ Id = 'dock-west'; Zone = 'dock-ramp'; Bounds = '2,10,7,13'; Role = 'start-lane'; BaseHeight = 0; ShelfHeight = 0; RampDir = 'none'; CliffSide = 'none'; BridgeSpan = 'none'; LandmarkAnchor = '24,2'; PropBudget = 1 }
+                    @{ Id = 'dock-east'; Zone = 'dock-ramp'; Bounds = '8,10,12,13'; Role = 'intro-turn'; BaseHeight = 0; ShelfHeight = 24; RampDir = 'east'; CliffSide = 'none'; BridgeSpan = 'none'; LandmarkAnchor = '18,6'; PropBudget = 1 }
+                    @{ Id = 'relay-bend'; Zone = 'relay-loop'; Bounds = '10,8,16,11'; Role = 'route-read'; BaseHeight = 24; ShelfHeight = 56; RampDir = 'north'; CliffSide = 'east'; BridgeSpan = 'none'; LandmarkAnchor = '18,4'; PropBudget = 2 }
+                    @{ Id = 'charge-teach'; Zone = 'charge-bridge'; Bounds = '6,11,12,13'; Role = 'dash-lesson'; BaseHeight = 16; ShelfHeight = 40; RampDir = 'north'; CliffSide = 'none'; BridgeSpan = 'none'; LandmarkAnchor = '10,12'; PropBudget = 1 }
+                    @{ Id = 'vault-climb'; Zone = 'vault-terrace'; Bounds = '14,5,18,8'; Role = 'climb'; BaseHeight = 96; ShelfHeight = 152; RampDir = 'east'; CliffSide = 'north'; BridgeSpan = 'none'; LandmarkAnchor = '18,5'; PropBudget = 2 }
+                    @{ Id = 'vault-key'; Zone = 'vault-terrace'; Bounds = '18,3,22,5'; Role = 'key-reveal'; BaseHeight = 152; ShelfHeight = 184; RampDir = 'north'; CliffSide = 'west'; BridgeSpan = 'none'; LandmarkAnchor = '18,4'; PropBudget = 3 }
+                    @{ Id = 'return-ramp'; Zone = 'return-span'; Bounds = '18,7,22,10'; Role = 'glide-setup'; BaseHeight = 112; ShelfHeight = 152; RampDir = 'west'; CliffSide = 'south'; BridgeSpan = 'none'; LandmarkAnchor = '23,3'; PropBudget = 3 }
+                    @{ Id = 'return-lane'; Zone = 'return-span'; Bounds = '22,7,25,10'; Role = 'return-pressure'; BaseHeight = 80; ShelfHeight = 112; RampDir = 'east'; CliffSide = 'south'; BridgeSpan = 'none'; LandmarkAnchor = '23,2'; PropBudget = 2 }
+                    @{ Id = 'gate-front'; Zone = 'storm-gate'; Bounds = '21,1,23,4'; Role = 'gate-read'; BaseHeight = 80; ShelfHeight = 120; RampDir = 'north'; CliffSide = 'west'; BridgeSpan = 'none'; LandmarkAnchor = '23,2'; PropBudget = 3 }
+                    @{ Id = 'gate-arch'; Zone = 'storm-gate'; Bounds = '23,1,25,3'; Role = 'finish'; BaseHeight = 120; ShelfHeight = 152; RampDir = 'none'; CliffSide = 'south'; BridgeSpan = 'none'; LandmarkAnchor = '24,2'; PropBudget = 3 }
                 )
                 CaptureAnchors = @{
                     Beauty = 'subgrid-attract-a'
@@ -437,17 +437,10 @@
                     @{ X = 22; Y = 3; Kind = 'WARDEN' }
                 )
                 Props = @(
-                    @{ X = 3; Y = 12; Mesh = 'cable_frame'; YawDegrees = 22.0 }
-                    @{ X = 7; Y = 13; Mesh = 'storm_gate_mass'; YawDegrees = 214.0 }
-                    @{ X = 12; Y = 10; Mesh = 'transfer_frame'; YawDegrees = 0.0 }
-                    @{ X = 17; Y = 8; Mesh = 'catwalk_rib'; YawDegrees = 0.0 }
                     @{ X = 18; Y = 4; Mesh = 'landmark_relay_gantry'; YawDegrees = 96.0 }
                     @{ X = 10; Y = 12; Mesh = 'terminal_subgrid'; YawDegrees = 0.0 }
                     @{ X = 23; Y = 2; Mesh = 'gate_subgrid'; YawDegrees = 0.0 }
                     @{ X = 24; Y = 2; Mesh = 'storm_gate_mass'; YawDegrees = 0.0 }
-                    @{ X = 21; Y = 2; Mesh = 'cable_frame'; YawDegrees = 0.0 }
-                    @{ X = 5; Y = 3; Mesh = 'landmark_relay_gantry'; YawDegrees = 148.0 }
-                    @{ X = 14; Y = 6; Mesh = 'transfer_frame'; YawDegrees = 90.0 }
                     @{ X = 22; Y = 9; Mesh = 'catwalk_rib'; YawDegrees = 0.0 }
                 )
             }

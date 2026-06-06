@@ -405,13 +405,13 @@ function Face {
             LoopTicks = 64
             Camera = @{
                 X = 0.0
-                Y = 0.95
-                Z = -10.6
-                YawDegrees = 3.0
+                Y = 1.14
+                Z = -10.85
+                YawDegrees = 0.75
                 YawStepDegrees = -0.12
-                PitchDegrees = -8.5
+                PitchDegrees = -7.75
                 PitchStepDegrees = 0.0
-                ProjectScale = 114
+                ProjectScale = 112
                 Viewport = @{ X = 0; Y = 0; W = 320; H = 200 }
             }
             Groups = @(
@@ -483,7 +483,7 @@ function Face {
                 }
                 @{
                     Key = 'right_mass'
-                    StartTick = 12
+                    StartTick = 0
                     EndTick = 63
                     MotionTicks = 8
                     Offset = @{ X = 0.0; Y = -0.15; Z = 0.25 }
@@ -505,7 +505,7 @@ function Face {
                 }
                 @{
                     Key = 'gate_frame'
-                    StartTick = 8
+                    StartTick = 0
                     EndTick = 63
                     MotionTicks = 12
                     Offset = @{ X = 0.0; Y = -0.2; Z = 0.28 }
@@ -529,7 +529,7 @@ function Face {
                 }
                 @{
                     Key = 'rear_ribs'
-                    StartTick = 10
+                    StartTick = 0
                     EndTick = 63
                     MotionTicks = 8
                     Offset = @{ X = 0.0; Y = -0.1; Z = 0.18 }
@@ -549,7 +549,7 @@ function Face {
                 }
                 @{
                     Key = 'scan_bridge'
-                    StartTick = 14
+                    StartTick = 0
                     EndTick = 63
                     MotionTicks = 8
                     Offset = @{ X = 0.0; Y = -0.1; Z = 0.16 }
@@ -569,7 +569,7 @@ function Face {
                 }
                 @{
                     Key = 'halo'
-                    StartTick = 18
+                    StartTick = 0
                     EndTick = 63
                     MotionTicks = 10
                     Offset = @{ X = 0.0; Y = -0.12; Z = 0.16 }
@@ -585,6 +585,112 @@ function Face {
                         (Face @(4, 5, 6, 7) 'hazard_amber'),
                         (Face @(8, 9, 10, 11) 'hazard_amber'),
                         (Face @(12, 13, 14, 15) 'rail_cyan' 'pulse_cyan')
+                    )
+                }
+                @{
+                    Key = 'foreground_fins'
+                    StartTick = 0
+                    EndTick = 63
+                    MotionTicks = 10
+                    Offset = @{ X = 0.0; Y = -0.08; Z = 0.12 }
+                    OffsetStep = @{ X = 0.0; Y = 0.008; Z = -0.006 }
+                    Vertices = @(
+                        (V -13.8 -1.7 4.8), (V -10.8 -1.7 4.8), (V -8.7 -1.15 12.8), (V -11.9 -1.15 12.8),
+                        (V 10.8 -1.7 4.8), (V 13.8 -1.7 4.8), (V 11.9 -1.15 12.8), (V 8.7 -1.15 12.8),
+                        (V -8.6 -1.62 5.4), (V -7.1 -1.62 5.4), (V -5.9 -1.05 14.8), (V -7.4 -1.05 14.8),
+                        (V 7.1 -1.62 5.4), (V 8.6 -1.62 5.4), (V 7.4 -1.05 14.8), (V 5.9 -1.05 14.8)
+                    )
+                    Faces = @(
+                        (Face @(0, 1, 2, 3) 'metal_plate'),
+                        (Face @(4, 5, 6, 7) 'metal_plate'),
+                        (Face @(8, 9, 10, 11) 'rail_cyan' 'pulse_cyan'),
+                        (Face @(12, 13, 14, 15) 'rail_cyan' 'pulse_cyan')
+                    )
+                }
+                @{
+                    Key = 'core_lens'
+                    StartTick = 0
+                    EndTick = 63
+                    MotionTicks = 12
+                    Offset = @{ X = 0.0; Y = -0.1; Z = 0.16 }
+                    OffsetStep = @{ X = 0.0; Y = 0.01; Z = -0.006 }
+                    Vertices = @(
+                        (V -2.8 0.3 8.4), (V 2.8 0.3 8.4), (V 1.7 1.9 13.4), (V -1.7 1.9 13.4),
+                        (V -1.5 0.8 9.4), (V 1.5 0.8 9.4), (V 0.8 1.6 12.2), (V -0.8 1.6 12.2),
+                        (V -0.55 1.45 14.0), (V 0.55 1.45 14.0), (V 0.35 2.8 18.6), (V -0.35 2.8 18.6)
+                    )
+                    Faces = @(
+                        (Face @(0, 1, 2, 3) 'panel_amber' 'pulse_amber'),
+                        (Face @(4, 5, 6, 7) 'logo_shine' 'glint'),
+                        (Face @(8, 9, 10, 11) 'rail_cyan' 'pulse_cyan')
+                    )
+                }
+                @{
+                    Key = 'skyline_spines'
+                    StartTick = 0
+                    EndTick = 63
+                    MotionTicks = 8
+                    Offset = @{ X = 0.0; Y = -0.06; Z = 0.08 }
+                    OffsetStep = @{ X = 0.0; Y = 0.006; Z = -0.004 }
+                    Vertices = @(
+                        (V -12.2 0.8 22.6), (V -10.7 0.8 22.6), (V -10.2 5.6 27.6), (V -11.8 5.6 27.6),
+                        (V -8.4 1.2 21.8), (V -7.0 1.2 21.8), (V -6.4 4.4 26.4), (V -7.9 4.4 26.4),
+                        (V 7.0 1.2 21.8), (V 8.4 1.2 21.8), (V 7.9 4.4 26.4), (V 6.4 4.4 26.4),
+                        (V 10.7 0.8 22.6), (V 12.2 0.8 22.6), (V 11.8 5.6 27.6), (V 10.2 5.6 27.6)
+                    )
+                    Faces = @(
+                        (Face @(0, 1, 2, 3) 'concrete_shadow'),
+                        (Face @(4, 5, 6, 7) 'steel_rib'),
+                        (Face @(8, 9, 10, 11) 'steel_rib'),
+                        (Face @(12, 13, 14, 15) 'concrete_shadow')
+                    )
+                }
+                @{
+                    Key = 'upper_energy_arch'
+                    StartTick = 0
+                    EndTick = 63
+                    MotionTicks = 14
+                    Offset = @{ X = 0.0; Y = -0.08; Z = 0.1 }
+                    OffsetStep = @{ X = 0.0; Y = 0.007; Z = -0.005 }
+                    Vertices = @(
+                        (V -9.4 4.8 16.6), (V -5.6 5.7 19.8), (V -5.0 6.4 21.6), (V -9.0 5.4 18.4),
+                        (V 5.6 5.7 19.8), (V 9.4 4.8 16.6), (V 9.0 5.4 18.4), (V 5.0 6.4 21.6),
+                        (V -4.4 6.0 20.6), (V 4.4 6.0 20.6), (V 3.7 6.8 22.4), (V -3.7 6.8 22.4)
+                    )
+                    Faces = @(
+                        (Face @(0, 1, 2, 3) 'panel_white' 'glint'),
+                        (Face @(4, 5, 6, 7) 'panel_white' 'glint'),
+                        (Face @(8, 9, 10, 11) 'rail_cyan' 'pulse_cyan')
+                    )
+                }
+                @{
+                    Key = 'hero_carrier_silhouette'
+                    StartTick = 0
+                    EndTick = 63
+                    MotionTicks = 16
+                    Offset = @{ X = 0.0; Y = -0.04; Z = 0.12 }
+                    OffsetStep = @{ X = 0.0; Y = 0.004; Z = -0.004 }
+                    YawDegrees = -2.0
+                    YawStepDegrees = 0.08
+                    Vertices = @(
+                        (V -5.8 -0.2 7.4), (V 5.8 -0.2 7.4), (V 3.6 1.0 11.2), (V -3.6 1.0 11.2),
+                        (V -3.2 0.2 8.2), (V 3.2 0.2 8.2), (V 2.0 1.5 13.8), (V -2.0 1.5 13.8),
+                        (V -8.8 -0.35 8.8), (V -5.4 -0.15 7.8), (V -3.8 0.8 11.4), (V -7.2 0.8 12.6),
+                        (V 5.4 -0.15 7.8), (V 8.8 -0.35 8.8), (V 7.2 0.8 12.6), (V 3.8 0.8 11.4),
+                        (V -2.4 -0.4 8.0), (V -0.7 -0.6 7.2), (V -0.55 0.6 10.4), (V -2.0 0.8 11.0),
+                        (V 0.7 -0.6 7.2), (V 2.4 -0.4 8.0), (V 2.0 0.8 11.0), (V 0.55 0.6 10.4),
+                        (V -1.2 1.2 12.6), (V 1.2 1.2 12.6), (V 0.8 2.7 17.8), (V -0.8 2.7 17.8),
+                        (V -6.8 0.7 13.6), (V 6.8 0.7 13.6), (V 4.8 1.6 18.8), (V -4.8 1.6 18.8)
+                    )
+                    Faces = @(
+                        (Face @(0, 1, 2, 3) 'metal_dark'),
+                        (Face @(4, 5, 6, 7) 'logo_panel'),
+                        (Face @(8, 9, 10, 11) 'metal_plate'),
+                        (Face @(12, 13, 14, 15) 'metal_plate'),
+                        (Face @(16, 17, 18, 19) 'rail_cyan' 'pulse_cyan'),
+                        (Face @(20, 21, 22, 23) 'rail_cyan' 'pulse_cyan'),
+                        (Face @(24, 25, 26, 27) 'logo_shine' 'glint'),
+                        (Face @(28, 29, 30, 31) 'concrete_shadow')
                     )
                 }
             )
@@ -890,132 +996,132 @@ function Face {
     GameplayKits = @(
         @{
             Key = 'sector1'
-            FloorBase = 'concrete_damp'
-            FloorTrim = 'trench_plate'
-            WallBase = 'concrete_rib'
-            WallTrim = 'ceiling_rib'
-            WallCap = 'relay_panel'
+            FloorBase = 'floor_dark'
+            FloorTrim = 'panel_cyan'
+            WallBase = 'wall_dark'
+            WallTrim = 'panel_white'
+            WallCap = 'panel_cyan'
             Lane = 'rail_cyan'
             GateMesh = 'gate_subgrid'
             TerminalMesh = 'terminal_subgrid'
             SurgeMesh = 'surge_subgrid'
             ShardMesh = 'shard_subgrid'
             Camera = @{
-                Height = 5.35
-                Distance = 8.05
-                LookAhead = 0.92
+                Height = 6.20
+                Distance = 10.40
+                LookAhead = 1.24
                 HeadingNorthYawDegrees = 135.0
                 HeadingEastYawDegrees = 45.0
                 HeadingSouthYawDegrees = 315.0
                 HeadingWestYawDegrees = 225.0
             }
             Projection = @{
-                PitchDegrees = -13.0
-                ProjectScale = 92
+                PitchDegrees = -9.0
+                ProjectScale = 80
             }
             TerrainProfile = @{
-                CliffMaterial = 'concrete_shadow'
-                ShelfMaterial = 'concrete_damp'
-                BridgeMaterial = 'catwalk_oil'
-                CeilingMaterial = 'steel_truss'
-                SoffitMaterial = 'metal_under'
-                LaneTrimMaterial = 'grate_slot'
-                FarMassMaterial = 'relay_panel'
+                CliffMaterial = 'wall_dark'
+                ShelfMaterial = 'floor_dark'
+                BridgeMaterial = 'metal_dark'
+                CeilingMaterial = 'panel_dark'
+                SoffitMaterial = 'panel_dark'
+                LaneTrimMaterial = 'panel_cyan'
+                FarMassMaterial = 'panel_dark'
                 AccentMaterial = 'emissive_relay'
-                LandmarkLift = 0.78
-                PropDensity = 2
+                LandmarkLift = 0.66
+                PropDensity = 1
             }
             ShotRigs = @{
                 BaseChase = @{
-                    Height = 5.52
-                    Distance = 8.28
-                    LookAhead = 0.96
-                    PitchDegrees = -12.0
-                    ProjectScale = 94
-                    Horizon = 44
+                    Height = 6.36
+                    Distance = 10.60
+                    LookAhead = 1.18
+                    PitchDegrees = -8.0
+                    ProjectScale = 82
+                    Horizon = 52
                     FocusBiasX = 0.00
                     FocusBiasZ = 0.00
                 }
                 MoveSettle = @{
-                    Height = 5.28
-                    Distance = 7.45
-                    LookAhead = 1.05
-                    PitchDegrees = -15.0
-                    ProjectScale = 98
-                    Horizon = 40
+                    Height = 6.02
+                    Distance = 9.10
+                    LookAhead = 1.14
+                    PitchDegrees = -11.0
+                    ProjectScale = 86
+                    Horizon = 48
                     FocusBiasX = 0.00
                     FocusBiasZ = 0.20
                 }
                 SectorEntry = @{
-                    Height = 5.05
-                    Distance = 9.15
-                    LookAhead = 0.00
-                    PitchDegrees = -12.0
-                    ProjectScale = 96
-                    Horizon = 43
-                    FocusBiasX = 0.60
-                    FocusBiasZ = -0.82
+                    Height = 6.28
+                    Distance = 10.95
+                    LookAhead = 0.08
+                    PitchDegrees = -8.0
+                    ProjectScale = 82
+                    Horizon = 54
+                    FocusBiasX = 0.20
+                    FocusBiasZ = -0.32
                 }
                 EnemyReveal = @{
-                    Height = 4.95
-                    Distance = 6.05
-                    LookAhead = 0.18
-                    PitchDegrees = -17.0
-                    ProjectScale = 100
-                    Horizon = 35
+                    Height = 5.64
+                    Distance = 7.40
+                    LookAhead = 0.25
+                    PitchDegrees = -13.0
+                    ProjectScale = 88
+                    Horizon = 44
                     FocusBiasX = 0.00
                     FocusBiasZ = 0.00
                 }
                 Interaction = @{
-                    Height = 5.05
-                    Distance = 6.20
-                    LookAhead = 0.14
-                    PitchDegrees = -18.0
-                    ProjectScale = 98
-                    Horizon = 35
+                    Height = 5.78
+                    Distance = 7.55
+                    LookAhead = 0.24
+                    PitchDegrees = -13.0
+                    ProjectScale = 88
+                    Horizon = 44
                     FocusBiasX = 0.00
                     FocusBiasZ = 0.12
                 }
                 WardenPressure = @{
-                    Height = 5.00
-                    Distance = 5.95
-                    LookAhead = 0.12
-                    PitchDegrees = -17.0
-                    ProjectScale = 104
-                    Horizon = 38
+                    Height = 5.72
+                    Distance = 7.30
+                    LookAhead = 0.18
+                    PitchDegrees = -13.0
+                    ProjectScale = 90
+                    Horizon = 44
                     FocusBiasX = 0.10
                     FocusBiasZ = -0.08
                 }
                 EndBeat = @{
-                    Height = 4.55
-                    Distance = 5.35
-                    LookAhead = 0.16
-                    PitchDegrees = -20.0
-                    ProjectScale = 104
-                    Horizon = 33
+                    Height = 5.28
+                    Distance = 7.00
+                    LookAhead = 0.22
+                    PitchDegrees = -15.0
+                    ProjectScale = 90
+                    Horizon = 42
                     FocusBiasX = 0.12
                     FocusBiasZ = 0.06
                 }
             }
             Structure = @{
-                NearInset = 0.40
-                NearWidth = 0.32
-                NearHeight = 1.48
-                FarInset = 0.58
-                FarHeight = 0.74
+                NearInset = 0.48
+                NearWidth = 0.22
+                NearHeight = 1.10
+                FarInset = 0.68
+                FarHeight = 0.48
             }
             Framing = @{
                 DoorFrameInset = 0.16
-                DoorFrameWidth = 0.22
-                DoorFrameHeight = 1.34
+                DoorFrameWidth = 0.16
+                DoorFrameHeight = 1.18
                 RailInset = 0.60
                 RailWidth = 0.18
-                RailHeight = 0.76
-                CeilingBeamHeight = 1.54
-                CeilingBeamThickness = 0.24
-                FarMassInset = 0.88
-                FarMassWidth = 2.55
-                FarMassHeight = 1.36
+                RailHeight = 0.62
+                CeilingBeamHeight = 1.18
+                CeilingBeamThickness = 0.16
+                FarMassInset = 0.96
+                FarMassWidth = 1.74
+                FarMassHeight = 0.82
             }
             Landmark = @{
                 Mesh = 'landmark_relay_gantry'
@@ -1026,7 +1132,7 @@ function Face {
                 BackdropNear = 'PAL_PANEL'
                 HorizonA = 'PAL_WHITE'
                 HorizonB = 'PAL_CYAN'
-                HorizonY = 40
+                HorizonY = 50
                 FogNear = 1760
                 FogFar = 3080
                 WobbleStrength = 1

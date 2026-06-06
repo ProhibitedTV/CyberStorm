@@ -1,19 +1,37 @@
 # CyberStorm Architecture
 
-CyberStorm is a bare-metal x86 game with a BIOS HDD boot chain and a still-legacy single-segment stage-two runtime. There is no DOS, filesystem, or kernel underneath it. The sections below call out the contracts that make the current enhanced boot flow and runtime work.
+CyberStorm is a bare-metal game project moving from its expanded BIOS x86 runtime toward a UEFI x64 software-3D release while staying packageable to physical media. There is no DOS, hosted OS, filesystem driver stack, DirectX, OpenGL, or kernel underneath the game. The sections below call out the contracts that make the current enhanced boot flow, x64 ISO path, and runtime pack work.
+
+## x64 UEFI Release Contract
+
+The forward release target is `cyberstorm-x64.iso`, built with `scripts/build.ps1 -Target x64-uefi` and booted by firmware from `EFI/BOOT/BOOTX64.EFI`. The current target is a PE32+ x64 EFI application on a UEFI El Torito ISO, with GOP diagnostics, simple input, high-memory arenas, framebuffer failure/log reporting, a FAT-backed x64 pack loader, and an assembly-built `ENGINE64` scaffold chunk. Later milestones replace diagnostics with the renderer, audio, and gameplay vertical slice.
+
+Target assumptions:
+
+- Firmware is UEFI x64. The x64 path does not target BIOS, DOS, a hosted OS, DirectX, OpenGL, Vulkan, or hardware GPU drivers.
+- The runtime remains assembly-first. PowerShell tooling may generate deterministic binary inputs, reports, FAT boot images, and ISO layout metadata.
+- The renderer target is a CPU software-3D engine that presents through UEFI GOP during early milestones, then may move to engine-owned framebuffer/present code after the memory and services policy is settled.
+- UEFI boot services are allowed during bring-up for diagnostics, GOP discovery, file/pack loading, and simple input. Later milestones decide the exact point where the engine exits boot services and owns its arenas.
+- The x64 bootstrap currently allocates a 32 MiB engine-owned block and carves 64 KiB-aligned arenas for engine payloads, frame/depth buffers, texture data, mesh/scene/script data, audio, scratch, and logs.
+- x64 chunks reserve names for engine, textures, meshes, materials, maps, scripts, audio, title scene, and campaign scenes. `X64PACK.BIN` uses fixed chunk records with type, offset, size, load target, alignment, and FNV-1a checksum fields. The current `ENGINE64` chunk is generated from `src/engine64.asm`; the other chunks remain deterministic scaffold payloads until their real asset generators land.
+- After validation, the runtime stages pack chunks into high-memory arenas instead of leaving them only in the scratch read buffer. Engine data goes to the engine arena, texture/material data to the texture arena, audio to the audio arena, and mesh/map/script/title/campaign data to the mesh-scene arena.
+- The current M2 renderer scaffold treats the frame arena as a `640x480` xRGB8888 internal framebuffer. `ENGINE64` provides a deterministic color-bar scene, and the boot runtime presents that internal frame to GOP through direct or red/blue-swapped conversion for the common BGR, RGB, and matching bitmask layouts.
+- The x64 ISO remains physical-media friendly: it uses a UEFI El Torito boot image, includes `EFI/BOOT/BOOTX64.EFI` in the FAT image, and carries `X64PACK.BIN` plus `X64MAN.TXT` in both the FAT root and ISO root for firmware/runtime access and external inspection.
+- The legacy x86 expanded ISO remains the default and compatibility target until the x64 vertical slice can boot, render, accept input, and play one small 3D mission with VM smoke coverage.
+- Cutover to x64 mainline requires `cyberstorm-x64.iso`, `cyberstorm-x64-build-report.txt`, `cyberstorm-x64-pack-report.txt`, and `cyberstorm-x64-smoke-report.txt` to pass their release criteria, while the x86 expanded build remains available by explicit flag or archive path.
 
 ## 1. Boot And Load Contract
 
 1. The BIOS loads the first HDD sector to `0000:7C00` and enters [src/boot.asm](../src/boot.asm).
 2. The boot sector verifies EDD support, loads the tiny bootstrap from `LBA 1`, and far-returns into [src/bootstrap.asm](../src/bootstrap.asm).
-3. The bootstrap loads stage two plus the bank payloads, probes the enhanced VBE target, and writes a handoff block at `BOOTSTRAP_SEG:ENHANCED_HANDOFF_OFFSET`.
+3. The bootstrap loads stage two plus the current conventional-memory bank payloads, probes the enhanced VBE target, and writes a handoff block at `BOOTSTRAP_SEG:ENHANCED_HANDOFF_OFFSET`.
 4. The bootstrap then far-returns to `1000:0000`, where [src/game.asm](../src/game.asm) begins with the legacy stage-two runtime.
 5. [src/game.asm](../src/game.asm) therefore must keep executable code at offset `0`, which is why the file begins with `jmp start`.
 
 Practical consequences:
 
 - Stage two remains a flat binary loaded to `1000:0000`, but it no longer sits immediately after the boot sector on disk; the bootstrap now occupies the sectors in between.
-- Stage two must fit inside one 64 KiB segment. The build validates this because the bootloader never updates `ES` while reading.
+- Stage two still fits inside one 64 KiB segment because it remains the first gameplay runtime, but this is no longer the release storage ceiling. The expanded profile emits `cyberstorm-expanded.iso`, `cyberstorm-expanded-packdir.bin`, and `cyberstorm-expanded-manifest.txt` so future protected-mode code and asset payloads can move out of the stage-two segment intentionally.
 - The bootloader clears the direction flag and stage two relies on that for `lodsb`, `stosb`, and `movsb`-based code.
 - Stage two still inherits the boot lineage from the BIOS/bootloader stack, but the bootstrap re-establishes its own temporary stack before handing off.
 - The bootstrap now owns the BIOS boot drive and loads the post-boot banks before handoff; stage two consumes the enhanced-output handoff block plus those preloaded bank segments.
@@ -36,6 +54,7 @@ Practical consequences:
 | `8600:0000` | Gameplay backbuffer high rows | Extra `320x40` gameplay rows used when the live run renders to the taller `320x240` surface. |
 | `9000:0000` | Backbuffer | Primary `320x200` framebuffer plus the low rows for all frontend scenes and legacy VGA presentation. |
 | VBE LFB (physical) | Enhanced present target | Final `640x480x16` output target when the bootstrap VBE handoff succeeds; the legacy VGA presenter remains the compatibility fallback. |
+| `00100000h+` | Expanded engine reservation | Generated pack metadata reserves a 32-bit engine load base, renderer arena, texture pool, RGB565 frame arena, depth buffer, and audio arena for the protected-mode campaign engine migration. |
 
 Register assumptions that matter:
 
@@ -58,7 +77,8 @@ Register assumptions that matter:
 - [src/game/art.asm](../src/game/art.asm) is the visual-data wrapper and includes the build-generated sprite/tile bitmap include before the hand-authored palette/font data.
 - [src/game/state.asm](../src/game/state.asm) now includes generated sector metadata/rule tables from the content pipeline.
 - [src/game/state.asm](../src/game/state.asm) also includes generated attract/demo scripts from the content pipeline.
-- [src/bootstrap.asm](../src/bootstrap.asm) owns the BIOS HDD/VBE bootstrap work: stage-two load, code/texture/map/presentation/geometry bank load, VBE probe, and the enhanced handoff block. It consumes `generated_bank_layout.inc`.
+- [src/bootstrap.asm](../src/bootstrap.asm) owns the BIOS/VBE bootstrap work: stage-two load, code/texture/map/presentation/geometry bank load, VBE probe, and the enhanced handoff block. It consumes `generated_bank_layout.inc`.
+- [scripts/build.ps1](../scripts/build.ps1) now also emits the expanded pack directory and ISO wrapper. The pack directory is the decision surface for moving code, renderer arenas, texture pages, audio data, and campaign chunks above 1 MiB without adding hosted-OS dependencies.
 - [src/game/audio.asm](../src/game/audio.asm) keeps the playback logic in-source, but includes generated theme data from the content pipeline.
 - `build\audio_config.inc` now compiles the runtime in `MUSIC` mode by default. `-SfxOnly` is the explicit quiet build profile when you want one-shot effects without looping themes.
 
@@ -146,10 +166,10 @@ Entity rules:
 
 The gameplay runtime in [src/game/gameplay.asm](../src/game/gameplay.asm) is intentionally small and deterministic:
 
-- A new run starts in sector `1` with `START_SHIELDS` shield pips and `START_PULSES` EMP charges.
+- A new run starts in campaign district `1` with `START_SHIELDS` shield pips and `START_PULSES` EMP charges.
 - Every sector contains `SHARD_COUNT` shards. Collecting the last one opens the exit.
 - Some sectors also spawn spoof terminals. Stepping onto one spends the tile, starts a short spoof window, and reroutes hunters toward the exit instead of the player.
-- Entering an open exit advances to the next sector; clearing the final sector switches to `STATE_WIN`.
+- Entering an open exit advances to the next authored campaign district; clearing `Apex Vault` switches to `STATE_WIN`.
 - Sector transitions refill one EMP charge up to `MAX_PULSES`.
 - Enemy count is `sector_num * ENEMY_SPAWN_STEP + ENEMY_SPAWN_BASE`.
 - The lower-left safe zone (`SAFE_X_MAX`, `SAFE_Y_MIN`) is excluded from random enemy placement.
@@ -158,7 +178,7 @@ The gameplay runtime in [src/game/gameplay.asm](../src/game/gameplay.asm) is int
 
 CyberStorm now has six post-boot bank payloads:
 
-- The build appends `cyberstorm-code-bank.bin`, `cyberstorm-texture-bank.bin`, `cyberstorm-texture-bank-b.bin`, `cyberstorm-map-bank.bin`, `cyberstorm-presentation-bank.bin`, and `cyberstorm-geometry-bank.bin` after stage two on the BIOS HDD image.
+- The build appends `cyberstorm-code-bank.bin`, `cyberstorm-texture-bank.bin`, `cyberstorm-texture-bank-b.bin`, `cyberstorm-map-bank.bin`, `cyberstorm-presentation-bank.bin`, and `cyberstorm-geometry-bank.bin` after stage two on the expanded BIOS boot image.
 - `generated_bank_layout.inc` records each bank's starting LBA, padded size, byte count, and load segment for the bootstrap.
 - [src/bootstrap.asm](../src/bootstrap.asm) loads the code bank into `CODE_BANK_SEG`, the texture pages into `TEXTURE_BANK_SEG` / `TEXTURE_BANK_B_SEG`, the map bank into `MAP_BANK_SEG`, the presentation bank into `PRESENT_BANK_SEG`, and the geometry bank into `GEOMETRY_BANK_SEG` before stage two starts.
 - Stage two reads the generated machine-code helper offsets from `generated_machine_code.inc` rather than discovering code-bank contents dynamically.
@@ -172,15 +192,15 @@ Current scope and limits:
 
 - Banks are read-only.
 - Each bank currently loads into one destination segment, so each bank must fit within 64 KiB padded to sectors.
-- Texture bank A and texture bank B already sit at the edge of that single-segment limit, so texture growth has to be deliberate.
-- The bootstrap currently loads all banks up front during handoff, but the build/report structure is still set up so later banks can be added without changing the boot sector contract.
+- Texture bank A and texture bank B already sit at the edge of that single-segment limit, so the current runtime still treats them deliberately.
+- The expanded ISO/pack manifest is now the path for larger future payloads: the conventional banks remain boot-compatible, while high-memory reservations describe where the protected-mode renderer, larger texture pool, frame/depth buffers, and audio arena will land.
 
 ## 9. Extension Checklist
 
 Before changing the runtime, keep these contracts intact:
 
 - Do not remove the executable jump at byte `0` of stage two.
-- Do not move stage two out of the single load segment unless the bootloader changes too.
+- Do not move stage two out of the single load segment unless the loader changes too; move new large code/data through the expanded pack manifest first.
 - Do not change the bootstrap bank-loading geometry/layout contract unless [src/bootstrap.asm](../src/bootstrap.asm) and the build layout logic change with it.
 - Do not change `SS:SP`, `DS`, or `DF` assumptions without auditing every string op and interrupt path.
 - Do not reorder `key_down` / `key_pressed` without updating the reset routine.
@@ -305,7 +325,7 @@ That signature is computed after every consumed demo action and compared against
 Its contract is:
 
 - use the verified splash lockup for the branding shot
-- use `Campaign.Showcase` from `assets\sectors.psd1` for the public gameplay captures (currently `thermal-attract-a` / `vault-attract-b`)
+- use `Campaign.Showcase` from `assets\sectors.psd1` for the public gameplay captures (currently `subgrid-attract-a` / `subgrid-attract-b`)
 - write stable captures under `build\showcase\`
 - publish a machine-readable verified-gallery manifest under `build\showcase\`
 - let `build.ps1` refresh the README slots from that manifest when capture succeeds, or preserve the last verified gallery when capture is unavailable

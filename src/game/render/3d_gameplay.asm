@@ -628,13 +628,16 @@ ENDIF
 game3d_update_adventure_camera_target:
     push bx
     mov al, [adventure_player_yaw]
-    mov [game3d_camera_yaw_current], al
-    mov [game3d_camera_yaw_target], al
     call game3d_get_adventure_heading_from_yaw
     mov bl, al
     cmp bl, [game3d_camera_heading]
-    je game3d_update_adventure_variant
+    je game3d_update_adventure_heading_ready
     mov [game3d_camera_heading], bl
+
+game3d_update_adventure_heading_ready:
+    mov al, bl
+    call game3d_get_heading_target_yaw
+    mov [game3d_camera_yaw_target], al
 
 game3d_update_adventure_variant:
     mov al, bl
@@ -679,6 +682,7 @@ game3d_setup_adventure_camera:
     push bx
     push cx
     push dx
+    call game3d_ease_camera_yaw
 
     mov word ptr [scene3d_clip_left], GAME3D_VIEW_X
     mov word ptr [scene3d_clip_top], GAME3D_VIEW_Y
@@ -693,7 +697,7 @@ game3d_setup_adventure_camera:
     mov [scene3d_project_scale], ax
     call game3d_get_projection_pitch
     mov [scene3d_pitch_angle], al
-    mov al, [adventure_player_yaw]
+    mov al, [game3d_camera_yaw_current]
     mov [scene3d_yaw_angle], al
 
     mov ax, [adventure_player_world_x]

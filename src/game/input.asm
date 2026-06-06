@@ -109,6 +109,7 @@ bios_poll_count_ready:
     jmp poll_bios_keyboard_loop
 
 poll_bios_keyboard_done:
+    call latch_bios_modifier_state
     pop ax
     ret
 
@@ -282,6 +283,8 @@ is_bios_nav_down_key:
     ret
 
 is_bios_nav_left_key:
+    cmp ah, SCAN_ESC
+    je bios_nav_true
     cmp ah, SCAN_A
     je bios_nav_true
     cmp al, 'a'
@@ -377,6 +380,72 @@ bios_reset_true:
     stc
     ret
 
+hold_bios_key_scan:
+    xor bh, bh
+    mov byte ptr [key_down + bx], 1
+    mov byte ptr [key_pressed + bx], BIOS_KEY_HOLD_TICKS
+    ret
+
+latch_bios_modifier_state:
+    push ax
+    push bx
+    mov ah, 02h
+    int 16h
+    test al, 03h
+    jz bios_shift_state_done
+    mov byte ptr [pressed_shift], 1
+    mov bl, SCAN_LSHIFT
+    call hold_bios_key_scan
+
+bios_shift_state_done:
+    pop bx
+    pop ax
+    ret
+
+decay_bios_key_holds:
+    push ax
+    push bx
+    mov bl, SCAN_ENTER
+    call decay_bios_key_hold_entry
+    mov bl, SCAN_W
+    call decay_bios_key_hold_entry
+    mov bl, SCAN_A
+    call decay_bios_key_hold_entry
+    mov bl, SCAN_S
+    call decay_bios_key_hold_entry
+    mov bl, SCAN_D
+    call decay_bios_key_hold_entry
+    mov bl, SCAN_R
+    call decay_bios_key_hold_entry
+    mov bl, SCAN_C
+    call decay_bios_key_hold_entry
+    mov bl, SCAN_SPACE
+    call decay_bios_key_hold_entry
+    mov bl, SCAN_LSHIFT
+    call decay_bios_key_hold_entry
+    mov bl, SCAN_UP_EXT
+    call decay_bios_key_hold_entry
+    mov bl, SCAN_LEFT_EXT
+    call decay_bios_key_hold_entry
+    mov bl, SCAN_RIGHT_EXT
+    call decay_bios_key_hold_entry
+    mov bl, SCAN_DOWN_EXT
+    call decay_bios_key_hold_entry
+    pop bx
+    pop ax
+    ret
+
+decay_bios_key_hold_entry:
+    xor bh, bh
+    cmp byte ptr [key_pressed + bx], 0
+    je decay_bios_key_hold_done
+    dec byte ptr [key_pressed + bx]
+    jne decay_bios_key_hold_done
+    mov byte ptr [key_down + bx], 0
+
+decay_bios_key_hold_done:
+    ret
+
 latch_bios_key:
     cmp ah, SCAN_ENTER
     je bios_key_enter
@@ -436,54 +505,80 @@ latch_bios_key:
 
 bios_key_enter:
     mov byte ptr [pressed_enter], 1
+    mov bl, SCAN_ENTER
+    call hold_bios_key_scan
     ret
 
 bios_key_w:
     mov byte ptr [pressed_w], 1
+    mov bl, SCAN_W
+    call hold_bios_key_scan
     ret
 
 bios_key_a:
     mov byte ptr [pressed_a], 1
+    mov bl, SCAN_A
+    call hold_bios_key_scan
     ret
 
 bios_key_s:
     mov byte ptr [pressed_s], 1
+    mov bl, SCAN_S
+    call hold_bios_key_scan
     ret
 
 bios_key_d:
     mov byte ptr [pressed_d], 1
+    mov bl, SCAN_D
+    call hold_bios_key_scan
     ret
 
 bios_key_r:
     mov byte ptr [pressed_r], 1
+    mov bl, SCAN_R
+    call hold_bios_key_scan
     ret
 
 bios_key_c:
     mov byte ptr [pressed_c], 1
+    mov bl, SCAN_C
+    call hold_bios_key_scan
     ret
 
 bios_key_space:
     mov byte ptr [pressed_space], 1
+    mov bl, SCAN_SPACE
+    call hold_bios_key_scan
     ret
 
 bios_key_shift:
     mov byte ptr [pressed_shift], 1
+    mov bl, SCAN_LSHIFT
+    call hold_bios_key_scan
     ret
 
 bios_key_up:
     mov byte ptr [pressed_up], 1
+    mov bl, SCAN_UP_EXT
+    call hold_bios_key_scan
     ret
 
 bios_key_left:
     mov byte ptr [pressed_left], 1
+    mov bl, SCAN_LEFT_EXT
+    call hold_bios_key_scan
     ret
 
 bios_key_right:
     mov byte ptr [pressed_right], 1
+    mov bl, SCAN_RIGHT_EXT
+    call hold_bios_key_scan
     ret
 
 bios_key_down:
     mov byte ptr [pressed_down], 1
+    mov bl, SCAN_DOWN_EXT
+    call hold_bios_key_scan
     ret
 
 poll_key_event:
@@ -734,6 +829,23 @@ keyboard_irq_handler:
     pop ds
 
     in al, 60h
+    call handle_keyboard_scancode
+    in al, 61h
+    mov ah, al
+    or al, 80h
+    out 61h, al
+    mov al, ah
+    out 61h, al
+    mov al, 20h
+    out 20h, al
+    pop ds
+    pop dx
+    pop cx
+    pop bx
+    pop ax
+    iret
+
+handle_keyboard_scancode:
     cmp al, 0E0h
     je keyboard_mark_extended
     cmp al, 0E1h
@@ -751,7 +863,7 @@ keyboard_irq_handler:
     jnz keyboard_release
 
     cmp byte ptr [key_down + bx], 0
-    jne keyboard_done
+    jne keyboard_scancode_done
     mov byte ptr [key_down + bx], 1
     mov byte ptr [any_key_pending], 1
     mov [input_last_code], al
@@ -836,36 +948,23 @@ keyboard_press_down:
 
 keyboard_count_event:
     cmp byte ptr [input_event_count], 99
-    jae keyboard_done
+    jae keyboard_scancode_done
     inc byte ptr [input_event_count]
-    jmp keyboard_done
+    jmp keyboard_scancode_done
 
 keyboard_release:
     mov byte ptr [key_down + bx], 0
-    jmp keyboard_done
+    jmp keyboard_scancode_done
 
 keyboard_mark_extended:
     mov byte ptr [key_extended], SCAN_EXT_FLAG
-    jmp keyboard_done
+    jmp keyboard_scancode_done
 
 keyboard_ignore:
     mov byte ptr [key_extended], 0
 
-keyboard_done:
-    in al, 61h
-    mov ah, al
-    or al, 80h
-    out 61h, al
-    mov al, ah
-    out 61h, al
-    mov al, 20h
-    out 20h, al
-    pop ds
-    pop dx
-    pop cx
-    pop bx
-    pop ax
-    iret
+keyboard_scancode_done:
+    ret
 
 record_runtime_frontend_action:
     push bx

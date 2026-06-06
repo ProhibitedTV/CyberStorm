@@ -11,10 +11,41 @@ $root = Split-Path -Parent $PSScriptRoot
 $vbox = 'C:\Program Files\Oracle\VirtualBox\VBoxManage.exe'
 $base = Join-Path $root 'deploy\virtualbox'
 $diskImage = Join-Path $root 'build\cyberstorm.img'
+$isoImage = Join-Path $root 'build\cyberstorm-expanded.iso'
 $vmDiskImage = Join-Path $base ("{0}.vdi" -f $VmName)
 $vmFolder = Join-Path $base $VmName
 
 . (Join-Path $PSScriptRoot 'vbox-common.ps1')
+
+function Remove-PathWithRetries {
+    param(
+        [string]$Path,
+        [string]$Label,
+        [switch]$Directory
+    )
+
+    if (-not (Test-Path -LiteralPath $Path)) {
+        return
+    }
+
+    $lastError = $null
+    for ($attempt = 0; $attempt -lt 4; $attempt++) {
+        try {
+            if ($Directory.IsPresent) {
+                Remove-Item -LiteralPath $Path -Recurse -Force
+            } else {
+                Remove-Item -LiteralPath $Path -Force
+            }
+            return
+        } catch {
+            $lastError = $_
+            Restart-VBoxBootstrapServices
+            Start-Sleep -Seconds (1 + $attempt)
+        }
+    }
+
+    throw ("Could not remove {0}: {1}`n{2}" -f $Label, $Path, $lastError.Exception.Message)
+}
 
 if (-not (Test-Path $vbox)) {
     throw 'VBoxManage.exe was not found in the default Oracle VirtualBox install path.'
@@ -37,26 +68,29 @@ try {
 }
 
 if ($vmExists) {
-    Invoke-VBoxManage -Arguments @('unregistervm', $VmName, '--delete') | Out-Null
+    Stop-VmIfRunning -Name $VmName
+    try {
+        Invoke-VBoxManage -Arguments @('unregistervm', $VmName, '--delete') | Out-Null
+    } catch {
+        Restart-VBoxBootstrapServices
+        Start-Sleep -Seconds 2
+        Invoke-VBoxManage -Arguments @('unregistervm', $VmName, '--delete') | Out-Null
+    }
 }
 
-if (Test-Path -LiteralPath $vmDiskImage) {
-    Remove-Item -LiteralPath $vmDiskImage -Force
-}
+Remove-PathWithRetries -Path $vmDiskImage -Label 'vm disk image'
+Remove-PathWithRetries -Path $vmFolder -Label 'vm folder' -Directory
 
-if (Test-Path -LiteralPath $vmFolder) {
-    Remove-Item -LiteralPath $vmFolder -Recurse -Force
-}
 
 Invoke-VBoxManage -Arguments @('convertfromraw', $diskImage, $vmDiskImage, '--format', 'VDI') | Out-Null
 
 Invoke-VBoxManage -Arguments @('createvm', '--name', $VmName, '--basefolder', $base, '--ostype', 'Other', '--register')
-# Keep the VM audible by default and expose a guest-visible legacy sound device
-# that the bare-metal runtime can program directly.
+# Keep the VM audible by default and give the presentation target enough headroom
+# for richer banked frontend/gameplay assets while retaining legacy bare-metal I/O.
 Invoke-VBoxManage -Arguments @(
     'modifyvm', $VmName,
-    '--memory', '64',
-    '--vram', '16',
+    '--memory', '256',
+    '--vram', '32',
     '--graphicscontroller', 'vboxsvga',
     '--monitorcount', '1',
     '--accelerate3d', 'off',
@@ -73,4 +107,7 @@ Invoke-VBoxManage -Arguments @(
 )
 Invoke-VBoxManage -Arguments @('storagectl', $VmName, '--name', 'IDE', '--add', 'ide')
 Invoke-VBoxManage -Arguments @('storageattach', $VmName, '--storagectl', 'IDE', '--port', '0', '--device', '0', '--type', 'hdd', '--medium', $vmDiskImage)
+if (Test-Path -LiteralPath $isoImage) {
+    Invoke-VBoxManage -Arguments @('storageattach', $VmName, '--storagectl', 'IDE', '--port', '1', '--device', '0', '--type', 'dvddrive', '--medium', $isoImage)
+}
 Get-VBoxMachineInfoLines -Name $VmName -Context 'deploy vm final showvminfo'

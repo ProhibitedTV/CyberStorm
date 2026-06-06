@@ -2,28 +2,32 @@
 
 > No OS. No shell. Just the realm.
 >
-> CyberStorm is a bootable x86 3D adventure slice and a compact bare-metal engine project. The current mainline build emits a BIOS hard-disk image, enters a hand-written boot sector plus tiny bootstrap, prepares an enhanced VBE present path, and then hands off into the legacy real-mode stage-two runtime without DOS or any host runtime.
+> CyberStorm is a bootable bare-metal 3D adventure campaign and engine project. The playable legacy path still emits an expanded BIOS boot image plus burnable CD/DVD ISO wrapper, while the forward path now builds a UEFI x64 ISO with a GOP diagnostics runtime, x64 pack loader, and assembly-built `ENGINE64` scaffold payload.
 
 ![CyberStorm hero](build/readme-shot-1.png)
 
 | Built for | Boots from | Video | Runtime |
 | --- | --- | --- | --- |
-| BIOS x86 + Oracle VirtualBox | Raw HDD image (`.img`) | VBE `640x480x16` present path over a `320x240` gameplay surface with exact 2x presentation when active, plus legacy VGA fallback | i386-targeted boot chain + legacy 16-bit stage-two runtime |
+| UEFI x64 + GOP | Burnable UEFI El Torito ISO (`cyberstorm-x64.iso`) | GOP framebuffer diagnostics now; CPU software-3D `640x480` renderer target | PE32+ `BOOTX64.EFI`, UEFI FAT payloads, `X64PACK.BIN`, assembly-built `ENGINE64.BIN` scaffold |
+| BIOS x86 + Oracle VirtualBox | Expanded raw image (`.img`) and burnable ISO wrapper (`cyberstorm-expanded.iso`) | VBE `640x480x16` present path over a `320x240` gameplay surface with exact 2x presentation when active, plus legacy VGA fallback | i386-targeted boot chain + current 16-bit stage-two runtime, with generated high-memory reservations for the engine migration |
 
 ## Key Features
 
 ### For Players
 
-- **A full four-district arcade run.** The mainline route now pushes through `Subgrid Ingress`, `Switchyard Spine`, `Thermal Foundry`, and `Apex Vault` as one authored breach campaign.
+- **A full four-district expanded campaign.** The public run now chains `Subgrid Ingress`, `Switchyard Spine`, `Thermal Foundry`, and `Apex Vault` into one complete breach route.
 - **Continuous bare-metal movement.** The release path now supports real-time run, turn, jump, glide, charge, and flame controls instead of the older move-once tactical loop.
 - **Readable objective pressure.** Each district keeps the same simple progression spine: secure relays, take the keycard branch, and force the gate before the storm closes.
 - **Readable 3D creature pressure.** Small charge targets, flame-vulnerable foes, and a larger patrol threat all render as low-poly world actors instead of flat tokens.
-- **A real finale and replay hook.** `Apex Vault` now plays like a climax, and the clear screen turns into a campaign debrief with rank, district breakdown, and the next score target.
+- **An honest clear-state payoff.** The run ends when `Apex Vault` is breached, then rolls straight into the score/rank payoff so the shipped build finishes on the campaign climax.
 
 ### For Engine People
 
 - **A real boot path.** The build emits a bootable BIOS disk image, not a host app wrapped in a fake shell.
-- **A compact but structured runtime.** Stage two stays inside a documented single-segment contract while still using modular render, gameplay, audio, and data layers.
+- **A forward x64 ISO path.** `-Target x64-uefi` emits `cyberstorm-x64.iso`, `BOOTX64.EFI`, `X64PACK.BIN`, `X64MAN.TXT`, and `ENGINE64.BIN` for the UEFI migration.
+- **An ENGINE64 framebuffer scaffold.** The UEFI build now renders the loaded `ENGINE64` color-bar payload into an internal `640x480` xRGB8888 frame arena, then presents it through GOP direct/swap conversion.
+- **Larger x64 memory budgets.** The UEFI path now allocates a 32 MiB engine-owned arena block and stages validated pack chunks into engine, texture, mesh/scene/script, audio, scratch, and log arenas.
+- **An expanded release surface.** The build now emits a larger mainline boot image, a typed pack-directory artifact, an expanded manifest, and a bootable ISO wrapper so future renderer/audio/content payloads are no longer planned around a floppy-sized ceiling.
 - **Generated content tooling.** Sprites, banked presentation assets, low-poly scene geometry, sectors, rules, demos, and music come from readable source files that generate MASM-friendly data at build time.
 - **A real software 3D render path.** Splash, title, sector-entry cards, end screens, and now live gameplay all run through a flat-shaded low-poly renderer, while `-DebugRender2D` still keeps the legacy 2D oracle available for parity work.
 - **A PS1-style grouped scene system.** Splash, title, sector-entry, and end scenes now share the same dark-techno scene-group timeline path, so the BitRiver ident flows into the rest of the front end instead of feeling like a one-off effect.
@@ -50,7 +54,7 @@ CyberStorm is small enough to inspect, but it is no longer a single opaque assem
 
 ![CyberStorm boot flow](docs/readme/boot-flow.svg)
 
-The boot sector at `LBA 0` loads a tiny bootstrap, the bootstrap loads stage two plus the bank payloads, probes VBE, and writes a handoff block, and then stage two continues through the gameplay runtime. The exact current LBA ranges live in [build/cyberstorm-build-report.txt](build/cyberstorm-build-report.txt).
+The boot sector at `LBA 0` loads a tiny bootstrap, the bootstrap loads stage two plus the bank payloads, probes VBE, and writes a handoff block, and then stage two continues through the gameplay runtime. The exact current LBA ranges live in [build/cyberstorm-build-report.txt](build/cyberstorm-build-report.txt), while [build/cyberstorm-expanded-manifest.txt](build/cyberstorm-expanded-manifest.txt) records the expanded ISO/pack layout.
 
 ### Runtime Layout
 
@@ -68,21 +72,29 @@ The runtime keeps BIOS-owned low memory untouched, inherits the boot stack at `0
 
 ## Quickstart
 
-### Build The Release Image
+### Build The Expanded Release Image And ISO
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\build.ps1
 ```
 
+### Build The x64 UEFI ISO
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\build.ps1 -Target x64-uefi
+```
+
+The x64 artifact is [build/cyberstorm-x64.iso](build/cyberstorm-x64.iso). It remains packageable as physical optical media through the UEFI El Torito path and carries the FAT boot image plus pack payloads needed by `BOOTX64.EFI`.
+
 ### Boot It In VirtualBox
 
-The supported path is the included deployment script, which refreshes a VirtualBox-ready disk from [build/cyberstorm.img](build/cyberstorm.img):
+The supported path is the included deployment script, which refreshes a VirtualBox-ready disk from [build/cyberstorm.img](build/cyberstorm.img) and also attaches [build/cyberstorm-expanded.iso](build/cyberstorm-expanded.iso) when present:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\deploy-vm.ps1
 ```
 
-If you wire a VM manually, use a BIOS VM and attach a hard disk derived from [build/cyberstorm.img](build/cyberstorm.img), not the retired floppy artifact path.
+If you wire a VM manually, use a BIOS VM and attach a hard disk derived from [build/cyberstorm.img](build/cyberstorm.img). The ISO contains the boot image, pack directory, and manifest for burnable-media distribution.
 
 ### Use The Included Workspace VM
 
@@ -118,12 +130,12 @@ This section is intentionally stable. Exact byte counts, LBA ranges, and generat
 
 | Fact | Project contract |
 | --- | --- |
-| Boot path | Boot sector at `LBA 0`, tiny bootstrap immediately after it, then stage two and the asset packs follow on the BIOS HDD image. |
-| Stage-two contract | Stage two still fits a single `64 KiB` real-mode load segment, with exact current headroom reported by the build. |
+| Boot path | Boot sector at `LBA 0`, tiny bootstrap immediately after it, then stage two and the asset packs follow on the expanded BIOS boot image and ISO wrapper. |
+| Stage-two contract | Stage two is still the first executable gameplay runtime, while the expanded pack directory and high-memory reservations define the 32-bit migration surface. |
 | Banked payloads | Code, map, presentation, geometry, and texture payloads load into `2000:0000`, `2800:0000`, `3000:0000`, `3800:0000`, `4000:0000`, and `5000:0000`. |
 | Public gallery | `title`, `beauty`, and `action` README slots are sourced from the verified showcase manifest under [build/showcase/](build/showcase). |
 | Validation stack | Build, balance, replay, regression, frontend verify, VM smoke, runtime verify, and showcase capture all write reviewable reports. |
-| Release defaults | `MUSIC` audio policy, grouped low-poly frontend scenes, the stable reference gameplay 3D path by default, the experimental machine path only when explicitly requested, and an enhanced VBE present path that displays the `320x240` gameplay surface at exact `2x` when the handoff marks it safe. |
+| Release defaults | `MUSIC` audio policy, four-district campaign route, grouped low-poly frontend scenes, the stable reference gameplay 3D path by default, the experimental machine path only when explicitly requested, and an enhanced VBE present path that displays the `320x240` gameplay surface at exact `2x` when the handoff marks it safe. |
 
 ## Why This Is A Strong AI-Assisted Development Example
 
@@ -344,8 +356,8 @@ powershell -ExecutionPolicy Bypass -File .\scripts\build.ps1 -CaptureShowcase
 This turns deterministic demos into reproducible public-facing captures:
 
 - a verified `title` shot from the VM smoke title frame
-- a verified `beauty` shot from `Campaign.Showcase.Beauty` in `assets/sectors.psd1` (currently `thermal-attract-a`)
-- a verified `action` shot from `Campaign.Showcase.Action` in `assets/sectors.psd1` (currently `vault-attract-b`)
+- a verified `beauty` shot from `Campaign.Showcase.Beauty` in `assets/sectors.psd1` (currently `subgrid-attract-a`)
+- a verified `action` shot from `Campaign.Showcase.Action` in `assets/sectors.psd1` (currently `subgrid-attract-b`)
 - a machine-readable gallery manifest under `build/showcase/` so the README can publish fresh captures or preserve the last verified set without rotating manual screenshots
 
 Artifacts:

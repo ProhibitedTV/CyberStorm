@@ -243,11 +243,35 @@ function Stop-VmIfRunning {
     param([string]$Name)
 
     try {
-        Invoke-VBoxManage -Arguments @('controlvm', $Name, 'poweroff') | Out-Null
-        Start-Sleep -Seconds 2
+        $state = Get-VmState -Name $Name -Context ("poweroff probe ({0})" -f $Name)
     } catch {
         return
     }
+
+    if ($state -ne 'running' -and $state -ne 'paused' -and $state -ne 'stuck') {
+        return
+    }
+
+    try {
+        Invoke-VBoxManage -Arguments @('controlvm', $Name, 'poweroff') | Out-Null
+    } catch {
+    }
+
+    for ($attempt = 0; $attempt -lt 10; $attempt++) {
+        Start-Sleep -Seconds 1
+        try {
+            $state = Get-VmState -Name $Name -Context ("poweroff wait ({0})" -f $Name)
+        } catch {
+            return
+        }
+
+        if ($state -ne 'running' -and $state -ne 'paused' -and $state -ne 'stuck') {
+            return
+        }
+    }
+
+    Restart-VBoxBootstrapServices
+    Start-Sleep -Seconds 2
 }
 
 function Start-HeadlessVm {

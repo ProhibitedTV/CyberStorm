@@ -61,17 +61,17 @@ draw_title_scene_3d:
     call fill_rect
 
     mov bx, 0
-    mov dx, 112
+    mov dx, 106
     mov cx, SCREEN_W
-    mov bp, 88
+    mov bp, 94
     mov al, PAL_BG0
     call fill_rect
 
-    mov bx, 0
-    mov dx, 94
-    mov cx, SCREEN_W
+    mov bx, 40
+    mov dx, 86
+    mov cx, 240
     mov bp, 1
-    mov al, PAL_CYAN
+    mov al, PAL_CYAN2
     call fill_rect
 
 IF DEBUG_RENDER_SENTINELS
@@ -979,6 +979,9 @@ scene3d_draw_face_index_ready:
     mov ax, [scene3d_vertex_y + di]
     mov [scene3d_tri_y2], ax
 
+    call scene3d_reject_degenerate_triangle
+    jc scene3d_draw_face_by_index_done
+
     mov al, [si + 3]
     mov [scene3d_temp_color], al
     mov al, [si + 4]
@@ -1015,6 +1018,48 @@ scene3d_draw_face_by_index_done:
     pop cx
     pop bx
     pop ax
+    ret
+
+scene3d_reject_degenerate_triangle:
+    push eax
+    push ebx
+    push ecx
+    push edx
+
+    movsx eax, word ptr [scene3d_tri_x1]
+    movsx ebx, word ptr [scene3d_tri_x0]
+    sub eax, ebx
+    movsx ecx, word ptr [scene3d_tri_y2]
+    movsx edx, word ptr [scene3d_tri_y0]
+    sub ecx, edx
+    imul eax, ecx
+    mov ebx, eax
+
+    movsx eax, word ptr [scene3d_tri_y1]
+    movsx ecx, word ptr [scene3d_tri_y0]
+    sub eax, ecx
+    movsx ecx, word ptr [scene3d_tri_x2]
+    movsx edx, word ptr [scene3d_tri_x0]
+    sub ecx, edx
+    imul eax, ecx
+    sub ebx, eax
+    jns scene3d_reject_degenerate_abs_ready
+    neg ebx
+
+scene3d_reject_degenerate_abs_ready:
+    cmp ebx, 4
+    jbe scene3d_reject_degenerate_yes
+    clc
+    jmp scene3d_reject_degenerate_done
+
+scene3d_reject_degenerate_yes:
+    stc
+
+scene3d_reject_degenerate_done:
+    pop edx
+    pop ecx
+    pop ebx
+    pop eax
     ret
 
 scene3d_apply_frontend_face_fog:

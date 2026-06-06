@@ -76,7 +76,7 @@ title_menu_index db TITLE_MENU_NEW_GAME
 title_panel_mode db TITLE_PANEL_MENU
 title_options_index db TITLE_OPTIONS_MUSIC
 session_music_enabled db 1
-session_idle_demo_enabled db 1
+session_idle_demo_enabled db 0
 ; A short post-start guard keeps freshly entered runs from immediately honoring
 ; reset input on the next gameplay tick while frontend keys are settling.
 run_start_enter_guard db 0
@@ -318,18 +318,13 @@ gate_text     db 'GATE', 0
 relay_text    db 'RELAY', 0
 key_text      db 'KEY', 0
 controls_text db 'MOVE WASD OR ARROWS  C EMP  R RESET', 0
-adventure_controls_text db 'WS RUN  AD TURN  SPC GLIDE  SHF DASH  C FLAME  R RESET', 0
-realm_text db 'DIST', 0
+adventure_controls_text db 'WS MOVE  AD TURN  SHF DASH  C FLAME  R RESET', 0
+realm_text db 'RUN', 0
 gems_text db 'SHRD', 0
-goals_text db 'GOALS', 0
-portal_text db 'GATE', 0
 slash_text db '/', 0
 portal_open_text db 'OPEN', 0
 portal_locked_text db 'LOCK', 0
 sector1_short_text db 'S1', 0
-sector2_short_text db 'S2', 0
-sector3_short_text db 'S3', 0
-sector4_short_text db 'S4', 0
 rank_s_text db 'RANK S', 0
 rank_a_text db 'RANK A', 0
 rank_b_text db 'RANK B', 0
@@ -339,6 +334,7 @@ rank_d_text db 'RANK D', 0
 title_menu_new_game_text db 'NEW GAME', 0
 title_menu_credits_text db 'CREDITS', 0
 title_menu_options_text db 'OPTIONS', 0
+title_menu_hint_text db 'W/S SELECT  ENTER START', 0
 title_panel_credits_text db 'CREDITS', 0
 title_panel_options_text db 'OPTIONS', 0
 title_option_music_text db 'MUSIC', 0
@@ -346,12 +342,11 @@ title_option_idle_demo_text db 'IDLE DEMO', 0
 title_option_back_text db 'BACK', 0
 title_toggle_on_text db 'ON', 0
 title_toggle_off_text db 'OFF', 0
-title_menu_hint_text db 'WS NAV  ENTER SELECT', 0
-title_panel_return_text db 'ENTER OR LEFT RETURNS', 0
+title_panel_return_text db 'ENTER LEFT ESC BACK', 0
 credits_line_1 db 'BITRIVER SOFTWARE', 0
 credits_line_2 db 'CYBERSTORM CAMPAIGN BUILD', 0
 credits_line_3 db 'BOOT CODE  GAMEPLAY  ART  RAW VGA.', 0
-credits_line_4 db 'SMALL. SHARP. BOOTABLE.', 0
+credits_line_4 db 'BARE METAL 3D FRONTEND.', 0
 
 ; Sector template pools, authored encounter anchors, scenario text, shard
 ; candidate pools, rule tables, and sector-facing copy are generated from
@@ -408,10 +403,10 @@ adventure_realm_prop_mesh_table db CAMPAIGN_MAX_PROP_COUNT dup (0)
 adventure_realm_prop_yaw_table db CAMPAIGN_MAX_PROP_COUNT dup (0)
 adventure_realm_map db CAMPAIGN_MAP_BYTES dup (0)
 
-text_msg_sector   db 'DISTRICT LIVE. RAID SHARDS, JACK RELAYS, BREACH THE GATE.', 0
+text_msg_sector   db 'FOLLOW SHARDS. RELAY, KEY, GATE.', 0
 text_msg_block    db 'A CLIFF OR STONE WALL BLOCKS THE WAY.', 0
 text_msg_shard    db 'DATA SHARD SECURED. THE GATE SPIKES HARDER.', 0
-text_msg_gate     db 'STORM GATE OPEN. BREACH WHEN READY.', 0
+text_msg_gate     db 'GATE OPEN. STEP THROUGH.', 0
 text_msg_hit      db 'OUCH. THAT ONE COST A HEART.', 0
 text_msg_kill     db 'THREAT DROPPED. THE LANE CLEARS.', 0
 text_msg_pulse    db 'OVERLOAD BURST CUT LOOSE.', 0
@@ -419,8 +414,8 @@ text_msg_nopulse  db 'EMP DRY. NO CHARGES IN THE BANK.', 0
 text_msg_surge    db 'HOT FLOOR OR LIVE CURRENT BIT BACK.', 0
 text_msg_trap     db 'THE HAZARD CAUGHT A FOE.', 0
 text_msg_recharge db 'CHAIN BREAK. OVERLOAD RESTORED.', 0
-text_msg_spoof    db 'RELAY JACKED. ANOTHER GATE LOCK DROPPED.', 0
-text_msg_key      db 'KEYCARD CLAIMED. THE GATE CAN NOW UNSEAL.', 0
+text_msg_spoof    db 'RELAY LIVE. KEY LINE OPEN.', 0
+text_msg_key      db 'KEY SECURED. CLEAN SHARDS, BREACH.', 0
 text_msg_gate_final db 'FINAL BREACH OPEN. FINISH THE RUN.', 0
 
 splash_brand    db 'BITRIVER', 0
@@ -430,11 +425,6 @@ splash_run_prompt  db 'ENTER OR SPACE OPENS MENU', 0
 splash_skip_prompt db 'ANY OTHER KEY SKIPS', 0
 
 title_logo    db 'CYBERSTORM', 0
-title_line_1  db 'BOOTABLE CYBERPUNK ACTION ADVENTURE.', 0
-title_line_2  db 'DASH. GLIDE. OVERLOAD. BREACH.', 0
-title_line_3  db 'FOUR DISTRICTS. ONE SESSION.', 0
-title_line_4  db 'USE THE START MENU TO JACK IN.', 0
-title_prompt  db 'IDLE STARTS ATTRACT.', 0
 demo_takeover_text db 'ENTER RETURNS TO MENU. LIVE KEYS JACK IN.', 0
 IF DEBUG_FRONTEND_VERIFY
 frontend_verify_vm_tag db 'VM', 0
@@ -478,10 +468,10 @@ debug_verify_action_tag db 'VA', 0
 ENDIF
 
 win_line_1    db 'RUN CLEAR', 0
-win_line_2    db 'ALL FOUR DISTRICTS FELL TO THE RUN.', 0
-win_line_3    db 'THE APEX VAULT BROKE. PUSH THE NEXT RANK.', 0
+win_line_2    db 'APEX VAULT BREACHED.', 0
+win_line_3    db 'FULL CAMPAIGN CLEAR.', 0
 lose_line_1   db 'RUN BROKEN', 0
-lose_line_2   db 'THE STORM CLOSED BEFORE THE FINAL BREACH.', 0
+lose_line_2   db 'THE GATE CLOSED BEFORE BREACH.', 0
 lose_line_3   db 'REBUILD THE LINE. PUSH THE NEXT RANK.', 0
 replay_prompt db 'ENTER CONTINUES.', 0
 next_rank_text db 'NEXT', 0

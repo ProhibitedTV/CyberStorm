@@ -242,7 +242,7 @@ render_adventure_status:
     mov ah, PAL_WHITE
     call draw_text_small
 
-    mov al, CAMPAIGN_DISTRICT_COUNT
+    mov al, PUBLIC_RELEASE_DISTRICT_COUNT
     mov bx, 56
     mov dx, 15
     mov ah, PAL_WHITE
@@ -642,7 +642,7 @@ adventure_intro_frame_ready:
     mov ah, PAL_WHITE
     call draw_text_small
 
-    mov al, CAMPAIGN_DISTRICT_COUNT
+    mov al, PUBLIC_RELEASE_DISTRICT_COUNT
     mov bx, 80
     mov dx, 42
     mov ah, PAL_WHITE

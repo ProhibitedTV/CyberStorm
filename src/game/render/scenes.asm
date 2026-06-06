@@ -53,6 +53,12 @@ IF DEBUG_RENDER_SENTINELS
     call draw_debug_render_sentinel_vga
 ENDIF
     call draw_title_scene
+    mov bx, 0
+    mov dx, 0
+    mov cx, SCREEN_W
+    mov bp, 2
+    mov al, PAL_BLACK
+    call fill_rect_reference
     jmp render_present
 
 render_win_screen:
@@ -95,6 +101,9 @@ ENDIF
     call draw_verify_fail_scene
 
 render_present:
+    cld
+    push cs
+    pop ds
     mov ax, BACKBUFFER_SEG
     mov es, ax
 IF DEBUG_SMOKE_SENTINEL
@@ -106,8 +115,40 @@ IF DEBUG_SMOKE_SENTINEL
     ; Keep the smoke marker on the deterministic reference fill path so the
     ; VM harness sees an exact solid block even when machine gameplay is active.
     call fill_rect_reference
+    cld
+    push cs
+    pop ds
+    mov ax, BACKBUFFER_SEG
+    mov es, ax
 ENDIF
+    call prime_present_backbuffer
     call present_frame
+    ret
+
+prime_present_backbuffer:
+    ; Keep the release presenter on the same deterministic reference-write path
+    ; as smoke builds without adding any visible marker to the frame.
+    push ax
+    push bx
+    push cx
+    push dx
+    push bp
+    mov bx, 0
+    mov dx, 0
+    mov cx, 1
+    mov bp, 1
+    mov al, PAL_BG0
+    call fill_rect_reference
+    cld
+    push cs
+    pop ds
+    mov ax, BACKBUFFER_SEG
+    mov es, ax
+    pop bp
+    pop dx
+    pop cx
+    pop bx
+    pop ax
     ret
 
 draw_splash_scene:
@@ -660,87 +701,61 @@ ENDIF
     ret
 
 draw_title_scene_overlay:
+    mov bx, 58
+    mov dx, 20
+    mov si, offset title_logo
+    mov ah, PAL_PANEL
+    call draw_text_big
+
     mov bx, 56
-    mov dx, 22
-    mov cx, 208
-    mov bp, 30
-    mov al, PAL_PANEL
-    call fill_rect
-
-    mov bx, 60
-    mov dx, 74
-    mov cx, 200
-    mov bp, 34
-    mov al, PAL_PANEL
-    call fill_rect
-
-    mov bx, 52
-    mov dx, 116
-    mov cx, 216
-    mov bp, 74
-    mov al, PAL_PANEL
-    call fill_rect
-
-    mov bx, 40
-    mov dx, 16
-    mov cx, 240
-    mov bp, 176
-    test byte ptr [anim_phase], 1
-    jz title_frame_dim
-    mov al, PAL_CYAN2
-    jmp title_frame_ready
-
-title_frame_dim:
-    mov al, PAL_CYAN
-
-title_frame_ready:
-    call draw_rect_outline
-
-    mov bx, 74
-    mov dx, 30
+    mov dx, 18
     mov si, offset title_logo
     mov ah, PAL_CYAN2
     call draw_text_big
 
-    mov bx, 74
-    mov dx, 58
-    mov cx, 172
+    mov bx, 56
+    mov dx, 47
+    mov cx, 122
     mov bp, 1
     mov al, PAL_CYAN
     call fill_rect
 
-    mov bx, 96
-    mov dx, 64
-    mov cx, 128
+    mov bx, 56
+    mov dx, 51
+    mov cx, 72
     mov bp, 1
     mov al, PAL_AMBER
     call fill_rect
-
-    mov bx, 42
-    mov dx, 78
-    mov si, offset title_line_1
-    mov ah, PAL_WHITE
-    call draw_text_small
-
-    mov bx, 80
-    mov dx, 90
-    mov si, offset title_line_2
-    mov ah, PAL_WHITE
-    call draw_text_small
-
-    mov bx, 76
-    mov dx, 102
-    mov si, offset title_line_4
-    mov ah, PAL_AMBER
-    call draw_text_small
 
     cmp byte ptr [title_panel_mode], TITLE_PANEL_CREDITS
     je title_draw_credits_panel
     cmp byte ptr [title_panel_mode], TITLE_PANEL_OPTIONS
     je title_draw_options_panel
 
-    mov bx, 90
-    mov dx, 122
+    mov bx, 42
+    mov dx, 116
+    mov cx, 150
+    mov bp, 66
+    mov al, PAL_PANEL
+    call fill_rect
+
+    mov bx, 40
+    mov dx, 114
+    mov cx, 154
+    mov bp, 70
+    mov al, PAL_CYAN
+    call draw_rect_outline
+
+    mov bx, 44
+    mov dx, 118
+    mov cx, 146
+    mov bp, 1
+    mov al, PAL_PANEL2
+    call fill_rect
+    call draw_title_menu_selector
+
+    mov bx, 76
+    mov dx, 121
     mov si, offset title_menu_new_game_text
     cmp byte ptr [title_menu_index], TITLE_MENU_NEW_GAME
     jne title_new_game_dim
@@ -753,8 +768,8 @@ title_new_game_dim:
 title_new_game_ready:
     call draw_text_small
 
-    mov bx, 102
-    mov dx, 136
+    mov bx, 76
+    mov dx, 137
     mov si, offset title_menu_credits_text
     cmp byte ptr [title_menu_index], TITLE_MENU_CREDITS
     jne title_credits_dim
@@ -767,8 +782,8 @@ title_credits_dim:
 title_credits_ready:
     call draw_text_small
 
-    mov bx, 102
-    mov dx, 150
+    mov bx, 76
+    mov dx, 153
     mov si, offset title_menu_options_text
     cmp byte ptr [title_menu_index], TITLE_MENU_OPTIONS
     jne title_options_dim
@@ -781,24 +796,60 @@ title_options_dim:
 title_options_ready:
     call draw_text_small
 
-    mov bx, 84
+    mov bx, 50
     mov dx, 168
     mov si, offset title_menu_hint_text
-    mov ah, PAL_WHITE
-    call draw_text_small
-
-    mov bx, 110
-    mov dx, 182
-    mov si, offset title_prompt
     mov ah, PAL_CYAN
     call draw_text_small
+
 IF DEBUG_FRONTEND_VERIFY
     call draw_title_frontend_verify_debug
 ENDIF
-    call draw_title_demo_arm_badge
+    ret
+
+draw_title_menu_selector:
+    mov dx, 119
+    cmp byte ptr [title_menu_index], TITLE_MENU_NEW_GAME
+    je title_menu_selector_y_ready
+    mov dx, 135
+    cmp byte ptr [title_menu_index], TITLE_MENU_CREDITS
+    je title_menu_selector_y_ready
+    mov dx, 151
+
+title_menu_selector_y_ready:
+    push dx
+    mov bx, 66
+    sub dx, 2
+    mov cx, 92
+    mov bp, 14
+    mov al, PAL_PANEL2
+    call fill_rect
+    pop dx
+
+    mov al, PAL_CYAN2
+    test byte ptr [anim_phase], 2
+    jz title_menu_selector_color_ready
+    mov al, PAL_AMBER
+
+title_menu_selector_color_ready:
+    mov bx, 58
+    mov cx, 2
+    mov bp, 11
+    call fill_rect
+    mov bx, 154
+    mov cx, 2
+    mov bp, 11
+    call fill_rect
+    add dx, 10
+    mov bx, 76
+    mov cx, 58
+    mov bp, 1
+    call fill_rect
     ret
 
 title_draw_credits_panel:
+    call draw_title_full_panel
+
     mov bx, 116
     mov dx, 124
     mov si, offset title_panel_credits_text
@@ -837,6 +888,8 @@ title_draw_credits_panel:
     ret
 
 title_draw_options_panel:
+    call draw_title_full_panel
+
     mov bx, 116
     mov dx, 122
     mov si, offset title_panel_options_text
@@ -909,6 +962,27 @@ title_opt_back_ready:
     mov ah, PAL_CYAN
     call draw_text_small
 
+    ret
+
+draw_title_full_panel:
+    mov bx, 52
+    mov dx, 116
+    mov cx, 216
+    mov bp, 74
+    mov al, PAL_PANEL
+    call fill_rect
+    mov bx, 48
+    mov dx, 114
+    mov cx, 224
+    mov bp, 78
+    mov al, PAL_CYAN
+    call draw_rect_outline
+    mov bx, 64
+    mov dx, 128
+    mov cx, 188
+    mov bp, 1
+    mov al, PAL_AMBER
+    call fill_rect
     ret
 
 IF DEBUG_FRONTEND_VERIFY
@@ -1143,42 +1217,6 @@ win_scene_headline_gate:
     mov cl, PAL_GATE
     call draw_word_decimal_small
 
-    mov bx, 126
-    mov dx, 138
-    mov si, offset sector2_short_text
-    mov ah, PAL_WHITE
-    call draw_text_small
-    mov al, 2
-    call get_sector_score_ax
-    mov bx, 140
-    mov dx, 138
-    mov cl, PAL_GATE
-    call draw_word_decimal_small
-
-    mov bx, 56
-    mov dx, 148
-    mov si, offset sector3_short_text
-    mov ah, PAL_WHITE
-    call draw_text_small
-    mov al, 3
-    call get_sector_score_ax
-    mov bx, 70
-    mov dx, 148
-    mov cl, PAL_GATE
-    call draw_word_decimal_small
-
-    mov bx, 126
-    mov dx, 148
-    mov si, offset sector4_short_text
-    mov ah, PAL_WHITE
-    call draw_text_small
-    mov al, 4
-    call get_sector_score_ax
-    mov bx, 140
-    mov dx, 148
-    mov cl, PAL_GATE
-    call draw_word_decimal_small
-
     call get_score_rank_index
     cmp al, 0
     je win_scene_top_rank
@@ -1409,42 +1447,6 @@ lose_scene_headline_gate:
     call get_sector_score_ax
     mov bx, 70
     mov dx, 138
-    mov cl, PAL_RED2
-    call draw_word_decimal_small
-
-    mov bx, 126
-    mov dx, 138
-    mov si, offset sector2_short_text
-    mov ah, PAL_WHITE
-    call draw_text_small
-    mov al, 2
-    call get_sector_score_ax
-    mov bx, 140
-    mov dx, 138
-    mov cl, PAL_RED2
-    call draw_word_decimal_small
-
-    mov bx, 56
-    mov dx, 148
-    mov si, offset sector3_short_text
-    mov ah, PAL_WHITE
-    call draw_text_small
-    mov al, 3
-    call get_sector_score_ax
-    mov bx, 70
-    mov dx, 148
-    mov cl, PAL_RED2
-    call draw_word_decimal_small
-
-    mov bx, 126
-    mov dx, 148
-    mov si, offset sector4_short_text
-    mov ah, PAL_WHITE
-    call draw_text_small
-    mov al, 4
-    call get_sector_score_ax
-    mov bx, 140
-    mov dx, 148
     mov cl, PAL_RED2
     call draw_word_decimal_small
 
@@ -1846,23 +1848,6 @@ verify_word_bits_color_ready:
     pop cx
     pop bx
     pop ax
-    ret
-
-draw_title_demo_arm_badge:
-    ; Once the title has been idle for a while, arm the attract demo visually
-    ; before the handoff so the player can read the coming transition.
-    cmp byte ptr [menu_idle_ticks], TITLE_BADGE_DELAY
-    jb title_demo_badge_done
-    mov bx, 222
-    mov dx, 54
-    mov si, PRESENT_BANNER_DEMO_BADGE_OFFSET
-    call draw_presentation_asset_1x
-    mov bx, 236
-    mov dx, 80
-    mov si, offset demo_text
-    mov ah, PAL_WHITE
-    call draw_text_small
-title_demo_badge_done:
     ret
 
 splash_grid_rows       dw 92, 100, 110, 122, 136, 152, 170, 188

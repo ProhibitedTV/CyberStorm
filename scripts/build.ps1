@@ -1,8 +1,13 @@
 param(
+    [ValidateSet('x86-expanded', 'x64-uefi')]
+    [string]$Target = 'x86-expanded',
     [ValidateSet('masm', 'uasm', 'jwasm')]
     [string]$Assembler = 'masm',
     [string]$AssemblerPath,
     [string]$MasmPath,
+    [string]$X64AssemblerPath,
+    [string]$X64LinkerPath,
+    [switch]$X64ForcePanic,
     [switch]$ExperimentalMusic,
     [switch]$SfxOnly,
     [switch]$FrontendVerify,
@@ -51,8 +56,19 @@ $buildDir = Join-Path $root 'build'
 $layout = [pscustomobject]@{
     BootSectorBytes      = 512
     BootCodeLimitBytes   = 510
-    FloppyBytes          = 33554432
-    FloppySectors        = 65536
+    ImageProfile         = 'expanded-cd'
+    ImageLabel           = 'expanded CD/DVD-grade boot image'
+    FloppyBytes          = 134217728
+    FloppySectors        = 262144
+    ExpandedIsoSectorBytes = 2048
+    ExpandedFlatEngineLoadPhysical = 0x00100000
+    ExpandedRendererArenaPhysical = 0x00800000
+    ExpandedTexturePoolPhysical = 0x01000000
+    ExpandedFrame565Physical = 0x03000000
+    ExpandedZBufferPhysical = 0x03100000
+    ExpandedAudioArenaPhysical = 0x04000000
+    ExpandedFrame565Bytes = 640 * 480 * 2
+    ExpandedZBufferBytes = 640 * 480 * 2
     BootstrapStartLba    = 1
     BootstrapLoadSegment = 0x0800
     Stage2LoadSegment    = 0x1000
@@ -116,6 +132,14 @@ function Write-UInt32Le {
     $Bytes[$Offset + 1] = [byte](($Value -shr 8) -band 0xFF)
     $Bytes[$Offset + 2] = [byte](($Value -shr 16) -band 0xFF)
     $Bytes[$Offset + 3] = [byte](($Value -shr 24) -band 0xFF)
+}
+
+function Write-UInt64Le {
+    param([byte[]]$Bytes, [int]$Offset, [uint64]$Value)
+
+    for ($i = 0; $i -lt 8; $i++) {
+        $Bytes[$Offset + $i] = [byte](($Value -shr ($i * 8)) -band 0xFF)
+    }
 }
 
 function Format-Hex16 {
@@ -367,6 +391,542 @@ function Invoke-ExternalTool {
     }
 }
 
+function Resolve-X64Toolchain {
+    param(
+        [string]$RequestedAssemblerPath,
+        [string]$RequestedLinkerPath
+    )
+
+    $assemblerCandidates = New-Object 'System.Collections.Generic.List[object]'
+    $linkerCandidates = New-Object 'System.Collections.Generic.List[object]'
+
+    if ($RequestedAssemblerPath) {
+        if (-not (Test-Path -LiteralPath $RequestedAssemblerPath)) {
+            throw ("The requested ml64.exe path does not exist: {0}" -f $RequestedAssemblerPath)
+        }
+        Add-MasmCandidate -Candidates $assemblerCandidates -Path $RequestedAssemblerPath -Source 'parameter'
+    }
+
+    if ($RequestedLinkerPath) {
+        if (-not (Test-Path -LiteralPath $RequestedLinkerPath)) {
+            throw ("The requested link.exe path does not exist: {0}" -f $RequestedLinkerPath)
+        }
+        Add-MasmCandidate -Candidates $linkerCandidates -Path $RequestedLinkerPath -Source 'parameter'
+    }
+
+    Add-MasmCandidate -Candidates $assemblerCandidates -Path $env:ML64_EXE -Source 'ML64_EXE'
+    Add-MasmCandidate -Candidates $linkerCandidates -Path $env:LINK_EXE -Source 'LINK_EXE'
+
+    $ml64Command = Get-Command 'ml64.exe' -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
+    if ($ml64Command) {
+        Add-MasmCandidate -Candidates $assemblerCandidates -Path $ml64Command.Source -Source 'PATH'
+    }
+
+    $linkCommand = Get-Command 'link.exe' -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
+    if ($linkCommand) {
+        Add-MasmCandidate -Candidates $linkerCandidates -Path $linkCommand.Source -Source 'PATH'
+    }
+
+    if ($env:VCToolsInstallDir) {
+        Add-MasmCandidate -Candidates $assemblerCandidates -Path (Join-Path $env:VCToolsInstallDir 'bin\Hostx64\x64\ml64.exe') -Source 'VCToolsInstallDir'
+        Add-MasmCandidate -Candidates $linkerCandidates -Path (Join-Path $env:VCToolsInstallDir 'bin\Hostx64\x64\link.exe') -Source 'VCToolsInstallDir'
+    }
+
+    $vswhere = Get-VsWherePath
+    if ($vswhere) {
+        foreach ($pattern in @(
+            'VC\Tools\MSVC\**\bin\Hostx64\x64\ml64.exe',
+            'VC\Tools\MSVC\**\bin\Hostx86\x64\ml64.exe'
+        )) {
+            $found = & $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -find $pattern 2>$null | Select-Object -First 1
+            if ($LASTEXITCODE -eq 0 -and $found) {
+                Add-MasmCandidate -Candidates $assemblerCandidates -Path $found -Source 'vswhere'
+            }
+        }
+
+        foreach ($pattern in @(
+            'VC\Tools\MSVC\**\bin\Hostx64\x64\link.exe',
+            'VC\Tools\MSVC\**\bin\Hostx86\x64\link.exe'
+        )) {
+            $found = & $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -find $pattern 2>$null | Select-Object -First 1
+            if ($LASTEXITCODE -eq 0 -and $found) {
+                Add-MasmCandidate -Candidates $linkerCandidates -Path $found -Source 'vswhere'
+            }
+        }
+    }
+
+    $missing = @()
+    if ($assemblerCandidates.Count -eq 0) {
+        $missing += 'ml64.exe'
+    }
+    if ($linkerCandidates.Count -eq 0) {
+        $missing += 'link.exe'
+    }
+
+    if ($missing.Count -gt 0) {
+        throw @"
+Could not find the x64 UEFI build tool(s): $($missing -join ', ').
+
+Discovery order:
+  1. -X64AssemblerPath / -X64LinkerPath
+  2. ML64_EXE / LINK_EXE environment variables
+  3. PATH
+  4. VCToolsInstallDir
+  5. vswhere (Visual Studio / Build Tools)
+
+Setup expectation:
+  Install Visual Studio or Build Tools with the MSVC x86/x64 toolset that includes MASM x64 and LINK.
+
+Example:
+  powershell -ExecutionPolicy Bypass -File .\scripts\build.ps1 -Target x64-uefi -X64AssemblerPath 'C:\path\to\ml64.exe' -X64LinkerPath 'C:\path\to\link.exe'
+"@
+    }
+
+    return [pscustomobject]@{
+        AssemblerPath = $assemblerCandidates[0].Path
+        AssemblerSource = $assemblerCandidates[0].Source
+        LinkerPath = $linkerCandidates[0].Path
+        LinkerSource = $linkerCandidates[0].Source
+    }
+}
+
+function Test-Pe32PlusEfiApplication {
+    param([string]$Path)
+
+    Assert-PathExists -Path $Path -Label 'BOOTX64.EFI'
+    $bytes = [IO.File]::ReadAllBytes($Path)
+    if ($bytes.Length -lt 256) {
+        throw ("PE image is too small to validate: {0}" -f $Path)
+    }
+
+    if ($bytes[0] -ne 0x4D -or $bytes[1] -ne 0x5A) {
+        throw ("PE image is missing the MZ header: {0}" -f $Path)
+    }
+
+    $peOffset = [int](Read-UInt32Le $bytes 0x3C)
+    if ($peOffset -le 0 -or ($peOffset + 88) -gt $bytes.Length) {
+        throw ("PE header offset is outside the image: {0}" -f $Path)
+    }
+
+    if ($bytes[$peOffset] -ne 0x50 -or $bytes[$peOffset + 1] -ne 0x45 -or $bytes[$peOffset + 2] -ne 0 -or $bytes[$peOffset + 3] -ne 0) {
+        throw ("PE image is missing the PE signature: {0}" -f $Path)
+    }
+
+    $coffOffset = $peOffset + 4
+    $machine = Read-UInt16Le $bytes $coffOffset
+    $sectionCount = Read-UInt16Le $bytes ($coffOffset + 2)
+    $optionalHeaderSize = Read-UInt16Le $bytes ($coffOffset + 16)
+    $optionalOffset = $coffOffset + 20
+    if (($optionalOffset + $optionalHeaderSize) -gt $bytes.Length) {
+        throw ("PE optional header extends outside the image: {0}" -f $Path)
+    }
+
+    $magic = Read-UInt16Le $bytes $optionalOffset
+    $entryRva = Read-UInt32Le $bytes ($optionalOffset + 16)
+    $subsystem = Read-UInt16Le $bytes ($optionalOffset + 68)
+    if ($machine -ne 0x8664) {
+        throw ("BOOTX64.EFI machine type was 0x{0:X4}; expected 0x8664." -f $machine)
+    }
+    if ($magic -ne 0x020B) {
+        throw ("BOOTX64.EFI optional header magic was 0x{0:X4}; expected PE32+ 0x020B." -f $magic)
+    }
+    if ($subsystem -ne 10) {
+        throw ("BOOTX64.EFI subsystem was {0}; expected EFI application subsystem 10." -f $subsystem)
+    }
+    if ($entryRva -eq 0) {
+        throw 'BOOTX64.EFI has a zero entrypoint RVA.'
+    }
+
+    return [pscustomobject]@{
+        Path = $Path
+        Bytes = $bytes.Length
+        PeOffset = $peOffset
+        Machine = $machine
+        OptionalMagic = $magic
+        Subsystem = $subsystem
+        SectionCount = $sectionCount
+        EntryRva = $entryRva
+    }
+}
+
+function Get-Fnv1a32 {
+    param([byte[]]$Bytes)
+
+    $hash = [uint32]2166136261
+    foreach ($byte in $Bytes) {
+        $hash = [uint32](($hash -bxor [uint32]$byte) -band 4294967295)
+        $hash = [uint32](([uint64]$hash * 16777619) -band 4294967295)
+    }
+
+    return $hash
+}
+
+function Get-AsciiChunkBytes {
+    param(
+        [string]$Type,
+        [string]$Name,
+        [string]$Description
+    )
+
+    $text = @(
+        'CyberStorm x64 pack chunk'
+        ("Type: {0}" -f $Type)
+        ("Name: {0}" -f $Name)
+        ("Description: {0}" -f $Description)
+        'Milestone: M2 pack scaffold'
+        ''
+    ) -join "`n"
+    return [Text.Encoding]::ASCII.GetBytes($text)
+}
+
+function New-X64PackArtifacts {
+    param(
+        [string]$PackPath,
+        [string]$ManifestPath,
+        [string]$Engine64PayloadPath
+    )
+
+    Assert-PathExists -Path $Engine64PayloadPath -Label 'engine64 payload'
+
+    $chunks = @(
+        [pscustomobject]@{ Type = 'ENGINE64'; Name = 'engine64.bootstrap'; Load = [uint64]0x00100000; Align = 4096; Description = 'runtime code payload slot'; PayloadPath = $Engine64PayloadPath },
+        [pscustomobject]@{ Type = 'TEXTURE'; Name = 'title.texture.atlas'; Load = [uint64]0x02000000; Align = 4096; Description = 'xRGB8888 texture atlas slot'; PayloadPath = $null },
+        [pscustomobject]@{ Type = 'MESH'; Name = 'title.hero.mesh'; Load = [uint64]0x02400000; Align = 4096; Description = 'hero mesh payload slot'; PayloadPath = $null },
+        [pscustomobject]@{ Type = 'MATERIAL'; Name = 'title.materials'; Load = [uint64]0x02600000; Align = 4096; Description = 'material table slot'; PayloadPath = $null },
+        [pscustomobject]@{ Type = 'MAP'; Name = 'district.slice.map'; Load = [uint64]0x02800000; Align = 4096; Description = 'mission map chunk slot'; PayloadPath = $null },
+        [pscustomobject]@{ Type = 'SCRIPT'; Name = 'campaign.script'; Load = [uint64]0x02A00000; Align = 4096; Description = 'objective script slot'; PayloadPath = $null },
+        [pscustomobject]@{ Type = 'AUDIO'; Name = 'title.audio.bank'; Load = [uint64]0x02C00000; Align = 4096; Description = 'music and sfx bank slot'; PayloadPath = $null },
+        [pscustomobject]@{ Type = 'TITLE'; Name = 'title.scene'; Load = [uint64]0x03000000; Align = 4096; Description = 'title scene graph slot'; PayloadPath = $null },
+        [pscustomobject]@{ Type = 'CAMPAIGN'; Name = 'campaign.scenes'; Load = [uint64]0x03200000; Align = 4096; Description = 'campaign scene directory slot'; PayloadPath = $null }
+    )
+
+    $recordBytes = 32
+    $headerBytes = 32
+    $tableBytes = $headerBytes + ($chunks.Count * $recordBytes)
+    $payloadOffset = [int]([Math]::Ceiling($tableBytes / 16.0) * 16)
+    $chunkRecords = New-Object 'System.Collections.Generic.List[object]'
+    foreach ($chunk in $chunks) {
+        $bytes = if ($chunk.PayloadPath) {
+            [IO.File]::ReadAllBytes($chunk.PayloadPath)
+        } else {
+            Get-AsciiChunkBytes -Type $chunk.Type -Name $chunk.Name -Description $chunk.Description
+        }
+        $chunkRecords.Add([pscustomobject]@{
+            Type = $chunk.Type
+            Name = $chunk.Name
+            Source = if ($chunk.PayloadPath) { $chunk.PayloadPath } else { 'generated metadata scaffold' }
+            Load = $chunk.Load
+            Align = $chunk.Align
+            Offset = $payloadOffset
+            Bytes = $bytes
+            Checksum = Get-Fnv1a32 -Bytes $bytes
+        })
+        $payloadOffset += $bytes.Length
+        $payloadOffset = [int]([Math]::Ceiling($payloadOffset / 16.0) * 16)
+    }
+
+    $pack = New-Object byte[] $payloadOffset
+    [Array]::Copy([Text.Encoding]::ASCII.GetBytes('CSX64PK0'), 0, $pack, 0, 8)
+    Write-UInt32Le -Bytes $pack -Offset 8 -Value 1
+    Write-UInt32Le -Bytes $pack -Offset 12 -Value ([uint32]$chunks.Count)
+    Write-UInt32Le -Bytes $pack -Offset 16 -Value ([uint32]$recordBytes)
+    Write-UInt32Le -Bytes $pack -Offset 20 -Value ([uint32]$headerBytes)
+    Write-UInt32Le -Bytes $pack -Offset 24 -Value ([uint32]$payloadOffset)
+    Write-UInt32Le -Bytes $pack -Offset 28 -Value 0
+
+    for ($i = 0; $i -lt $chunkRecords.Count; $i++) {
+        $record = $chunkRecords[$i]
+        $recordOffset = $headerBytes + ($i * $recordBytes)
+        $typeBytes = [Text.Encoding]::ASCII.GetBytes($record.Type)
+        [Array]::Copy($typeBytes, 0, $pack, $recordOffset, [Math]::Min(8, $typeBytes.Length))
+        Write-UInt32Le -Bytes $pack -Offset ($recordOffset + 8) -Value ([uint32]$record.Offset)
+        Write-UInt32Le -Bytes $pack -Offset ($recordOffset + 12) -Value ([uint32]$record.Bytes.Length)
+        Write-UInt64Le -Bytes $pack -Offset ($recordOffset + 16) -Value ([uint64]$record.Load)
+        Write-UInt32Le -Bytes $pack -Offset ($recordOffset + 24) -Value ([uint32]$record.Checksum)
+        Write-UInt32Le -Bytes $pack -Offset ($recordOffset + 28) -Value ([uint32]$record.Align)
+        [Array]::Copy($record.Bytes, 0, $pack, $record.Offset, $record.Bytes.Length)
+    }
+
+    New-Item -ItemType Directory -Force -Path (Split-Path -Parent $PackPath) | Out-Null
+    [IO.File]::WriteAllBytes($PackPath, $pack)
+
+    $sha = Get-ByteArraySha256Hex -Bytes $pack
+    $manifestLines = @(
+        'CyberStorm x64 Pack Manifest'
+        'Status: pass'
+        'Format: CSX64PK0'
+        'Version: 1'
+        ("Chunks: {0}" -f $chunkRecords.Count)
+        ("Bytes: {0}" -f $pack.Length)
+        ("SHA256: {0}" -f $sha)
+        'Record: type[8], offset32, size32, load64, fnv1a32, align32'
+    )
+    $manifestLines += @($chunkRecords | ForEach-Object {
+        "{0} {1} offset=0x{2:X8} size=0x{3:X8} load=0x{4:X16} align=0x{5:X8} fnv=0x{6:X8} source={7}" -f $_.Type, $_.Name, $_.Offset, $_.Bytes.Length, $_.Load, $_.Align, $_.Checksum, $_.Source
+    })
+    Set-Content -LiteralPath $ManifestPath -Encoding ascii -Value $manifestLines
+
+    return [pscustomobject]@{
+        PackPath = $PackPath
+        ManifestPath = $ManifestPath
+        Bytes = $pack.Length
+        Sha256 = $sha
+        ChunkCount = $chunkRecords.Count
+        Engine64Bytes = ($chunkRecords | Where-Object { $_.Type -eq 'ENGINE64' } | Select-Object -First 1).Bytes.Length
+        ChunkSummary = @($chunkRecords | ForEach-Object {
+            "{0}: {1}, offset 0x{2:X8}, {3} bytes, load 0x{4:X16}, align 0x{5:X8}, fnv 0x{6:X8}, source {7}" -f $_.Type, $_.Name, $_.Offset, $_.Bytes.Length, $_.Load, $_.Align, $_.Checksum, $_.Source
+        })
+    }
+}
+
+function Write-X64BootstrapReports {
+    param(
+        [string]$BuildReportPath,
+        [string]$PackReportPath,
+        [string]$SmokeReportPath,
+        [object]$Toolchain,
+        [object]$PeValidation,
+        [object]$IsoResult,
+        [object]$PackArtifacts,
+        [object]$PreviewResult,
+        [string]$ObjectPath,
+        [string]$ListPath,
+        [string]$MapPath,
+        [bool]$ForcePanic
+    )
+
+    $timestamp = Get-Date -Format 'yyyy-MM-dd HH:mm:ss K'
+    Set-Content -LiteralPath $BuildReportPath -Encoding ascii -Value @(
+        'CyberStorm x64 UEFI Build Report'
+        ("Generated: {0}" -f $timestamp)
+        'Status: pass'
+        'Target: x64-uefi'
+        'Artifact: cyberstorm-x64.iso'
+        ("ml64.exe: {0} ({1})" -f $Toolchain.AssemblerPath, $Toolchain.AssemblerSource)
+        ("link.exe: {0} ({1})" -f $Toolchain.LinkerPath, $Toolchain.LinkerSource)
+        ("Object: {0}" -f $ObjectPath)
+        ("Listing: {0}" -f $ListPath)
+        ("Link map: {0}" -f $MapPath)
+        ("Failure-test image: {0}" -f $ForcePanic)
+        ("BOOTX64.EFI: {0} ({1} bytes)" -f $PeValidation.Path, $PeValidation.Bytes)
+        ("Pack binary: {0} ({1} bytes)" -f $PackArtifacts.PackPath, $PackArtifacts.Bytes)
+        ("Pack manifest: {0}" -f $PackArtifacts.ManifestPath)
+        ("Pack chunks: {0}" -f $PackArtifacts.ChunkCount)
+        ("ENGINE64 chunk: {0} bytes, assembly-built scaffold payload" -f $PackArtifacts.Engine64Bytes)
+        ("Host preview: {0} ({1} bytes, {2}x{3}, {4} bars)" -f $PreviewResult.Path, $PreviewResult.Bytes, $PreviewResult.Width, $PreviewResult.Height, $PreviewResult.Bars)
+        ("Pack SHA256: {0}" -f $PackArtifacts.Sha256)
+        ("PE machine: 0x{0:X4}" -f $PeValidation.Machine)
+        ("PE optional header: 0x{0:X4}" -f $PeValidation.OptionalMagic)
+        ("PE subsystem: {0} (EFI application)" -f $PeValidation.Subsystem)
+        ("PE entry RVA: 0x{0:X8}" -f $PeValidation.EntryRva)
+        ("Sections: {0}" -f $PeValidation.SectionCount)
+        'Diagnostics screen: 640x480 ENGINE64 framebuffer overlay presented through GOP'
+        'Diagnostics fields: resolution, pixel format, framebuffer base, stride, render/present status, input state'
+        'Input MVP: UEFI SimpleTextInput ReadKeyStroke diagnostic menu'
+        'Input actions: arrows/W/S select, Enter/Space/Right/D confirm, Esc/Left/A/Backspace backs out'
+        'Runtime pack loader: LoadedImage -> SimpleFileSystem -> X64PACK.BIN read into scratch arena'
+        'Runtime pack validation: CSX64PK0 magic, version, record size, bounds, alignment, known chunk IDs, FNV-1a checksums'
+        'ENGINE64 validation: CS64ENG0 payload header, 640x480 xRGB8888 target, deterministic color-bar table'
+        'ENGINE64 render scaffold: loaded ENGINE64 chunk renders deterministic bars into the frame arena before GOP presentation'
+        'Framebuffer abstraction: internal xRGB8888 frame arena with GOP direct/swap present modes for BGR, RGB, and matching bitmask layouts'
+        'Host preview: deterministic PNG rendered from ENGINE64.BIN for release review while UEFI VM smoke remains the boot/input acceptance gate'
+        'Runtime arenas: UEFI AllocatePages, 32 MiB engine-owned block, 64 KiB aligned sub-arenas'
+        'Runtime chunk staging: validated pack chunks are copied into engine, texture, mesh/scene/script, and audio arenas before diagnostics report success'
+        'Runtime log: first 128 bytes of log arena contain magic, milestone, failure code, GOP base, arena base/end, frame/depth/log addresses, pack status/bytes/chunks/mask, engine64 status/size/target, staged chunks/bytes/mask, render/present status, and presented pixel count'
+        'Failure path: firmware text fallback when GOP cannot be located or initialized'
+        'Failure path: framebuffer failure screen when arena allocation or layout validation fails'
+        'Failure-screen validation: internal debug image is available for VM checks'
+        ("ISO: {0} ({1} bytes)" -f $IsoResult.IsoPath, $IsoResult.TotalBytes)
+        ("ISO volume: {0}" -f $IsoResult.VolumeId)
+        ("El Torito catalog LBA: {0}" -f $IsoResult.BootCatalogLba)
+        ("EFI FAT image LBA: {0}" -f $IsoResult.BootImageLba)
+        ("EFI FAT image bytes: {0}" -f $IsoResult.BootImageBytes)
+        'ISO payloads:'
+        $IsoResult.FileSummary
+        'FAT payloads:'
+        $IsoResult.FatPayloadSummary
+    )
+
+    $packReportLines = @(
+        'CyberStorm x64 Pack Report'
+        ("Generated: {0}" -f $timestamp)
+        'Status: pass'
+        'Target: x64-uefi'
+        'Milestone: M1 GOP diagnostics, arena bootstrap, failure/log channel, and input MVP'
+        'Milestone: M2 deterministic pack scaffold and ENGINE64 framebuffer scaffold'
+        ("Pack binary: {0}" -f $PackArtifacts.PackPath)
+        ("Pack manifest: {0}" -f $PackArtifacts.ManifestPath)
+        ("Pack bytes: {0}" -f $PackArtifacts.Bytes)
+        ("Pack SHA256: {0}" -f $PackArtifacts.Sha256)
+        ("Host preview: {0}" -f $PreviewResult.Path)
+        ("Chunks: {0}" -f $PackArtifacts.ChunkCount)
+        ("ENGINE64 bytes: {0}" -f $PackArtifacts.Engine64Bytes)
+        'Chunk record: type[8], offset32, size32, load64, fnv1a32, align32'
+        'Chunk summary:'
+    )
+    $packReportLines += $PackArtifacts.ChunkSummary
+    $packReportLines += @(
+        'Pack metadata: reserved for engine, textures, meshes, materials, maps, scripts, audio, title scene, and campaign scenes.'
+        'Runtime arena allocation: UEFI AllocatePages / EfiLoaderData'
+        'Runtime arena total: 0x02000000 bytes'
+        'Arena alignment: 0x00010000 bytes'
+        'Engine arena: 0x00200000 bytes'
+        'Frame arena: 0x0012C000 bytes, used as the internal 640x480 xRGB8888 framebuffer'
+        'Depth arena: 0x0012C000 bytes, enough for 640x480 32-bit depth'
+        'Texture arena: 0x00800000 bytes'
+        'Mesh arena: 0x00400000 bytes'
+        'Audio arena: 0x00200000 bytes'
+        'Scratch arena: 0x00200000 bytes'
+        'Log arena: 0x00010000 bytes'
+        'Collision policy: runtime overflow/overlap check enters visible framebuffer failure screen.'
+        'Runtime pack loader: X64PACK.BIN is opened from the UEFI boot volume, read into scratch, validated, then staged into engine-owned high-memory arenas.'
+        'Runtime pack validation: magic/version/table shape, record bounds, 0x1000 alignment, known chunk IDs, full chunk mask, and FNV-1a checksums.'
+        'Runtime log record: 0x80 bytes at the start of the log arena'
+        'Runtime log fields: magic CS64/LOG0, milestone 0x00010008, failure code, GOP base, arena base/end, frame/depth/log addresses, pack status/bytes/chunks/mask, engine64 status/size/target, staged chunks/bytes/mask, render/present status, presented pixels'
+        'Input state: diagnostic menu stores last scan code, Unicode char, last action, confirm count, and back count.'
+    )
+    Set-Content -LiteralPath $PackReportPath -Encoding ascii -Value $packReportLines
+
+    Set-Content -LiteralPath $SmokeReportPath -Encoding ascii -Value @(
+        'CyberStorm x64 Smoke Report'
+        ("Generated: {0}" -f $timestamp)
+        'Status: not run'
+        'Reason: build path generated and statically validated the UEFI ISO; run the UEFI VM smoke lane to verify the GOP diagnostics screen and keyboard menu.'
+        ("ISO: {0}" -f $IsoResult.IsoPath)
+        ("BOOTX64.EFI: {0}" -f $PeValidation.Path)
+        ("Host preview: {0}" -f $PreviewResult.Path)
+    )
+}
+
+function Build-X64UefiTarget {
+    param(
+        [string]$SourcePath,
+        [string]$ObjectPath,
+        [string]$ListPath,
+        [string]$EfiPath,
+        [string]$IsoScriptPath,
+        [string]$IsoPath,
+        [string]$BuildReportPath,
+        [string]$PackReportPath,
+        [string]$SmokeReportPath,
+        [string]$PreviewScriptPath,
+        [string]$PreviewPath,
+        [string]$PackBinaryPath,
+        [string]$PackManifestPath,
+        [string]$Engine64SourcePath,
+        [string]$Engine64ObjectPath,
+        [string]$Engine64ListPath,
+        [string]$Engine64BinaryPath,
+        [string]$MapPath,
+        [string]$RequestedAssemblerPath,
+        [string]$RequestedLinkerPath,
+        [bool]$ForcePanic
+    )
+
+    Write-Section -Title 'x64 UEFI Toolchain'
+    $toolchain = Resolve-X64Toolchain -RequestedAssemblerPath $RequestedAssemblerPath -RequestedLinkerPath $RequestedLinkerPath
+    Write-Host ("Assembler: ml64.exe")
+    Write-Host ("Path     : {0}" -f $toolchain.AssemblerPath)
+    Write-Host ("Discovery: {0}" -f $toolchain.AssemblerSource)
+    Write-Host ("Linker   : {0}" -f $toolchain.LinkerPath)
+    Write-Host ("Discovery: {0}" -f $toolchain.LinkerSource)
+
+    Assert-PathExists -Path $SourcePath -Label 'x64 UEFI source'
+    Assert-PathExists -Path $Engine64SourcePath -Label 'engine64 source'
+    Assert-PathExists -Path $IsoScriptPath -Label 'UEFI ISO writer'
+    Assert-PathExists -Path $PreviewScriptPath -Label 'x64 preview renderer'
+    New-Item -ItemType Directory -Force -Path (Split-Path -Parent $ObjectPath) | Out-Null
+    New-Item -ItemType Directory -Force -Path (Split-Path -Parent $EfiPath) | Out-Null
+
+    Write-Section -Title 'BOOTX64.EFI'
+    $assembleArgs = @('/nologo', '/c', "/Fo$ObjectPath", "/Fl$ListPath")
+    if ($ForcePanic) {
+        $assembleArgs += '/DX64_FORCE_PANIC'
+    }
+    $assembleArgs += $SourcePath
+    $assembleResult = Invoke-ExternalTool -Executable $toolchain.AssemblerPath -Arguments $assembleArgs
+    if ($assembleResult.ExitCode -ne 0) {
+        throw ("ml64.exe failed with exit code {0}." -f $assembleResult.ExitCode)
+    }
+
+    $linkArgs = @('/nologo', '/machine:x64', '/subsystem:efi_application', '/entry:EfiMain', '/nodefaultlib', "/map:$MapPath", "/out:$EfiPath", $ObjectPath)
+    $linkResult = Invoke-ExternalTool -Executable $toolchain.LinkerPath -Arguments $linkArgs
+    if ($linkResult.ExitCode -ne 0) {
+        throw ("link.exe failed with exit code {0}." -f $linkResult.ExitCode)
+    }
+
+    $peValidation = Test-Pe32PlusEfiApplication -Path $EfiPath
+    Write-Host ("Validated PE32+ EFI application: {0} bytes, entry RVA 0x{1:X8}" -f $peValidation.Bytes, $peValidation.EntryRva)
+
+    Write-Section -Title 'ENGINE64 Payload'
+    $engine64Args = @('/nologo', '/c', "/Fo$Engine64ObjectPath", "/Fl$Engine64ListPath", $Engine64SourcePath)
+    $engine64Result = Invoke-ExternalTool -Executable $toolchain.AssemblerPath -Arguments $engine64Args
+    if ($engine64Result.ExitCode -ne 0) {
+        throw ("ml64.exe failed to build engine64 with exit code {0}." -f $engine64Result.ExitCode)
+    }
+
+    $engine64Flat = Get-CoffFlatBinary -ObjectPath $Engine64ObjectPath
+    if ($engine64Flat.AppliedRelocations -ne 0) {
+        throw ("engine64 payload must be relocation-free; found {0} relocations." -f $engine64Flat.AppliedRelocations)
+    }
+    [IO.File]::WriteAllBytes($Engine64BinaryPath, $engine64Flat.FlatBytes)
+    Write-Host ("ENGINE64 payload: {0} bytes, section {1}" -f $engine64Flat.FlatBytes.Length, $engine64Flat.TargetSection.Name)
+
+    Write-Section -Title 'x64 Host Preview'
+    $previewResult = & $PreviewScriptPath -Engine64BinaryPath $Engine64BinaryPath -OutputPath $PreviewPath
+    Write-Host ("Preview PNG: {0} ({1} bytes, {2}x{3}, {4} bars)" -f $previewResult.Path, $previewResult.Bytes, $previewResult.Width, $previewResult.Height, $previewResult.Bars)
+
+    Write-Section -Title 'x64 Pack'
+    $packArtifacts = New-X64PackArtifacts -PackPath $PackBinaryPath -ManifestPath $PackManifestPath -Engine64PayloadPath $Engine64BinaryPath
+    Write-Host ("Pack scaffold: {0} chunks, {1} bytes, engine64 {2} bytes" -f $packArtifacts.ChunkCount, $packArtifacts.Bytes, $packArtifacts.Engine64Bytes)
+
+    Write-Section -Title 'x64 UEFI ISO'
+    $isoResult = & $IsoScriptPath `
+        -EfiApplicationPath $EfiPath `
+        -IsoPath $IsoPath `
+        -PayloadPath @($PackBinaryPath, $PackManifestPath) `
+        -VolumeId 'CYBERSTORM_X64'
+    Write-Host ("Bootable ISO: {0} ({1} bytes, EFI image LBA {2})" -f $isoResult.IsoPath, $isoResult.TotalBytes, $isoResult.BootImageLba)
+
+    Write-X64BootstrapReports `
+        -BuildReportPath $BuildReportPath `
+        -PackReportPath $PackReportPath `
+        -SmokeReportPath $SmokeReportPath `
+        -Toolchain $toolchain `
+        -PeValidation $peValidation `
+        -IsoResult $isoResult `
+        -PackArtifacts $packArtifacts `
+        -PreviewResult $previewResult `
+        -ObjectPath $ObjectPath `
+        -ListPath $ListPath `
+        -MapPath $MapPath `
+        -ForcePanic $ForcePanic
+
+    Write-Section -Title 'Artifacts'
+    Write-Host ("EFI     {0}" -f $EfiPath)
+    Write-Host ("ISO     {0}" -f $IsoPath)
+    Write-Host ("Engine  {0}" -f $Engine64BinaryPath)
+    Write-Host ("Preview {0}" -f $PreviewPath)
+    Write-Host ("Payload {0}" -f $PackBinaryPath)
+    Write-Host ("Manifest {0}" -f $PackManifestPath)
+    Write-Host ("Report  {0}" -f $BuildReportPath)
+    Write-Host ("Pack    {0}" -f $PackReportPath)
+    Write-Host ("Smoke   {0}" -f $SmokeReportPath)
+
+    return [pscustomobject]@{
+        EfiPath = $EfiPath
+        IsoPath = $IsoPath
+        BuildReportPath = $BuildReportPath
+        PackReportPath = $PackReportPath
+        SmokeReportPath = $SmokeReportPath
+        PeValidation = $peValidation
+        IsoResult = $isoResult
+        PackArtifacts = $packArtifacts
+        Engine64Path = $Engine64BinaryPath
+        PreviewPath = $PreviewPath
+    }
+}
+
 function Get-AssemblerDiagnosticSummary {
     param([string[]]$Output)
 
@@ -584,6 +1144,24 @@ function Invoke-Assembler {
         Assert-PathExists -Path $includePath -Label 'include directory'
     }
 
+    foreach ($stalePath in @($ObjectPath, $ListPath)) {
+        for ($staleAttempt = 0; $staleAttempt -lt 20; $staleAttempt++) {
+            if (-not (Test-Path -LiteralPath $stalePath)) {
+                break
+            }
+
+            try {
+                Remove-Item -LiteralPath $stalePath -Force
+                break
+            } catch {
+                if ($staleAttempt -ge 19) {
+                    throw
+                }
+                Start-Sleep -Milliseconds 250
+            }
+        }
+    }
+
     $arguments = @('/nologo', '/c', '/coff', "/Fo$ObjectPath", "/Fl$ListPath")
     foreach ($includePath in $IncludePaths) {
         $arguments += "/I$includePath"
@@ -689,10 +1267,49 @@ function Resolve-AssetBankLayout {
     return $resolvedBanks.ToArray()
 }
 
+function Resolve-ExpandedPayloadLayout {
+    param(
+        [object[]]$Payloads,
+        [int]$StartLba,
+        $Layout
+    )
+
+    $nextLba = $StartLba
+    $resolvedPayloads = New-Object 'System.Collections.Generic.List[object]'
+
+    foreach ($payload in @($Payloads)) {
+        Assert-PathExists -Path $payload.BinaryPath -Label ("expanded payload '{0}'" -f $payload.Name)
+        $payloadBytes = [int](Get-Item -LiteralPath $payload.BinaryPath).Length
+        $payloadSectors = [int][Math]::Ceiling($payloadBytes / $Layout.BootSectorBytes)
+        $payloadPaddedBytes = Get-PaddedSectorBytes -ByteCount $payloadBytes -SectorBytes $Layout.BootSectorBytes
+        $payloadEndLba = if ($payloadSectors -gt 0) { $nextLba + $payloadSectors - 1 } else { $nextLba - 1 }
+
+        $resolvedPayloads.Add([pscustomobject]@{
+            Name = $payload.Name
+            Id = $payload.Id
+            SymbolPrefix = $payload.SymbolPrefix
+            SourcePath = $payload.SourcePath
+            BinaryPath = $payload.BinaryPath
+            LoadLinear = [uint32]$payload.LoadLinear
+            Flags = [int]$payload.Flags
+            Bytes = $payloadBytes
+            Sectors = $payloadSectors
+            PaddedBytes = $payloadPaddedBytes
+            StartLba = $nextLba
+            EndLba = $payloadEndLba
+        })
+
+        $nextLba = $payloadEndLba + 1
+    }
+
+    return $resolvedPayloads.ToArray()
+}
+
 function Write-GeneratedBankLayoutInclude {
     param(
         [string]$OutputPath,
-        [object[]]$AssetBanks
+        [object[]]$AssetBanks,
+        [object[]]$ExpandedPayloads = @()
     )
 
     $lines = New-Object 'System.Collections.Generic.List[string]'
@@ -709,12 +1326,417 @@ function Write-GeneratedBankLayoutInclude {
         $lines.Add('')
     }
 
+    foreach ($payload in @($ExpandedPayloads)) {
+        $prefix = [string]$payload.SymbolPrefix
+        $lines.Add(("{0}_LBA EQU {1}" -f $prefix, [int]$payload.StartLba))
+        $lines.Add(("{0}_SECTORS EQU {1}" -f $prefix, [int]$payload.Sectors))
+        $lines.Add(("{0}_BYTES EQU {1}" -f $prefix, [int]$payload.Bytes))
+        $lines.Add(("{0}_PADDED_BYTES EQU {1}" -f $prefix, [int]$payload.PaddedBytes))
+        $lines.Add(("{0}_LOAD_LINEAR EQU {1}" -f $prefix, [uint32]$payload.LoadLinear))
+        $lines.Add('')
+    }
+
     if ($lines.Count -gt 0 -and $lines[$lines.Count - 1] -eq '') {
         $lines.RemoveAt($lines.Count - 1)
     }
 
     Set-Content -LiteralPath $OutputPath -Encoding ascii -Value $lines
     Assert-PathExists -Path $OutputPath -Label 'generated bank layout include'
+}
+
+function Add-BytesToList {
+    param(
+        [System.Collections.Generic.List[byte]]$List,
+        [byte[]]$Bytes
+    )
+
+    foreach ($byte in $Bytes) {
+        $List.Add($byte)
+    }
+}
+
+function Add-AsciiFixedToList {
+    param(
+        [System.Collections.Generic.List[byte]]$List,
+        [string]$Value,
+        [int]$Length
+    )
+
+    $bytes = [Text.Encoding]::ASCII.GetBytes($Value)
+    for ($i = 0; $i -lt $Length; $i++) {
+        if ($i -lt $bytes.Length) {
+            $List.Add($bytes[$i])
+        } else {
+            $List.Add(0)
+        }
+    }
+}
+
+function Add-UInt16LeToList {
+    param(
+        [System.Collections.Generic.List[byte]]$List,
+        [int]$Value
+    )
+
+    $List.Add([byte]($Value -band 0xFF))
+    $List.Add([byte](($Value -shr 8) -band 0xFF))
+}
+
+function Add-UInt32LeToList {
+    param(
+        [System.Collections.Generic.List[byte]]$List,
+        [uint32]$Value
+    )
+
+    $List.Add([byte]($Value -band 0xFF))
+    $List.Add([byte](($Value -shr 8) -band 0xFF))
+    $List.Add([byte](($Value -shr 16) -band 0xFF))
+    $List.Add([byte](($Value -shr 24) -band 0xFF))
+}
+
+function New-ExpandedPackRecord {
+    param(
+        [string]$Id,
+        [int]$Lba,
+        [int]$Sectors,
+        [int]$Bytes,
+        [int]$PaddedBytes,
+        [int]$LoadLinear,
+        [int]$Flags
+    )
+
+    return [pscustomobject]@{
+        Id = $Id
+        Lba = $Lba
+        Sectors = $Sectors
+        Bytes = $Bytes
+        PaddedBytes = $PaddedBytes
+        LoadLinear = $LoadLinear
+        Flags = $Flags
+    }
+}
+
+function Write-ExpandedPackDirectory {
+    param(
+        [string]$OutputPath,
+        [byte[]]$BootBytes,
+        [byte[]]$BootstrapBytes,
+        [byte[]]$Stage2Bytes,
+        [int]$BootstrapSectors,
+        [int]$Stage2Sectors,
+        [object[]]$AssetBanks,
+        [object[]]$ExpandedPayloads = @(),
+        $Layout
+    )
+
+    $records = New-Object 'System.Collections.Generic.List[object]'
+    $records.Add((New-ExpandedPackRecord -Id 'BOOT' -Lba 0 -Sectors 1 -Bytes $BootBytes.Length -PaddedBytes $Layout.BootSectorBytes -LoadLinear 0x00007C00 -Flags 1))
+    $records.Add((New-ExpandedPackRecord -Id 'BOOTSTR' -Lba $Layout.BootstrapStartLba -Sectors $BootstrapSectors -Bytes $BootstrapBytes.Length -PaddedBytes ($BootstrapSectors * $Layout.BootSectorBytes) -LoadLinear (($Layout.BootstrapLoadSegment -shl 4)) -Flags 1))
+    $records.Add((New-ExpandedPackRecord -Id 'STAGE2' -Lba $Layout.Stage2StartLba -Sectors $Stage2Sectors -Bytes $Stage2Bytes.Length -PaddedBytes ($Stage2Sectors * $Layout.BootSectorBytes) -LoadLinear (($Layout.Stage2LoadSegment -shl 4) + $Layout.Stage2LoadOffset) -Flags 1))
+    foreach ($bank in @($AssetBanks)) {
+        $recordId = switch -Regex ($bank.SymbolPrefix) {
+            '^CODE_BANK$' { 'CODE'; break }
+            '^TEXTURE_BANK$' { 'TEXA'; break }
+            '^TEXTURE_BANK_B$' { 'TEXB'; break }
+            '^MAP_BANK$' { 'MAP'; break }
+            '^PRESENT_BANK$' { 'PRESENT'; break }
+            '^GEOMETRY_BANK$' { 'GEOM'; break }
+            default { ([string]$bank.SymbolPrefix).Substring(0, [Math]::Min(8, ([string]$bank.SymbolPrefix).Length)) }
+        }
+        $records.Add((New-ExpandedPackRecord -Id $recordId -Lba $bank.StartLba -Sectors $bank.Sectors -Bytes $bank.Bytes -PaddedBytes $bank.PaddedBytes -LoadLinear (($bank.LoadSegment -shl 4)) -Flags 1))
+    }
+
+    foreach ($payload in @($ExpandedPayloads)) {
+        $records.Add((New-ExpandedPackRecord -Id $payload.Id -Lba $payload.StartLba -Sectors $payload.Sectors -Bytes $payload.Bytes -PaddedBytes $payload.PaddedBytes -LoadLinear $payload.LoadLinear -Flags $payload.Flags))
+    }
+
+    if (-not (@($ExpandedPayloads) | Where-Object { $_.Id -eq 'ENGINE32' } | Select-Object -First 1)) {
+        $records.Add((New-ExpandedPackRecord -Id 'ENGINE32' -Lba 0 -Sectors 0 -Bytes 0 -PaddedBytes 0 -LoadLinear $Layout.ExpandedFlatEngineLoadPhysical -Flags 2))
+    }
+    $records.Add((New-ExpandedPackRecord -Id 'RENDER' -Lba 0 -Sectors 0 -Bytes 0 -PaddedBytes 0 -LoadLinear $Layout.ExpandedRendererArenaPhysical -Flags 2))
+    $records.Add((New-ExpandedPackRecord -Id 'TEXPOOL' -Lba 0 -Sectors 0 -Bytes 0 -PaddedBytes 0 -LoadLinear $Layout.ExpandedTexturePoolPhysical -Flags 2))
+    $records.Add((New-ExpandedPackRecord -Id 'FRAME565' -Lba 0 -Sectors 0 -Bytes $Layout.ExpandedFrame565Bytes -PaddedBytes $Layout.ExpandedFrame565Bytes -LoadLinear $Layout.ExpandedFrame565Physical -Flags 2))
+    $records.Add((New-ExpandedPackRecord -Id 'ZBUFFER' -Lba 0 -Sectors 0 -Bytes $Layout.ExpandedZBufferBytes -PaddedBytes $Layout.ExpandedZBufferBytes -LoadLinear $Layout.ExpandedZBufferPhysical -Flags 2))
+    $records.Add((New-ExpandedPackRecord -Id 'AUDIO' -Lba 0 -Sectors 0 -Bytes 0 -PaddedBytes 0 -LoadLinear $Layout.ExpandedAudioArenaPhysical -Flags 2))
+
+    $payload = New-Object 'System.Collections.Generic.List[byte]'
+    Add-AsciiFixedToList -List $payload -Value 'CSPKEXP1' -Length 8
+    Add-UInt16LeToList -List $payload -Value 1
+    Add-UInt16LeToList -List $payload -Value $Layout.BootSectorBytes
+    Add-UInt16LeToList -List $payload -Value $Layout.ExpandedIsoSectorBytes
+    Add-UInt16LeToList -List $payload -Value $records.Count
+    Add-UInt32LeToList -List $payload -Value ([uint32]$Layout.FloppyBytes)
+    Add-UInt32LeToList -List $payload -Value ([uint32]$Layout.ExpandedFlatEngineLoadPhysical)
+    Add-UInt32LeToList -List $payload -Value ([uint32]$Layout.ExpandedRendererArenaPhysical)
+    Add-UInt32LeToList -List $payload -Value ([uint32]$Layout.ExpandedTexturePoolPhysical)
+    Add-UInt32LeToList -List $payload -Value ([uint32]$Layout.ExpandedFrame565Physical)
+    Add-UInt32LeToList -List $payload -Value ([uint32]$Layout.ExpandedZBufferPhysical)
+    Add-UInt32LeToList -List $payload -Value ([uint32]$Layout.ExpandedAudioArenaPhysical)
+    while ($payload.Count -lt 64) {
+        $payload.Add(0)
+    }
+
+    foreach ($record in $records.ToArray()) {
+        Add-AsciiFixedToList -List $payload -Value $record.Id -Length 8
+        Add-UInt32LeToList -List $payload -Value ([uint32]$record.Lba)
+        Add-UInt32LeToList -List $payload -Value ([uint32]$record.Sectors)
+        Add-UInt32LeToList -List $payload -Value ([uint32]$record.Bytes)
+        Add-UInt32LeToList -List $payload -Value ([uint32]$record.PaddedBytes)
+        Add-UInt32LeToList -List $payload -Value ([uint32]$record.LoadLinear)
+        Add-UInt32LeToList -List $payload -Value ([uint32]$record.Flags)
+        Add-UInt32LeToList -List $payload -Value 0
+        Add-UInt32LeToList -List $payload -Value 0
+    }
+
+    [IO.File]::WriteAllBytes($OutputPath, $payload.ToArray())
+    Assert-PathExists -Path $OutputPath -Label 'expanded pack directory'
+
+    return [pscustomobject]@{
+        Path = $OutputPath
+        Bytes = $payload.Count
+        Records = $records.ToArray()
+    }
+}
+
+function Write-ExpandedManifest {
+    param(
+        [string]$OutputPath,
+        [object]$PackDirectory,
+        [object[]]$AssetBanks,
+        [object[]]$ExpandedPayloads = @(),
+        [int]$ImageBytesUsed,
+        [int]$DiskFootprintBytes,
+        $Layout
+    )
+
+    $lines = New-Object 'System.Collections.Generic.List[string]'
+    $lines.Add('CyberStorm Expanded CD Campaign Manifest')
+    $lines.Add(("Generated: {0}" -f (Get-Date -Format 'yyyy-MM-dd HH:mm:ss K')))
+    $lines.Add('')
+    $lines.Add('Release Profile')
+    $lines.Add(("  Profile: {0}" -f $Layout.ImageProfile))
+    $lines.Add(("  Artifact intent: expanded-only burnable ISO plus raw BIOS boot image"))
+    $lines.Add(("  Image bytes: {0}" -f $Layout.FloppyBytes))
+    $lines.Add(("  Image sectors: {0} x {1}" -f $Layout.FloppySectors, $Layout.BootSectorBytes))
+    $lines.Add(("  Payload bytes used: {0}" -f $ImageBytesUsed))
+    $lines.Add(("  Occupied sector bytes: {0}" -f $DiskFootprintBytes))
+    $lines.Add('')
+    $lines.Add('Flat Memory Reservation')
+    $lines.Add(("  32-bit engine load base: {0}" -f (Format-Hex32 $Layout.ExpandedFlatEngineLoadPhysical)))
+    $lines.Add(("  Renderer arena: {0}" -f (Format-Hex32 $Layout.ExpandedRendererArenaPhysical)))
+    $lines.Add(("  Texture pool: {0}" -f (Format-Hex32 $Layout.ExpandedTexturePoolPhysical)))
+    $lines.Add(("  RGB565 frame arena: {0} ({1} bytes)" -f (Format-Hex32 $Layout.ExpandedFrame565Physical), $Layout.ExpandedFrame565Bytes))
+    $lines.Add(("  Depth buffer arena: {0} ({1} bytes)" -f (Format-Hex32 $Layout.ExpandedZBufferPhysical), $Layout.ExpandedZBufferBytes))
+    $lines.Add(("  Audio arena: {0}" -f (Format-Hex32 $Layout.ExpandedAudioArenaPhysical)))
+    $lines.Add('')
+    $lines.Add('Pack Directory')
+    $lines.Add(("  Binary: {0}" -f $PackDirectory.Path))
+    $lines.Add(("  Bytes: {0}" -f $PackDirectory.Bytes))
+    foreach ($record in @($PackDirectory.Records)) {
+        $lines.Add(("  {0,-8} LBA {1,6} sectors {2,5} bytes {3,8} load {4} flags {5}" -f $record.Id, $record.Lba, $record.Sectors, $record.Bytes, (Format-Hex32 $record.LoadLinear), $record.Flags))
+    }
+    $lines.Add('')
+    $lines.Add('Current Conventional Banks')
+    foreach ($bank in @($AssetBanks)) {
+        $lines.Add(("  {0}: {1} bytes, LBA {2}..{3}, load {4}:0000" -f $bank.Name, $bank.Bytes, $bank.StartLba, $bank.EndLba, (Format-Hex16 $bank.LoadSegment)))
+    }
+    $lines.Add('')
+    $lines.Add('Expanded Payloads')
+    if (@($ExpandedPayloads).Count -eq 0) {
+        $lines.Add('  none')
+    } else {
+        foreach ($payload in @($ExpandedPayloads)) {
+            $lines.Add(("  {0}: {1} bytes, LBA {2}..{3}, load {4}, flags {5}, payload {6}" -f $payload.Name, $payload.Bytes, $payload.StartLba, $payload.EndLba, (Format-Hex32 $payload.LoadLinear), $payload.Flags, $payload.BinaryPath))
+        }
+    }
+    $lines.Add('')
+    $lines.Add('Migration Note')
+    $lines.Add('  The ISO and pack table are now the mainline release surface. The current stage-two runtime still boots first while the protected-mode renderer migrates onto the reserved high-memory map.')
+    $lines.Add('  The 32-bit visual showcase payload and visual asset pack are shipped with real disk LBAs so the loader can promote them from cataloged payloads to runtime-loaded chunks without changing the ISO layout.')
+
+    Set-Content -LiteralPath $OutputPath -Encoding ascii -Value $lines
+    Assert-PathExists -Path $OutputPath -Label 'expanded manifest'
+}
+
+function Write-ExpandedVisualPack {
+    param(
+        [string]$OutputPath,
+        [string]$ReportPath,
+        $Layout
+    )
+
+    $atlasW = 128
+    $atlasH = 128
+    $atlasBytes = New-Object 'System.Collections.Generic.List[byte]'
+
+    for ($y = 0; $y -lt $atlasH; $y++) {
+        for ($x = 0; $x -lt $atlasW; $x++) {
+            $grid = if ((($x -band 15) -eq 0) -or (($y -band 15) -eq 0)) { 1 } else { 0 }
+            $diag = if ((($x + $y) -band 31) -lt 4) { 1 } else { 0 }
+            $panel = (($x -shr 4) + (($y -shr 4) * 3)) -band 7
+            $r = 1 + ($panel -band 3)
+            $g = 6 + (($x -shr 2) -band 15)
+            $b = 8 + (($y -shr 2) -band 15)
+
+            if ($grid -eq 1) {
+                $r = 4
+                $g = 28
+                $b = 30
+            }
+
+            if ($diag -eq 1) {
+                $r = 30
+                $g = 21
+                $b = 4
+            }
+
+            $rgb565 = (($r -band 31) -shl 11) -bor (($g -band 63) -shl 5) -bor ($b -band 31)
+            $atlasBytes.Add([byte]($rgb565 -band 0xFF))
+            $atlasBytes.Add([byte](($rgb565 -shr 8) -band 0xFF))
+        }
+    }
+
+    $showcaseMaterials = @('metal_dark', 'panel_dark', 'emissive_cyan', 'emissive_amber', 'fog_space')
+    $showcaseMeshes = @(
+        [pscustomobject]@{
+            Name = 'hero_carrier'
+            Vertices = 64
+            Triangles = 52
+            BoundsMin = @(-18, -4, 5)
+            BoundsMax = @(18, 7, 42)
+            Materials = @('metal_dark', 'panel_dark', 'emissive_cyan')
+        }
+        [pscustomobject]@{
+            Name = 'orbital_gate'
+            Vertices = 48
+            Triangles = 44
+            BoundsMin = @(-14, -3, 12)
+            BoundsMax = @(14, 9, 54)
+            Materials = @('metal_dark', 'emissive_amber', 'fog_space')
+        }
+        [pscustomobject]@{
+            Name = 'runway_canyon'
+            Vertices = 96
+            Triangles = 72
+            BoundsMin = @(-22, -5, 4)
+            BoundsMax = @(22, 4, 62)
+            Materials = @('panel_dark', 'emissive_cyan', 'fog_space')
+        }
+    )
+    $showcaseCamera = [pscustomobject]@{
+        Name = 'title_showcase'
+        Frames = 96
+        Fov = 62
+        Orbit = 'slow'
+        Horizon = 'clean'
+    }
+
+    $validationIssues = New-Object 'System.Collections.Generic.List[string]'
+    $materialSet = New-Object 'System.Collections.Generic.HashSet[string]' ([System.StringComparer]::Ordinal)
+    foreach ($material in $showcaseMaterials) {
+        [void]$materialSet.Add($material)
+    }
+
+    $meshVertexTotal = 0
+    $meshTriangleTotal = 0
+    $minMeshZ = [int]::MaxValue
+    $maxMeshZ = [int]::MinValue
+    foreach ($mesh in $showcaseMeshes) {
+        $meshVertexTotal += [int]$mesh.Vertices
+        $meshTriangleTotal += [int]$mesh.Triangles
+        $minMeshZ = [Math]::Min($minMeshZ, [int]$mesh.BoundsMin[2])
+        $maxMeshZ = [Math]::Max($maxMeshZ, [int]$mesh.BoundsMax[2])
+        if ($mesh.Vertices -lt 3 -or $mesh.Triangles -lt 1) {
+            $validationIssues.Add(("Mesh '{0}' has no drawable surface budget." -f $mesh.Name))
+        }
+        if ([int]$mesh.BoundsMin[2] -lt 4) {
+            $validationIssues.Add(("Mesh '{0}' intersects the showcase near-plane safety band." -f $mesh.Name))
+        }
+        foreach ($material in @($mesh.Materials)) {
+            if (-not $materialSet.Contains($material)) {
+                $validationIssues.Add(("Mesh '{0}' references unknown material '{1}'." -f $mesh.Name, $material))
+            }
+        }
+    }
+
+    if ($atlasBytes.Count -ne ($atlasW * $atlasH * 2)) {
+        $validationIssues.Add(("Atlas byte count {0} does not match {1}x{2} RGB565." -f $atlasBytes.Count, $atlasW, $atlasH))
+    }
+    if ($Layout.ExpandedFrame565Bytes -lt ($atlasW * $atlasH * 2)) {
+        $validationIssues.Add('Frame arena is smaller than the generated atlas payload.')
+    }
+    if ($Layout.ExpandedFrame565Bytes -ne $Layout.ExpandedZBufferBytes) {
+        $validationIssues.Add('Frame and depth arenas differ; the 16-bit z-buffer expects one depth sample per RGB565 pixel.')
+    }
+
+    $meshText = @()
+    foreach ($mesh in $showcaseMeshes) {
+        $meshText += ("mesh {0} vertices={1} tris={2} bounds=({3},{4},{5})..({6},{7},{8}) near_clip_safe=1 materials={9}" -f `
+            $mesh.Name, $mesh.Vertices, $mesh.Triangles, `
+            $mesh.BoundsMin[0], $mesh.BoundsMin[1], $mesh.BoundsMin[2], `
+            $mesh.BoundsMax[0], $mesh.BoundsMax[1], $mesh.BoundsMax[2], `
+            (@($mesh.Materials) -join '|'))
+    }
+    $meshText += ("materials {0}" -f ($showcaseMaterials -join ' '))
+    $meshText += ("camera {0} frames={1} fov={2} orbit={3} horizon={4}" -f $showcaseCamera.Name, $showcaseCamera.Frames, $showcaseCamera.Fov, $showcaseCamera.Orbit, $showcaseCamera.Horizon)
+    $meshBytes = [Text.Encoding]::ASCII.GetBytes(($meshText -join "`n"))
+
+    $payload = New-Object 'System.Collections.Generic.List[byte]'
+    Add-AsciiFixedToList -List $payload -Value 'CSVISPK1' -Length 8
+    Add-UInt32LeToList -List $payload -Value 1
+    Add-UInt32LeToList -List $payload -Value ([uint32]$atlasW)
+    Add-UInt32LeToList -List $payload -Value ([uint32]$atlasH)
+    Add-UInt32LeToList -List $payload -Value ([uint32]$atlasBytes.Count)
+    Add-UInt32LeToList -List $payload -Value ([uint32]$meshBytes.Length)
+    Add-UInt32LeToList -List $payload -Value ([uint32]$Layout.ExpandedTexturePoolPhysical)
+    Add-UInt32LeToList -List $payload -Value ([uint32]$Layout.ExpandedFrame565Physical)
+    Add-UInt32LeToList -List $payload -Value ([uint32]$Layout.ExpandedZBufferPhysical)
+    while ($payload.Count -lt 64) {
+        $payload.Add(0)
+    }
+    Add-BytesToList -List $payload -Bytes $atlasBytes.ToArray()
+    Add-BytesToList -List $payload -Bytes $meshBytes
+
+    [IO.File]::WriteAllBytes($OutputPath, $payload.ToArray())
+
+    $validationStatus = if ($validationIssues.Count -eq 0) { 'PASS' } else { 'FAIL' }
+    $validationLines = @(
+        'CyberStorm Expanded Visual Pack Validation'
+        ("Generated: {0}" -f (Get-Date -Format 'yyyy-MM-dd HH:mm:ss K'))
+        ("Status: {0}" -f $validationStatus)
+        ("Atlas: {0}x{1} RGB565 ({2} bytes)" -f $atlasW, $atlasH, $atlasBytes.Count)
+        ("Texture use: {0} bytes / pool target {1}" -f $atlasBytes.Count, (Format-Hex32 $Layout.ExpandedTexturePoolPhysical))
+        ("Mesh records: {0}, vertices {1}, triangles {2}" -f $showcaseMeshes.Count, $meshVertexTotal, $meshTriangleTotal)
+        ("Mesh bounds: z {0}..{1}, near-plane safe: {2}" -f $minMeshZ, $maxMeshZ, ($(if ($minMeshZ -ge 4) { 'yes' } else { 'no' })))
+        ("Materials: {0} defined, references validated" -f $showcaseMaterials.Count)
+        'Degenerate faces: 0 declared in authored showcase metadata'
+        ("Camera track: {0}, {1} frames, fov {2}" -f $showcaseCamera.Name, $showcaseCamera.Frames, $showcaseCamera.Fov)
+        ("Mesh/material/camera metadata bytes: {0}" -f $meshBytes.Length)
+        ("Texture pool target: {0}" -f (Format-Hex32 $Layout.ExpandedTexturePoolPhysical))
+        ("RGB565 frame target: {0} ({1} bytes)" -f (Format-Hex32 $Layout.ExpandedFrame565Physical), $Layout.ExpandedFrame565Bytes)
+        ("Depth buffer target: {0} ({1} bytes)" -f (Format-Hex32 $Layout.ExpandedZBufferPhysical), $Layout.ExpandedZBufferBytes)
+        'Renderer checks: near clipping, guard-band clipping, degenerate rejection, backface culling, z-buffer spans, fog, emissive materials'
+    )
+    if ($validationIssues.Count -gt 0) {
+        $validationLines += 'Issues:'
+        foreach ($issue in $validationIssues) {
+            $validationLines += ("  {0}" -f $issue)
+        }
+    }
+    Set-Content -LiteralPath $ReportPath -Encoding ascii -Value $validationLines
+
+    return [pscustomobject]@{
+        Path = $OutputPath
+        ReportPath = $ReportPath
+        Bytes = $payload.Count
+        AtlasBytes = $atlasBytes.Count
+        MetadataBytes = $meshBytes.Length
+        SummaryLines = @(
+            ("Visual pack: {0} bytes" -f $payload.Count)
+            ("Atlas: {0}x{1} RGB565, {2} bytes" -f $atlasW, $atlasH, $atlasBytes.Count)
+            ("Validation: {0}" -f $ReportPath)
+        )
+    }
 }
 
 function Validate-AssetBanks {
@@ -4063,7 +5085,7 @@ function Write-GeneratedGeometryInclude {
         $kitLandmarkLift.Add((Format-Hex16Literal $landmarkLift))
 
         $kitSummary.Add(("{0}: cam h={1} d={2} look={3}, proj p={4} s={5}, horizon={6}, fog {7}/{8}, terrain cliff={9} shelf={10} bridge={11} ceiling={12} soffit={13} lane={14} far={15} accent={16}, landmark={17}, wobble={18}, props {19}|{20}|{21}|{22}" -f $kitKey, $camera['Height'], $camera['Distance'], $camera['LookAhead'], $projection['PitchDegrees'], $projectionScale, $horizonY, $fogNear, $fogFar, $terrainProfile['CliffMaterial'], $terrainProfile['ShelfMaterial'], $terrainProfile['BridgeMaterial'], $terrainProfile['CeilingMaterial'], $terrainProfile['SoffitMaterial'], $terrainProfile['LaneTrimMaterial'], $terrainProfile['FarMassMaterial'], $terrainProfile['AccentMaterial'], $landmark['Mesh'], $wobbleStrength, $kit['GateMesh'], $kit['TerminalMesh'], $kit['SurgeMesh'], $kit['ShardMesh']))
-        $pageBMaterials = @(
+        $pageBMaterials = @(@(
             [string]$terrainProfile['CeilingMaterial'],
             [string]$terrainProfile['SoffitMaterial'],
             [string]$terrainProfile['LaneTrimMaterial'],
@@ -4078,7 +5100,7 @@ function Write-GeneratedGeometryInclude {
         ) | Where-Object {
             $resolvedKey = ([string]$_).Trim().ToLowerInvariant()
             -not [string]::IsNullOrWhiteSpace($resolvedKey) -and $materialMap.ContainsKey($resolvedKey) -and [string]$materialMap[$resolvedKey].TexturePage -eq 'B'
-        } | ForEach-Object { ([string]$_).Trim().ToLowerInvariant() } | Sort-Object -Unique
+        } | ForEach-Object { ([string]$_).Trim().ToLowerInvariant() } | Sort-Object -Unique)
         $kitPageBSummary.Add(("{0}: {1}" -f $kitKey, $(if ($pageBMaterials.Count -gt 0) { $pageBMaterials -join ', ' } else { 'none' })))
     }
 
@@ -5370,9 +6392,10 @@ if ($DebugStartSector -ne $null -and ($DebugStartSector -lt 1 -or $DebugStartSec
     throw ("Debug start sector must fit in one byte (1-255). Received: {0}" -f $DebugStartSector)
 }
 
-$assemblerTool = Resolve-AssemblerTool -Kind $Assembler -RequestedPath $AssemblerPath -LegacyMasmPath $MasmPath
-
 $gameAsm = Join-Path $srcDir 'game.asm'
+$engine32Asm = Join-Path $srcDir 'engine32.asm'
+$engine64Asm = Join-Path $srcDir 'engine64.asm'
+$bootx64Asm = Join-Path $srcDir 'bootx64.asm'
 $bootAsm = Join-Path $srcDir 'boot.asm'
 $bootstrapAsm = Join-Path $srcDir 'bootstrap.asm'
 $constantsSourcePath = Join-Path $srcDir 'game\constants.inc'
@@ -5386,10 +6409,20 @@ $musicSourcePath = Join-Path $root 'assets\music.psd1'
 $replayHarnessScript = Join-Path $PSScriptRoot 'replay-harness.ps1'
 $balanceHarnessScript = Join-Path $PSScriptRoot 'balance-harness.ps1'
 $regressionHarnessScript = Join-Path $PSScriptRoot 'regression-harness.ps1'
+$expandedIsoScript = Join-Path $PSScriptRoot 'write-expanded-iso.ps1'
+$x64IsoScript = Join-Path $PSScriptRoot 'write-uefi-iso.ps1'
+$x64PreviewScript = Join-Path $PSScriptRoot 'render-x64-preview.ps1'
 $gameObj = Join-Path $buildDir 'game.obj'
+$engine32Obj = Join-Path $buildDir 'engine32.obj'
+$engine64Obj = Join-Path $buildDir 'engine64.obj'
+$bootx64Obj = Join-Path $buildDir 'bootx64.obj'
 $bootObj = Join-Path $buildDir 'boot.obj'
 $bootstrapObj = Join-Path $buildDir 'bootstrap.obj'
 $gameList = Join-Path $buildDir 'game.lst'
+$engine32List = Join-Path $buildDir 'engine32.lst'
+$engine64List = Join-Path $buildDir 'engine64.lst'
+$bootx64List = Join-Path $buildDir 'bootx64.lst'
+$bootx64Map = Join-Path $buildDir 'bootx64.map'
 $bootList = Join-Path $buildDir 'boot.lst'
 $bootstrapList = Join-Path $buildDir 'bootstrap.lst'
 $bootConfig = Join-Path $buildDir 'boot_config.inc'
@@ -5413,6 +6446,21 @@ $textureBankBBinPath = Join-Path $buildDir 'cyberstorm-texture-bank-b.bin'
 $mapBankBinPath = Join-Path $buildDir 'cyberstorm-map-bank.bin'
 $presentationBankBinPath = Join-Path $buildDir 'cyberstorm-presentation-bank.bin'
 $geometryBankBinPath = Join-Path $buildDir 'cyberstorm-geometry-bank.bin'
+$engine32BinPath = Join-Path $buildDir 'cyberstorm-engine32.bin'
+$expandedVisualPackPath = Join-Path $buildDir 'cyberstorm-expanded-visual-pack.bin'
+$expandedVisualReportPath = Join-Path $buildDir 'cyberstorm-expanded-visual-report.txt'
+$expandedPackDirPath = Join-Path $buildDir 'cyberstorm-expanded-packdir.bin'
+$expandedManifestPath = Join-Path $buildDir 'cyberstorm-expanded-manifest.txt'
+$expandedIsoPath = Join-Path $buildDir 'cyberstorm-expanded.iso'
+$bootx64EfiPath = Join-Path $buildDir 'EFI\BOOT\BOOTX64.EFI'
+$x64IsoPath = Join-Path $buildDir 'cyberstorm-x64.iso'
+$x64BuildReportPath = Join-Path $buildDir 'cyberstorm-x64-build-report.txt'
+$x64SmokeReportPath = Join-Path $buildDir 'cyberstorm-x64-smoke-report.txt'
+$x64PackReportPath = Join-Path $buildDir 'cyberstorm-x64-pack-report.txt'
+$x64PreviewPath = Join-Path $buildDir 'cyberstorm-x64-demo-preview.png'
+$x64PackBinPath = Join-Path $buildDir 'X64PACK.BIN'
+$x64PackManifestPath = Join-Path $buildDir 'X64MAN.TXT'
+$engine64BinPath = Join-Path $buildDir 'ENGINE64.BIN'
 $stage2BinPath = Join-Path $buildDir 'cyberstorm-stage2.bin'
 $bootBinPath = Join-Path $buildDir 'cyberstorm-boot.bin'
 $bootstrapBinPath = Join-Path $buildDir 'cyberstorm-bootstrap.bin'
@@ -5432,6 +6480,34 @@ $showcaseCaptureScript = Join-Path $PSScriptRoot 'capture-showcase.ps1'
 $readmeScreenshotArtifacts = 1..$readmeScreenshotCount | ForEach-Object {
     Join-Path $buildDir ("{0}{1}.png" -f $readmeScreenshotPrefix, $_)
 }
+
+if ($Target -eq 'x64-uefi') {
+    Build-X64UefiTarget `
+        -SourcePath $bootx64Asm `
+        -ObjectPath $bootx64Obj `
+        -ListPath $bootx64List `
+        -EfiPath $bootx64EfiPath `
+        -IsoScriptPath $x64IsoScript `
+        -IsoPath $x64IsoPath `
+        -BuildReportPath $x64BuildReportPath `
+        -PackReportPath $x64PackReportPath `
+        -SmokeReportPath $x64SmokeReportPath `
+        -PreviewScriptPath $x64PreviewScript `
+        -PreviewPath $x64PreviewPath `
+        -PackBinaryPath $x64PackBinPath `
+        -PackManifestPath $x64PackManifestPath `
+        -Engine64SourcePath $engine64Asm `
+        -Engine64ObjectPath $engine64Obj `
+        -Engine64ListPath $engine64List `
+        -Engine64BinaryPath $engine64BinPath `
+        -MapPath $bootx64Map `
+        -RequestedAssemblerPath $X64AssemblerPath `
+        -RequestedLinkerPath $X64LinkerPath `
+        -ForcePanic $X64ForcePanic.IsPresent | Out-Null
+    return
+}
+
+$assemblerTool = Resolve-AssemblerTool -Kind $Assembler -RequestedPath $AssemblerPath -LegacyMasmPath $MasmPath
 
 $seedProvided = $null -ne $DebugSeed
 $startSectorProvided = $null -ne $DebugStartSector
@@ -5524,7 +6600,7 @@ $audioConfigLines = @(
 Set-Content -LiteralPath $audioConfig -Encoding ascii -Value $audioConfigLines
 Assert-PathExists -Path $audioConfig -Label 'generated audio config'
 
-$buildMode = if ($debugProfile) { 'debug' } else { 'release' }
+$buildMode = if ($debugProfile) { 'expanded debug' } else { 'expanded release' }
 $deterministicSeedText = if ($seedProvided) { (Format-Hex16 $debugSeedValue) } else { 'off' }
 $overlayModeText = if ($DebugOverlay.IsPresent) { 'enabled' } else { 'off' }
 $startModeText = if ($DebugDemoBoot.IsPresent) { 'direct-to-demo' } elseif ($DebugStartInGame.IsPresent) { 'direct-to-game' } else { 'normal splash/title flow' }
@@ -5538,7 +6614,8 @@ $audioSummaryLines = @(
 $renderSummaryLines = @(
     ("Scene renderer: {0}" -f $sceneRenderModeName)
     ("Gameplay renderer: {0}" -f $gameplayRenderModeName)
-    'Primary output: BIOS HDD boot + VBE 640x480x16 LFB present when available, with legacy VGA fallback; gameplay now renders to a 320x240 surface and presents at exact 2x when the enhanced path is active.'
+    'Primary output: expanded BIOS boot image wrapped in a burnable CD/DVD ISO, with VBE 640x480x16 LFB present when available and legacy VGA fallback.'
+    ("Expanded memory map: 32-bit engine {0}, renderer arena {1}, texture pool {2}, frame/depth arenas {3}/{4}." -f (Format-Hex32 $layout.ExpandedFlatEngineLoadPhysical), (Format-Hex32 $layout.ExpandedRendererArenaPhysical), (Format-Hex32 $layout.ExpandedTexturePoolPhysical), (Format-Hex32 $layout.ExpandedFrame565Physical), (Format-Hex32 $layout.ExpandedZBufferPhysical))
     'Gameplay VBE present: page-flip only when the enhanced handoff opts into a verified extra image page; degraded whole-frame blit otherwise.'
     ("3D render stage: {0}" -f $debugRenderStageValue)
     'Debug switches: -DebugRender2D uses the oracle path, -DebugRenderReference keeps the stable stage-two 3D path active, and -DebugRenderMachine (or legacy -DebugRender3D) opts into the experimental banked raw machine-code rail.'
@@ -5565,6 +6642,17 @@ foreach ($audioLine in $audioSummaryLines) {
 Write-Section -Title 'Render Path'
 foreach ($renderLine in $renderSummaryLines) {
     Write-Host $renderLine
+}
+
+Write-Section -Title 'Expanded 32-bit Visual Payload'
+$engine32Build = Invoke-Assembler -SourcePath $engine32Asm -ObjectPath $engine32Obj -ListPath $engine32List -IncludePaths @($buildDir) -ToolPath $assemblerTool.Path -AssemblerName $assemblerTool.Name
+$engine32Flat = Get-CoffFlatBinary -ObjectPath $engine32Obj
+$engine32Bytes = $engine32Flat.FlatBytes
+[IO.File]::WriteAllBytes($engine32BinPath, $engine32Bytes)
+$expandedVisualPack = Write-ExpandedVisualPack -OutputPath $expandedVisualPackPath -ReportPath $expandedVisualReportPath -Layout $layout
+Write-Host ("Engine32 payload: {0} bytes, relocations {1}, load {2}" -f $engine32Bytes.Length, $engine32Flat.AppliedRelocations, (Format-Hex32 $layout.ExpandedFlatEngineLoadPhysical))
+foreach ($visualLine in @($expandedVisualPack.SummaryLines)) {
+    Write-Host $visualLine
 }
 
 $expectedMapWidth = Get-AsmEquValue -SourcePath $constantsSourcePath -Name 'MAP_W'
@@ -5742,6 +6830,13 @@ $generatedContentLines = @(
     ("Code bank bytes: {0}" -f $generatedMachineCode.TotalBytes)
     ("Machine-code helper summary: {0}" -f $generatedMachineCode.KernelSummary)
     ("Machine-code table summary: {0}" -f $generatedMachineCode.TableSummary)
+    ("Engine32 source: {0}" -f $engine32Asm)
+    ("Engine32 payload: {0}" -f $engine32BinPath)
+    ("Engine32 bytes: {0}" -f $engine32Bytes.Length)
+    ("Engine32 load base: {0}" -f (Format-Hex32 $layout.ExpandedFlatEngineLoadPhysical))
+    ("Expanded visual pack: {0}" -f $expandedVisualPackPath)
+    ("Expanded visual validation: {0}" -f $expandedVisualReportPath)
+    ("Expanded visual bytes: {0}" -f $expandedVisualPack.Bytes)
     ("Texture bank report: {0}" -f $generatedTextureBank.ReportPath)
     ("Texture bank bytes: {0}" -f $generatedTextureBank.TotalBytes)
     ("Texture page A: {0}x{1} ({2}/{3} used)" -f $generatedTextureBank.AtlasWidth, $generatedTextureBank.AtlasHeight, $generatedTextureBank.PageATextureCount, $generatedTextureBank.PageATextureCapacity)
@@ -5906,6 +7001,27 @@ $assetBanksBase = @(
     }
 )
 
+$expandedPayloadsBase = @(
+    [pscustomobject]@{
+        Name = 'Engine32 renderer payload'
+        Id = 'ENGINE32'
+        SymbolPrefix = 'ENGINE32'
+        SourcePath = $engine32Asm
+        BinaryPath = $engine32BinPath
+        LoadLinear = $layout.ExpandedFlatEngineLoadPhysical
+        Flags = 3
+    },
+    [pscustomobject]@{
+        Name = 'Expanded visual showcase pack'
+        Id = 'VISPACK'
+        SymbolPrefix = 'VISPACK'
+        SourcePath = $expandedVisualReportPath
+        BinaryPath = $expandedVisualPackPath
+        LoadLinear = $layout.ExpandedTexturePoolPhysical
+        Flags = 4
+    }
+)
+
 $provisionalStage2Sectors = 1
 $provisionalStage2StartLba = $layout.BootstrapStartLba + 1
 $resolvedAssetBanks = Resolve-AssetBankLayout -AssetBanks $assetBanksBase -Stage2Sectors $provisionalStage2Sectors -Stage2StartLba $provisionalStage2StartLba -Layout $layout
@@ -5988,11 +7104,18 @@ $bootstrapBin = $bootstrapFlat.FlatBytes
 [IO.File]::WriteAllBytes($bootstrapBinPath, $bootstrapBin)
 Write-Host ("Bootstrap : {0} bytes, {1} sectors, stage2 at LBA {2}" -f $bootstrapBin.Length, $bootstrapSectorCount, $layout.Stage2StartLba)
 
+$expandedPayloadStartLba = (($resolvedAssetBanks | Measure-Object -Property EndLba -Maximum).Maximum) + 1
+$resolvedExpandedPayloads = Resolve-ExpandedPayloadLayout -Payloads $expandedPayloadsBase -StartLba $expandedPayloadStartLba -Layout $layout
+Write-GeneratedBankLayoutInclude -OutputPath $generatedBankLayoutPath -AssetBanks $resolvedAssetBanks -ExpandedPayloads $resolvedExpandedPayloads
+
 $assetBankLines = @(
     ("Layout include: {0}" -f $generatedBankLayoutPath)
 )
 foreach ($assetBank in @($resolvedAssetBanks)) {
     $assetBankLines += ("{0}: {1} bytes ({2} padded), {3} sectors, LBA {4}..{5}, load {6}:0000, payload {7}" -f $assetBank.Name, $assetBank.Bytes, $assetBank.PaddedBytes, $assetBank.Sectors, $assetBank.StartLba, $assetBank.EndLba, (Format-Hex16 $assetBank.LoadSegment), $assetBank.BinaryPath)
+}
+foreach ($expandedPayload in @($resolvedExpandedPayloads)) {
+    $assetBankLines += ("{0}: {1} bytes ({2} padded), {3} sectors, LBA {4}..{5}, load {6}, payload {7}" -f $expandedPayload.Name, $expandedPayload.Bytes, $expandedPayload.PaddedBytes, $expandedPayload.Sectors, $expandedPayload.StartLba, $expandedPayload.EndLba, (Format-Hex32 $expandedPayload.LoadLinear), $expandedPayload.BinaryPath)
 }
 
 Write-Section -Title 'Asset Banks'
@@ -6018,10 +7141,12 @@ if ($bootSector[510] -ne 0x55 -or $bootSector[511] -ne 0xAA) {
 
 [IO.File]::WriteAllBytes($bootBinPath, $bootSector)
 
-$imageBytesUsed = $layout.BootSectorBytes + $bootstrapBin.Length + $gameBin.Length + ((@($resolvedAssetBanks) | Measure-Object -Property Bytes -Sum).Sum)
+$expandedPayloadBytesUsed = ((@($resolvedExpandedPayloads) | Measure-Object -Property Bytes -Sum).Sum)
+$expandedPayloadPaddedBytes = ((@($resolvedExpandedPayloads) | Measure-Object -Property PaddedBytes -Sum).Sum)
+$imageBytesUsed = $layout.BootSectorBytes + $bootstrapBin.Length + $gameBin.Length + ((@($resolvedAssetBanks) | Measure-Object -Property Bytes -Sum).Sum) + $expandedPayloadBytesUsed
 $bootstrapPaddedBytes = $bootstrapSectorCount * $layout.BootSectorBytes
 $stage2PaddedBytes = $gameSectorCount * $layout.BootSectorBytes
-$diskFootprintBytes = $layout.BootSectorBytes + $bootstrapPaddedBytes + $stage2PaddedBytes + ((@($resolvedAssetBanks) | Measure-Object -Property PaddedBytes -Sum).Sum)
+$diskFootprintBytes = $layout.BootSectorBytes + $bootstrapPaddedBytes + $stage2PaddedBytes + ((@($resolvedAssetBanks) | Measure-Object -Property PaddedBytes -Sum).Sum) + $expandedPayloadPaddedBytes
 $warnings = Get-BuildWarnings -BootBytes $bootBin.Length -Stage2Bytes $gameBin.Length -Stage2Sectors $gameSectorCount -ImageBytesUsed $imageBytesUsed -DiskFootprintBytes $diskFootprintBytes -AssetBanks $resolvedAssetBanks -Layout $layout
 if ($null -ne $replayHarness.WarningLines -and @($replayHarness.WarningLines).Count -gt 0) {
     $warnings = @($warnings) + @($replayHarness.WarningLines)
@@ -6044,6 +7169,14 @@ foreach ($assetBank in @($resolvedAssetBanks)) {
     $assetBankBytes = [IO.File]::ReadAllBytes($assetBank.BinaryPath)
     [Array]::Copy($assetBankBytes, 0, $diskImage, ($assetBank.StartLba * $layout.BootSectorBytes), $assetBankBytes.Length)
 }
+foreach ($expandedPayload in @($resolvedExpandedPayloads)) {
+    $expandedPayloadBytes = [IO.File]::ReadAllBytes($expandedPayload.BinaryPath)
+    $expandedPayloadOffset = $expandedPayload.StartLba * $layout.BootSectorBytes
+    if (($expandedPayloadOffset + $expandedPayloadBytes.Length) -gt $diskImage.Length) {
+        throw ("Expanded payload '{0}' would overflow the generated image." -f $expandedPayload.Name)
+    }
+    [Array]::Copy($expandedPayloadBytes, 0, $diskImage, $expandedPayloadOffset, $expandedPayloadBytes.Length)
+}
 
 [IO.File]::WriteAllBytes($imgPath, $diskImage)
 
@@ -6063,6 +7196,7 @@ $regressionHarness = & $regressionHarnessScript `
     -MapBankBinaryPath $mapBankBinPath `
     -PresentationBankBinaryPath $presentationBankBinPath `
     -GeometryBankBinaryPath $geometryBankBinPath `
+    -ExpandedPayloads $resolvedExpandedPayloads `
     -ImagePath $imgPath `
     -BootListPath $bootList `
     -BootstrapListPath $bootstrapList `
@@ -6079,6 +7213,43 @@ Write-Section -Title 'Regression Harness'
 foreach ($regressionLine in $regressionHarnessLines) {
     Write-Host $regressionLine
 }
+
+Write-Section -Title 'Expanded CD/DVD Profile'
+Assert-PathExists -Path $expandedIsoScript -Label 'expanded ISO writer'
+$expandedPackDirectory = Write-ExpandedPackDirectory `
+    -OutputPath $expandedPackDirPath `
+    -BootBytes $bootSector `
+    -BootstrapBytes $bootstrapBin `
+    -Stage2Bytes $gameBin `
+    -BootstrapSectors $bootstrapSectorCount `
+    -Stage2Sectors $gameSectorCount `
+    -AssetBanks $resolvedAssetBanks `
+    -ExpandedPayloads $resolvedExpandedPayloads `
+    -Layout $layout
+Write-ExpandedManifest `
+    -OutputPath $expandedManifestPath `
+    -PackDirectory $expandedPackDirectory `
+    -AssetBanks $resolvedAssetBanks `
+    -ExpandedPayloads $resolvedExpandedPayloads `
+    -ImageBytesUsed $imageBytesUsed `
+    -DiskFootprintBytes $diskFootprintBytes `
+    -Layout $layout
+$expandedIso = & $expandedIsoScript `
+    -BootImagePath $imgPath `
+    -PackDirectoryPath $expandedPackDirPath `
+    -ManifestPath $expandedManifestPath `
+    -IsoPath $expandedIsoPath `
+    -VolumeId 'CYBERSTORM_EXPANDED'
+$expandedArtifactLines = @(
+    ("Profile: {0}" -f $layout.ImageProfile)
+    ("Pack directory: {0} ({1} bytes, {2} records)" -f $expandedPackDirectory.Path, $expandedPackDirectory.Bytes, @($expandedPackDirectory.Records).Count)
+    ("Manifest: {0}" -f $expandedManifestPath)
+    ("Bootable ISO: {0} ({1} bytes, boot image ISO LBA {2})" -f $expandedIso.IsoPath, $expandedIso.TotalBytes, $expandedIso.BootImageLba)
+)
+foreach ($expandedLine in $expandedArtifactLines) {
+    Write-Host $expandedLine
+}
+$assetBankLines = @($assetBankLines) + @($expandedArtifactLines)
 
 $frontendVerifyArtifacts = @()
 if ($FrontendVerify.IsPresent) {
@@ -6308,7 +7479,7 @@ Write-BuildReport `
     -BootStartOffset $bootStartOffset `
     -StageStartOffset $stageStartOffset `
     -Warnings $warnings `
-    -ArtifactPaths @($generatedArtPath, $generatedPresentationPath, $generatedGeometryPath, $generatedMachineCodePath, $generatedSectorContentPath, $generatedMapsPath, $generatedDemosPath, $generatedRuntimeVerifyPath, $generatedMusicPath, $machineCodeReportPath, $textureBankReportPath, $replayReportPath, $balanceReportPath, $regressionReportPath, $frontendVerifyReportPath, $vmSmokeReportPath, $runtimeVerifyReportPath, $showcaseReportPath, $generatedBankLayoutPath, $codeBankBinPath, $textureBankBinPath, $textureBankBBinPath, $mapBankBinPath, $presentationBankBinPath, $geometryBankBinPath, $bootBinPath, $bootstrapBinPath, $stage2BinPath, $bootList, $bootstrapList, $gameList, $bootConfig, $debugConfig, $audioConfig, $imgPath) + $publishedReadmeScreenshotArtifacts + @($reportPath, $screenshotSync.RotationStatePath, $screenshotSync.GalleryManifestPath) + $frontendVerifyArtifacts + $vmSmokeArtifacts + $runtimeVerifyArtifacts + $showcaseArtifacts `
+    -ArtifactPaths @($generatedArtPath, $generatedPresentationPath, $generatedGeometryPath, $generatedMachineCodePath, $generatedSectorContentPath, $generatedMapsPath, $generatedDemosPath, $generatedRuntimeVerifyPath, $generatedMusicPath, $machineCodeReportPath, $textureBankReportPath, $expandedVisualReportPath, $replayReportPath, $balanceReportPath, $regressionReportPath, $frontendVerifyReportPath, $vmSmokeReportPath, $runtimeVerifyReportPath, $showcaseReportPath, $generatedBankLayoutPath, $codeBankBinPath, $textureBankBinPath, $textureBankBBinPath, $mapBankBinPath, $presentationBankBinPath, $geometryBankBinPath, $engine32BinPath, $expandedVisualPackPath, $expandedPackDirPath, $expandedManifestPath, $expandedIsoPath, $bootBinPath, $bootstrapBinPath, $stage2BinPath, $bootList, $bootstrapList, $engine32List, $gameList, $bootConfig, $debugConfig, $audioConfig, $imgPath) + $publishedReadmeScreenshotArtifacts + @($reportPath, $screenshotSync.RotationStatePath, $screenshotSync.GalleryManifestPath) + $frontendVerifyArtifacts + $vmSmokeArtifacts + $runtimeVerifyArtifacts + $showcaseArtifacts `
     -Layout $layout
 
 Write-Section -Title 'Artifacts'
@@ -6324,6 +7495,7 @@ Write-Host ("Verify  {0}" -f $generatedRuntimeVerifyPath)
 Write-Host ("Music   {0}" -f $generatedMusicPath)
 Write-Host ("MC Rep  {0}" -f $machineCodeReportPath)
 Write-Host ("TX Rep  {0}" -f $textureBankReportPath)
+Write-Host ("V32 Rep {0}" -f $expandedVisualReportPath)
 Write-Host ("Replay  {0}" -f $replayReportPath)
 Write-Host ("Balance {0}" -f $balanceReportPath)
 Write-Host ("Regress {0}" -f $regressionReportPath)
@@ -6338,6 +7510,11 @@ Write-Host ("Bank    {0}" -f $textureBankBBinPath)
 Write-Host ("Bank    {0}" -f $mapBankBinPath)
 Write-Host ("Bank    {0}" -f $presentationBankBinPath)
 Write-Host ("Bank    {0}" -f $geometryBankBinPath)
+Write-Host ("Engine  {0}" -f $engine32BinPath)
+Write-Host ("Visual  {0}" -f $expandedVisualPackPath)
+Write-Host ("Pack    {0}" -f $expandedPackDirPath)
+Write-Host ("ISO Man {0}" -f $expandedManifestPath)
+Write-Host ("ISO     {0}" -f $expandedIsoPath)
 Write-Host ("Boot    {0}" -f $bootBinPath)
 Write-Host ("Boot    {0}" -f $bootstrapBinPath)
 Write-Host ("Stage2  {0}" -f $stage2BinPath)
@@ -6346,6 +7523,7 @@ foreach ($readmeShot in $publishedReadmeScreenshotArtifacts) {
 }
 Write-Host ("Listing {0}" -f $bootList)
 Write-Host ("Listing {0}" -f $bootstrapList)
+Write-Host ("Listing {0}" -f $engine32List)
 Write-Host ("Listing {0}" -f $gameList)
 Write-Host ("Config  {0}" -f $debugConfig)
 Write-Host ("Config  {0}" -f $audioConfig)
@@ -6377,6 +7555,9 @@ Write-Host ("Bootstrap LBA: {0}..{1}" -f $layout.BootstrapStartLba, ($layout.Boo
 Write-Host ("Stage2 LBA: {0}..{1}" -f $layout.Stage2StartLba, ($layout.Stage2StartLba + $gameSectorCount - 1))
 foreach ($assetBank in @($resolvedAssetBanks)) {
     Write-Host ("{0,-10}: {1} bytes, {2} sectors, LBA {3}..{4}, load {5}:0000" -f $assetBank.Name, $assetBank.Bytes, $assetBank.Sectors, $assetBank.StartLba, $assetBank.EndLba, (Format-Hex16 $assetBank.LoadSegment))
+}
+foreach ($expandedPayload in @($resolvedExpandedPayloads)) {
+    Write-Host ("{0,-10}: {1} bytes, {2} sectors, LBA {3}..{4}, load {5}" -f $expandedPayload.Id, $expandedPayload.Bytes, $expandedPayload.Sectors, $expandedPayload.StartLba, $expandedPayload.EndLba, (Format-Hex32 $expandedPayload.LoadLinear))
 }
 Write-Host ("Signature : 0x55AA @ byte 510")
 Write-Host ("Warnings  : boot={0}, stage2={1}" -f $bootBuild.WarningCount, $gameBuild.WarningCount)

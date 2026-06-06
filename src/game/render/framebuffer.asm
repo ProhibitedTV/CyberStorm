@@ -96,19 +96,32 @@ star_color_ready:
     ret
 
 wait_for_vblank:
+    push ax
+    push cx
     push dx
     mov dx, 03DAh
+    mov cx, 0FFFFh
 
 wait_vblank_end:
     in al, dx
     test al, 08h
-    jnz wait_vblank_end
+    jz wait_vblank_start_arm
+    loop wait_vblank_end
+    jmp wait_vblank_done
+
+wait_vblank_start_arm:
+    mov cx, 0FFFFh
 
 wait_vblank_start:
     in al, dx
     test al, 08h
-    jz wait_vblank_start
+    jnz wait_vblank_done
+    loop wait_vblank_start
+
+wait_vblank_done:
     pop dx
+    pop cx
+    pop ax
     ret
 
 present_frame:

@@ -10,6 +10,7 @@ param(
     [string]$MapBankBinaryPath = (Join-Path (Join-Path $PSScriptRoot '..') 'build\cyberstorm-map-bank.bin'),
     [string]$PresentationBankBinaryPath = (Join-Path (Join-Path $PSScriptRoot '..') 'build\cyberstorm-presentation-bank.bin'),
     [string]$GeometryBankBinaryPath = (Join-Path (Join-Path $PSScriptRoot '..') 'build\cyberstorm-geometry-bank.bin'),
+    [object[]]$ExpandedPayloads = @(),
     [string]$ImagePath = (Join-Path (Join-Path $PSScriptRoot '..') 'build\cyberstorm.img'),
     [string]$BootListPath = (Join-Path (Join-Path $PSScriptRoot '..') 'build\boot.lst'),
     [string]$BootstrapListPath = (Join-Path (Join-Path $PSScriptRoot '..') 'build\bootstrap.lst'),
@@ -295,8 +296,27 @@ foreach ($bank in $resolvedBanks.ToArray()) {
     Assert-ZeroFill -Bytes $imageBytes -Offset (($bank.Lba * $layout.SectorBytes) + $bank.Bytes.Length) -Length ($bank.PaddedBytes - $bank.Bytes.Length) -Label ("{0} sector padding" -f $bank.Name)
 }
 
+$resolvedExpandedPayloads = New-Object 'System.Collections.Generic.List[object]'
+foreach ($payload in @($ExpandedPayloads)) {
+    Assert-PathExists -Path $payload.BinaryPath -Label ("expanded payload '{0}'" -f $payload.Name)
+    $payloadBytes = [IO.File]::ReadAllBytes($payload.BinaryPath)
+    Assert-ImageRangeMatches -ImageBytes $imageBytes -Offset ($payload.StartLba * $layout.SectorBytes) -ExpectedBytes $payloadBytes -Label ("{0} image range" -f $payload.Name)
+    Assert-ZeroFill -Bytes $imageBytes -Offset (($payload.StartLba * $layout.SectorBytes) + $payloadBytes.Length) -Length ($payload.PaddedBytes - $payloadBytes.Length) -Label ("{0} sector padding" -f $payload.Name)
+    $resolvedExpandedPayloads.Add([pscustomobject]@{
+        Name = $payload.Name
+        Id = $payload.Id
+        Path = $payload.BinaryPath
+        Bytes = $payloadBytes
+        Lba = $payload.StartLba
+        Sectors = $payload.Sectors
+        PaddedBytes = $payload.PaddedBytes
+        LoadLinear = $payload.LoadLinear
+    })
+}
+
 $resolvedBankArray = $resolvedBanks.ToArray()
-$diskFootprintBytes = $layout.SectorBytes + $bootstrapPaddedBytes + $stage2PaddedBytes + ((@($resolvedBankArray) | Measure-Object -Property PaddedBytes -Sum).Sum)
+$resolvedExpandedPayloadArray = $resolvedExpandedPayloads.ToArray()
+$diskFootprintBytes = $layout.SectorBytes + $bootstrapPaddedBytes + $stage2PaddedBytes + ((@($resolvedBankArray) | Measure-Object -Property PaddedBytes -Sum).Sum) + ((@($resolvedExpandedPayloadArray) | Measure-Object -Property PaddedBytes -Sum).Sum)
 Assert-ZeroFill -Bytes $imageBytes -Offset $diskFootprintBytes -Length ($imageBytes.Length - $diskFootprintBytes) -Label 'Unused HDD tail'
 
 $entryInfo = Get-StageEntryInfo -Stage2Bytes $stage2Bytes
@@ -309,6 +329,9 @@ $summaryLines.Add(("Bootstrap: {0} bytes, {1} sectors, LBA {2}..{3}" -f $bootstr
 $summaryLines.Add(("Stage two: {0} bytes, {1} sectors, STAGE2_LBA matches, entry {2}" -f $stage2Bytes.Length, $stage2Sectors, $entryInfo.Description))
 foreach ($bank in $resolvedBankArray) {
     $summaryLines.Add(("{0}: {1} bytes ({2} padded), {3} sectors, LBA {4}..{5}" -f $bank.Name, $bank.Bytes.Length, $bank.PaddedBytes, $bank.Sectors, $bank.Lba, ($bank.Lba + $bank.Sectors - 1)))
+}
+foreach ($payload in $resolvedExpandedPayloadArray) {
+    $summaryLines.Add(("{0}: {1} bytes ({2} padded), {3} sectors, LBA {4}..{5}, load 0x{6:X8}" -f $payload.Name, $payload.Bytes.Length, $payload.PaddedBytes, $payload.Sectors, $payload.Lba, ($payload.Lba + $payload.Sectors - 1), ([uint32]$payload.LoadLinear)))
 }
 $summaryLines.Add(("Disk image: {0} bytes, occupied through byte {1}, unused tail zero-filled" -f $imageBytes.Length, ($diskFootprintBytes - 1)))
 $summaryLines.Add('Diagnostics: boot.lst, bootstrap.lst, and game.lst are present for post-failure inspection')
@@ -323,6 +346,9 @@ $reportLines.Add(("  Stage2: {0} bytes, {1} sectors, load {2}:{3}, entry {4}" -f
 foreach ($bank in $resolvedBankArray) {
     $reportLines.Add(("  {0}: {1} bytes ({2} padded), {3} sectors, LBA {4}..{5}" -f $bank.Name, $bank.Bytes.Length, $bank.PaddedBytes, $bank.Sectors, $bank.Lba, ($bank.Lba + $bank.Sectors - 1)))
 }
+foreach ($payload in $resolvedExpandedPayloadArray) {
+    $reportLines.Add(("  {0}: {1} bytes ({2} padded), {3} sectors, LBA {4}..{5}, load 0x{6:X8}" -f $payload.Name, $payload.Bytes.Length, $payload.PaddedBytes, $payload.Sectors, $payload.Lba, ($payload.Lba + $payload.Sectors - 1), ([uint32]$payload.LoadLinear)))
+}
 $reportLines.Add(("  Disk image: {0} bytes, occupied through byte {1}, unused tail zero-filled" -f $imageBytes.Length, ($diskFootprintBytes - 1)))
 $reportLines.Add('')
 $reportLines.Add('Artifacts')
@@ -331,6 +357,9 @@ $reportLines.Add(("  Bootstrap binary: {0}" -f $BootstrapBinaryPath))
 $reportLines.Add(("  Stage-two binary: {0}" -f $Stage2BinaryPath))
 foreach ($bank in $resolvedBankArray) {
     $reportLines.Add(("  {0}: {1}" -f $bank.Name, $bank.Path))
+}
+foreach ($payload in $resolvedExpandedPayloadArray) {
+    $reportLines.Add(("  {0}: {1}" -f $payload.Name, $payload.Path))
 }
 $reportLines.Add(("  Disk image: {0}" -f $ImagePath))
 $reportLines.Add(("  Listings: {0}, {1}, {2}" -f $BootListPath, $BootstrapListPath, $GameListPath))

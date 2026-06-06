@@ -1,0 +1,42 @@
+CyberStorm x64 Pack Report
+Generated: 2026-06-06 11:11:33 -06:00
+Status: pass
+Target: x64-uefi
+Milestone: M1 GOP diagnostics, arena bootstrap, failure/log channel, and input MVP
+Milestone: M2 deterministic pack scaffold and ENGINE64 framebuffer scaffold
+Pack binary: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\X64PACK.BIN
+Pack manifest: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\X64MAN.TXT
+Pack bytes: 1488
+Pack SHA256: 39876E41F6F35F2EBD1D0F8F5776C1DFCBEEFF330629DDEF1D191D6A5322924A
+Host preview: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-x64-demo-preview.png
+Chunks: 9
+ENGINE64 bytes: 100
+Chunk record: type[8], offset32, size32, load64, fnv1a32, align32
+Chunk summary:
+ENGINE64: engine64.bootstrap, offset 0x00000140, 100 bytes, load 0x0000000000100000, align 0x00001000, fnv 0x36AAF0CD, source C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\ENGINE64.BIN
+TEXTURE: title.texture.atlas, offset 0x000001B0, 135 bytes, load 0x0000000002000000, align 0x00001000, fnv 0x83F3BD0C, source generated metadata scaffold
+MESH: title.hero.mesh, offset 0x00000240, 123 bytes, load 0x0000000002400000, align 0x00001000, fnv 0xF8E00691, source generated metadata scaffold
+MATERIAL: title.materials, offset 0x000002C0, 124 bytes, load 0x0000000002600000, align 0x00001000, fnv 0x7840402E, source generated metadata scaffold
+MAP: district.slice.map, offset 0x00000340, 125 bytes, load 0x0000000002800000, align 0x00001000, fnv 0x02ECC7B7, source generated metadata scaffold
+SCRIPT: campaign.script, offset 0x000003C0, 124 bytes, load 0x0000000002A00000, align 0x00001000, fnv 0x861F6A06, source generated metadata scaffold
+AUDIO: title.audio.bank, offset 0x00000440, 126 bytes, load 0x0000000002C00000, align 0x00001000, fnv 0x727A601B, source generated metadata scaffold
+TITLE: title.scene, offset 0x000004C0, 120 bytes, load 0x0000000003000000, align 0x00001000, fnv 0x61D32E92, source generated metadata scaffold
+CAMPAIGN: campaign.scenes, offset 0x00000540, 134 bytes, load 0x0000000003200000, align 0x00001000, fnv 0xF75D1E22, source generated metadata scaffold
+Pack metadata: reserved for engine, textures, meshes, materials, maps, scripts, audio, title scene, and campaign scenes.
+Runtime arena allocation: UEFI AllocatePages / EfiLoaderData
+Runtime arena total: 0x02000000 bytes
+Arena alignment: 0x00010000 bytes
+Engine arena: 0x00200000 bytes
+Frame arena: 0x0012C000 bytes, used as the internal 640x480 xRGB8888 framebuffer
+Depth arena: 0x0012C000 bytes, enough for 640x480 32-bit depth
+Texture arena: 0x00800000 bytes
+Mesh arena: 0x00400000 bytes
+Audio arena: 0x00200000 bytes
+Scratch arena: 0x00200000 bytes
+Log arena: 0x00010000 bytes
+Collision policy: runtime overflow/overlap check enters visible framebuffer failure screen.
+Runtime pack loader: X64PACK.BIN is opened from the UEFI boot volume, read into scratch, validated, then staged into engine-owned high-memory arenas.
+Runtime pack validation: magic/version/table shape, record bounds, 0x1000 alignment, known chunk IDs, full chunk mask, and FNV-1a checksums.
+Runtime log record: 0x80 bytes at the start of the log arena
+Runtime log fields: magic CS64/LOG0, milestone 0x00010008, failure code, GOP base, arena base/end, frame/depth/log addresses, pack status/bytes/chunks/mask, engine64 status/size/target, staged chunks/bytes/mask, render/present status, presented pixels
+Input state: diagnostic menu stores last scan code, Unicode char, last action, confirm count, and back count.

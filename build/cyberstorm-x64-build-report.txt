@@ -1,34 +1,34 @@
 CyberStorm x64 UEFI Build Report
-Generated: 2026-06-06 13:18:56 -06:00
+Generated: 2026-06-06 13:37:37 -06:00
 Status: pass
 Target: x64-uefi
 Artifact: cyberstorm-x64.iso
 ml64.exe: C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.40.33807\bin\Hostx64\x64\ml64.exe (vswhere)
-link.exe: C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.40.33807\bin\Hostx86\x64\link.exe (vswhere)
+link.exe: C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.40.33807\bin\Hostx64\x64\link.exe (vswhere)
 Object: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\bootx64.obj
 Listing: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\bootx64.lst
 Link map: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\bootx64.map
 Boot-alert check image: False
-BOOTX64.EFI: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\EFI\BOOT\BOOTX64.EFI (12288 bytes)
-Pack binary: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\X64PACK.BIN (1488 bytes)
+BOOTX64.EFI: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\EFI\BOOT\BOOTX64.EFI (13824 bytes)
+Pack binary: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\X64PACK.BIN (1504 bytes)
 Pack manifest: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\X64MAN.TXT
 Pack chunks: 9
-ENGINE64 chunk: 100 bytes, assembly-built scaffold payload
-Host preview: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-x64-demo-preview.png (15147 bytes, 640x480, 8 palette entries)
-Pack SHA256: 39876E41F6F35F2EBD1D0F8F5776C1DFCBEEFF330629DDEF1D191D6A5322924A
+ENGINE64 chunk: 116 bytes, assembly-built scaffold payload
+Host preview: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-x64-demo-preview.png (24183 bytes, 640x480, 12 palette entries)
+Pack SHA256: CEC73EFEACF5DA05A183EBCF0D394DAA280E9F1CA42C2C5619EF67C5808ADDD3
 PE machine: 0x8664
 PE optional header: 0x020B
 PE subsystem: 10 (EFI application)
 PE entry RVA: 0x00001000
 Sections: 3
-Title screen: 640x480 ENGINE64 neon start screen presented through GOP
+Title screen: 640x480 ENGINE64 layered megacity start screen presented through GOP
 Title status fields: render/present status and input state are logged for VM smoke
 Input MVP: UEFI SimpleTextInput title menu
 Input actions: arrows/W/S select, Enter/Space/Right/D confirm, Esc/Left/A/Backspace backs out
 Runtime pack loader: LoadedImage -> SimpleFileSystem -> X64PACK.BIN read into scratch arena
 Runtime pack validation: CSX64PK0 magic, version, record size, bounds, alignment, known chunk IDs, FNV-1a checksums
-ENGINE64 validation: CS64ENG0 payload header, 640x480 xRGB8888 target, deterministic title-scene palette table
-ENGINE64 render scaffold: loaded ENGINE64 chunk renders a deterministic neon title scene into the frame arena before GOP presentation
+ENGINE64 validation: CS64ENG0 payload header, 640x480 xRGB8888 target, deterministic expanded title-scene palette table
+ENGINE64 render scaffold: loaded ENGINE64 chunk renders a layered neon megacity title scene into the frame arena before GOP presentation
 Framebuffer abstraction: internal xRGB8888 frame arena with GOP direct/swap present modes for BGR, RGB, and matching bitmask layouts
 Host preview: deterministic PNG rendered from ENGINE64.BIN for release review while UEFI VM smoke remains the boot/input acceptance gate
 Runtime arenas: UEFI AllocatePages, 32 MiB engine-owned block, 64 KiB aligned sub-arenas
@@ -37,16 +37,16 @@ Runtime log: first 128 bytes of log arena contain magic, milestone, failure code
 Failure path: firmware text fallback when GOP cannot be located or initialized
 Failure path: framebuffer failure screen when arena allocation or layout validation fails
 Failure-screen validation: internal debug image is available for VM checks
-ISO: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-x64.iso (1538048 bytes)
+ISO: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-x64.iso (1540096 bytes)
 ISO volume: CYBERSTORM_X64
 El Torito catalog LBA: 19
 EFI FAT image LBA: 23
 EFI FAT image bytes: 1474560
 ISO payloads:
 EFIBOOT.IMG;1: LBA 23, 1474560 bytes
-BOOTX64.EFI;1: LBA 743, 12288 bytes
-X64PACK.BIN;1: LBA 749, 1488 bytes
-X64MAN.TXT;1: LBA 750, 1616 bytes
+BOOTX64.EFI;1: LBA 743, 13824 bytes
+X64PACK.BIN;1: LBA 750, 1504 bytes
+X64MAN.TXT;1: LBA 751, 1616 bytes
 FAT payloads:
-X64PACK BIN: cluster 28, 1488 bytes
-X64MAN  TXT: cluster 31, 1616 bytes
+X64PACK BIN: cluster 31, 1504 bytes
+X64MAN  TXT: cluster 34, 1616 bytes

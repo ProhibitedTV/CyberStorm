@@ -720,14 +720,14 @@ function Write-X64BootstrapReports {
         ("PE subsystem: {0} (EFI application)" -f $PeValidation.Subsystem)
         ("PE entry RVA: 0x{0:X8}" -f $PeValidation.EntryRva)
         ("Sections: {0}" -f $PeValidation.SectionCount)
-        'Title screen: 640x480 ENGINE64 neon start screen presented through GOP'
+        'Title screen: 640x480 ENGINE64 layered megacity start screen presented through GOP'
         'Title status fields: render/present status and input state are logged for VM smoke'
         'Input MVP: UEFI SimpleTextInput title menu'
         'Input actions: arrows/W/S select, Enter/Space/Right/D confirm, Esc/Left/A/Backspace backs out'
         'Runtime pack loader: LoadedImage -> SimpleFileSystem -> X64PACK.BIN read into scratch arena'
         'Runtime pack validation: CSX64PK0 magic, version, record size, bounds, alignment, known chunk IDs, FNV-1a checksums'
-        'ENGINE64 validation: CS64ENG0 payload header, 640x480 xRGB8888 target, deterministic title-scene palette table'
-        'ENGINE64 render scaffold: loaded ENGINE64 chunk renders a deterministic neon title scene into the frame arena before GOP presentation'
+        'ENGINE64 validation: CS64ENG0 payload header, 640x480 xRGB8888 target, deterministic expanded title-scene palette table'
+        'ENGINE64 render scaffold: loaded ENGINE64 chunk renders a layered neon megacity title scene into the frame arena before GOP presentation'
         'Framebuffer abstraction: internal xRGB8888 frame arena with GOP direct/swap present modes for BGR, RGB, and matching bitmask layouts'
         'Host preview: deterministic PNG rendered from ENGINE64.BIN for release review while UEFI VM smoke remains the boot/input acceptance gate'
         'Runtime arenas: UEFI AllocatePages, 32 MiB engine-owned block, 64 KiB aligned sub-arenas'

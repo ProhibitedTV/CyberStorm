@@ -25,7 +25,7 @@
 
 - **A real boot path.** The build emits a bootable BIOS disk image, not a host app wrapped in a fake shell.
 - **A forward x64 ISO path.** `-Target x64-uefi` emits `cyberstorm-x64.iso`, `BOOTX64.EFI`, `X64PACK.BIN`, `X64MAN.TXT`, and `ENGINE64.BIN` for the UEFI migration.
-- **An ENGINE64 framebuffer scaffold.** The UEFI build now renders the loaded `ENGINE64` title-scene palette into an internal `640x480` xRGB8888 frame arena, then presents it through GOP direct/swap conversion.
+- **An ENGINE64 framebuffer scaffold.** The UEFI build now renders the loaded `ENGINE64` expanded megacity title-scene palette into an internal `640x480` xRGB8888 frame arena, then presents it through GOP direct/swap conversion.
 - **Larger x64 memory budgets.** The UEFI path now allocates a 32 MiB engine-owned arena block and stages validated pack chunks into engine, texture, mesh/scene/script, audio, scratch, and log arenas.
 - **An expanded release surface.** The build now emits a larger mainline boot image, a typed pack-directory artifact, an expanded manifest, and a bootable ISO wrapper so future renderer/audio/content payloads are no longer planned around a floppy-sized ceiling.
 - **Generated content tooling.** Sprites, banked presentation assets, low-poly scene geometry, sectors, rules, demos, and music come from readable source files that generate MASM-friendly data at build time.

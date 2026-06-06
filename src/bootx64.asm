@@ -1211,25 +1211,30 @@ DrawMenuOptions PROC
     push rdi
     sub rsp, 20h
 
-    FILL_GOP_RECT 404, 20, 212, 138, 00142632h
+    FILL_GOP_RECT 404, 22, 212, 136, 00070B12h
+    FILL_GOP_RECT 408, 28, 4, 124, DIAG_ACCENT
+    FILL_GOP_RECT 416, 150, 184, 2, 00FF90FFh
 
     cmp dword ptr [MenuSelection], 0
     jne menu_select_log
-    FILL_GOP_RECT 416, 52, 160, 24, DIAG_ACCENT
+    FILL_GOP_RECT 420, 54, 152, 24, DIAG_ACCENT
+    FILL_GOP_RECT 414, 60, 4, 12, 00FF90FFh
     jmp menu_highlight_done
 
 menu_select_log:
     cmp dword ptr [MenuSelection], 1
     jne menu_select_panic
-    FILL_GOP_RECT 416, 84, 160, 24, DIAG_ACCENT
+    FILL_GOP_RECT 420, 86, 152, 24, DIAG_ACCENT
+    FILL_GOP_RECT 414, 92, 4, 12, 00FF90FFh
     jmp menu_highlight_done
 
 menu_select_panic:
-    FILL_GOP_RECT 416, 116, 160, 24, DIAG_ACCENT
+    FILL_GOP_RECT 420, 118, 152, 24, DIAG_ACCENT
+    FILL_GOP_RECT 414, 124, 4, 12, 00FF90FFh
 
 menu_highlight_done:
-    mov ecx, 414
-    mov edx, 28
+    mov ecx, 424
+    mov edx, 32
     lea r8, MenuTitleLine
     mov r9d, DIAG_MUTED
     call DrawString
@@ -1252,13 +1257,13 @@ panel_check_panic:
     lea r8, MenuPanelPanic
 
 panel_ready:
-    mov ecx, 486
-    mov edx, 28
+    mov ecx, 522
+    mov edx, 32
     mov r9d, DIAG_WARN
     call DrawString
 
-    mov ecx, 424
-    mov edx, 56
+    mov ecx, 428
+    mov edx, 58
     lea r8, MenuOptionDiag
     mov r9d, DIAG_TEXT
     cmp dword ptr [MenuSelection], 0
@@ -1267,8 +1272,8 @@ panel_ready:
 draw_menu_diag:
     call DrawString
 
-    mov ecx, 424
-    mov edx, 88
+    mov ecx, 428
+    mov edx, 90
     lea r8, MenuOptionLog
     mov r9d, DIAG_TEXT
     cmp dword ptr [MenuSelection], 1
@@ -1277,8 +1282,8 @@ draw_menu_diag:
 draw_menu_log:
     call DrawString
 
-    mov ecx, 424
-    mov edx, 120
+    mov ecx, 428
+    mov edx, 122
     lea r8, MenuOptionPanic
     mov r9d, DIAG_TEXT
     cmp dword ptr [MenuSelection], 2
@@ -1298,8 +1303,9 @@ DrawTitleScreen PROC
 
     call DrawEngine64Showcase
 
-    FILL_GOP_RECT 28, 24, 360, 96, 00101820h
-    FILL_GOP_RECT 42, 84, 348, 5, DIAG_ACCENT
+    FILL_GOP_RECT 28, 24, 360, 104, 00070B12h
+    FILL_GOP_RECT 42, 86, 286, 5, DIAG_ACCENT
+    FILL_GOP_RECT 42, 94, 192, 2, 00FFE66Dh
 
     mov ecx, 42
     mov edx, 42
@@ -1308,23 +1314,24 @@ DrawTitleScreen PROC
     call DrawString
 
     mov ecx, 44
-    mov edx, 92
+    mov edx, 100
     lea r8, SubtitleLine
     mov r9d, DIAG_MUTED
     call DrawString
 
     call DrawMenuOptions
 
-    FILL_GOP_RECT 28, 392, 584, 64, 00101820h
+    FILL_GOP_RECT 28, 402, 412, 52, 00070B12h
+    FILL_GOP_RECT 28, 404, 412, 2, 00FF90FFh
 
     mov ecx, 42
-    mov edx, 406
+    mov edx, 414
     lea r8, StartHintLine
     mov r9d, DIAG_TEXT
     call DrawString
 
     mov ecx, 42
-    mov edx, 430
+    mov edx, 436
     lea r8, BuildHintLine
     mov r9d, DIAG_MUTED
     call DrawString
@@ -1674,143 +1681,297 @@ render_sky_color_ready:
 
 render_scene_overlays:
     mov ecx, 0
+    mov edx, 264
+    mov r8d, 640
+    mov r9d, 22
+    mov eax, 00142632h
+    call FillFrameRect
+
+    mov ecx, 0
     mov edx, 286
     mov r8d, 640
-    mov r9d, 5
+    mov r9d, 6
+    mov eax, dword ptr [r12 + 16]
+    call FillFrameRect
+
+    mov ecx, 0
+    mov edx, 304
+    mov r8d, 640
+    mov r9d, 2
     mov eax, dword ptr [r12 + 12]
     call FillFrameRect
 
     mov ecx, 0
-    mov edx, 332
+    mov edx, 326
     mov r8d, 640
     mov r9d, 2
-    mov eax, 003080D0h
+    mov eax, dword ptr [r12 + 28]
     call FillFrameRect
 
     mov ecx, 0
-    mov edx, 386
+    mov edx, 356
     mov r8d, 640
     mov r9d, 2
-    mov eax, 00A020B0h
+    mov eax, dword ptr [r12 + 36]
     call FillFrameRect
 
     mov ecx, 0
-    mov edx, 438
+    mov edx, 392
+    mov r8d, 640
+    mov r9d, 2
+    mov eax, dword ptr [r12 + 28]
+    call FillFrameRect
+
+    mov ecx, 0
+    mov edx, 436
     mov r8d, 640
     mov r9d, 3
-    mov eax, 00D8FFFFh
+    mov eax, dword ptr [r12 + 16]
     call FillFrameRect
 
-    mov ecx, 314
+    mov ecx, 320
+    mov edx, 20
+    mov r8d, 286
+    mov r9d, 479
+    mov eax, dword ptr [r12 + 12]
+    call DrawFrameRoadRay
+
+    mov ecx, 320
+    mov edx, 132
+    mov r8d, 286
+    mov r9d, 479
+    mov eax, dword ptr [r12 + 28]
+    call DrawFrameRoadRay
+
+    mov ecx, 320
+    mov edx, 260
+    mov r8d, 286
+    mov r9d, 479
+    mov eax, dword ptr [r12 + 16]
+    call DrawFrameRoadRay
+
+    mov ecx, 320
+    mov edx, 380
+    mov r8d, 286
+    mov r9d, 479
+    mov eax, dword ptr [r12 + 16]
+    call DrawFrameRoadRay
+
+    mov ecx, 320
+    mov edx, 508
+    mov r8d, 286
+    mov r9d, 479
+    mov eax, dword ptr [r12 + 28]
+    call DrawFrameRoadRay
+
+    mov ecx, 320
+    mov edx, 628
+    mov r8d, 286
+    mov r9d, 479
+    mov eax, dword ptr [r12 + 12]
+    call DrawFrameRoadRay
+
+    mov ecx, 318
     mov edx, 286
-    mov r8d, 4
+    mov r8d, 5
     mov r9d, 194
-    mov eax, 003080D0h
+    mov eax, dword ptr [r12 + 12]
     call FillFrameRect
 
-    mov ecx, 222
+    mov ecx, 42
+    mov edx, 140
+    mov r8d, 62
+    mov r9d, 148
+    mov eax, dword ptr [r12 + 44]
+    call FillFrameRect
+
+    mov ecx, 114
+    mov edx, 104
+    mov r8d, 68
+    mov r9d, 184
+    mov eax, 00081018h
+    call FillFrameRect
+
+    mov ecx, 196
+    mov edx, 168
+    mov r8d, 44
+    mov r9d, 120
+    mov eax, 0009121Ch
+    call FillFrameRect
+
+    mov ecx, 272
+    mov edx, 154
+    mov r8d, 96
+    mov r9d, 86
+    mov eax, 00081018h
+    call FillFrameRect
+
+    mov ecx, 454
+    mov edx, 122
+    mov r8d, 72
+    mov r9d, 166
+    mov eax, dword ptr [r12 + 44]
+    call FillFrameRect
+
+    mov ecx, 540
+    mov edx, 158
+    mov r8d, 56
+    mov r9d, 130
+    mov eax, 00081018h
+    call FillFrameRect
+
+    mov ecx, 224
     mov edx, 330
     mov r8d, 3
     mov r9d, 150
-    mov eax, 00182A38h
+    mov eax, dword ptr [r12 + 8]
     call FillFrameRect
 
     mov ecx, 442
     mov edx, 330
     mov r8d, 3
     mov r9d, 150
-    mov eax, 00182A38h
-    call FillFrameRect
-
-    mov ecx, 42
-    mov edx, 178
-    mov r8d, 46
-    mov r9d, 110
-    mov eax, 00081018h
-    call FillFrameRect
-
-    mov ecx, 106
-    mov edx, 150
-    mov r8d, 62
-    mov r9d, 138
-    mov eax, 0009121Ch
-    call FillFrameRect
-
-    mov ecx, 182
-    mov edx, 198
-    mov r8d, 36
-    mov r9d, 90
-    mov eax, 00081018h
-    call FillFrameRect
-
-    mov ecx, 472
-    mov edx, 166
-    mov r8d, 48
-    mov r9d, 122
-    mov eax, 0009121Ch
-    call FillFrameRect
-
-    mov ecx, 540
-    mov edx, 194
-    mov r8d, 32
-    mov r9d, 94
-    mov eax, 00081018h
+    mov eax, dword ptr [r12 + 8]
     call FillFrameRect
 
     mov ecx, 62
-    mov edx, 214
-    mov r8d, 8
-    mov r9d, 34
-    mov eax, 00D8FFFFh
-    call FillFrameRect
-
-    mov ecx, 130
-    mov edx, 190
-    mov r8d, 8
-    mov r9d, 52
-    mov eax, 0020D060h
-    call FillFrameRect
-
-    mov ecx, 490
-    mov edx, 206
-    mov r8d, 8
+    mov edx, 198
+    mov r8d, 10
     mov r9d, 42
-    mov eax, 00FF90FFh
+    mov eax, dword ptr [r12 + 16]
     call FillFrameRect
 
-    mov ecx, 246
-    mov edx, 226
-    mov r8d, 56
-    mov r9d, 10
-    mov eax, 00060C14h
-    call FillFrameRect
-
-    mov ecx, 274
-    mov edx, 212
-    mov r8d, 92
+    mov ecx, 84
+    mov edx, 176
+    mov r8d, 8
     mov r9d, 28
+    mov eax, dword ptr [r12 + 36]
+    call FillFrameRect
+
+    mov ecx, 132
+    mov edx, 188
+    mov r8d, 9
+    mov r9d, 54
+    mov eax, dword ptr [r12 + 20]
+    call FillFrameRect
+
+    mov ecx, 160
+    mov edx, 126
+    mov r8d, 12
+    mov r9d, 32
+    mov eax, dword ptr [r12 + 40]
+    call FillFrameRect
+
+    mov ecx, 292
+    mov edx, 176
+    mov r8d, 54
+    mov r9d, 10
+    mov eax, dword ptr [r12 + 16]
+    call FillFrameRect
+
+    mov ecx, 462
+    mov edx, 156
+    mov r8d, 44
+    mov r9d, 8
+    mov eax, dword ptr [r12 + 36]
+    call FillFrameRect
+
+    mov ecx, 486
+    mov edx, 190
+    mov r8d, 9
+    mov r9d, 54
+    mov eax, dword ptr [r12 + 28]
+    call FillFrameRect
+
+    mov ecx, 552
+    mov edx, 198
+    mov r8d, 12
+    mov r9d, 48
+    mov eax, dword ptr [r12 + 40]
+    call FillFrameRect
+
+    mov ecx, 272
+    mov edx, 222
+    mov r8d, 64
+    mov r9d, 18
+    mov eax, dword ptr [r12 + 44]
+    call FillFrameRect
+
+    mov ecx, 310
+    mov edx, 206
+    mov r8d, 112
+    mov r9d, 32
     mov eax, 00101820h
     call FillFrameRect
 
-    mov ecx, 356
-    mov edx, 220
-    mov r8d, 38
-    mov r9d, 12
-    mov eax, 00060C14h
+    mov ecx, 408
+    mov edx, 218
+    mov r8d, 42
+    mov r9d, 14
+    mov eax, dword ptr [r12 + 44]
     call FillFrameRect
 
-    mov ecx, 296
-    mov edx, 220
-    mov r8d, 38
-    mov r9d, 8
-    mov eax, 00D8FFFFh
-    call FillFrameRect
-
-    mov ecx, 238
+    mov ecx, 248
     mov edx, 238
-    mov r8d, 172
+    mov r8d, 204
+    mov r9d, 4
+    mov eax, dword ptr [r12 + 28]
+    call FillFrameRect
+
+    mov ecx, 334
+    mov edx, 216
+    mov r8d, 42
+    mov r9d, 8
+    mov eax, dword ptr [r12 + 16]
+    call FillFrameRect
+
+    mov ecx, 378
+    mov edx, 226
+    mov r8d, 18
+    mov r9d, 6
+    mov eax, dword ptr [r12 + 36]
+    call FillFrameRect
+
+    mov ecx, 292
+    mov edx, 244
+    mov r8d, 26
     mov r9d, 3
-    mov eax, 00A020B0h
+    mov eax, dword ptr [r12 + 40]
+    call FillFrameRect
+
+    mov ecx, 404
+    mov edx, 244
+    mov r8d, 26
+    mov r9d, 3
+    mov eax, dword ptr [r12 + 40]
+    call FillFrameRect
+
+    mov ecx, 96
+    mov edx, 288
+    mov r8d, 448
+    mov r9d, 1
+    mov eax, dword ptr [r12 + 32]
+    call FillFrameRect
+
+    mov ecx, 286
+    mov edx, 258
+    mov r8d, 78
+    mov r9d, 6
+    mov eax, dword ptr [r12 + 36]
+    call FillFrameRect
+
+    mov ecx, 0
+    mov edx, 0
+    mov r8d, 640
+    mov r9d, 8
+    mov eax, dword ptr [r12 + 44]
+    call FillFrameRect
+
+    mov ecx, 0
+    mov edx, 472
+    mov r8d, 640
+    mov r9d, 8
+    mov eax, dword ptr [r12 + 44]
     call FillFrameRect
 
 render_ok:
@@ -1885,6 +2046,75 @@ frame_rect_done:
     pop rbx
     ret
 FillFrameRect ENDP
+
+DrawFrameRoadRay PROC
+    push rbx
+    push rsi
+    push rdi
+    push r12
+    push r13
+    push r14
+    push r15
+
+    mov r15d, eax
+    mov r10d, ecx
+    mov r11d, edx
+    mov r12d, r8d
+    mov r13d, r9d
+
+    mov eax, r11d
+    sub eax, r10d
+    shl eax, 16
+    mov ebx, r13d
+    sub ebx, r12d
+    jle frame_ray_done
+    cdq
+    idiv ebx
+    mov r14d, eax
+
+    mov eax, r10d
+    shl eax, 16
+    mov esi, eax
+
+frame_ray_loop:
+    cmp r12d, r13d
+    ja frame_ray_done
+
+    mov eax, esi
+    sar eax, 16
+    cmp eax, 0
+    jl frame_ray_next
+    cmp eax, ENGINE64_EXPECTED_WIDTH - 2
+    jg frame_ray_next
+    cmp r12d, ENGINE64_EXPECTED_HEIGHT
+    jae frame_ray_next
+
+    mov ecx, r12d
+    imul ecx, ecx, ENGINE64_EXPECTED_WIDTH
+    add ecx, eax
+    shl rcx, 2
+    mov rdi, qword ptr [FrameArenaBase]
+    add rdi, rcx
+
+    mov eax, r15d
+    stosd
+    stosd
+
+frame_ray_next:
+    add esi, r14d
+    inc r12d
+    jmp frame_ray_loop
+
+frame_ray_done:
+    pop r15
+    pop r14
+    pop r13
+    pop r12
+    pop rdi
+    pop rsi
+    pop rbx
+    ret
+DrawFrameRoadRay ENDP
 
 PresentInternalFrameToGop PROC
     push rsi
@@ -2344,8 +2574,8 @@ InputLastAction dd 0
 MenuSelection dd 0
 MenuPanel dd 0
 
-TitleLine db 'CYBERSTORM X64 UEFI',0
-SubtitleLine db 'NEON DISTRICT START',0
+TitleLine db 'CYBERSTORM',0
+SubtitleLine db 'X64 NEON DISTRICT',0
 ResLine db 'RES: 00000000X00000000',0
 PixelLine db 'PXFMT: 00000000',0
 FrameLine db 'FB: 0000000000000000',0
@@ -2363,15 +2593,15 @@ InputLine db 'KEY SC0000 CH0000 ACT0000',0
 CountsLine db 'OK 00000000 BACK 00000000',0
 StatusLine db 'STATUS: TITLE READY',0
 MenuLine db 'X64 START',0
-StartHintLine db 'PURE ASM UEFI X64 SOFTWARE 3D',0
-BuildHintLine db 'NEW GAME OPTIONS CREDITS',0
-MenuTitleLine db 'MENU',0
+StartHintLine db 'W/S SELECT  ENTER CONFIRM',0
+BuildHintLine db 'ESC BACK  OPTIONS  CREDITS',0
+MenuTitleLine db 'SELECT',0
 MenuOptionDiag db 'NEW GAME',0
 MenuOptionLog db 'OPTIONS',0
 MenuOptionPanic db 'CREDITS',0
-MenuPanelIdle db 'READY',0
-MenuPanelDiag db 'START',0
-MenuPanelLog db 'OPTS',0
+MenuPanelIdle db 'LIVE',0
+MenuPanelDiag db 'RUN',0
+MenuPanelLog db 'TUNE',0
 MenuPanelPanic db 'CREDS',0
 PanicTitleLine db 'CYBERSTORM X64 BOOT ALERT',0
 PanicArenaLine db 'ARENA ALLOC FAIL',0

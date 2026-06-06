@@ -4,7 +4,7 @@ CyberStorm is a bare-metal game project moving from its expanded BIOS x86 runtim
 
 ## x64 UEFI Release Contract
 
-The forward release target is `cyberstorm-x64.iso`, built with `scripts/build.ps1 -Target x64-uefi` and booted by firmware from `EFI/BOOT/BOOTX64.EFI`. The current target is a PE32+ x64 EFI application on a UEFI El Torito ISO, with a GOP-presented title screen, simple input, high-memory arenas, framebuffer failure/log reporting, a FAT-backed x64 pack loader, and an assembly-built `ENGINE64` scaffold chunk. Later milestones replace the scaffold scene with the renderer, audio, and gameplay vertical slice.
+The mainline release target is `cyberstorm-x64.iso`, built with `scripts/build.ps1` or explicitly with `scripts/build.ps1 -Target x64-uefi`, and booted by firmware from `EFI/BOOT/BOOTX64.EFI`. The current target is a PE32+ x64 EFI application on a UEFI El Torito ISO, with a GOP-presented title screen, simple input, high-memory arenas, framebuffer failure/log reporting, a FAT-backed x64 pack loader, and an assembly-built `ENGINE64` scaffold chunk. Later milestones replace the scaffold scene with the renderer, audio, and gameplay vertical slice.
 
 Target assumptions:
 
@@ -16,10 +16,10 @@ Target assumptions:
 - x64 chunks reserve names for engine, textures, meshes, materials, maps, scripts, audio, title scene, and campaign scenes. `X64PACK.BIN` uses fixed chunk records with type, offset, size, load target, alignment, and FNV-1a checksum fields. The current `ENGINE64` chunk is generated from `src/engine64.asm`; the other chunks remain deterministic scaffold payloads until their real asset generators land.
 - After validation, the runtime stages pack chunks into high-memory arenas instead of leaving them only in the scratch read buffer. Engine data goes to the engine arena, texture/material data to the texture arena, audio to the audio arena, and mesh/map/script/title/campaign data to the mesh-scene arena.
 - The current M2 renderer scaffold treats the frame arena as a `640x480` xRGB8888 internal framebuffer. `ENGINE64` provides a deterministic expanded neon megacity title-scene palette, and the boot runtime presents that internal frame to GOP through direct or red/blue-swapped conversion for the common BGR, RGB, and matching bitmask layouts.
-- `scripts/deploy-x64-vm.ps1` is the supported local demo path for the forward release. It creates a UEFI VirtualBox profile, attaches `cyberstorm-x64.iso`, optionally captures the title frame, and can run a small menu input smoke without touching the legacy BIOS VM.
+- `scripts/deploy-x64-vm.ps1` is the supported local demo path for the mainline release. It creates a UEFI VirtualBox profile, attaches `cyberstorm-x64.iso`, validates nonblack/accented title screenshots, optionally captures the title frame, and can run a small menu input smoke without touching the legacy BIOS VM.
 - The x64 ISO remains physical-media friendly: it uses a UEFI El Torito boot image, includes `EFI/BOOT/BOOTX64.EFI` in the FAT image, and carries `X64PACK.BIN` plus `X64MAN.TXT` in both the FAT root and ISO root for firmware/runtime access and external inspection.
-- The legacy x86 expanded ISO remains the default and compatibility target until the x64 vertical slice can boot, render, accept input, and play one small 3D mission with VM smoke coverage.
-- Cutover to x64 mainline requires `cyberstorm-x64.iso`, `cyberstorm-x64-build-report.txt`, `cyberstorm-x64-pack-report.txt`, and `cyberstorm-x64-smoke-report.txt` to pass their release criteria, while the x86 expanded build remains available by explicit flag or archive path.
+- The legacy x86 expanded ISO is retained as an explicit archive/reference target through `scripts/build.ps1 -Target x86-expanded`; it is no longer the default release build.
+- Production readiness now centers on three x64 blockers: repeatable VM smoke, the playable x64 vertical slice, and the final release cutover checklist in [docs/x64-production-readiness.md](x64-production-readiness.md).
 
 ## 1. Boot And Load Contract
 

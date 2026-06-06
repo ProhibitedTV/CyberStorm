@@ -2,14 +2,14 @@
 
 > No OS. No shell. Just the realm.
 >
-> CyberStorm is a bootable bare-metal 3D adventure campaign and engine project. The playable legacy path still emits an expanded BIOS boot image plus burnable CD/DVD ISO wrapper, while the forward path now builds a UEFI x64 ISO with a GOP title-screen runtime, x64 pack loader, and assembly-built `ENGINE64` scaffold payload.
+> CyberStorm is a bootable bare-metal 3D adventure campaign and engine project. The mainline release path is now a UEFI x64 ISO with a GOP title-screen runtime, x64 pack loader, and assembly-built `ENGINE64` scaffold payload, while the older BIOS x86 build remains available as a legacy archive target.
 
 ![CyberStorm hero](build/readme-shot-1.png)
 
 | Built for | Boots from | Video | Runtime |
 | --- | --- | --- | --- |
 | UEFI x64 + GOP | Burnable UEFI El Torito ISO (`cyberstorm-x64.iso`) | GOP-presented `640x480` title screen now; CPU software-3D renderer target | PE32+ `BOOTX64.EFI`, UEFI FAT payloads, `X64PACK.BIN`, assembly-built `ENGINE64.BIN` scaffold |
-| BIOS x86 + Oracle VirtualBox | Expanded raw image (`.img`) and burnable ISO wrapper (`cyberstorm-expanded.iso`) | VBE `640x480x16` present path over a `320x240` gameplay surface with exact 2x presentation when active, plus legacy VGA fallback | i386-targeted boot chain + current 16-bit stage-two runtime, with generated high-memory reservations for the engine migration |
+| BIOS x86 + Oracle VirtualBox | Explicit legacy build (`-Target x86-expanded`) with expanded raw image and burnable ISO wrapper | VBE `640x480x16` present path over a `320x240` gameplay surface with exact 2x presentation when active, plus legacy VGA fallback | i386-targeted boot chain + current 16-bit stage-two runtime retained as archive/reference material |
 
 ## Key Features
 
@@ -23,8 +23,8 @@
 
 ### For Engine People
 
-- **A real boot path.** The build emits a bootable BIOS disk image, not a host app wrapped in a fake shell.
-- **A forward x64 ISO path.** `-Target x64-uefi` emits `cyberstorm-x64.iso`, `BOOTX64.EFI`, `X64PACK.BIN`, `X64MAN.TXT`, and `ENGINE64.BIN` for the UEFI migration.
+- **A real boot path.** The build emits a bootable UEFI x64 ISO, not a host app wrapped in a fake shell.
+- **A mainline x64 ISO path.** The default build emits `cyberstorm-x64.iso`, `BOOTX64.EFI`, `X64PACK.BIN`, `X64MAN.TXT`, and `ENGINE64.BIN` for the UEFI release.
 - **An ENGINE64 framebuffer scaffold.** The UEFI build now renders the loaded `ENGINE64` expanded megacity title-scene palette into an internal `640x480` xRGB8888 frame arena, then presents it through GOP direct/swap conversion.
 - **Larger x64 memory budgets.** The UEFI path now allocates a 32 MiB engine-owned arena block and stages validated pack chunks into engine, texture, mesh/scene/script, audio, scratch, and log arenas.
 - **An expanded release surface.** The build now emits a larger mainline boot image, a typed pack-directory artifact, an expanded manifest, and a bootable ISO wrapper so future renderer/audio/content payloads are no longer planned around a floppy-sized ceiling.
@@ -72,19 +72,23 @@ The runtime keeps BIOS-owned low memory untouched, inherits the boot stack at `0
 
 ## Quickstart
 
-### Build The Expanded Release Image And ISO
+The active production blockers and next gates are tracked in [docs/x64-production-readiness.md](docs/x64-production-readiness.md).
+
+### Build The Mainline x64 UEFI ISO
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\build.ps1
 ```
 
-### Build The x64 UEFI ISO
+The mainline artifact is [build/cyberstorm-x64.iso](build/cyberstorm-x64.iso). It remains packageable as physical optical media through the UEFI El Torito path and carries the FAT boot image plus pack payloads needed by `BOOTX64.EFI`.
+
+### Build And Smoke The x64 ISO
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\build.ps1 -Target x64-uefi
+powershell -ExecutionPolicy Bypass -File .\scripts\build.ps1 -VmSmoke
 ```
 
-The x64 artifact is [build/cyberstorm-x64.iso](build/cyberstorm-x64.iso). It remains packageable as physical optical media through the UEFI El Torito path and carries the FAT boot image plus pack payloads needed by `BOOTX64.EFI`.
+This boots the x64 ISO in a UEFI VirtualBox VM, captures the title/menu path, runs a small input smoke, and writes [build/cyberstorm-x64-smoke-report.txt](build/cyberstorm-x64-smoke-report.txt).
 
 ### Boot The x64 ISO In VirtualBox
 
@@ -102,7 +106,13 @@ powershell -ExecutionPolicy Bypass -File .\scripts\deploy-x64-vm.ps1 -Frontend g
 
 ### Boot The Legacy x86 Image In VirtualBox
 
-The legacy path uses the existing deployment script, which refreshes a VirtualBox-ready disk from [build/cyberstorm.img](build/cyberstorm.img) and also attaches [build/cyberstorm-expanded.iso](build/cyberstorm-expanded.iso) when present:
+Build the legacy BIOS image explicitly:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\build.ps1 -Target x86-expanded
+```
+
+Then use the existing deployment script, which refreshes a VirtualBox-ready disk from [build/cyberstorm.img](build/cyberstorm.img) and also attaches [build/cyberstorm-expanded.iso](build/cyberstorm-expanded.iso) when present:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\deploy-vm.ps1
@@ -110,15 +120,15 @@ powershell -ExecutionPolicy Bypass -File .\scripts\deploy-vm.ps1
 
 If you wire a VM manually for the legacy path, use a BIOS VM and attach a hard disk derived from [build/cyberstorm.img](build/cyberstorm.img). The expanded ISO contains the boot image, pack directory, and manifest for burnable-media distribution.
 
-### Use The Included Workspace VM
+### Use The Legacy Workspace VM
 
-Register the reusable VM:
+Register the reusable legacy BIOS VM:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\deploy-vm.ps1
 ```
 
-Launch it:
+Launch the legacy BIOS VM:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\start-vm.ps1

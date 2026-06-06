@@ -1,6 +1,6 @@
 param(
     [ValidateSet('x86-expanded', 'x64-uefi')]
-    [string]$Target = 'x86-expanded',
+    [string]$Target = 'x64-uefi',
     [ValidateSet('masm', 'uasm', 'jwasm')]
     [string]$Assembler = 'masm',
     [string]$AssemblerPath,
@@ -791,7 +791,10 @@ function Write-X64BootstrapReports {
         'CyberStorm x64 Smoke Report'
         ("Generated: {0}" -f $timestamp)
         'Status: not run'
-        'Reason: build path generated and statically validated the UEFI ISO; run the UEFI VM smoke lane to verify the GOP title screen and keyboard menu.'
+        'Reason: build path generated and statically validated the UEFI ISO; run the x64 UEFI VM smoke lane to verify boot, GOP title output, and keyboard menu input.'
+        'Run: powershell -ExecutionPolicy Bypass -File .\scripts\build.ps1 -VmSmoke'
+        'Boot mode: UEFI x64'
+        'Display mode: UEFI GOP, 640x480 internal xRGB8888 title frame'
         ("ISO: {0}" -f $IsoResult.IsoPath)
         ("BOOTX64.EFI: {0}" -f $PeValidation.Path)
         ("Host preview: {0}" -f $PreviewResult.Path)
@@ -6412,6 +6415,7 @@ $regressionHarnessScript = Join-Path $PSScriptRoot 'regression-harness.ps1'
 $expandedIsoScript = Join-Path $PSScriptRoot 'write-expanded-iso.ps1'
 $x64IsoScript = Join-Path $PSScriptRoot 'write-uefi-iso.ps1'
 $x64PreviewScript = Join-Path $PSScriptRoot 'render-x64-preview.ps1'
+$x64DeployScript = Join-Path $PSScriptRoot 'deploy-x64-vm.ps1'
 $gameObj = Join-Path $buildDir 'game.obj'
 $engine32Obj = Join-Path $buildDir 'engine32.obj'
 $engine64Obj = Join-Path $buildDir 'engine64.obj'
@@ -6504,6 +6508,22 @@ if ($Target -eq 'x64-uefi') {
         -RequestedAssemblerPath $X64AssemblerPath `
         -RequestedLinkerPath $X64LinkerPath `
         -ForcePanic $X64ForcePanic.IsPresent | Out-Null
+
+    if ($VmSmoke.IsPresent) {
+        Write-Section -Title 'x64 UEFI VM Smoke'
+        Assert-PathExists -Path $x64DeployScript -Label 'x64 VM deploy script'
+        $x64SmokeScreenshotPath = Join-Path $buildDir 'cyberstorm-x64-vm-smoke-title.png'
+        $x64SmokeResult = & $x64DeployScript `
+            -Frontend headless `
+            -Capture `
+            -InputSmoke `
+            -ScreenshotPath $x64SmokeScreenshotPath `
+            -ReportPath $x64SmokeReportPath
+        Write-Host ("VM: {0} ({1})" -f $x64SmokeResult.VmName, $x64SmokeResult.State)
+        Write-Host ("Title screenshot: {0}" -f $x64SmokeResult.Screenshot)
+        Write-Host ("Smoke report: {0}" -f $x64SmokeResult.SmokeReport)
+    }
+
     return
 }
 

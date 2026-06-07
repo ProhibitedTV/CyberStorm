@@ -34,6 +34,9 @@ $paletteCount = [int](Read-U32 20)
 $flags = Read-U32 24
 $paletteOffset = [int](Read-U32 28)
 $bytesPerColor = [int](Read-U32 32)
+$modelTableOffset = [int](Read-U32 56)
+$modelCount = [int](Read-U32 60)
+$modelRecordBytes = [int](Read-U32 64)
 
 if ($version -ne 1) {
     throw "ENGINE64 preview supports payload version 1, found $version."
@@ -49,6 +52,70 @@ if ($bytesPerColor -ne 4) {
 }
 if (($paletteOffset + ($paletteCount * 4)) -gt $bytes.Length) {
     throw "ENGINE64 preview palette table extends past the payload."
+}
+if ($modelCount -lt 0 -or $modelCount -gt 8) {
+    throw "ENGINE64 preview model count must be 0..8, found $modelCount."
+}
+
+$modelNames = New-Object 'System.Collections.Generic.List[string]'
+if ($modelCount -gt 0) {
+    if ($modelRecordBytes -ne 32) {
+        throw "ENGINE64 preview expected 32-byte model records, found $modelRecordBytes."
+    }
+
+    $modelTableEnd = [int64]$modelTableOffset + ([int64]$modelCount * [int64]$modelRecordBytes)
+    if ($modelTableOffset -lt 96 -or $modelTableEnd -gt $bytes.Length) {
+        throw "ENGINE64 preview model table extends past the payload."
+    }
+
+    for ($modelIndex = 0; $modelIndex -lt $modelCount; $modelIndex++) {
+        $recordOffset = $modelTableOffset + ($modelIndex * $modelRecordBytes)
+        $name = ([Text.Encoding]::ASCII.GetString($bytes, $recordOffset, 8)).Trim()
+        if ([string]::IsNullOrWhiteSpace($name)) {
+            throw "ENGINE64 preview model $modelIndex has an empty name."
+        }
+
+        $vertexOffset = [int](Read-U32 ($recordOffset + 8))
+        $vertexCount = [int](Read-U32 ($recordOffset + 12))
+        $faceOffset = [int](Read-U32 ($recordOffset + 16))
+        $faceCount = [int](Read-U32 ($recordOffset + 20))
+
+        if ($vertexCount -lt 1 -or $vertexCount -gt 64) {
+            throw "ENGINE64 preview model $name vertex count must be 1..64, found $vertexCount."
+        }
+        if ($faceCount -lt 1 -or $faceCount -gt 128) {
+            throw "ENGINE64 preview model $name face count must be 1..128, found $faceCount."
+        }
+
+        $vertexEnd = [int64]$vertexOffset + ([int64]$vertexCount * 6)
+        $faceEnd = [int64]$faceOffset + ([int64]$faceCount * 4)
+        if ($vertexOffset -lt 96 -or $vertexEnd -gt $bytes.Length) {
+            throw "ENGINE64 preview model $name vertex table extends past the payload."
+        }
+        if ($faceOffset -lt 96 -or $faceEnd -gt $bytes.Length) {
+            throw "ENGINE64 preview model $name face table extends past the payload."
+        }
+
+        for ($faceIndex = 0; $faceIndex -lt $faceCount; $faceIndex++) {
+            $faceBase = $faceOffset + ($faceIndex * 4)
+            $a = [int]$bytes[$faceBase]
+            $b = [int]$bytes[$faceBase + 1]
+            $c = [int]$bytes[$faceBase + 2]
+            $material = [int]$bytes[$faceBase + 3]
+
+            if ($a -ge $vertexCount -or $b -ge $vertexCount -or $c -ge $vertexCount) {
+                throw "ENGINE64 preview model $name face $faceIndex references a missing vertex."
+            }
+            if ($a -eq $b -or $b -eq $c -or $a -eq $c) {
+                throw "ENGINE64 preview model $name face $faceIndex is degenerate."
+            }
+            if ($material -ge $paletteCount) {
+                throw "ENGINE64 preview model $name face $faceIndex references palette index $material, but only $paletteCount entries exist."
+            }
+        }
+
+        $modelNames.Add($name)
+    }
 }
 
 Add-Type -AssemblyName System.Drawing
@@ -215,5 +282,7 @@ $item = Get-Item -LiteralPath $OutputPath
     Width = $width
     Height = $height
     PaletteEntries = $paletteCount
+    ModelEntries = $modelCount
+    ModelNames = ($modelNames -join ',')
     Flags = ('0x{0:X8}' -f $flags)
 }

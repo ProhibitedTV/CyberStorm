@@ -87,6 +87,12 @@ ENGINE64_EXPECTED_HEIGHT      equ 000001E0h
 ENGINE64_MIN_BYTES            equ 00000060h
 ENGINE64_FRAME_BYTES          equ 0012C000h
 ENGINE64_FRAME_PIXELS         equ 0004B000h
+ENGINE64_MODEL_TABLE_FIELD    equ 00000038h
+ENGINE64_MODEL_COUNT_FIELD    equ 0000003Ch
+ENGINE64_MODEL_RECORD_FIELD   equ 00000040h
+ENGINE64_MODEL_RECORD_BYTES   equ 00000020h
+ENGINE64_VERTEX_BYTES         equ 00000006h
+ENGINE64_FACE_BYTES           equ 00000004h
 PRESENT_MODE_DIRECT           equ 00000000h
 PRESENT_MODE_SWAP_RB          equ 00000001h
 RENDER_STATUS_OK              equ 00000000h
@@ -566,6 +572,9 @@ LoadX64Pack PROC
     mov dword ptr [Engine64Height], 0
     mov dword ptr [Engine64BarCount], 0
     mov dword ptr [Engine64FeatureFlags], 0
+    mov dword ptr [Engine64ModelTableOffset], 0
+    mov dword ptr [Engine64ModelCount], 0
+    mov dword ptr [Engine64ModelRecordBytes], 0
     mov qword ptr [Engine64ChunkBase], 0
     mov dword ptr [Engine64ChunkBytes], 0
     mov dword ptr [RenderStatus], RENDER_STATUS_NO_ENGINE
@@ -899,6 +908,81 @@ ValidateEngine64Chunk PROC
     cmp eax, ecx
     ja engine64_fail
 
+    mov eax, dword ptr [rdx + ENGINE64_MODEL_TABLE_FIELD]
+    mov dword ptr [Engine64ModelTableOffset], eax
+    mov eax, dword ptr [rdx + ENGINE64_MODEL_COUNT_FIELD]
+    mov dword ptr [Engine64ModelCount], eax
+    mov eax, dword ptr [rdx + ENGINE64_MODEL_RECORD_FIELD]
+    mov dword ptr [Engine64ModelRecordBytes], eax
+
+    mov r8d, dword ptr [Engine64ModelCount]
+    test r8d, r8d
+    jz engine64_valid
+    cmp r8d, 8
+    ja engine64_fail
+    cmp dword ptr [Engine64ModelRecordBytes], ENGINE64_MODEL_RECORD_BYTES
+    jne engine64_fail
+
+    mov r9d, dword ptr [Engine64ModelTableOffset]
+    cmp r9d, ENGINE64_MIN_BYTES
+    jb engine64_fail
+    cmp r9d, ecx
+    jae engine64_fail
+    mov eax, r8d
+    imul eax, eax, ENGINE64_MODEL_RECORD_BYTES
+    add eax, r9d
+    jc engine64_fail
+    cmp eax, ecx
+    ja engine64_fail
+
+    xor r8d, r8d
+
+engine64_model_loop:
+    cmp r8d, dword ptr [Engine64ModelCount]
+    jae engine64_valid
+
+    mov r9d, r8d
+    shl r9d, 5
+    add r9d, dword ptr [Engine64ModelTableOffset]
+
+    mov r10d, dword ptr [rdx + r9 + 8]
+    cmp r10d, ENGINE64_MIN_BYTES
+    jb engine64_fail
+    cmp r10d, ecx
+    jae engine64_fail
+    mov r11d, dword ptr [rdx + r9 + 12]
+    test r11d, r11d
+    jz engine64_fail
+    cmp r11d, 64
+    ja engine64_fail
+    mov eax, r11d
+    imul eax, eax, ENGINE64_VERTEX_BYTES
+    add eax, r10d
+    jc engine64_fail
+    cmp eax, ecx
+    ja engine64_fail
+
+    mov r10d, dword ptr [rdx + r9 + 16]
+    cmp r10d, ENGINE64_MIN_BYTES
+    jb engine64_fail
+    cmp r10d, ecx
+    jae engine64_fail
+    mov r11d, dword ptr [rdx + r9 + 20]
+    test r11d, r11d
+    jz engine64_fail
+    cmp r11d, 128
+    ja engine64_fail
+    mov eax, r11d
+    imul eax, eax, ENGINE64_FACE_BYTES
+    add eax, r10d
+    jc engine64_fail
+    cmp eax, ecx
+    ja engine64_fail
+
+    inc r8d
+    jmp engine64_model_loop
+
+engine64_valid:
     mov dword ptr [Engine64Status], 0
     xor eax, eax
     ret
@@ -1745,12 +1829,11 @@ DrawFirstLevel PROC
     cmp dword ptr [EnemyAlive], 0
     je draw_level_clear
 
-    FILL_GOP_RECT 286, 168, 80, 98, 00030A10h
-    FILL_GOP_RECT 298, 180, 56, 56, 00A020B0h
-    FILL_GOP_RECT 306, 190, 40, 36, 00182A38h
-    FILL_GOP_RECT 312, 198, 12, 10, 00D8FFFFh
-    FILL_GOP_RECT 336, 198, 12, 10, 00FF4058h
-    FILL_GOP_RECT 292, 246, 68, 4, 00FF90FFh
+    mov ecx, 0
+    mov edx, 326
+    mov r8d, 220
+    mov r9d, 38
+    call DrawEngine64Model
 
     cmp dword ptr [EnemyHp], 1
     jb draw_enemy_label
@@ -1771,9 +1854,12 @@ draw_enemy_label:
     jmp draw_level_actor
 
 draw_level_clear:
-    FILL_GOP_RECT 260, 156, 120, 96, 0020D060h
-    FILL_GOP_RECT 274, 170, 92, 68, 00070B12h
-    FILL_GOP_RECT 300, 190, 40, 30, 00D8FFFFh
+    mov ecx, 1
+    mov edx, 320
+    mov r8d, 206
+    mov r9d, 36
+    call DrawEngine64Model
+    FILL_GOP_RECT 286, 246, 68, 4, 0020D060h
     mov ecx, 224
     mov edx, 138
     lea r8, LevelClearLine
@@ -2817,6 +2903,258 @@ gop_rect_done:
     ret
 DrawGopRect ENDP
 
+DrawGopLine PROC
+    push rbx
+    push rsi
+    push rdi
+    push r12
+    push r13
+    push r14
+    push r15
+    sub rsp, 20h
+
+    mov esi, eax
+    mov r12d, ecx
+    shl r12d, 8
+    mov r13d, edx
+    shl r13d, 8
+
+    mov r14d, r8d
+    sub r14d, ecx
+    mov r15d, r9d
+    sub r15d, edx
+
+    mov ebx, r14d
+    test ebx, ebx
+    jns line_dx_ready
+    neg ebx
+
+line_dx_ready:
+    mov edi, r15d
+    test edi, edi
+    jns line_dy_ready
+    neg edi
+
+line_dy_ready:
+    cmp ebx, edi
+    jae line_steps_ready
+    mov ebx, edi
+
+line_steps_ready:
+    test ebx, ebx
+    jnz line_has_steps
+
+    mov ecx, r12d
+    sar ecx, 8
+    mov edx, r13d
+    sar edx, 8
+    jmp line_draw_point
+
+line_has_steps:
+    shl r14d, 8
+    mov eax, r14d
+    cdq
+    idiv ebx
+    mov r14d, eax
+
+    shl r15d, 8
+    mov eax, r15d
+    cdq
+    idiv ebx
+    mov r15d, eax
+    inc ebx
+
+line_loop:
+    mov ecx, r12d
+    sar ecx, 8
+    mov edx, r13d
+    sar edx, 8
+
+line_draw_point:
+    cmp ecx, 0
+    jl line_skip_point
+    cmp ecx, 638
+    jge line_skip_point
+    cmp edx, 0
+    jl line_skip_point
+    cmp edx, 478
+    jge line_skip_point
+
+    mov r8d, 2
+    mov r9d, 2
+    mov eax, esi
+    call DrawGopRect
+
+line_skip_point:
+    test ebx, ebx
+    jz line_done
+    add r12d, r14d
+    add r13d, r15d
+    dec ebx
+    jnz line_loop
+
+line_done:
+    add rsp, 20h
+    pop r15
+    pop r14
+    pop r13
+    pop r12
+    pop rdi
+    pop rsi
+    pop rbx
+    ret
+DrawGopLine ENDP
+
+ProjectEngine64Vertex PROC
+    mov r11, qword ptr [CurrentModelVertexBase]
+    mov eax, ecx
+    lea rax, [rax + rax * 2]
+    shl rax, 1
+    add r11, rax
+
+    movsx eax, word ptr [r11]
+    imul eax, dword ptr [CurrentModelScale]
+    sar eax, 4
+    mov r8d, eax
+
+    movsx eax, word ptr [r11 + 4]
+    imul eax, dword ptr [CurrentModelScale]
+    mov r9d, eax
+    sar eax, 5
+    add r8d, eax
+
+    mov eax, dword ptr [CurrentModelBaseX]
+    add eax, r8d
+
+    movsx edx, word ptr [r11 + 2]
+    imul edx, dword ptr [CurrentModelScale]
+    sar edx, 4
+    mov r10d, dword ptr [CurrentModelBaseY]
+    sub r10d, edx
+
+    mov edx, r9d
+    sar edx, 6
+    add r10d, edx
+    mov edx, r10d
+    ret
+ProjectEngine64Vertex ENDP
+
+DrawEngine64Model PROC
+    push rbx
+    push rsi
+    push rdi
+    push r12
+    push r13
+    push r14
+    push r15
+    sub rsp, 20h
+
+    mov r12, qword ptr [Engine64ChunkBase]
+    test r12, r12
+    jz model_done
+
+    cmp dword ptr [Engine64ModelRecordBytes], ENGINE64_MODEL_RECORD_BYTES
+    jne model_done
+    cmp ecx, dword ptr [Engine64ModelCount]
+    jae model_done
+
+    mov dword ptr [CurrentModelBaseX], edx
+    mov dword ptr [CurrentModelBaseY], r8d
+    mov dword ptr [CurrentModelScale], r9d
+
+    mov r13d, dword ptr [Engine64ModelTableOffset]
+    lea rdi, [r12 + r13]
+    mov eax, ecx
+    shl rax, 5
+    add rdi, rax
+
+    mov eax, dword ptr [rdi + 8]
+    lea rax, [r12 + rax]
+    mov qword ptr [CurrentModelVertexBase], rax
+
+    mov eax, dword ptr [rdi + 16]
+    lea rax, [r12 + rax]
+    mov qword ptr [CurrentModelFaceBase], rax
+
+    mov eax, dword ptr [r12 + 28]
+    lea rax, [r12 + rax]
+    mov qword ptr [CurrentModelPaletteBase], rax
+
+    mov r14, qword ptr [CurrentModelFaceBase]
+    mov r15d, dword ptr [rdi + 20]
+    xor ebx, ebx
+
+model_face_loop:
+    cmp ebx, r15d
+    jae model_done
+
+    lea rsi, [r14 + rbx * 4]
+
+    movzx ecx, byte ptr [rsi]
+    call ProjectEngine64Vertex
+    mov dword ptr [ProjectedX0], eax
+    mov dword ptr [ProjectedY0], edx
+
+    movzx ecx, byte ptr [rsi + 1]
+    call ProjectEngine64Vertex
+    mov dword ptr [ProjectedX1], eax
+    mov dword ptr [ProjectedY1], edx
+
+    movzx ecx, byte ptr [rsi + 2]
+    call ProjectEngine64Vertex
+    mov dword ptr [ProjectedX2], eax
+    mov dword ptr [ProjectedY2], edx
+
+    movzx eax, byte ptr [rsi + 3]
+    cmp eax, dword ptr [Engine64BarCount]
+    jae model_default_color
+    mov rdx, qword ptr [CurrentModelPaletteBase]
+    shl rax, 2
+    mov eax, dword ptr [rdx + rax]
+    jmp model_color_ready
+
+model_default_color:
+    mov eax, DIAG_ACCENT
+
+model_color_ready:
+    mov r13d, eax
+
+    mov ecx, dword ptr [ProjectedX0]
+    mov edx, dword ptr [ProjectedY0]
+    mov r8d, dword ptr [ProjectedX1]
+    mov r9d, dword ptr [ProjectedY1]
+    mov eax, r13d
+    call DrawGopLine
+
+    mov ecx, dword ptr [ProjectedX1]
+    mov edx, dword ptr [ProjectedY1]
+    mov r8d, dword ptr [ProjectedX2]
+    mov r9d, dword ptr [ProjectedY2]
+    mov eax, r13d
+    call DrawGopLine
+
+    mov ecx, dword ptr [ProjectedX2]
+    mov edx, dword ptr [ProjectedY2]
+    mov r8d, dword ptr [ProjectedX0]
+    mov r9d, dword ptr [ProjectedY0]
+    mov eax, r13d
+    call DrawGopLine
+
+    inc ebx
+    jmp model_face_loop
+
+model_done:
+    add rsp, 20h
+    pop r15
+    pop r14
+    pop r13
+    pop r12
+    pop rdi
+    pop rsi
+    pop rbx
+    ret
+DrawEngine64Model ENDP
+
 DrawString PROC
     push rbp
     mov rbp, rsp
@@ -3237,6 +3575,9 @@ Engine64Width dd 0
 Engine64Height dd 0
 Engine64BarCount dd 0
 Engine64FeatureFlags dd 0
+Engine64ModelTableOffset dd 0
+Engine64ModelCount dd 0
+Engine64ModelRecordBytes dd 0
 align 8
 Engine64ChunkBase dq 0
 Engine64ChunkBytes dd 0
@@ -3275,6 +3616,20 @@ ObjectiveState dd 0
 ShotFlashTicks dd 0
 MissionShots dd 0
 MissionHits dd 0
+align 8
+CurrentModelVertexBase dq 0
+CurrentModelFaceBase dq 0
+CurrentModelPaletteBase dq 0
+align 4
+CurrentModelBaseX dd 0
+CurrentModelBaseY dd 0
+CurrentModelScale dd 0
+ProjectedX0 dd 0
+ProjectedY0 dd 0
+ProjectedX1 dd 0
+ProjectedY1 dd 0
+ProjectedX2 dd 0
+ProjectedY2 dd 0
 
 TitleLine db 'CYBERSTORM',0
 SubtitleLine db 'NEON DISTRICT',0

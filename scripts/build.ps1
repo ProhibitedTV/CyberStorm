@@ -7,6 +7,8 @@ param(
     [string]$MasmPath,
     [string]$X64AssemblerPath,
     [string]$X64LinkerPath,
+    [Alias('X64IsoPath')]
+    [string]$X64IsoOutputPath,
     [switch]$X64ForcePanic,
     [switch]$ExperimentalMusic,
     [switch]$SfxOnly,
@@ -701,7 +703,7 @@ function Write-X64BootstrapReports {
         ("Generated: {0}" -f $timestamp)
         'Status: pass'
         'Target: x64-uefi'
-        'Artifact: cyberstorm-x64.iso'
+        ("Artifact: {0}" -f (Split-Path -Leaf $IsoResult.IsoPath))
         ("ml64.exe: {0} ({1})" -f $Toolchain.AssemblerPath, $Toolchain.AssemblerSource)
         ("link.exe: {0} ({1})" -f $Toolchain.LinkerPath, $Toolchain.LinkerSource)
         ("Object: {0}" -f $ObjectPath)
@@ -713,7 +715,7 @@ function Write-X64BootstrapReports {
         ("Pack manifest: {0}" -f $PackArtifacts.ManifestPath)
         ("Pack chunks: {0}" -f $PackArtifacts.ChunkCount)
         ("ENGINE64 chunk: {0} bytes, assembly-built scaffold payload" -f $PackArtifacts.Engine64Bytes)
-        ("Host preview: {0} ({1} bytes, {2}x{3}, {4} palette entries)" -f $PreviewResult.Path, $PreviewResult.Bytes, $PreviewResult.Width, $PreviewResult.Height, $PreviewResult.PaletteEntries)
+        ("Host preview: {0} ({1} bytes, {2}x{3}, {4} palette entries, {5} model entries)" -f $PreviewResult.Path, $PreviewResult.Bytes, $PreviewResult.Width, $PreviewResult.Height, $PreviewResult.PaletteEntries, $PreviewResult.ModelEntries)
         ("Pack SHA256: {0}" -f $PackArtifacts.Sha256)
         ("PE machine: 0x{0:X4}" -f $PeValidation.Machine)
         ("PE optional header: 0x{0:X4}" -f $PeValidation.OptionalMagic)
@@ -728,8 +730,9 @@ function Write-X64BootstrapReports {
         'Gameplay fire: Enter/Space fire through keyboard fallback; UEFI SimplePointer left-click fires when firmware exposes a pointer protocol'
         'Runtime pack loader: LoadedImage -> SimpleFileSystem -> X64PACK.BIN read into scratch arena'
         'Runtime pack validation: CSX64PK0 magic, version, record size, bounds, alignment, known chunk IDs, FNV-1a checksums'
-        'ENGINE64 validation: CS64ENG0 payload header, 640x480 xRGB8888 target, deterministic expanded title-scene palette table'
+        'ENGINE64 validation: CS64ENG0 payload header, 640x480 xRGB8888 target, deterministic expanded title-scene palette table, and assembly-authored model table'
         'ENGINE64 render scaffold: loaded ENGINE64 chunk renders a layered neon megacity title scene into the frame arena before GOP presentation'
+        'ENGINE64 model assets: WARDEN and TERMNL records carry signed 3D vertices plus triangle face/material references authored directly in assembly'
         'Framebuffer abstraction: internal xRGB8888 frame arena with GOP direct/swap present modes for BGR, RGB, and matching bitmask layouts'
         'Host preview: deterministic PNG rendered from ENGINE64.BIN for release review while UEFI VM smoke remains the boot/input acceptance gate'
         'Runtime arenas: UEFI AllocatePages, 32 MiB engine-owned block, 64 KiB aligned sub-arenas'
@@ -763,12 +766,14 @@ function Write-X64BootstrapReports {
         ("Host preview: {0}" -f $PreviewResult.Path)
         ("Chunks: {0}" -f $PackArtifacts.ChunkCount)
         ("ENGINE64 bytes: {0}" -f $PackArtifacts.Engine64Bytes)
+        ("ENGINE64 model records: {0} ({1})" -f $PreviewResult.ModelEntries, $PreviewResult.ModelNames)
         'Chunk record: type[8], offset32, size32, load64, fnv1a32, align32'
         'Chunk summary:'
     )
     $packReportLines += $PackArtifacts.ChunkSummary
     $packReportLines += @(
         'Pack metadata: reserved for engine, textures, meshes, materials, maps, scripts, audio, title scene, and campaign scenes.'
+        'Assembly model assets: ENGINE64 header carries model table offset/count/record bytes; records point at signed vertex arrays and triangle/material face arrays.'
         'Runtime arena allocation: UEFI AllocatePages / EfiLoaderData'
         'Runtime arena total: 0x02000000 bytes'
         'Arena alignment: 0x00010000 bytes'
@@ -879,7 +884,7 @@ function Build-X64UefiTarget {
 
     Write-Section -Title 'x64 Host Preview'
     $previewResult = & $PreviewScriptPath -Engine64BinaryPath $Engine64BinaryPath -OutputPath $PreviewPath
-    Write-Host ("Preview PNG: {0} ({1} bytes, {2}x{3}, {4} palette entries)" -f $previewResult.Path, $previewResult.Bytes, $previewResult.Width, $previewResult.Height, $previewResult.PaletteEntries)
+    Write-Host ("Preview PNG: {0} ({1} bytes, {2}x{3}, {4} palette entries, {5} model entries)" -f $previewResult.Path, $previewResult.Bytes, $previewResult.Width, $previewResult.Height, $previewResult.PaletteEntries, $previewResult.ModelEntries)
 
     Write-Section -Title 'x64 Pack'
     $packArtifacts = New-X64PackArtifacts -PackPath $PackBinaryPath -ManifestPath $PackManifestPath -Engine64PayloadPath $Engine64BinaryPath
@@ -6460,6 +6465,14 @@ $expandedManifestPath = Join-Path $buildDir 'cyberstorm-expanded-manifest.txt'
 $expandedIsoPath = Join-Path $buildDir 'cyberstorm-expanded.iso'
 $bootx64EfiPath = Join-Path $buildDir 'EFI\BOOT\BOOTX64.EFI'
 $x64IsoPath = Join-Path $buildDir 'cyberstorm-x64.iso'
+if (-not [string]::IsNullOrWhiteSpace($X64IsoOutputPath)) {
+    $x64IsoPath = if ([IO.Path]::IsPathRooted($X64IsoOutputPath)) {
+        $X64IsoOutputPath
+    }
+    else {
+        Join-Path $root $X64IsoOutputPath
+    }
+}
 $x64BuildReportPath = Join-Path $buildDir 'cyberstorm-x64-build-report.txt'
 $x64SmokeReportPath = Join-Path $buildDir 'cyberstorm-x64-smoke-report.txt'
 $x64PackReportPath = Join-Path $buildDir 'cyberstorm-x64-pack-report.txt'

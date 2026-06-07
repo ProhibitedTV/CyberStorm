@@ -26,6 +26,7 @@
 - **A real boot path.** The build emits a bootable UEFI x64 ISO, not a host app wrapped in a fake shell.
 - **A mainline x64 ISO path.** The default build emits `cyberstorm-x64.iso`, `BOOTX64.EFI`, `X64PACK.BIN`, `X64MAN.TXT`, and `ENGINE64.BIN` for the UEFI release.
 - **An ENGINE64 framebuffer scaffold.** The UEFI build now renders the loaded `ENGINE64` expanded megacity title-scene palette into an internal `640x480` xRGB8888 frame arena, then presents it through GOP direct/swap conversion.
+- **Assembly-authored model assets.** `ENGINE64.BIN` now carries Warden and terminal mesh records with signed 3D vertices plus triangle face/material data authored directly in assembly and validated by the x64 build.
 - **Larger x64 memory budgets.** The UEFI path now allocates a 32 MiB engine-owned arena block and stages validated pack chunks into engine, texture, mesh/scene/script, audio, scratch, and log arenas.
 - **A first x64 gameplay loop.** `NEW GAME` enters `LEVEL 01 NEON SPINE`, with WASD movement, a reticle, keyboard fire, optional UEFI pointer left-click fire, a Warden target, hit counter, and exit-open state.
 - **An expanded release surface.** The build now emits a larger mainline boot image, a typed pack-directory artifact, an expanded manifest, and a bootable ISO wrapper so future renderer/audio/content payloads are no longer planned around a floppy-sized ceiling.

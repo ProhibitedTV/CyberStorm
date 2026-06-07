@@ -6,6 +6,7 @@ EFI_SYSTEM_TABLE_BOOTSERV     equ 96
 EFI_SIMPLE_TEXT_OUTPUT_TEXT   equ 8
 EFI_SIMPLE_TEXT_OUTPUT_CLEAR  equ 48
 EFI_SIMPLE_TEXT_INPUT_READ    equ 8
+EFI_SIMPLE_POINTER_GET_STATE  equ 8
 EFI_BOOT_SERVICES_ALLOC_PAGES equ 40
 EFI_BOOT_SERVICES_HANDLE_PROTOCOL equ 152
 EFI_BOOT_SERVICES_STALL       equ 248
@@ -107,7 +108,18 @@ INPUT_ACTION_UP               equ 0001h
 INPUT_ACTION_DOWN             equ 0002h
 INPUT_ACTION_CONFIRM          equ 0003h
 INPUT_ACTION_BACK             equ 0004h
+INPUT_ACTION_FIRE             equ 0005h
 MENU_MAX_SELECTION            equ 2
+GAME_MODE_TITLE               equ 0000h
+GAME_MODE_PLAY                equ 0001h
+PLAYER_MIN_X                  equ 00000068h
+PLAYER_MAX_X                  equ 00000218h
+PLAYER_MIN_Y                  equ 000000D8h
+PLAYER_MAX_Y                  equ 00000198h
+CROSSHAIR_MIN_X               equ 00000050h
+CROSSHAIR_MAX_X               equ 00000230h
+CROSSHAIR_MIN_Y               equ 00000070h
+CROSSHAIR_MAX_Y               equ 00000170h
 
 FILL_GOP_RECT MACRO RectX, RectY, RectW, RectH, RectColor
 LOCAL row_loop
@@ -167,6 +179,8 @@ EfiMain PROC
     test eax, eax
     jnz panic_no_gop
 
+    call InitPointerState
+
     call InitArenas
     test eax, eax
     jz arenas_ready
@@ -185,7 +199,7 @@ IFDEF X64_FORCE_PANIC
 ENDIF
 
     call LoadX64Pack
-    call DrawTitleScreen
+    call DrawActiveScreen
     mov ecx, dword ptr [PackStatusCode]
     call WriteRuntimeLog
     call RunInputLoop
@@ -342,6 +356,33 @@ init_fail:
     mov eax, 1
     ret
 InitGopState ENDP
+
+InitPointerState PROC
+    sub rsp, 20h
+
+    mov dword ptr [PointerAvailable], 0
+    mov qword ptr [SimplePointerProtocol], 0
+
+    mov rax, qword ptr [rbx + EFI_SYSTEM_TABLE_BOOTSERV]
+    test rax, rax
+    jz pointer_init_done
+
+    lea rcx, EfiSimplePointerProtocolGuid
+    xor edx, edx
+    lea r8, SimplePointerProtocol
+    call qword ptr [rax + EFI_BOOT_SERVICES_LOCATE]
+    test rax, rax
+    jnz pointer_init_done
+
+    cmp qword ptr [SimplePointerProtocol], 0
+    je pointer_init_done
+
+    mov dword ptr [PointerAvailable], 1
+
+pointer_init_done:
+    add rsp, 20h
+    ret
+InitPointerState ENDP
 
 InitArenas PROC
     sub rsp, 20h
@@ -1048,16 +1089,33 @@ GetPackChunkBit ENDP
 
 RunInputLoop PROC
     push r12
-    sub rsp, 20h
+    push r13
+    sub rsp, 28h
 
     mov r12d, INPUT_LOOP_TICKS
 
 input_loop:
+    xor r13d, r13d
+
     call PollInputKey
+    or r13d, eax
+
+    call PollPointerInput
+    or r13d, eax
+
+    cmp dword ptr [GameMode], GAME_MODE_PLAY
+    jne input_redraw_check
+    cmp dword ptr [ShotFlashTicks], 0
+    je input_redraw_check
+    dec dword ptr [ShotFlashTicks]
+    mov r13d, 1
+
+input_redraw_check:
+    mov eax, r13d
     test eax, eax
     jz input_stall
 
-    call DrawTitleScreen
+    call DrawActiveScreen
 
 input_stall:
     mov rax, qword ptr [rbx + EFI_SYSTEM_TABLE_BOOTSERV]
@@ -1069,10 +1127,27 @@ input_stall:
     jnz input_loop
 
 input_loop_done:
-    add rsp, 20h
+    add rsp, 28h
+    pop r13
     pop r12
     ret
 RunInputLoop ENDP
+
+DrawActiveScreen PROC
+    sub rsp, 20h
+
+    cmp dword ptr [GameMode], GAME_MODE_PLAY
+    jne draw_active_title
+    call DrawFirstLevel
+    jmp draw_active_done
+
+draw_active_title:
+    call DrawTitleScreen
+
+draw_active_done:
+    add rsp, 20h
+    ret
+DrawActiveScreen ENDP
 
 PollInputKey PROC
     push r12
@@ -1101,12 +1176,88 @@ input_key_done:
     ret
 PollInputKey ENDP
 
+PollPointerInput PROC
+    push r12
+    sub rsp, 20h
+
+    xor r12d, r12d
+
+    cmp dword ptr [GameMode], GAME_MODE_PLAY
+    jne pointer_done
+    cmp dword ptr [PointerAvailable], 0
+    je pointer_done
+
+    mov rcx, qword ptr [SimplePointerProtocol]
+    test rcx, rcx
+    jz pointer_done
+
+    lea rdx, PointerStateX
+    call qword ptr [rcx + EFI_SIMPLE_POINTER_GET_STATE]
+    test rax, rax
+    jnz pointer_done
+
+    mov eax, dword ptr [PointerStateX]
+    sar eax, 2
+    test eax, eax
+    jz pointer_check_y
+    add eax, dword ptr [CrosshairX]
+    cmp eax, CROSSHAIR_MIN_X
+    jge pointer_x_min_ok
+    mov eax, CROSSHAIR_MIN_X
+pointer_x_min_ok:
+    cmp eax, CROSSHAIR_MAX_X
+    jle pointer_x_max_ok
+    mov eax, CROSSHAIR_MAX_X
+pointer_x_max_ok:
+    mov dword ptr [CrosshairX], eax
+    mov r12d, 1
+
+pointer_check_y:
+    mov eax, dword ptr [PointerStateY]
+    sar eax, 2
+    test eax, eax
+    jz pointer_check_fire
+    add eax, dword ptr [CrosshairY]
+    cmp eax, CROSSHAIR_MIN_Y
+    jge pointer_y_min_ok
+    mov eax, CROSSHAIR_MIN_Y
+pointer_y_min_ok:
+    cmp eax, CROSSHAIR_MAX_Y
+    jle pointer_y_max_ok
+    mov eax, CROSSHAIR_MAX_Y
+pointer_y_max_ok:
+    mov dword ptr [CrosshairY], eax
+    mov r12d, 1
+
+pointer_check_fire:
+    cmp byte ptr [PointerLeftButton], 0
+    je pointer_left_up
+    cmp dword ptr [PointerLeftLatch], 0
+    jne pointer_done
+    mov dword ptr [PointerLeftLatch], 1
+    call FireWeapon
+    mov r12d, 1
+    jmp pointer_done
+
+pointer_left_up:
+    mov dword ptr [PointerLeftLatch], 0
+
+pointer_done:
+    mov eax, r12d
+    add rsp, 20h
+    pop r12
+    ret
+PollPointerInput ENDP
+
 HandleInputKey PROC
     movzx eax, word ptr [InputKeyScan]
     mov dword ptr [InputLastScan], eax
     movzx edx, word ptr [InputKeyChar]
     mov dword ptr [InputLastChar], edx
     inc dword ptr [InputEventCount]
+
+    cmp dword ptr [GameMode], GAME_MODE_PLAY
+    je gameplay_key
 
     cmp ax, UEFI_SCAN_UP
     je input_up
@@ -1169,6 +1320,12 @@ input_confirm:
     mov dword ptr [InputLastAction], INPUT_ACTION_CONFIRM
     inc dword ptr [InputConfirmCount]
     mov eax, dword ptr [MenuSelection]
+    test eax, eax
+    jnz input_confirm_panel
+    call StartFirstLevel
+    ret
+
+input_confirm_panel:
     inc eax
     mov dword ptr [MenuPanel], eax
     ret
@@ -1180,7 +1337,166 @@ input_back:
 
 input_done:
     ret
+
+gameplay_key:
+    cmp ax, UEFI_SCAN_UP
+    je game_move_up
+    cmp dx, 'W'
+    je game_move_up
+    cmp dx, 'w'
+    je game_move_up
+
+    cmp ax, UEFI_SCAN_DOWN
+    je game_move_down
+    cmp dx, 'S'
+    je game_move_down
+    cmp dx, 's'
+    je game_move_down
+
+    cmp ax, UEFI_SCAN_LEFT
+    je game_move_left
+    cmp dx, 'A'
+    je game_move_left
+    cmp dx, 'a'
+    je game_move_left
+
+    cmp ax, UEFI_SCAN_RIGHT
+    je game_move_right
+    cmp dx, 'D'
+    je game_move_right
+    cmp dx, 'd'
+    je game_move_right
+
+    cmp dx, 13
+    je game_fire
+    cmp dx, ' '
+    je game_fire
+
+    cmp ax, UEFI_SCAN_ESC
+    je game_back_to_title
+    cmp dx, 8
+    je game_back_to_title
+
+    mov dword ptr [InputLastAction], INPUT_ACTION_NONE
+    ret
+
+game_move_up:
+    mov dword ptr [InputLastAction], INPUT_ACTION_UP
+    mov eax, dword ptr [PlayerY]
+    sub eax, 12
+    cmp eax, PLAYER_MIN_Y
+    jge game_move_up_store
+    mov eax, PLAYER_MIN_Y
+game_move_up_store:
+    mov dword ptr [PlayerY], eax
+    ret
+
+game_move_down:
+    mov dword ptr [InputLastAction], INPUT_ACTION_DOWN
+    mov eax, dword ptr [PlayerY]
+    add eax, 12
+    cmp eax, PLAYER_MAX_Y
+    jle game_move_down_store
+    mov eax, PLAYER_MAX_Y
+game_move_down_store:
+    mov dword ptr [PlayerY], eax
+    ret
+
+game_move_left:
+    mov dword ptr [InputLastAction], INPUT_ACTION_BACK
+    mov eax, dword ptr [PlayerX]
+    sub eax, 16
+    cmp eax, PLAYER_MIN_X
+    jge game_move_left_store
+    mov eax, PLAYER_MIN_X
+game_move_left_store:
+    mov dword ptr [PlayerX], eax
+    ret
+
+game_move_right:
+    mov dword ptr [InputLastAction], INPUT_ACTION_CONFIRM
+    mov eax, dword ptr [PlayerX]
+    add eax, 16
+    cmp eax, PLAYER_MAX_X
+    jle game_move_right_store
+    mov eax, PLAYER_MAX_X
+game_move_right_store:
+    mov dword ptr [PlayerX], eax
+    ret
+
+game_fire:
+    mov dword ptr [InputLastAction], INPUT_ACTION_FIRE
+    inc dword ptr [InputConfirmCount]
+    call FireWeapon
+    ret
+
+game_back_to_title:
+    mov dword ptr [InputLastAction], INPUT_ACTION_BACK
+    inc dword ptr [InputBackCount]
+    call ReturnToTitle
+    ret
 HandleInputKey ENDP
+
+StartFirstLevel PROC
+    mov dword ptr [GameMode], GAME_MODE_PLAY
+    mov dword ptr [MenuPanel], 0
+    mov dword ptr [PlayerX], 320
+    mov dword ptr [PlayerY], 388
+    mov dword ptr [CrosshairX], 320
+    mov dword ptr [CrosshairY], 224
+    mov dword ptr [EnemyHp], 3
+    mov dword ptr [EnemyAlive], 1
+    mov dword ptr [ObjectiveState], 0
+    mov dword ptr [ShotFlashTicks], 0
+    mov dword ptr [MissionShots], 0
+    mov dword ptr [MissionHits], 0
+    mov dword ptr [PointerLeftLatch], 0
+    ret
+StartFirstLevel ENDP
+
+ReturnToTitle PROC
+    mov dword ptr [GameMode], GAME_MODE_TITLE
+    mov dword ptr [MenuPanel], 0
+    mov dword ptr [ShotFlashTicks], 0
+    mov dword ptr [PointerLeftLatch], 0
+    ret
+ReturnToTitle ENDP
+
+FireWeapon PROC
+    inc dword ptr [MissionShots]
+    mov dword ptr [ShotFlashTicks], 6
+
+    cmp dword ptr [EnemyAlive], 0
+    je fire_done
+
+    mov eax, dword ptr [CrosshairX]
+    cmp eax, 286
+    jl fire_done
+    cmp eax, 366
+    jg fire_done
+
+    mov eax, dword ptr [CrosshairY]
+    cmp eax, 170
+    jl fire_done
+    cmp eax, 268
+    jg fire_done
+
+    inc dword ptr [MissionHits]
+    mov eax, dword ptr [EnemyHp]
+    test eax, eax
+    jz fire_enemy_down
+    dec eax
+    mov dword ptr [EnemyHp], eax
+    test eax, eax
+    jnz fire_done
+
+fire_enemy_down:
+    mov dword ptr [EnemyAlive], 0
+    mov dword ptr [ObjectiveState], 1
+
+fire_done:
+    ret
+FireWeapon ENDP
 
 DrawPanicScreen PROC
     push rdi
@@ -1350,6 +1666,181 @@ DrawTitleScreen PROC
     pop rdi
     ret
 DrawTitleScreen ENDP
+
+FormatMissionHud PROC
+    sub rsp, 20h
+
+    mov ecx, dword ptr [MissionShots]
+    lea rdx, LevelStatusLine + 6
+    mov r8d, 4
+    call WriteHex32
+
+    mov ecx, dword ptr [MissionHits]
+    lea rdx, LevelStatusLine + 16
+    mov r8d, 4
+    call WriteHex32
+
+    add rsp, 20h
+    ret
+FormatMissionHud ENDP
+
+DrawFirstLevel PROC
+    push rdi
+    sub rsp, 20h
+
+    call FormatMissionHud
+
+    mov eax, 0004080Dh
+    call FillScreen
+
+    FILL_GOP_RECT 0, 0, 640, 44, 00070B12h
+    FILL_GOP_RECT 0, 44, 640, 2, 00FF90FFh
+    FILL_GOP_RECT 20, 72, 600, 356, 00070B12h
+    FILL_GOP_RECT 30, 84, 580, 336, 00101820h
+    FILL_GOP_RECT 44, 116, 552, 3, 00D8FFFFh
+    FILL_GOP_RECT 44, 384, 552, 4, 00FF90FFh
+    FILL_GOP_RECT 86, 150, 66, 214, 00030A10h
+    FILL_GOP_RECT 488, 150, 66, 214, 00030A10h
+    FILL_GOP_RECT 154, 214, 332, 136, 000B1924h
+    FILL_GOP_RECT 194, 244, 252, 72, 00182A38h
+    FILL_GOP_RECT 224, 272, 192, 20, 00070B12h
+    FILL_GOP_RECT 270, 126, 100, 4, 00FFE66Dh
+    FILL_GOP_RECT 100, 170, 10, 72, 00D8FFFFh
+    FILL_GOP_RECT 130, 198, 8, 92, 00FF90FFh
+    FILL_GOP_RECT 506, 170, 10, 72, 00D8FFFFh
+    FILL_GOP_RECT 536, 198, 8, 92, 00FF4058h
+    FILL_GOP_RECT 44, 402, 552, 2, 003080D0h
+    FILL_GOP_RECT 44, 456, 552, 28, 00070B12h
+
+    mov ecx, 28
+    mov edx, 16
+    lea r8, LevelTitleLine
+    mov r9d, DIAG_TEXT
+    call DrawString
+
+    mov ecx, 376
+    mov edx, 16
+    lea r8, LevelStatusLine
+    mov r9d, DIAG_WARN
+    call DrawString
+
+    mov ecx, 44
+    mov edx, 58
+    lea r8, LevelObjectiveLine
+    mov r9d, DIAG_ACCENT
+    call DrawString
+
+    mov ecx, 44
+    mov edx, 438
+    lea r8, LevelLoopLine
+    mov r9d, DIAG_MUTED
+    call DrawString
+
+    mov ecx, 44
+    mov edx, 464
+    lea r8, LevelHintLine
+    mov r9d, DIAG_TEXT
+    call DrawString
+
+    cmp dword ptr [EnemyAlive], 0
+    je draw_level_clear
+
+    FILL_GOP_RECT 286, 168, 80, 98, 00030A10h
+    FILL_GOP_RECT 298, 180, 56, 56, 00A020B0h
+    FILL_GOP_RECT 306, 190, 40, 36, 00182A38h
+    FILL_GOP_RECT 312, 198, 12, 10, 00D8FFFFh
+    FILL_GOP_RECT 336, 198, 12, 10, 00FF4058h
+    FILL_GOP_RECT 292, 246, 68, 4, 00FF90FFh
+
+    cmp dword ptr [EnemyHp], 1
+    jb draw_enemy_label
+    FILL_GOP_RECT 292, 154, 18, 5, 00FF4058h
+    cmp dword ptr [EnemyHp], 2
+    jb draw_enemy_label
+    FILL_GOP_RECT 316, 154, 18, 5, 00FFE66Dh
+    cmp dword ptr [EnemyHp], 3
+    jb draw_enemy_label
+    FILL_GOP_RECT 340, 154, 18, 5, 0020D060h
+
+draw_enemy_label:
+    mov ecx, 292
+    mov edx, 138
+    lea r8, LevelEnemyLine
+    mov r9d, DIAG_WARN
+    call DrawString
+    jmp draw_level_actor
+
+draw_level_clear:
+    FILL_GOP_RECT 260, 156, 120, 96, 0020D060h
+    FILL_GOP_RECT 274, 170, 92, 68, 00070B12h
+    FILL_GOP_RECT 300, 190, 40, 30, 00D8FFFFh
+    mov ecx, 224
+    mov edx, 138
+    lea r8, LevelClearLine
+    mov r9d, DIAG_OK
+    call DrawString
+
+draw_level_actor:
+    cmp dword ptr [ShotFlashTicks], 0
+    je draw_level_player
+
+    mov ecx, dword ptr [CrosshairX]
+    sub ecx, 3
+    mov edx, dword ptr [CrosshairY]
+    add edx, 12
+    mov r8d, 6
+    mov r9d, 104
+    mov eax, 00FFE66Dh
+    call DrawGopRect
+
+    mov ecx, dword ptr [PlayerX]
+    sub ecx, 16
+    mov edx, dword ptr [PlayerY]
+    sub edx, 34
+    mov r8d, 32
+    mov r9d, 10
+    mov eax, 00FF90FFh
+    call DrawGopRect
+
+draw_level_player:
+    mov ecx, dword ptr [PlayerX]
+    sub ecx, 12
+    mov edx, dword ptr [PlayerY]
+    sub edx, 18
+    mov r8d, 24
+    mov r9d, 36
+    mov eax, 00D8FFFFh
+    call DrawGopRect
+
+    mov ecx, dword ptr [PlayerX]
+    sub ecx, 6
+    mov edx, dword ptr [PlayerY]
+    sub edx, 28
+    mov r8d, 12
+    mov r9d, 10
+    mov eax, 00E8F8FFh
+    call DrawGopRect
+
+    mov ecx, dword ptr [CrosshairX]
+    sub ecx, 12
+    mov edx, dword ptr [CrosshairY]
+    mov r8d, 24
+    mov r9d, 2
+    mov eax, 00D8FFFFh
+    call DrawGopRect
+
+    mov ecx, dword ptr [CrosshairX]
+    mov edx, dword ptr [CrosshairY]
+    sub edx, 12
+    mov r8d, 2
+    mov r9d, 24
+    mov eax, 00D8FFFFh
+    call DrawGopRect
+
+    add rsp, 20h
+    pop rdi
+    ret
+DrawFirstLevel ENDP
 
 DrawDiagnosticsScreen PROC
     push rdi
@@ -2279,6 +2770,53 @@ FillScreen PROC
     ret
 FillScreen ENDP
 
+DrawGopRect PROC
+    push rbx
+    push rdi
+    push r12
+    push r13
+    push r14
+    push r15
+    sub rsp, 28h
+
+    mov r12d, ecx
+    mov r13d, edx
+    mov r14d, r8d
+    mov r15d, r9d
+    call ConvertXrgbToGop
+    mov ebx, eax
+
+gop_rect_row:
+    test r15d, r15d
+    jz gop_rect_done
+
+    mov eax, r13d
+    mov edx, dword ptr [GopStride]
+    imul rax, rdx
+    add rax, r12
+    shl rax, 2
+    mov rdi, qword ptr [GopFrameBase]
+    add rdi, rax
+
+    mov eax, ebx
+    mov ecx, r14d
+    rep stosd
+
+    inc r13d
+    dec r15d
+    jmp gop_rect_row
+
+gop_rect_done:
+    add rsp, 28h
+    pop r15
+    pop r14
+    pop r13
+    pop r12
+    pop rdi
+    pop rbx
+    ret
+DrawGopRect ENDP
+
 DrawString PROC
     push rbp
     mov rbp, rsp
@@ -2627,6 +3165,7 @@ WriteHex64 ENDP
 align 8
 ImageHandle dq 0
 GopProtocol dq 0
+SimplePointerProtocol dq 0
 GopFrameBase dq 0
 GopFrameBytes dq 0
 GopStrideBytes dq 0
@@ -2717,6 +3256,25 @@ InputLastChar dd 0
 InputLastAction dd 0
 MenuSelection dd 0
 MenuPanel dd 0
+GameMode dd GAME_MODE_TITLE
+PointerAvailable dd 0
+PointerLeftLatch dd 0
+PointerStateX dd 0
+PointerStateY dd 0
+PointerStateZ dd 0
+PointerLeftButton db 0
+PointerRightButton db 0
+PointerStatePad dw 0
+PlayerX dd 320
+PlayerY dd 388
+CrosshairX dd 320
+CrosshairY dd 224
+EnemyHp dd 3
+EnemyAlive dd 1
+ObjectiveState dd 0
+ShotFlashTicks dd 0
+MissionShots dd 0
+MissionHits dd 0
 
 TitleLine db 'CYBERSTORM',0
 SubtitleLine db 'NEON DISTRICT',0
@@ -2747,6 +3305,13 @@ MenuPanelIdle db 'ON',0
 MenuPanelDiag db 'RUN',0
 MenuPanelLog db 'FX',0
 MenuPanelCredits db 'CR',0
+LevelTitleLine db 'LEVEL 01 NEON SPINE',0
+LevelObjectiveLine db 'BREACH THE TERMINAL',0
+LevelLoopLine db 'MOVE AIM FIRE CLAIM EXIT',0
+LevelHintLine db 'WASD MOVE  MOUSE FIRE  ENTER FIRE',0
+LevelStatusLine db 'SHOTS 0000 HITS 0000',0
+LevelClearLine db 'TARGET DOWN EXIT OPEN',0
+LevelEnemyLine db 'WARDEN',0
 PanicTitleLine db 'CYBERSTORM X64 BOOT ALERT',0
 PanicArenaLine db 'ARENA ALLOC FAIL',0
 PanicForcedLine db 'BOOT ALERT CHECK',0
@@ -2776,6 +3341,12 @@ EfiGraphicsOutputProtocolGuid LABEL BYTE
     dw 023DCh
     dw 04A38h
     db 096h,0FBh,07Ah,0DEh,0D0h,080h,051h,06Ah
+
+EfiSimplePointerProtocolGuid LABEL BYTE
+    dd 31878C87h
+    dw 00B75h
+    dw 011D5h
+    db 09Ah,04Fh,000h,090h,027h,03Fh,0C1h,04Dh
 
 EfiLoadedImageProtocolGuid LABEL BYTE
     dd 05B1B31A1h

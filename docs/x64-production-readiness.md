@@ -47,13 +47,17 @@ Staged improvement:
 - The x64 pack already reserves map, script, title, campaign, texture, material, mesh, audio, and engine chunks.
 - The default release direction now makes this slice the next central engineering target instead of a side migration.
 - The current title input path proves selection, confirmation, and back-out behavior without crashing in VirtualBox.
+- `NEW GAME` now enters `LEVEL 01 NEON SPINE`, a first playable x64 mission scaffold with a cyber corridor, HUD, objective prompt, Warden target, reticle, hit counter, and exit-open state.
+- Gameplay basics are wired: WASD moves the player marker, Enter/Space fires, and UEFI SimplePointer left-click fires when firmware exposes mouse/pointer support.
+- `scripts/build.ps1 -VmSmoke` is staged to request a gameplay smoke that captures title, first-level entry, movement, and fire screenshots.
 
 Next gate:
 
-- Route `NEW GAME` from the title menu into a tiny x64 mission scene.
-- Load one district map chunk through the existing x64 pack loader.
-- Implement player movement, collision, objective pickup, exit handling, and a VM interaction screenshot for the mission.
-- Keep the first slice small: one corridor, one branch, one objective pickup, one exit.
+- Load one authored district map chunk through the existing x64 pack loader instead of using hardcoded level geometry.
+- Replace the target-box hit test with weapon ray/collision against map actors.
+- Add objective pickup and exit-zone collision rather than opening the exit immediately after target defeat.
+- Add mouse-look/aim smoothing once the pointer protocol is stable across VM profiles.
+- Keep the first shippable slice small: one corridor, one branch, one objective pickup, one exit.
 
 ## Fat To Keep Out
 

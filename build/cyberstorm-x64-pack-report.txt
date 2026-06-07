@@ -1,5 +1,5 @@
 CyberStorm x64 Pack Report
-Generated: 2026-06-06 14:14:33 -06:00
+Generated: 2026-06-06 19:18:45 -06:00
 Status: pass
 Target: x64-uefi
 Milestone: M1 GOP title runtime, arena bootstrap, boot-alert/log channel, and input MVP
@@ -39,4 +39,4 @@ Runtime pack loader: X64PACK.BIN is opened from the UEFI boot volume, read into 
 Runtime pack validation: magic/version/table shape, record bounds, 0x1000 alignment, known chunk IDs, full chunk mask, and FNV-1a checksums.
 Runtime log record: 0x80 bytes at the start of the log arena
 Runtime log fields: magic CS64/LOG0, milestone 0x00010008, failure code, GOP base, arena base/end, frame/depth/log addresses, pack status/bytes/chunks/mask, engine64 status/size/target, staged chunks/bytes/mask, render/present status, presented pixels
-Input state: title menu stores last scan code, Unicode char, last action, confirm count, and back count.
+Input state: title/gameplay loop stores last scan code, Unicode char, last action, confirm count, back count, mission shots, hits, pointer availability, and fire latch.

@@ -722,8 +722,10 @@ function Write-X64BootstrapReports {
         ("Sections: {0}" -f $PeValidation.SectionCount)
         'Title screen: 640x480 ENGINE64 layered megacity start screen presented through GOP'
         'Title status fields: render/present status and input state are logged for VM smoke'
-        'Input MVP: UEFI SimpleTextInput title menu'
-        'Input actions: arrows/W/S select, Enter/Space/Right/D confirm, Esc/Left/A/Backspace backs out'
+        'Input MVP: UEFI SimpleTextInput title menu plus first-level keyboard controls'
+        'Input actions: title arrows/W/S select, Enter/Space/Right/D confirm, Esc/Left/A/Backspace backs out'
+        'Gameplay slice: NEW GAME enters LEVEL 01 NEON SPINE with WASD movement, reticle, Warden target, hit counting, and exit-open state'
+        'Gameplay fire: Enter/Space fire through keyboard fallback; UEFI SimplePointer left-click fires when firmware exposes a pointer protocol'
         'Runtime pack loader: LoadedImage -> SimpleFileSystem -> X64PACK.BIN read into scratch arena'
         'Runtime pack validation: CSX64PK0 magic, version, record size, bounds, alignment, known chunk IDs, FNV-1a checksums'
         'ENGINE64 validation: CS64ENG0 payload header, 640x480 xRGB8888 target, deterministic expanded title-scene palette table'
@@ -783,7 +785,7 @@ function Write-X64BootstrapReports {
         'Runtime pack validation: magic/version/table shape, record bounds, 0x1000 alignment, known chunk IDs, full chunk mask, and FNV-1a checksums.'
         'Runtime log record: 0x80 bytes at the start of the log arena'
         'Runtime log fields: magic CS64/LOG0, milestone 0x00010008, failure code, GOP base, arena base/end, frame/depth/log addresses, pack status/bytes/chunks/mask, engine64 status/size/target, staged chunks/bytes/mask, render/present status, presented pixels'
-        'Input state: title menu stores last scan code, Unicode char, last action, confirm count, and back count.'
+        'Input state: title/gameplay loop stores last scan code, Unicode char, last action, confirm count, back count, mission shots, hits, pointer availability, and fire latch.'
     )
     Set-Content -LiteralPath $PackReportPath -Encoding ascii -Value $packReportLines
 
@@ -6517,6 +6519,7 @@ if ($Target -eq 'x64-uefi') {
             -Frontend headless `
             -Capture `
             -InputSmoke `
+            -GameplaySmoke `
             -ScreenshotPath $x64SmokeScreenshotPath `
             -ReportPath $x64SmokeReportPath
         Write-Host ("VM: {0} ({1})" -f $x64SmokeResult.VmName, $x64SmokeResult.State)

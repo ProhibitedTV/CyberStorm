@@ -27,6 +27,7 @@
 - **A mainline x64 ISO path.** The default build emits `cyberstorm-x64.iso`, `BOOTX64.EFI`, `X64PACK.BIN`, `X64MAN.TXT`, and `ENGINE64.BIN` for the UEFI release.
 - **An ENGINE64 framebuffer scaffold.** The UEFI build now renders the loaded `ENGINE64` expanded megacity title-scene palette into an internal `640x480` xRGB8888 frame arena, then presents it through GOP direct/swap conversion.
 - **Larger x64 memory budgets.** The UEFI path now allocates a 32 MiB engine-owned arena block and stages validated pack chunks into engine, texture, mesh/scene/script, audio, scratch, and log arenas.
+- **A first x64 gameplay loop.** `NEW GAME` enters `LEVEL 01 NEON SPINE`, with WASD movement, a reticle, keyboard fire, optional UEFI pointer left-click fire, a Warden target, hit counter, and exit-open state.
 - **An expanded release surface.** The build now emits a larger mainline boot image, a typed pack-directory artifact, an expanded manifest, and a bootable ISO wrapper so future renderer/audio/content payloads are no longer planned around a floppy-sized ceiling.
 - **Generated content tooling.** Sprites, banked presentation assets, low-poly scene geometry, sectors, rules, demos, and music come from readable source files that generate MASM-friendly data at build time.
 - **A real software 3D render path.** Splash, title, sector-entry cards, end screens, and now live gameplay all run through a flat-shaded low-poly renderer, while `-DebugRender2D` still keeps the legacy 2D oracle available for parity work.
@@ -89,6 +90,8 @@ powershell -ExecutionPolicy Bypass -File .\scripts\build.ps1 -VmSmoke
 ```
 
 This boots the x64 ISO in a UEFI VirtualBox VM, captures the title/menu path, runs a small input smoke, and writes [build/cyberstorm-x64-smoke-report.txt](build/cyberstorm-x64-smoke-report.txt).
+
+In the x64 runtime, use `WASD` to move in the first level, `Enter`/`Space` to fire, and mouse left-click to fire when the VM firmware exposes UEFI SimplePointer.
 
 ### Boot The x64 ISO In VirtualBox
 

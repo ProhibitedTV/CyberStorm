@@ -1,5 +1,5 @@
 CyberStorm x64 UEFI Build Report
-Generated: 2026-06-06 14:14:33 -06:00
+Generated: 2026-06-06 19:18:45 -06:00
 Status: pass
 Target: x64-uefi
 Artifact: cyberstorm-x64.iso
@@ -9,7 +9,7 @@ Object: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\bootx64.obj
 Listing: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\bootx64.lst
 Link map: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\bootx64.map
 Boot-alert check image: False
-BOOTX64.EFI: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\EFI\BOOT\BOOTX64.EFI (14336 bytes)
+BOOTX64.EFI: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\EFI\BOOT\BOOTX64.EFI (18432 bytes)
 Pack binary: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\X64PACK.BIN (1504 bytes)
 Pack manifest: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\X64MAN.TXT
 Pack chunks: 9
@@ -23,8 +23,10 @@ PE entry RVA: 0x00001000
 Sections: 3
 Title screen: 640x480 ENGINE64 layered megacity start screen presented through GOP
 Title status fields: render/present status and input state are logged for VM smoke
-Input MVP: UEFI SimpleTextInput title menu
-Input actions: arrows/W/S select, Enter/Space/Right/D confirm, Esc/Left/A/Backspace backs out
+Input MVP: UEFI SimpleTextInput title menu plus first-level keyboard controls
+Input actions: title arrows/W/S select, Enter/Space/Right/D confirm, Esc/Left/A/Backspace backs out
+Gameplay slice: NEW GAME enters LEVEL 01 NEON SPINE with WASD movement, reticle, Warden target, hit counting, and exit-open state
+Gameplay fire: Enter/Space fire through keyboard fallback; UEFI SimplePointer left-click fires when firmware exposes a pointer protocol
 Runtime pack loader: LoadedImage -> SimpleFileSystem -> X64PACK.BIN read into scratch arena
 Runtime pack validation: CSX64PK0 magic, version, record size, bounds, alignment, known chunk IDs, FNV-1a checksums
 ENGINE64 validation: CS64ENG0 payload header, 640x480 xRGB8888 target, deterministic expanded title-scene palette table
@@ -37,16 +39,16 @@ Runtime log: first 128 bytes of log arena contain magic, milestone, failure code
 Failure path: firmware text fallback when GOP cannot be located or initialized
 Failure path: framebuffer failure screen when arena allocation or layout validation fails
 Failure-screen validation: internal debug image is available for VM checks
-ISO: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-x64.iso (1540096 bytes)
+ISO: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-x64.iso (1544192 bytes)
 ISO volume: CYBERSTORM_X64
 El Torito catalog LBA: 19
 EFI FAT image LBA: 23
 EFI FAT image bytes: 1474560
 ISO payloads:
 EFIBOOT.IMG;1: LBA 23, 1474560 bytes
-BOOTX64.EFI;1: LBA 743, 14336 bytes
-X64PACK.BIN;1: LBA 750, 1504 bytes
-X64MAN.TXT;1: LBA 751, 1616 bytes
+BOOTX64.EFI;1: LBA 743, 18432 bytes
+X64PACK.BIN;1: LBA 752, 1504 bytes
+X64MAN.TXT;1: LBA 753, 1616 bytes
 FAT payloads:
-X64PACK BIN: cluster 32, 1504 bytes
-X64MAN  TXT: cluster 35, 1616 bytes
+X64PACK BIN: cluster 40, 1504 bytes
+X64MAN  TXT: cluster 43, 1616 bytes

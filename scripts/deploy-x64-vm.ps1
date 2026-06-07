@@ -6,6 +6,7 @@ param(
     [switch]$Recreate,
     [switch]$Capture,
     [switch]$InputSmoke,
+    [switch]$GameplaySmoke,
     [string]$ScreenshotPath = $null,
     [string]$ReportPath = $null
 )
@@ -190,7 +191,9 @@ if ($Frontend -ne 'none') {
 $capturePath = $null
 $downPath = $null
 $enterPath = $null
-if ($Capture.IsPresent -or $InputSmoke.IsPresent) {
+$gameplayPath = $null
+$gameplayFirePath = $null
+if ($Capture.IsPresent -or $InputSmoke.IsPresent -or $GameplaySmoke.IsPresent) {
     Ensure-VmReadyForCapture -Name $VmName -Context 'x64 title capture'
     Invoke-VmScreenshot -Name $VmName -OutputPath $ScreenshotPath -Context 'x64 title capture'
     Assert-LiveTitleScreenshot -Path $ScreenshotPath -Label 'x64 title screenshot'
@@ -217,6 +220,28 @@ if ($InputSmoke.IsPresent) {
     Start-Sleep -Milliseconds 250
 }
 
+if ($GameplaySmoke.IsPresent) {
+    $gameplayPath = Get-SmokeScreenshotPath -BasePath $ScreenshotPath -Suffix 'gameplay'
+    $gameplayFirePath = Get-SmokeScreenshotPath -BasePath $ScreenshotPath -Suffix 'gameplay-fire'
+
+    Invoke-VBoxManage -Arguments @('controlvm', $VmName, 'keyboardputscancode', '1c', '9c') -TimeoutSeconds 30 | Out-Null
+    Start-Sleep -Milliseconds 900
+    Invoke-VmScreenshot -Name $VmName -OutputPath $gameplayPath -Context 'x64 gameplay capture'
+    Assert-LiveTitleScreenshot -Path $gameplayPath -Label 'x64 gameplay screenshot'
+
+    Invoke-VBoxManage -Arguments @('controlvm', $VmName, 'keyboardputscancode', '11', '91') -TimeoutSeconds 30 | Out-Null
+    Start-Sleep -Milliseconds 250
+    Invoke-VBoxManage -Arguments @('controlvm', $VmName, 'keyboardputscancode', '1e', '9e') -TimeoutSeconds 30 | Out-Null
+    Start-Sleep -Milliseconds 250
+    Invoke-VBoxManage -Arguments @('controlvm', $VmName, 'keyboardputscancode', '1c', '9c') -TimeoutSeconds 30 | Out-Null
+    Start-Sleep -Milliseconds 250
+    Invoke-VmScreenshot -Name $VmName -OutputPath $gameplayFirePath -Context 'x64 gameplay fire capture'
+    Assert-LiveTitleScreenshot -Path $gameplayFirePath -Label 'x64 gameplay fire screenshot'
+
+    Invoke-VBoxManage -Arguments @('controlvm', $VmName, 'keyboardputscancode', '01', '81') -TimeoutSeconds 30 | Out-Null
+    Start-Sleep -Milliseconds 250
+}
+
 $finalState = Get-VmState -Name $VmName -Context 'x64 deploy final state'
 $vmLogPath = Get-X64VmLogPath -Name $VmName
 $reportDirectory = Split-Path -Parent $ReportPath
@@ -224,7 +249,8 @@ if ($reportDirectory) {
     New-Item -ItemType Directory -Force -Path $reportDirectory | Out-Null
 }
 $inputSmokeStatus = if ($InputSmoke.IsPresent) { 'pass' } else { 'not requested' }
-$captureStatus = if ($Capture.IsPresent -or $InputSmoke.IsPresent) { 'pass' } else { 'not requested' }
+$gameplaySmokeStatus = if ($GameplaySmoke.IsPresent) { 'pass' } else { 'not requested' }
+$captureStatus = if ($Capture.IsPresent -or $InputSmoke.IsPresent -or $GameplaySmoke.IsPresent) { 'pass' } else { 'not requested' }
 $reportLines = @(
     'CyberStorm x64 Smoke Report',
     ('Generated: {0:yyyy-MM-dd HH:mm:ss zzz}' -f (Get-Date)),
@@ -242,8 +268,11 @@ $reportLines = @(
     ('Input smoke: {0}' -f $inputSmokeStatus),
     ('Down screenshot: {0}' -f (Resolve-ExistingPathText -Path $downPath)),
     ('Enter screenshot: {0}' -f (Resolve-ExistingPathText -Path $enterPath)),
-    'Checks: UEFI VM boots the x64 ISO, GOP title frame is nonblack/accented, menu accepts Down and Enter, and the VM remains running.',
-    'Recovery: input smoke sends Esc and Up after capture so the live GUI returns to the main title state.'
+    ('Gameplay smoke: {0}' -f $gameplaySmokeStatus),
+    ('Gameplay screenshot: {0}' -f (Resolve-ExistingPathText -Path $gameplayPath)),
+    ('Gameplay fire screenshot: {0}' -f (Resolve-ExistingPathText -Path $gameplayFirePath)),
+    'Checks: UEFI VM boots the x64 ISO, GOP title frame is nonblack/accented, menu accepts Down and Enter, NEW GAME reaches the first level, WASD moves, Enter fires, and the VM remains running.',
+    'Recovery: input smoke sends Esc and Up after capture; gameplay smoke sends Esc after capture so the live GUI returns to the title path.'
 )
 Set-Content -Path $ReportPath -Value $reportLines -Encoding ASCII
 
@@ -255,6 +284,8 @@ Set-Content -Path $ReportPath -Value $reportLines -Encoding ASCII
     Screenshot = $capturePath
     DownScreenshot = $downPath
     EnterScreenshot = $enterPath
+    GameplayScreenshot = $gameplayPath
+    GameplayFireScreenshot = $gameplayFirePath
     SmokeReport = (Resolve-ExistingPathText -Path $ReportPath)
     LogPath = (Resolve-ExistingPathText -Path $vmLogPath)
 }

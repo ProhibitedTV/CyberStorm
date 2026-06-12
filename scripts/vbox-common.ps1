@@ -11,6 +11,19 @@ function Test-VBoxBootstrapFailureMessage {
     return ($Message -match 'CO_E_SERVER_EXEC_FAILURE|Failed to create the VirtualBox object|RPC server is unavailable|VBoxManage timed out')
 }
 
+function Test-VBoxTransientLockMessage {
+    param(
+        [AllowNull()]
+        [string]$Message
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Message)) {
+        return $false
+    }
+
+    return ($Message -match 'already locked for a session|being unlocked|VBOX_E_INVALID_OBJECT_STATE')
+}
+
 function Test-VBoxEnvironmentFailureMessage {
     param(
         [AllowNull()]
@@ -21,7 +34,7 @@ function Test-VBoxEnvironmentFailureMessage {
         return $false
     }
 
-    return ($Message -match 'CO_E_SERVER_EXEC_FAILURE|Failed to create the VirtualBox object|RPC server is unavailable|VBoxManage timed out|VBoxManage\.exe was not found|VM ''.+'' never reached a capture-ready running state|VM screenshot was not created|VBox log was not found after|Deploy script failed for VM|Could not find a registered machine named|VBOX_E_OBJECT_NOT_FOUND')
+    return ($Message -match 'CO_E_SERVER_EXEC_FAILURE|Failed to create the VirtualBox object|RPC server is unavailable|VBoxManage timed out|VBoxManage\.exe was not found|VM ''.+'' never reached a capture-ready running state|VM screenshot was not created|VBox log was not found after|Deploy script failed for VM|Could not find a registered machine named|VBOX_E_OBJECT_NOT_FOUND|already locked for a session|being unlocked|VBOX_E_INVALID_OBJECT_STATE')
 }
 
 function Get-VBoxFailureKind {
@@ -133,6 +146,11 @@ function Invoke-VBoxManage {
     }
 
     $message = $capturedLines -join [Environment]::NewLine
+    if ($Attempt -lt 5 -and (Test-VBoxTransientLockMessage -Message $message)) {
+        Start-Sleep -Seconds (1 + $Attempt)
+        return Invoke-VBoxManage -Arguments $Arguments -Attempt ($Attempt + 1) -TimeoutSeconds $TimeoutSeconds
+    }
+
     if ($Attempt -lt 3 -and (Test-VBoxBootstrapFailureMessage -Message $message)) {
         Restart-VBoxBootstrapServices
         Start-Sleep -Seconds (2 + ($Attempt * 3))

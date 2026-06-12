@@ -47,8 +47,9 @@ Staged improvement:
 - The x64 pack already reserves map, script, title, campaign, texture, material, mesh, audio, and engine chunks.
 - The default release direction now makes this slice the next central engineering target instead of a side migration.
 - The current title input path proves selection, confirmation, and back-out behavior without crashing in VirtualBox.
-- `NEW GAME` now enters `LEVEL 01 NEON SPINE`, a first playable x64 mission scaffold with a cyber corridor, HUD, objective prompt, Warden target, reticle, hit counter, and exit-open state.
+- `NEW GAME` now enters `LEVEL 01 NEON SPINE`, a first playable x64 mission scaffold with a cyber corridor, HUD, objective prompt, Warden target, terminal breach node, reticle, hit counter, extraction gate, and mission-complete state.
 - Gameplay basics are wired: WASD moves the player marker, Enter/Space fires, and UEFI SimplePointer left-click fires when firmware exposes mouse/pointer support.
+- The first level now has a simple objective chain: eliminate the Warden, breach the terminal by firing at it or standing near the node, then reach the exit gate.
 - `scripts/build.ps1 -VmSmoke` is staged to request a gameplay smoke that captures title, first-level entry, movement, and fire screenshots.
 - `ENGINE64.BIN` now carries assembly-authored Warden and terminal model records with signed vertices plus triangle face/material tables, and the x64 level runtime draws them from the payload instead of the old target-box placeholders.
 
@@ -57,7 +58,7 @@ Next gate:
 - Load one authored district map chunk through the existing x64 pack loader instead of using hardcoded level geometry.
 - Promote the current model-edge renderer into filled/depth-tested actor rendering so authored meshes do not read like wireframe/debug art.
 - Replace the target-box hit test with weapon ray/collision against map actors.
-- Add objective pickup and exit-zone collision rather than opening the exit immediately after target defeat.
+- Replace the hand-authored terminal/exit zones with map-driven objective volumes.
 - Add mouse-look/aim smoothing once the pointer protocol is stable across VM profiles.
 - Keep the first shippable slice small: one corridor, one branch, one objective pickup, one exit.
 

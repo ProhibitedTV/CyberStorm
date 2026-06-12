@@ -1189,6 +1189,15 @@ input_loop:
 
     cmp dword ptr [GameMode], GAME_MODE_PLAY
     jne input_redraw_check
+    call UpdateLevelObjective
+    or r13d, eax
+    inc dword ptr [LevelPulseTicks]
+    mov eax, dword ptr [LevelPulseTicks]
+    and eax, 00000003h
+    jnz input_shot_flash_check
+    mov r13d, 1
+
+input_shot_flash_check:
     cmp dword ptr [ShotFlashTicks], 0
     je input_redraw_check
     dec dword ptr [ShotFlashTicks]
@@ -1534,6 +1543,7 @@ StartFirstLevel PROC
     mov dword ptr [ShotFlashTicks], 0
     mov dword ptr [MissionShots], 0
     mov dword ptr [MissionHits], 0
+    mov dword ptr [LevelPulseTicks], 0
     mov dword ptr [PointerLeftLatch], 0
     ret
 StartFirstLevel ENDP
@@ -1548,10 +1558,10 @@ ReturnToTitle ENDP
 
 FireWeapon PROC
     inc dword ptr [MissionShots]
-    mov dword ptr [ShotFlashTicks], 6
+    mov dword ptr [ShotFlashTicks], 10
 
     cmp dword ptr [EnemyAlive], 0
-    je fire_done
+    je fire_check_terminal
 
     mov eax, dword ptr [CrosshairX]
     cmp eax, 286
@@ -1577,10 +1587,74 @@ FireWeapon PROC
 fire_enemy_down:
     mov dword ptr [EnemyAlive], 0
     mov dword ptr [ObjectiveState], 1
+    jmp fire_done
+
+fire_check_terminal:
+    cmp dword ptr [ObjectiveState], 1
+    jne fire_done
+
+    mov eax, dword ptr [CrosshairX]
+    cmp eax, 142
+    jl fire_done
+    cmp eax, 232
+    jg fire_done
+
+    mov eax, dword ptr [CrosshairY]
+    cmp eax, 184
+    jl fire_done
+    cmp eax, 278
+    jg fire_done
+
+    inc dword ptr [MissionHits]
+    mov dword ptr [ObjectiveState], 2
 
 fire_done:
     ret
 FireWeapon ENDP
+
+UpdateLevelObjective PROC
+    xor ecx, ecx
+    mov eax, dword ptr [ObjectiveState]
+    cmp eax, 3
+    jae objective_done
+
+    cmp eax, 2
+    je objective_check_exit
+    cmp eax, 1
+    jne objective_done
+
+    mov eax, dword ptr [PlayerX]
+    cmp eax, 136
+    jl objective_done
+    cmp eax, 246
+    jg objective_done
+    mov eax, dword ptr [PlayerY]
+    cmp eax, 326
+    jl objective_done
+    cmp eax, PLAYER_MAX_Y
+    jg objective_done
+    mov dword ptr [ObjectiveState], 2
+    mov ecx, 1
+    jmp objective_done
+
+objective_check_exit:
+    mov eax, dword ptr [PlayerX]
+    cmp eax, 488
+    jl objective_done
+    cmp eax, PLAYER_MAX_X
+    jg objective_done
+    mov eax, dword ptr [PlayerY]
+    cmp eax, 336
+    jl objective_done
+    cmp eax, PLAYER_MAX_Y
+    jg objective_done
+    mov dword ptr [ObjectiveState], 3
+    mov ecx, 1
+
+objective_done:
+    mov eax, ecx
+    ret
+UpdateLevelObjective ENDP
 
 DrawPanicScreen PROC
     push rdi
@@ -1793,8 +1867,40 @@ DrawFirstLevel PROC
     FILL_GOP_RECT 130, 198, 8, 92, 00FF90FFh
     FILL_GOP_RECT 506, 170, 10, 72, 00D8FFFFh
     FILL_GOP_RECT 536, 198, 8, 92, 00FF4058h
+    FILL_GOP_RECT 66, 132, 142, 2, 003080D0h
+    FILL_GOP_RECT 432, 132, 142, 2, 003080D0h
+    FILL_GOP_RECT 154, 352, 332, 4, 00101820h
+    FILL_GOP_RECT 168, 330, 304, 2, 003080D0h
+    FILL_GOP_RECT 190, 308, 260, 2, 00D8FFFFh
+    FILL_GOP_RECT 216, 286, 208, 2, 00FF90FFh
+    FILL_GOP_RECT 132, 300, 112, 84, 00070B12h
+    FILL_GOP_RECT 486, 296, 88, 88, 00070B12h
+    FILL_GOP_RECT 500, 312, 58, 54, 00030A10h
+    FILL_GOP_RECT 512, 322, 34, 34, 00101820h
     FILL_GOP_RECT 44, 402, 552, 2, 003080D0h
     FILL_GOP_RECT 44, 456, 552, 28, 00070B12h
+
+    mov eax, dword ptr [LevelPulseTicks]
+    and eax, 00000008h
+    jz draw_level_pulse_cyan
+    mov eax, 00FF90FFh
+    jmp draw_level_pulse_ready
+
+draw_level_pulse_cyan:
+    mov eax, 00D8FFFFh
+
+draw_level_pulse_ready:
+    mov ecx, 44
+    mov edx, 116
+    mov r8d, 552
+    mov r9d, 2
+    call DrawGopRect
+
+    mov ecx, 44
+    mov edx, 402
+    mov r8d, 552
+    mov r9d, 2
+    call DrawGopRect
 
     mov ecx, 28
     mov edx, 16
@@ -1810,7 +1916,24 @@ DrawFirstLevel PROC
 
     mov ecx, 44
     mov edx, 58
-    lea r8, LevelObjectiveLine
+    lea r8, LevelObjectiveKillLine
+    cmp dword ptr [ObjectiveState], 1
+    jne draw_objective_exit_check
+    lea r8, LevelObjectiveBreachLine
+    jmp draw_objective_ready
+
+draw_objective_exit_check:
+    cmp dword ptr [ObjectiveState], 2
+    jne draw_objective_clear_check
+    lea r8, LevelObjectiveExitLine
+    jmp draw_objective_ready
+
+draw_objective_clear_check:
+    cmp dword ptr [ObjectiveState], 3
+    jb draw_objective_ready
+    lea r8, LevelObjectiveClearLine
+
+draw_objective_ready:
     mov r9d, DIAG_ACCENT
     call DrawString
 
@@ -1826,9 +1949,91 @@ DrawFirstLevel PROC
     mov r9d, DIAG_TEXT
     call DrawString
 
+    cmp dword ptr [ObjectiveState], 1
+    jb draw_terminal_locked
+    cmp dword ptr [ObjectiveState], 2
+    jb draw_terminal_active
+    FILL_GOP_RECT 148, 304, 80, 12, 0020D060h
+    FILL_GOP_RECT 160, 322, 56, 4, 00D8FFFFh
+    jmp draw_terminal_model
+
+draw_terminal_active:
+    FILL_GOP_RECT 148, 304, 80, 12, 00FFE66Dh
+    FILL_GOP_RECT 160, 322, 56, 4, 00FF90FFh
+    jmp draw_terminal_model
+
+draw_terminal_locked:
+    FILL_GOP_RECT 148, 304, 80, 12, 00FF4058h
+    FILL_GOP_RECT 160, 322, 56, 4, 003080D0h
+
+draw_terminal_model:
+    FILL_GOP_RECT 148, 204, 74, 66, 00030A10h
+    FILL_GOP_RECT 158, 216, 54, 34, 00182A38h
+    cmp dword ptr [ObjectiveState], 1
+    jb draw_terminal_screen_locked
+    cmp dword ptr [ObjectiveState], 2
+    jb draw_terminal_screen_active
+    FILL_GOP_RECT 164, 222, 42, 20, 0020D060h
+    jmp draw_terminal_screen_done
+
+draw_terminal_screen_active:
+    FILL_GOP_RECT 164, 222, 42, 20, 00FFE66Dh
+    jmp draw_terminal_screen_done
+
+draw_terminal_screen_locked:
+    FILL_GOP_RECT 164, 222, 42, 20, 00FF4058h
+
+draw_terminal_screen_done:
+    FILL_GOP_RECT 170, 258, 30, 4, 00D8FFFFh
+    mov ecx, 1
+    mov edx, 184
+    mov r8d, 248
+    mov r9d, 28
+    call DrawEngine64Model
+
+    mov ecx, 142
+    mov edx, 286
+    lea r8, LevelTerminalLine
+    mov r9d, DIAG_MUTED
+    cmp dword ptr [ObjectiveState], 1
+    jb draw_terminal_label
+    mov r9d, DIAG_WARN
+draw_terminal_label:
+    call DrawString
+
+    cmp dword ptr [ObjectiveState], 2
+    jb draw_exit_locked
+    FILL_GOP_RECT 506, 304, 46, 6, 0020D060h
+    FILL_GOP_RECT 506, 360, 46, 6, 0020D060h
+    FILL_GOP_RECT 516, 318, 26, 34, 00D8FFFFh
+    jmp draw_exit_ready
+
+draw_exit_locked:
+    FILL_GOP_RECT 506, 304, 46, 6, 00FF4058h
+    FILL_GOP_RECT 506, 360, 46, 6, 003080D0h
+    FILL_GOP_RECT 516, 318, 26, 34, 00182A38h
+
+draw_exit_ready:
+    mov ecx, 508
+    mov edx, 282
+    lea r8, LevelExitLine
+    mov r9d, DIAG_MUTED
+    cmp dword ptr [ObjectiveState], 2
+    jb draw_exit_label
+    mov r9d, DIAG_OK
+draw_exit_label:
+    call DrawString
+
     cmp dword ptr [EnemyAlive], 0
     je draw_level_clear
 
+    FILL_GOP_RECT 282, 174, 88, 92, 00030A10h
+    FILL_GOP_RECT 294, 186, 64, 56, 00182A38h
+    FILL_GOP_RECT 304, 198, 18, 14, 00D8FFFFh
+    FILL_GOP_RECT 334, 198, 18, 14, 00FF4058h
+    FILL_GOP_RECT 274, 220, 28, 6, 00FF90FFh
+    FILL_GOP_RECT 350, 220, 28, 6, 00FF90FFh
+    FILL_GOP_RECT 306, 246, 40, 5, 00FFE66Dh
     mov ecx, 0
     mov edx, 326
     mov r8d, 220
@@ -1854,15 +2059,19 @@ draw_enemy_label:
     jmp draw_level_actor
 
 draw_level_clear:
-    mov ecx, 1
-    mov edx, 320
-    mov r8d, 206
-    mov r9d, 36
-    call DrawEngine64Model
-    FILL_GOP_RECT 286, 246, 68, 4, 0020D060h
-    mov ecx, 224
+    FILL_GOP_RECT 288, 222, 64, 8, 0020D060h
+    FILL_GOP_RECT 298, 238, 42, 4, 00D8FFFFh
+    FILL_GOP_RECT 300, 252, 38, 3, 00FFE66Dh
+    mov ecx, 242
     mov edx, 138
     lea r8, LevelClearLine
+    cmp dword ptr [ObjectiveState], 2
+    jb draw_level_clear_label
+    lea r8, LevelExitOpenLine
+    cmp dword ptr [ObjectiveState], 3
+    jb draw_level_clear_label
+    lea r8, LevelCompleteLine
+draw_level_clear_label:
     mov r9d, DIAG_OK
     call DrawString
 
@@ -1870,12 +2079,47 @@ draw_level_actor:
     cmp dword ptr [ShotFlashTicks], 0
     je draw_level_player
 
+    mov ecx, dword ptr [PlayerX]
+    mov edx, dword ptr [PlayerY]
+    sub edx, 30
+    mov r8d, dword ptr [CrosshairX]
+    mov r9d, dword ptr [CrosshairY]
+    mov eax, 00FFE66Dh
+    call DrawGopLine
+
     mov ecx, dword ptr [CrosshairX]
-    sub ecx, 3
+    sub ecx, 18
     mov edx, dword ptr [CrosshairY]
-    add edx, 12
-    mov r8d, 6
-    mov r9d, 104
+    sub edx, 18
+    mov r8d, 36
+    mov r9d, 2
+    mov eax, 00FF90FFh
+    call DrawGopRect
+
+    mov ecx, dword ptr [CrosshairX]
+    sub ecx, 18
+    mov edx, dword ptr [CrosshairY]
+    add edx, 16
+    mov r8d, 36
+    mov r9d, 2
+    mov eax, 00FF90FFh
+    call DrawGopRect
+
+    mov ecx, dword ptr [CrosshairX]
+    sub ecx, 18
+    mov edx, dword ptr [CrosshairY]
+    sub edx, 18
+    mov r8d, 2
+    mov r9d, 36
+    mov eax, 00FFE66Dh
+    call DrawGopRect
+
+    mov ecx, dword ptr [CrosshairX]
+    add ecx, 16
+    mov edx, dword ptr [CrosshairY]
+    sub edx, 18
+    mov r8d, 2
+    mov r9d, 36
     mov eax, 00FFE66Dh
     call DrawGopRect
 
@@ -1889,6 +2133,15 @@ draw_level_actor:
     call DrawGopRect
 
 draw_level_player:
+    mov ecx, dword ptr [PlayerX]
+    sub ecx, 18
+    mov edx, dword ptr [PlayerY]
+    add edx, 18
+    mov r8d, 36
+    mov r9d, 4
+    mov eax, 00030A10h
+    call DrawGopRect
+
     mov ecx, dword ptr [PlayerX]
     sub ecx, 12
     mov edx, dword ptr [PlayerY]
@@ -1905,6 +2158,33 @@ draw_level_player:
     mov r8d, 12
     mov r9d, 10
     mov eax, 00E8F8FFh
+    call DrawGopRect
+
+    mov ecx, dword ptr [PlayerX]
+    sub ecx, 16
+    mov edx, dword ptr [PlayerY]
+    add edx, 14
+    mov r8d, 8
+    mov r9d, 14
+    mov eax, 003080D0h
+    call DrawGopRect
+
+    mov ecx, dword ptr [PlayerX]
+    add ecx, 8
+    mov edx, dword ptr [PlayerY]
+    add edx, 14
+    mov r8d, 8
+    mov r9d, 14
+    mov eax, 00FF90FFh
+    call DrawGopRect
+
+    mov ecx, dword ptr [PlayerX]
+    add ecx, 10
+    mov edx, dword ptr [PlayerY]
+    sub edx, 8
+    mov r8d, 24
+    mov r9d, 5
+    mov eax, 00FFE66Dh
     call DrawGopRect
 
     mov ecx, dword ptr [CrosshairX]
@@ -3616,6 +3896,7 @@ ObjectiveState dd 0
 ShotFlashTicks dd 0
 MissionShots dd 0
 MissionHits dd 0
+LevelPulseTicks dd 0
 align 8
 CurrentModelVertexBase dq 0
 CurrentModelFaceBase dq 0
@@ -3661,12 +3942,20 @@ MenuPanelDiag db 'RUN',0
 MenuPanelLog db 'FX',0
 MenuPanelCredits db 'CR',0
 LevelTitleLine db 'LEVEL 01 NEON SPINE',0
-LevelObjectiveLine db 'BREACH THE TERMINAL',0
-LevelLoopLine db 'MOVE AIM FIRE CLAIM EXIT',0
-LevelHintLine db 'WASD MOVE  MOUSE FIRE  ENTER FIRE',0
+LevelObjectiveLine db 'ELIMINATE WARDEN',0
+LevelObjectiveKillLine db 'ELIMINATE WARDEN',0
+LevelObjectiveBreachLine db 'BREACH TERMINAL',0
+LevelObjectiveExitLine db 'REACH EXIT GATE',0
+LevelObjectiveClearLine db 'MISSION COMPLETE',0
+LevelLoopLine db 'DOWN WARDEN BREACH EXTRACT',0
+LevelHintLine db 'WASD MOVE  AIM FIRE  ESC MENU',0
 LevelStatusLine db 'SHOTS 0000 HITS 0000',0
-LevelClearLine db 'TARGET DOWN EXIT OPEN',0
+LevelClearLine db 'WARDEN DOWN',0
+LevelExitOpenLine db 'EXIT ROUTE OPEN',0
+LevelCompleteLine db 'MISSION COMPLETE',0
 LevelEnemyLine db 'WARDEN',0
+LevelTerminalLine db 'NODE',0
+LevelExitLine db 'EXIT',0
 PanicTitleLine db 'CYBERSTORM X64 BOOT ALERT',0
 PanicArenaLine db 'ARENA ALLOC FAIL',0
 PanicForcedLine db 'BOOT ALERT CHECK',0

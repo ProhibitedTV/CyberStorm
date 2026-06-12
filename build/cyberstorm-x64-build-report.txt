@@ -1,21 +1,21 @@
 CyberStorm x64 UEFI Build Report
-Generated: 2026-06-12 13:36:00 -06:00
+Generated: 2026-06-12 13:54:38 -06:00
 Status: pass
 Target: x64-uefi
-Artifact: cyberstorm-x64-real3d-demo.iso
-ml64.exe: C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.40.33807\bin\Hostx64\x64\ml64.exe (parameter)
-link.exe: C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.40.33807\bin\Hostx64\x64\link.exe (parameter)
+Artifact: cyberstorm-x64-real3d-backend.iso
+ml64.exe: C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.40.33807\bin\Hostx64\x64\ml64.exe (vswhere)
+link.exe: C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.40.33807\bin\Hostx64\x64\link.exe (vswhere)
 Object: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\bootx64.obj
 Listing: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\bootx64.lst
 Link map: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\bootx64.map
 Boot-alert check image: False
-BOOTX64.EFI: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\EFI\BOOT\BOOTX64.EFI (40448 bytes)
-Pack binary: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\X64PACK.BIN (1744 bytes)
+BOOTX64.EFI: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\EFI\BOOT\BOOTX64.EFI (68608 bytes)
+Pack binary: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\X64PACK.BIN (2000 bytes)
 Pack manifest: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\X64MAN.TXT
 Pack chunks: 9
-ENGINE64 chunk: 364 bytes, assembly-built scaffold payload
-Host preview: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-x64-demo-preview.png (25420 bytes, 640x480, 12 palette entries, 2 model entries)
-Pack SHA256: 5DE9D54CAB6FB06831C5B5E67998EED538B57BE174214405F13DE583CD28E1C5
+ENGINE64 chunk: 620 bytes, assembly-built x64 renderer payload data
+Host preview: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-x64-demo-preview.png (25420 bytes, 640x480, 12 palette entries, 4 model entries, 46 model triangles)
+Pack SHA256: 1E8E70E8603ACC3444F108F7D343E1A944BE142ECBBCF5F3782302FA4F251727
 PE machine: 0x8664
 PE optional header: 0x020B
 PE subsystem: 10 (EFI application)
@@ -26,13 +26,13 @@ Title status fields: render/present status and input state are logged for VM smo
 Input MVP: UEFI SimpleTextInput title menu plus first-level keyboard controls
 Input actions: title arrows/W/S select, Enter/Space/Right/D confirm, Esc/Left/A/Backspace backs out
 Gameplay slice: NEW GAME enters LEVEL 01 NEON SPINE with WASD movement, reticle, Warden fight, breach terminal, extraction gate, hit counting, and mission-complete state
-Gameplay presentation: real perspective-projected 3D corridor, animated pulse rails, readable Warden volume, terminal console volume, exit-gate volume, and compact keyboard-first HUD
-Gameplay fire: Enter/Space fire through keyboard fallback; UEFI SimplePointer left-click fires when firmware exposes a pointer protocol; active shots draw player-to-reticle beam and impact feedback
+Gameplay presentation: x64 internal xRGB8888 framebuffer with 32-bit depth buffer, projected filled triangles, clipped screen bounds, animated pulse rails, readable Warden volume, terminal console volume, exit-gate volume, and compact keyboard-first HUD
+Gameplay fire: Enter/Space fire through keyboard fallback; UEFI SimplePointer left-click fires when firmware exposes a pointer protocol; active shots draw player-to-reticle beam and world-depth hit feedback
 Runtime pack loader: LoadedImage -> SimpleFileSystem -> X64PACK.BIN read into scratch arena
 Runtime pack validation: CSX64PK0 magic, version, record size, bounds, alignment, known chunk IDs, FNV-1a checksums
 ENGINE64 validation: CS64ENG0 payload header, 640x480 xRGB8888 target, deterministic expanded title-scene palette table, and assembly-authored model table
-ENGINE64 render scaffold: loaded ENGINE64 chunk renders a layered neon megacity title scene into the frame arena before GOP presentation
-ENGINE64 model assets: WARDEN and TERMNL records carry signed 3D vertices plus triangle face/material references authored directly in assembly
+ENGINE64 render path: loaded ENGINE64 chunk renders the layered title scene; gameplay renders the first level through the x64 filled-triangle depth backend before GOP presentation
+ENGINE64 model assets: WARDEN, TERMNL, PYLON, and GATE records carry signed 3D vertices plus triangle face/material references authored directly in assembly
 Framebuffer abstraction: internal xRGB8888 frame arena with GOP direct/swap present modes for BGR, RGB, and matching bitmask layouts
 Host preview: deterministic PNG rendered from ENGINE64.BIN for release review while UEFI VM smoke remains the boot/input acceptance gate
 Runtime arenas: UEFI AllocatePages, 32 MiB engine-owned block, 64 KiB aligned sub-arenas
@@ -41,16 +41,16 @@ Runtime log: first 128 bytes of log arena contain magic, milestone, failure code
 Failure path: firmware text fallback when GOP cannot be located or initialized
 Failure path: framebuffer failure screen when arena allocation or layout validation fails
 Failure-screen validation: internal debug image is available for VM checks
-ISO: C:\Users\RhythmicCarnage\Desktop\CyberStorm\.\build\cyberstorm-x64-real3d-demo.iso (1566720 bytes)
+ISO: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-x64-real3d-backend.iso (1595392 bytes)
 ISO volume: CYBERSTORM_X64
 El Torito catalog LBA: 19
 EFI FAT image LBA: 23
 EFI FAT image bytes: 1474560
 ISO payloads:
 EFIBOOT.IMG;1: LBA 23, 1474560 bytes
-BOOTX64.EFI;1: LBA 743, 40448 bytes
-X64PACK.BIN;1: LBA 763, 1744 bytes
-X64MAN.TXT;1: LBA 764, 1616 bytes
+BOOTX64.EFI;1: LBA 743, 68608 bytes
+X64PACK.BIN;1: LBA 777, 2000 bytes
+X64MAN.TXT;1: LBA 778, 1616 bytes
 FAT payloads:
-X64PACK BIN: cluster 83, 1744 bytes
-X64MAN  TXT: cluster 87, 1616 bytes
+X64PACK BIN: cluster 138, 2000 bytes
+X64MAN  TXT: cluster 142, 1616 bytes

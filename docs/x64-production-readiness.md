@@ -50,15 +50,15 @@ Staged improvement:
 - `NEW GAME` now enters `LEVEL 01 NEON SPINE`, a first playable x64 mission scaffold with a cyber corridor, HUD, objective prompt, Warden target, terminal breach node, reticle, hit counter, extraction gate, and mission-complete state.
 - Gameplay basics are wired: WASD moves the player marker, Enter/Space fires, and UEFI SimplePointer left-click fires when firmware exposes mouse/pointer support.
 - The first level now has a simple objective chain: eliminate the Warden, breach the terminal by firing at it or standing near the node, then reach the exit gate.
-- Visual readability now comes from a perspective-projected 3D corridor, animated pulse rails, stronger Warden volume, terminal console volume, exit gate volume, and hit-confirmation flashes.
+- Visual readability now comes from an internal x64 frame/depth backend with filled projected triangles, animated pulse rails, stronger Warden volume, terminal console volume, exit gate volume, and hit-confirmation flashes.
 - `scripts/build.ps1 -VmSmoke` is staged to request a gameplay smoke that captures title, first-level entry, movement, and fire screenshots.
-- `ENGINE64.BIN` now carries assembly-authored Warden and terminal model records with signed vertices plus triangle face/material tables, and the x64 level runtime draws them from the payload instead of the old target-box placeholders.
+- `ENGINE64.BIN` now carries assembly-authored Warden, terminal, pylon, and gate model records with signed vertices plus triangle face/material tables, and the x64 level runtime has a native filled-triangle depth path for the first playable scene.
 
 Next gate:
 
 - Load one authored district map chunk through the existing x64 pack loader instead of using hardcoded level geometry.
-- Promote the current model-edge renderer into filled/depth-tested actor rendering so authored meshes do not read like wireframe/debug art.
-- Replace the target-box hit test with weapon ray/collision against map actors.
+- Move the remaining hardcoded level geometry into x64 map/scene chunks and add textured materials on top of the filled/depth-tested backend.
+- Broaden the current world-depth fire checks into full weapon ray/collision against map actors.
 - Replace the hand-authored terminal/exit zones with map-driven objective volumes.
 - Add mouse-look/aim smoothing once the pointer protocol is stable across VM profiles.
 - Keep the first shippable slice small: one corridor, one branch, one objective pickup, one exit.

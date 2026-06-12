@@ -714,8 +714,8 @@ function Write-X64BootstrapReports {
         ("Pack binary: {0} ({1} bytes)" -f $PackArtifacts.PackPath, $PackArtifacts.Bytes)
         ("Pack manifest: {0}" -f $PackArtifacts.ManifestPath)
         ("Pack chunks: {0}" -f $PackArtifacts.ChunkCount)
-        ("ENGINE64 chunk: {0} bytes, assembly-built scaffold payload" -f $PackArtifacts.Engine64Bytes)
-        ("Host preview: {0} ({1} bytes, {2}x{3}, {4} palette entries, {5} model entries)" -f $PreviewResult.Path, $PreviewResult.Bytes, $PreviewResult.Width, $PreviewResult.Height, $PreviewResult.PaletteEntries, $PreviewResult.ModelEntries)
+        ("ENGINE64 chunk: {0} bytes, assembly-built x64 renderer payload data" -f $PackArtifacts.Engine64Bytes)
+        ("Host preview: {0} ({1} bytes, {2}x{3}, {4} palette entries, {5} model entries, {6} model triangles)" -f $PreviewResult.Path, $PreviewResult.Bytes, $PreviewResult.Width, $PreviewResult.Height, $PreviewResult.PaletteEntries, $PreviewResult.ModelEntries, $PreviewResult.ModelTriangles)
         ("Pack SHA256: {0}" -f $PackArtifacts.Sha256)
         ("PE machine: 0x{0:X4}" -f $PeValidation.Machine)
         ("PE optional header: 0x{0:X4}" -f $PeValidation.OptionalMagic)
@@ -727,13 +727,13 @@ function Write-X64BootstrapReports {
         'Input MVP: UEFI SimpleTextInput title menu plus first-level keyboard controls'
         'Input actions: title arrows/W/S select, Enter/Space/Right/D confirm, Esc/Left/A/Backspace backs out'
         'Gameplay slice: NEW GAME enters LEVEL 01 NEON SPINE with WASD movement, reticle, Warden fight, breach terminal, extraction gate, hit counting, and mission-complete state'
-        'Gameplay presentation: real perspective-projected 3D corridor, animated pulse rails, readable Warden volume, terminal console volume, exit-gate volume, and compact keyboard-first HUD'
-        'Gameplay fire: Enter/Space fire through keyboard fallback; UEFI SimplePointer left-click fires when firmware exposes a pointer protocol; active shots draw player-to-reticle beam and impact feedback'
+        'Gameplay presentation: x64 internal xRGB8888 framebuffer with 32-bit depth buffer, projected filled triangles, clipped screen bounds, animated pulse rails, readable Warden volume, terminal console volume, exit-gate volume, and compact keyboard-first HUD'
+        'Gameplay fire: Enter/Space fire through keyboard fallback; UEFI SimplePointer left-click fires when firmware exposes a pointer protocol; active shots draw player-to-reticle beam and world-depth hit feedback'
         'Runtime pack loader: LoadedImage -> SimpleFileSystem -> X64PACK.BIN read into scratch arena'
         'Runtime pack validation: CSX64PK0 magic, version, record size, bounds, alignment, known chunk IDs, FNV-1a checksums'
         'ENGINE64 validation: CS64ENG0 payload header, 640x480 xRGB8888 target, deterministic expanded title-scene palette table, and assembly-authored model table'
-        'ENGINE64 render scaffold: loaded ENGINE64 chunk renders a layered neon megacity title scene into the frame arena before GOP presentation'
-        'ENGINE64 model assets: WARDEN and TERMNL records carry signed 3D vertices plus triangle face/material references authored directly in assembly'
+        'ENGINE64 render path: loaded ENGINE64 chunk renders the layered title scene; gameplay renders the first level through the x64 filled-triangle depth backend before GOP presentation'
+        'ENGINE64 model assets: WARDEN, TERMNL, PYLON, and GATE records carry signed 3D vertices plus triangle face/material references authored directly in assembly'
         'Framebuffer abstraction: internal xRGB8888 frame arena with GOP direct/swap present modes for BGR, RGB, and matching bitmask layouts'
         'Host preview: deterministic PNG rendered from ENGINE64.BIN for release review while UEFI VM smoke remains the boot/input acceptance gate'
         'Runtime arenas: UEFI AllocatePages, 32 MiB engine-owned block, 64 KiB aligned sub-arenas'
@@ -759,7 +759,8 @@ function Write-X64BootstrapReports {
         'Status: pass'
         'Target: x64-uefi'
         'Milestone: M1 GOP title runtime, arena bootstrap, boot-alert/log channel, and input MVP'
-        'Milestone: M2 deterministic pack scaffold and ENGINE64 framebuffer scaffold'
+        'Milestone: M2 deterministic pack scaffold and ENGINE64 framebuffer foundation'
+        'Milestone: M3 first x64 filled-triangle depth backend for playable level rendering'
         ("Pack binary: {0}" -f $PackArtifacts.PackPath)
         ("Pack manifest: {0}" -f $PackArtifacts.ManifestPath)
         ("Pack bytes: {0}" -f $PackArtifacts.Bytes)
@@ -768,6 +769,7 @@ function Write-X64BootstrapReports {
         ("Chunks: {0}" -f $PackArtifacts.ChunkCount)
         ("ENGINE64 bytes: {0}" -f $PackArtifacts.Engine64Bytes)
         ("ENGINE64 model records: {0} ({1})" -f $PreviewResult.ModelEntries, $PreviewResult.ModelNames)
+        ("ENGINE64 model triangles: {0}" -f $PreviewResult.ModelTriangles)
         'Chunk record: type[8], offset32, size32, load64, fnv1a32, align32'
         'Chunk summary:'
     )
@@ -780,7 +782,7 @@ function Write-X64BootstrapReports {
         'Arena alignment: 0x00010000 bytes'
         'Engine arena: 0x00200000 bytes'
         'Frame arena: 0x0012C000 bytes, used as the internal 640x480 xRGB8888 framebuffer'
-        'Depth arena: 0x0012C000 bytes, enough for 640x480 32-bit depth'
+        'Depth arena: 0x0012C000 bytes, used as the playable level 640x480 32-bit z buffer'
         'Texture arena: 0x00800000 bytes'
         'Mesh arena: 0x00400000 bytes'
         'Audio arena: 0x00200000 bytes'

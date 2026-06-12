@@ -1,10 +1,10 @@
 CyberStorm x64 Smoke Report
-Generated: 2026-06-12 13:36:00 -06:00
-Status: not run
-Reason: build path generated and statically validated the UEFI ISO; run the x64 UEFI VM smoke lane to verify boot, GOP title output, and keyboard menu input.
-Run: powershell -ExecutionPolicy Bypass -File .\scripts\build.ps1 -VmSmoke
+Generated: 2026-06-12 13:54:38 -06:00
+Status: blocked
+Reason: VirtualBox preflight failed before VM launch: REGDB_E_READREGDB (0x80040150), component VirtualBoxClientWrap, interface IVirtualBoxClient.
+Run attempted: powershell -ExecutionPolicy Bypass -File .\scripts\deploy-x64-vm.ps1 -Frontend headless -IsoPath build\cyberstorm-x64-real3d-backend.iso -Capture -InputSmoke -GameplaySmoke -ScreenshotPath build\cyberstorm-x64-real3d-backend-vm.png -ReportPath build\cyberstorm-x64-smoke-report.txt
 Boot mode: UEFI x64
 Display mode: UEFI GOP, 640x480 internal xRGB8888 title frame
-ISO: C:\Users\RhythmicCarnage\Desktop\CyberStorm\.\build\cyberstorm-x64-real3d-demo.iso
+ISO: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-x64-real3d-backend.iso
 BOOTX64.EFI: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\EFI\BOOT\BOOTX64.EFI
 Host preview: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-x64-demo-preview.png

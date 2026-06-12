@@ -58,6 +58,7 @@ if ($modelCount -lt 0 -or $modelCount -gt 8) {
 }
 
 $modelNames = New-Object 'System.Collections.Generic.List[string]'
+$modelTriangleCount = 0
 if ($modelCount -gt 0) {
     if ($modelRecordBytes -ne 32) {
         throw "ENGINE64 preview expected 32-byte model records, found $modelRecordBytes."
@@ -86,6 +87,7 @@ if ($modelCount -gt 0) {
         if ($faceCount -lt 1 -or $faceCount -gt 128) {
             throw "ENGINE64 preview model $name face count must be 1..128, found $faceCount."
         }
+        $modelTriangleCount += $faceCount
 
         $vertexEnd = [int64]$vertexOffset + ([int64]$vertexCount * 6)
         $faceEnd = [int64]$faceOffset + ([int64]$faceCount * 4)
@@ -284,5 +286,6 @@ $item = Get-Item -LiteralPath $OutputPath
     PaletteEntries = $paletteCount
     ModelEntries = $modelCount
     ModelNames = ($modelNames -join ',')
+    ModelTriangles = $modelTriangleCount
     Flags = ('0x{0:X8}' -f $flags)
 }

@@ -9,7 +9,7 @@ Engine64PayloadStart LABEL BYTE
     dd 00000280h        ; target width: 640
     dd 000001E0h        ; target height: 480
     dd 0000000Ch        ; deterministic title-scene palette entries
-    dd 0000003Fh        ; GOP, xRGB8888, title scene, pack, boot logs, model assets
+    dd 0000007Fh        ; GOP, xRGB8888, title scene, pack, boot logs, model assets, level meshes
     dd 00000044h        ; palette table offset
     dd 00000004h        ; bytes per palette color
     dd 00000000h        ; internal present format: xRGB8888
@@ -18,7 +18,7 @@ Engine64PayloadStart LABEL BYTE
     dd 00000000h        ; reserved for renderer entry RVA
     dd 00101820h        ; clear color
     dd Engine64ModelTable - Engine64PayloadStart
-    dd 00000002h        ; authored model records
+    dd 00000004h        ; authored model records
     dd 00000020h        ; model record bytes
 
 Engine64TitlePalette LABEL DWORD
@@ -49,6 +49,22 @@ Engine64ModelTable LABEL BYTE
     dd 00000008h
     dd Engine64TerminalFaces - Engine64PayloadStart
     dd 0000000Ah
+    dd 00000000h
+    dd 00000000h
+
+    db 'PYLON   '
+    dd Engine64PylonVertices - Engine64PayloadStart
+    dd 00000008h
+    dd Engine64PylonFaces - Engine64PayloadStart
+    dd 0000000Ch
+    dd 00000000h
+    dd 00000000h
+
+    db 'GATE    '
+    dd Engine64GateVertices - Engine64PayloadStart
+    dd 00000008h
+    dd Engine64GateFaces - Engine64PayloadStart
+    dd 0000000Ch
     dd 00000000h
     dd 00000000h
 
@@ -97,5 +113,53 @@ Engine64TerminalFaces LABEL BYTE
     db 2, 7, 3, 4
     db 3, 7, 4, 8
     db 3, 4, 0, 9
+
+Engine64PylonVertices LABEL WORD
+    dw -18,  60,  -18
+    dw  18,  60,  -18
+    dw  18, -60,  -18
+    dw -18, -60,  -18
+    dw -18,  60,   18
+    dw  18,  60,   18
+    dw  18, -60,   18
+    dw -18, -60,   18
+
+Engine64PylonFaces LABEL BYTE
+    db 0, 1, 2, 3
+    db 0, 2, 3, 3
+    db 4, 7, 6, 7
+    db 4, 6, 5, 7
+    db 0, 4, 5, 4
+    db 0, 5, 1, 4
+    db 1, 5, 6, 8
+    db 1, 6, 2, 8
+    db 2, 6, 7, 5
+    db 2, 7, 3, 5
+    db 3, 7, 4, 10
+    db 3, 4, 0, 10
+
+Engine64GateVertices LABEL WORD
+    dw -36,  76,  -20
+    dw  36,  76,  -20
+    dw  36, -76,  -20
+    dw -36, -76,  -20
+    dw -36,  76,   20
+    dw  36,  76,   20
+    dw  36, -76,   20
+    dw -36, -76,   20
+
+Engine64GateFaces LABEL BYTE
+    db 0, 1, 2, 5
+    db 0, 2, 3, 5
+    db 4, 7, 6, 6
+    db 4, 6, 5, 6
+    db 0, 4, 5, 9
+    db 0, 5, 1, 9
+    db 1, 5, 6, 4
+    db 1, 6, 2, 4
+    db 2, 6, 7, 10
+    db 2, 7, 3, 10
+    db 3, 7, 4, 7
+    db 3, 4, 0, 7
 
 END

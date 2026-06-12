@@ -2,13 +2,13 @@
 
 > No OS. No shell. Just the realm.
 >
-> CyberStorm is a bootable bare-metal 3D adventure campaign and engine project. The mainline release path is now a UEFI x64 ISO with a GOP title-screen runtime, x64 pack loader, and assembly-built `ENGINE64` scaffold payload, while the older BIOS x86 build remains available as a legacy archive target.
+> CyberStorm is a bootable bare-metal 3D adventure campaign and engine project. The mainline release path is now a UEFI x64 ISO with a GOP title-screen runtime, x64 pack loader, assembly-built `ENGINE64` payload data, and a first filled-triangle gameplay backend, while the older BIOS x86 build remains available as a legacy archive target.
 
 ![CyberStorm hero](build/readme-shot-1.png)
 
 | Built for | Boots from | Video | Runtime |
 | --- | --- | --- | --- |
-| UEFI x64 + GOP | Burnable UEFI El Torito ISO (`cyberstorm-x64.iso`) | GOP-presented `640x480` title screen now; CPU software-3D renderer target | PE32+ `BOOTX64.EFI`, UEFI FAT payloads, `X64PACK.BIN`, assembly-built `ENGINE64.BIN` scaffold |
+| UEFI x64 + GOP | Burnable UEFI El Torito ISO (`cyberstorm-x64.iso`) | GOP-presented `640x480` title screen plus first filled-triangle/depth-buffer gameplay backend | PE32+ `BOOTX64.EFI`, UEFI FAT payloads, `X64PACK.BIN`, assembly-built `ENGINE64.BIN` mesh payload data |
 | BIOS x86 + Oracle VirtualBox | Explicit legacy build (`-Target x86-expanded`) with expanded raw image and burnable ISO wrapper | VBE `640x480x16` present path over a `320x240` gameplay surface with exact 2x presentation when active, plus legacy VGA fallback | i386-targeted boot chain + current 16-bit stage-two runtime retained as archive/reference material |
 
 ## Key Features
@@ -25,10 +25,10 @@
 
 - **A real boot path.** The build emits a bootable UEFI x64 ISO, not a host app wrapped in a fake shell.
 - **A mainline x64 ISO path.** The default build emits `cyberstorm-x64.iso`, `BOOTX64.EFI`, `X64PACK.BIN`, `X64MAN.TXT`, and `ENGINE64.BIN` for the UEFI release.
-- **An ENGINE64 framebuffer scaffold.** The UEFI build now renders the loaded `ENGINE64` expanded megacity title-scene palette into an internal `640x480` xRGB8888 frame arena, then presents it through GOP direct/swap conversion.
-- **Assembly-authored model assets.** `ENGINE64.BIN` now carries Warden and terminal mesh records with signed 3D vertices plus triangle face/material data authored directly in assembly and validated by the x64 build.
+- **A real x64 frame/depth backend.** The UEFI build renders through an internal `640x480` xRGB8888 frame arena and a 32-bit depth arena before presenting through GOP direct/swap conversion.
+- **Assembly-authored model assets.** `ENGINE64.BIN` now carries Warden, terminal, pylon, and gate mesh records with signed 3D vertices plus triangle face/material data authored directly in assembly and validated by the x64 build.
 - **Larger x64 memory budgets.** The UEFI path now allocates a 32 MiB engine-owned arena block and stages validated pack chunks into engine, texture, mesh/scene/script, audio, scratch, and log arenas.
-- **A first x64 gameplay loop.** `NEW GAME` enters `LEVEL 01 NEON SPINE`, with WASD movement, a reticle, keyboard fire, optional UEFI pointer left-click fire, a Warden fight, terminal breach, extraction gate, hit counter, and mission-complete state in a pulse-lit perspective-projected 3D corridor.
+- **A first x64 gameplay loop.** `NEW GAME` enters `LEVEL 01 NEON SPINE`, with WASD movement, a reticle, keyboard fire, optional UEFI pointer left-click fire, a Warden fight, terminal breach, extraction gate, hit counter, and mission-complete state in a pulse-lit filled-triangle 3D corridor with z-tested surfaces.
 - **An expanded release surface.** The build now emits a larger mainline boot image, a typed pack-directory artifact, an expanded manifest, and a bootable ISO wrapper so future renderer/audio/content payloads are no longer planned around a floppy-sized ceiling.
 - **Generated content tooling.** Sprites, banked presentation assets, low-poly scene geometry, sectors, rules, demos, and music come from readable source files that generate MASM-friendly data at build time.
 - **A real software 3D render path.** Splash, title, sector-entry cards, end screens, and now live gameplay all run through a flat-shaded low-poly renderer, while `-DebugRender2D` still keeps the legacy 2D oracle available for parity work.

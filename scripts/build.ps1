@@ -727,7 +727,7 @@ function Write-X64BootstrapReports {
         'Input MVP: UEFI SimpleTextInput title menu plus first-level keyboard controls'
         'Input actions: title arrows/W/S select, Enter/Space/Right/D confirm, Esc/Left/A/Backspace backs out'
         'Gameplay slice: NEW GAME enters LEVEL 01 NEON SPINE with WASD movement, reticle, Warden fight, breach terminal, extraction gate, hit counting, and mission-complete state'
-        'Gameplay presentation: x64 internal xRGB8888 framebuffer with 32-bit depth buffer, projected filled triangles, clipped screen bounds, animated pulse rails, readable Warden volume, terminal console volume, exit-gate volume, and compact keyboard-first HUD'
+        'Gameplay presentation: x64 internal xRGB8888 framebuffer with 32-bit depth buffer, projected filled triangles, clipped screen bounds, per-triangle material/depth fog tint, animated pulse rails, denser authored corridor geometry, readable Warden volume, terminal console volume, exit-gate volume, and compact keyboard-first HUD'
         'Gameplay fire: Enter/Space fire through keyboard fallback; UEFI SimplePointer left-click fires when firmware exposes a pointer protocol; active shots draw player-to-reticle beam and world-depth hit feedback'
         'Runtime pack loader: LoadedImage -> SimpleFileSystem -> X64PACK.BIN read into scratch arena'
         'Runtime pack validation: CSX64PK0 magic, version, record size, bounds, alignment, known chunk IDs, FNV-1a checksums'
@@ -760,7 +760,7 @@ function Write-X64BootstrapReports {
         'Target: x64-uefi'
         'Milestone: M1 GOP title runtime, arena bootstrap, boot-alert/log channel, and input MVP'
         'Milestone: M2 deterministic pack scaffold and ENGINE64 framebuffer foundation'
-        'Milestone: M3 first x64 filled-triangle depth backend for playable level rendering'
+        'Milestone: M3 first x64 filled-triangle depth backend for playable level rendering plus material/depth fog and denser first-level scene composition'
         ("Pack binary: {0}" -f $PackArtifacts.PackPath)
         ("Pack manifest: {0}" -f $PackArtifacts.ManifestPath)
         ("Pack bytes: {0}" -f $PackArtifacts.Bytes)

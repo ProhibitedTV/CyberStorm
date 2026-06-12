@@ -271,7 +271,7 @@ $reportLines = @(
     ('Gameplay smoke: {0}' -f $gameplaySmokeStatus),
     ('Gameplay screenshot: {0}' -f (Resolve-ExistingPathText -Path $gameplayPath)),
     ('Gameplay fire screenshot: {0}' -f (Resolve-ExistingPathText -Path $gameplayFirePath)),
-    'Checks: UEFI VM boots the x64 ISO, GOP title frame is nonblack/accented, menu accepts Down and Enter, NEW GAME reaches the first level, WASD moves, Enter fires with visible beam feedback, and the VM remains running.',
+    'Checks: UEFI VM boots the x64 ISO, GOP title frame is nonblack/accented, menu accepts Down and Enter, NEW GAME reaches the first level, WASD moves, Enter fires with visible beam feedback, the Warden/terminal/exit landmarks are visible, and the VM remains running.',
     'Recovery: input smoke sends Esc and Up after capture; gameplay smoke sends Esc after capture so the live GUI returns to the title path.'
 )
 Set-Content -Path $ReportPath -Value $reportLines -Encoding ASCII

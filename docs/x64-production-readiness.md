@@ -50,6 +50,7 @@ Staged improvement:
 - `NEW GAME` now enters `LEVEL 01 NEON SPINE`, a first playable x64 mission scaffold with a cyber corridor, HUD, objective prompt, Warden target, terminal breach node, reticle, hit counter, extraction gate, and mission-complete state.
 - Gameplay basics are wired: WASD moves the player marker, Enter/Space fires, and UEFI SimplePointer left-click fires when firmware exposes mouse/pointer support.
 - The first level now has a simple objective chain: eliminate the Warden, breach the terminal by firing at it or standing near the node, then reach the exit gate.
+- Visual readability now comes from a deeper pseudo-3D corridor, animated pulse rails, stronger Warden silhouette, terminal console states, exit gate states, and hit-confirmation flashes.
 - `scripts/build.ps1 -VmSmoke` is staged to request a gameplay smoke that captures title, first-level entry, movement, and fire screenshots.
 - `ENGINE64.BIN` now carries assembly-authored Warden and terminal model records with signed vertices plus triangle face/material tables, and the x64 level runtime draws them from the payload instead of the old target-box placeholders.
 

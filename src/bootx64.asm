@@ -1199,8 +1199,14 @@ input_loop:
 
 input_shot_flash_check:
     cmp dword ptr [ShotFlashTicks], 0
-    je input_redraw_check
+    je input_hit_flash_check
     dec dword ptr [ShotFlashTicks]
+    mov r13d, 1
+
+input_hit_flash_check:
+    cmp dword ptr [HitFlashTicks], 0
+    je input_redraw_check
+    dec dword ptr [HitFlashTicks]
     mov r13d, 1
 
 input_redraw_check:
@@ -1541,6 +1547,7 @@ StartFirstLevel PROC
     mov dword ptr [EnemyAlive], 1
     mov dword ptr [ObjectiveState], 0
     mov dword ptr [ShotFlashTicks], 0
+    mov dword ptr [HitFlashTicks], 0
     mov dword ptr [MissionShots], 0
     mov dword ptr [MissionHits], 0
     mov dword ptr [LevelPulseTicks], 0
@@ -1552,6 +1559,7 @@ ReturnToTitle PROC
     mov dword ptr [GameMode], GAME_MODE_TITLE
     mov dword ptr [MenuPanel], 0
     mov dword ptr [ShotFlashTicks], 0
+    mov dword ptr [HitFlashTicks], 0
     mov dword ptr [PointerLeftLatch], 0
     ret
 ReturnToTitle ENDP
@@ -1576,6 +1584,7 @@ FireWeapon PROC
     jg fire_done
 
     inc dword ptr [MissionHits]
+    mov dword ptr [HitFlashTicks], 8
     mov eax, dword ptr [EnemyHp]
     test eax, eax
     jz fire_enemy_down
@@ -1606,6 +1615,7 @@ fire_check_terminal:
     jg fire_done
 
     inc dword ptr [MissionHits]
+    mov dword ptr [HitFlashTicks], 10
     mov dword ptr [ObjectiveState], 2
 
 fire_done:
@@ -1634,6 +1644,7 @@ UpdateLevelObjective PROC
     cmp eax, PLAYER_MAX_Y
     jg objective_done
     mov dword ptr [ObjectiveState], 2
+    mov dword ptr [HitFlashTicks], 10
     mov ecx, 1
     jmp objective_done
 
@@ -1649,6 +1660,7 @@ objective_check_exit:
     cmp eax, PLAYER_MAX_Y
     jg objective_done
     mov dword ptr [ObjectiveState], 3
+    mov dword ptr [HitFlashTicks], 12
     mov ecx, 1
 
 objective_done:
@@ -1877,8 +1889,51 @@ DrawFirstLevel PROC
     FILL_GOP_RECT 486, 296, 88, 88, 00070B12h
     FILL_GOP_RECT 500, 312, 58, 54, 00030A10h
     FILL_GOP_RECT 512, 322, 34, 34, 00101820h
+    FILL_GOP_RECT 44, 92, 552, 16, 000B1924h
+    FILL_GOP_RECT 60, 136, 520, 4, 00182A38h
+    FILL_GOP_RECT 72, 358, 496, 8, 000B1924h
+    FILL_GOP_RECT 96, 368, 448, 5, 00101820h
+    FILL_GOP_RECT 128, 378, 384, 3, 000B1924h
+    FILL_GOP_RECT 60, 146, 18, 216, 00070B12h
+    FILL_GOP_RECT 562, 146, 18, 216, 00070B12h
+    FILL_GOP_RECT 66, 156, 6, 188, 003080D0h
+    FILL_GOP_RECT 568, 156, 6, 188, 00FF90FFh
+    FILL_GOP_RECT 238, 150, 40, 8, 003080D0h
+    FILL_GOP_RECT 362, 150, 40, 8, 00FF90FFh
+    FILL_GOP_RECT 252, 166, 22, 5, 00D8FFFFh
+    FILL_GOP_RECT 366, 166, 22, 5, 00FFE66Dh
+    FILL_GOP_RECT 70, 252, 54, 7, 00FFE66Dh
+    FILL_GOP_RECT 516, 252, 54, 7, 00D8FFFFh
     FILL_GOP_RECT 44, 402, 552, 2, 003080D0h
     FILL_GOP_RECT 44, 456, 552, 28, 00070B12h
+
+    mov eax, 003080D0h
+    mov ecx, 320
+    mov edx, 126
+    mov r8d, 44
+    mov r9d, 384
+    call DrawGopLine
+
+    mov eax, 00D8FFFFh
+    mov ecx, 320
+    mov edx, 126
+    mov r8d, 184
+    mov r9d, 384
+    call DrawGopLine
+
+    mov eax, 00FF90FFh
+    mov ecx, 320
+    mov edx, 126
+    mov r8d, 456
+    mov r9d, 384
+    call DrawGopLine
+
+    mov eax, 003080D0h
+    mov ecx, 320
+    mov edx, 126
+    mov r8d, 596
+    mov r9d, 384
+    call DrawGopLine
 
     mov eax, dword ptr [LevelPulseTicks]
     and eax, 00000008h
@@ -1894,6 +1949,24 @@ draw_level_pulse_ready:
     mov edx, 116
     mov r8d, 552
     mov r9d, 2
+    call DrawGopRect
+
+    mov ecx, 88
+    mov edx, 386
+    mov r8d, 464
+    mov r9d, 3
+    call DrawGopRect
+
+    mov ecx, 118
+    mov edx, 332
+    mov r8d, 72
+    mov r9d, 4
+    call DrawGopRect
+
+    mov ecx, 450
+    mov edx, 332
+    mov r8d, 72
+    mov r9d, 4
     call DrawGopRect
 
     mov ecx, 44
@@ -1967,6 +2040,11 @@ draw_terminal_locked:
     FILL_GOP_RECT 160, 322, 56, 4, 003080D0h
 
 draw_terminal_model:
+    FILL_GOP_RECT 136, 194, 98, 92, 000B1924h
+    FILL_GOP_RECT 140, 198, 90, 4, 003080D0h
+    FILL_GOP_RECT 140, 278, 90, 4, 003080D0h
+    FILL_GOP_RECT 144, 208, 8, 62, 00FF90FFh
+    FILL_GOP_RECT 218, 208, 8, 62, 00D8FFFFh
     FILL_GOP_RECT 148, 204, 74, 66, 00030A10h
     FILL_GOP_RECT 158, 216, 54, 34, 00182A38h
     cmp dword ptr [ObjectiveState], 1
@@ -1974,17 +2052,31 @@ draw_terminal_model:
     cmp dword ptr [ObjectiveState], 2
     jb draw_terminal_screen_active
     FILL_GOP_RECT 164, 222, 42, 20, 0020D060h
+    FILL_GOP_RECT 170, 228, 30, 3, 00D8FFFFh
+    FILL_GOP_RECT 170, 236, 30, 3, 00D8FFFFh
     jmp draw_terminal_screen_done
 
 draw_terminal_screen_active:
+    cmp dword ptr [HitFlashTicks], 0
+    je draw_terminal_active_normal
+    FILL_GOP_RECT 164, 222, 42, 20, 00FF90FFh
+    jmp draw_terminal_screen_done
+
+draw_terminal_active_normal:
     FILL_GOP_RECT 164, 222, 42, 20, 00FFE66Dh
+    FILL_GOP_RECT 170, 228, 30, 3, 00070B12h
+    FILL_GOP_RECT 170, 236, 20, 3, 00070B12h
     jmp draw_terminal_screen_done
 
 draw_terminal_screen_locked:
     FILL_GOP_RECT 164, 222, 42, 20, 00FF4058h
+    FILL_GOP_RECT 170, 228, 30, 3, 00070B12h
+    FILL_GOP_RECT 170, 236, 30, 3, 00070B12h
 
 draw_terminal_screen_done:
+    FILL_GOP_RECT 154, 252, 62, 6, 00182A38h
     FILL_GOP_RECT 170, 258, 30, 4, 00D8FFFFh
+    FILL_GOP_RECT 178, 270, 14, 30, 00030A10h
     mov ecx, 1
     mov edx, 184
     mov r8d, 248
@@ -2003,15 +2095,26 @@ draw_terminal_label:
 
     cmp dword ptr [ObjectiveState], 2
     jb draw_exit_locked
+    FILL_GOP_RECT 492, 294, 74, 82, 000B1924h
+    FILL_GOP_RECT 498, 300, 62, 70, 00182A38h
     FILL_GOP_RECT 506, 304, 46, 6, 0020D060h
     FILL_GOP_RECT 506, 360, 46, 6, 0020D060h
     FILL_GOP_RECT 516, 318, 26, 34, 00D8FFFFh
+    FILL_GOP_RECT 524, 326, 10, 20, 00070B12h
+    cmp dword ptr [HitFlashTicks], 0
+    je draw_exit_open_no_flash
+    FILL_GOP_RECT 508, 312, 42, 46, 00B0FFC8h
+
+draw_exit_open_no_flash:
     jmp draw_exit_ready
 
 draw_exit_locked:
+    FILL_GOP_RECT 492, 294, 74, 82, 000B1924h
+    FILL_GOP_RECT 498, 300, 62, 70, 00030A10h
     FILL_GOP_RECT 506, 304, 46, 6, 00FF4058h
     FILL_GOP_RECT 506, 360, 46, 6, 003080D0h
     FILL_GOP_RECT 516, 318, 26, 34, 00182A38h
+    FILL_GOP_RECT 526, 318, 6, 34, 00FF4058h
 
 draw_exit_ready:
     mov ecx, 508
@@ -2027,10 +2130,25 @@ draw_exit_label:
     cmp dword ptr [EnemyAlive], 0
     je draw_level_clear
 
+    FILL_GOP_RECT 270, 164, 112, 6, 003080D0h
+    FILL_GOP_RECT 270, 262, 112, 6, 00FF90FFh
+    FILL_GOP_RECT 278, 178, 96, 80, 00070B12h
+    cmp dword ptr [HitFlashTicks], 0
+    je draw_warden_body_normal
+    FILL_GOP_RECT 286, 182, 80, 70, 00FFE66Dh
+    FILL_GOP_RECT 298, 192, 56, 48, 00FF90FFh
+    jmp draw_warden_body_ready
+
+draw_warden_body_normal:
     FILL_GOP_RECT 282, 174, 88, 92, 00030A10h
     FILL_GOP_RECT 294, 186, 64, 56, 00182A38h
+
+draw_warden_body_ready:
+    FILL_GOP_RECT 292, 180, 68, 8, 00A020B0h
     FILL_GOP_RECT 304, 198, 18, 14, 00D8FFFFh
     FILL_GOP_RECT 334, 198, 18, 14, 00FF4058h
+    FILL_GOP_RECT 310, 222, 32, 6, 00030A10h
+    FILL_GOP_RECT 316, 234, 20, 18, 003080D0h
     FILL_GOP_RECT 274, 220, 28, 6, 00FF90FFh
     FILL_GOP_RECT 350, 220, 28, 6, 00FF90FFh
     FILL_GOP_RECT 306, 246, 40, 5, 00FFE66Dh
@@ -2087,6 +2205,26 @@ draw_level_actor:
     mov eax, 00FFE66Dh
     call DrawGopLine
 
+    mov ecx, dword ptr [PlayerX]
+    add ecx, 4
+    mov edx, dword ptr [PlayerY]
+    sub edx, 26
+    mov r8d, dword ptr [CrosshairX]
+    add r8d, 3
+    mov r9d, dword ptr [CrosshairY]
+    add r9d, 2
+    mov eax, 00D8FFFFh
+    call DrawGopLine
+
+    mov ecx, dword ptr [PlayerX]
+    add ecx, 10
+    mov edx, dword ptr [PlayerY]
+    sub edx, 14
+    mov r8d, 28
+    mov r9d, 8
+    mov eax, 00FFE66Dh
+    call DrawGopRect
+
     mov ecx, dword ptr [CrosshairX]
     sub ecx, 18
     mov edx, dword ptr [CrosshairY]
@@ -2112,6 +2250,15 @@ draw_level_actor:
     mov r8d, 2
     mov r9d, 36
     mov eax, 00FFE66Dh
+    call DrawGopRect
+
+    mov ecx, dword ptr [CrosshairX]
+    sub ecx, 4
+    mov edx, dword ptr [CrosshairY]
+    sub edx, 4
+    mov r8d, 8
+    mov r9d, 8
+    mov eax, 00E8F8FFh
     call DrawGopRect
 
     mov ecx, dword ptr [CrosshairX]
@@ -3894,6 +4041,7 @@ EnemyHp dd 3
 EnemyAlive dd 1
 ObjectiveState dd 0
 ShotFlashTicks dd 0
+HitFlashTicks dd 0
 MissionShots dd 0
 MissionHits dd 0
 LevelPulseTicks dd 0
@@ -3948,7 +4096,7 @@ LevelObjectiveBreachLine db 'BREACH TERMINAL',0
 LevelObjectiveExitLine db 'REACH EXIT GATE',0
 LevelObjectiveClearLine db 'MISSION COMPLETE',0
 LevelLoopLine db 'DOWN WARDEN BREACH EXTRACT',0
-LevelHintLine db 'WASD MOVE  AIM FIRE  ESC MENU',0
+LevelHintLine db 'WASD MOVE  ENTER FIRE  ESC MENU',0
 LevelStatusLine db 'SHOTS 0000 HITS 0000',0
 LevelClearLine db 'WARDEN DOWN',0
 LevelExitOpenLine db 'EXIT ROUTE OPEN',0

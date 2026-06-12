@@ -1918,6 +1918,7 @@ DrawTitleScreen PROC
     sub rsp, 20h
 
     call DrawEngine64Showcase
+    call DrawTitleHero3DOverlay
 
     FILL_GOP_RECT 28, 24, 374, 112, 00070B12h
     FILL_GOP_RECT 42, 88, 286, 5, DIAG_ACCENT
@@ -1943,8 +1944,8 @@ DrawTitleScreen PROC
 
     call DrawMenuOptions
 
-    FILL_GOP_RECT 28, 402, 412, 52, 00070B12h
-    FILL_GOP_RECT 28, 404, 412, 2, 00FF90FFh
+    FILL_GOP_RECT 28, 402, 584, 52, 00070B12h
+    FILL_GOP_RECT 28, 404, 584, 2, 00FF90FFh
 
     mov ecx, 42
     mov edx, 414
@@ -1962,6 +1963,98 @@ DrawTitleScreen PROC
     pop rdi
     ret
 DrawTitleScreen ENDP
+
+DrawTitleHero3DOverlay PROC
+    push rdi
+    sub rsp, 20h
+
+    FILL_GOP_RECT 0, 150, 640, 66, 0004080Dh
+    FILL_GOP_RECT 0, 216, 640, 264, 00030A10h
+    FILL_GOP_RECT 0, 216, 640, 3, 003080D0h
+    FILL_GOP_RECT 0, 246, 640, 2, 00D8FFFFh
+    FILL_GOP_RECT 0, 304, 640, 2, 00FF90FFh
+    FILL_GOP_RECT 0, 386, 640, 3, 003080D0h
+
+    FILL_GOP_RECT 38, 172, 54, 112, 00070B12h
+    FILL_GOP_RECT 106, 136, 78, 148, 000B1924h
+    FILL_GOP_RECT 202, 184, 48, 100, 00101820h
+    FILL_GOP_RECT 408, 156, 84, 128, 000B1924h
+    FILL_GOP_RECT 516, 190, 66, 94, 00101820h
+    FILL_GOP_RECT 58, 208, 10, 44, 00D8FFFFh
+    FILL_GOP_RECT 128, 164, 12, 32, 00FF90FFh
+    FILL_GOP_RECT 164, 210, 8, 48, 00FFE66Dh
+    FILL_GOP_RECT 424, 184, 52, 8, 00D8FFFFh
+    FILL_GOP_RECT 548, 218, 8, 44, 00FF4058h
+
+    mov ecx, 320
+    mov edx, 220
+    mov r8d, 18
+    mov r9d, 479
+    mov eax, 003080D0h
+    call DrawGopLine
+
+    mov ecx, 320
+    mov edx, 220
+    mov r8d, 150
+    mov r9d, 479
+    mov eax, 00FF90FFh
+    call DrawGopLine
+
+    mov ecx, 320
+    mov edx, 220
+    mov r8d, 288
+    mov r9d, 479
+    mov eax, 00D8FFFFh
+    call DrawGopLine
+
+    mov ecx, 320
+    mov edx, 220
+    mov r8d, 352
+    mov r9d, 479
+    mov eax, 00D8FFFFh
+    call DrawGopLine
+
+    mov ecx, 320
+    mov edx, 220
+    mov r8d, 490
+    mov r9d, 479
+    mov eax, 00FF90FFh
+    call DrawGopLine
+
+    mov ecx, 320
+    mov edx, 220
+    mov r8d, 622
+    mov r9d, 479
+    mov eax, 003080D0h
+    call DrawGopLine
+
+    FILL_GOP_RECT 230, 246, 72, 20, 00070B12h
+    FILL_GOP_RECT 292, 234, 126, 38, 00182A38h
+    FILL_GOP_RECT 408, 252, 54, 14, 00070B12h
+    FILL_GOP_RECT 254, 268, 210, 5, 00FF90FFh
+    FILL_GOP_RECT 318, 246, 48, 8, 00D8FFFFh
+    FILL_GOP_RECT 372, 258, 22, 6, 00FFE66Dh
+    FILL_GOP_RECT 242, 274, 28, 4, 00FF4058h
+    FILL_GOP_RECT 426, 274, 28, 4, 00FF4058h
+
+    mov ecx, 230
+    mov edx, 246
+    mov r8d, 292
+    mov r9d, 234
+    mov eax, 00D8FFFFh
+    call DrawGopLine
+
+    mov ecx, 418
+    mov edx, 234
+    mov r8d, 462
+    mov r9d, 252
+    mov eax, 00D8FFFFh
+    call DrawGopLine
+
+    add rsp, 20h
+    pop rdi
+    ret
+DrawTitleHero3DOverlay ENDP
 
 FormatMissionHud PROC
     sub rsp, 20h
@@ -3920,11 +4013,11 @@ tri_pixel_loop:
     jg tri_next_row
 
     test ebx, ebx
-    jl tri_skip_pixel
+    jg tri_skip_pixel
     test r13d, r13d
-    jl tri_skip_pixel
+    jg tri_skip_pixel
     test edx, edx
-    jl tri_skip_pixel
+    jg tri_skip_pixel
 
     mov eax, r10d
     sar eax, 8

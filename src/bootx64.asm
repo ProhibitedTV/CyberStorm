@@ -152,6 +152,42 @@ row_loop:
     jnz row_loop
 ENDM
 
+DRAW_3D_LINE MACRO X0, Y0, Z0, X1, Y1, Z1, LineColor
+    mov ecx, X0
+    mov edx, Y0
+    mov r8d, Z0
+    call ProjectLevelPoint3D
+    mov dword ptr [ProjectedX0], eax
+    mov dword ptr [ProjectedY0], edx
+    mov ecx, X1
+    mov edx, Y1
+    mov r8d, Z1
+    call ProjectLevelPoint3D
+    mov dword ptr [ProjectedX1], eax
+    mov dword ptr [ProjectedY1], edx
+    mov ecx, dword ptr [ProjectedX0]
+    mov edx, dword ptr [ProjectedY0]
+    mov r8d, dword ptr [ProjectedX1]
+    mov r9d, dword ptr [ProjectedY1]
+    mov eax, LineColor
+    call DrawGopLine
+ENDM
+
+DRAW_3D_BOX MACRO MinX, MinY, NearZ, MaxX, MaxY, FarZ, LineColor
+    DRAW_3D_LINE MinX, MinY, NearZ, MaxX, MinY, NearZ, LineColor
+    DRAW_3D_LINE MaxX, MinY, NearZ, MaxX, MaxY, NearZ, LineColor
+    DRAW_3D_LINE MaxX, MaxY, NearZ, MinX, MaxY, NearZ, LineColor
+    DRAW_3D_LINE MinX, MaxY, NearZ, MinX, MinY, NearZ, LineColor
+    DRAW_3D_LINE MinX, MinY, FarZ, MaxX, MinY, FarZ, LineColor
+    DRAW_3D_LINE MaxX, MinY, FarZ, MaxX, MaxY, FarZ, LineColor
+    DRAW_3D_LINE MaxX, MaxY, FarZ, MinX, MaxY, FarZ, LineColor
+    DRAW_3D_LINE MinX, MaxY, FarZ, MinX, MinY, FarZ, LineColor
+    DRAW_3D_LINE MinX, MinY, NearZ, MinX, MinY, FarZ, LineColor
+    DRAW_3D_LINE MaxX, MinY, NearZ, MaxX, MinY, FarZ, LineColor
+    DRAW_3D_LINE MaxX, MaxY, NearZ, MaxX, MaxY, FarZ, LineColor
+    DRAW_3D_LINE MinX, MaxY, NearZ, MinX, MaxY, FarZ, LineColor
+ENDM
+
 PUBLIC EfiMain
 
 .code
@@ -1907,33 +1943,23 @@ DrawFirstLevel PROC
     FILL_GOP_RECT 44, 402, 552, 2, 003080D0h
     FILL_GOP_RECT 44, 456, 552, 28, 00070B12h
 
-    mov eax, 003080D0h
-    mov ecx, 320
-    mov edx, 126
-    mov r8d, 44
-    mov r9d, 384
-    call DrawGopLine
-
-    mov eax, 00D8FFFFh
-    mov ecx, 320
-    mov edx, 126
-    mov r8d, 184
-    mov r9d, 384
-    call DrawGopLine
-
-    mov eax, 00FF90FFh
-    mov ecx, 320
-    mov edx, 126
-    mov r8d, 456
-    mov r9d, 384
-    call DrawGopLine
-
-    mov eax, 003080D0h
-    mov ecx, 320
-    mov edx, 126
-    mov r8d, 596
-    mov r9d, 384
-    call DrawGopLine
+    DRAW_3D_LINE -180, -45, 96, 180, -45, 96, 00FF90FFh
+    DRAW_3D_LINE -180, -45, 136, 180, -45, 136, 003080D0h
+    DRAW_3D_LINE -180, -45, 192, 180, -45, 192, 00D8FFFFh
+    DRAW_3D_LINE -180, -45, 280, 180, -45, 280, 003080D0h
+    DRAW_3D_LINE -180, -45, 400, 180, -45, 400, 00FF90FFh
+    DRAW_3D_LINE -180, -45, 96, -180, -45, 420, 003080D0h
+    DRAW_3D_LINE -90, -45, 96, -90, -45, 420, 00D8FFFFh
+    DRAW_3D_LINE 0, -45, 96, 0, -45, 420, 00FFE66Dh
+    DRAW_3D_LINE 90, -45, 96, 90, -45, 420, 00D8FFFFh
+    DRAW_3D_LINE 180, -45, 96, 180, -45, 420, 003080D0h
+    DRAW_3D_LINE -180, 95, 96, 180, 95, 96, 003080D0h
+    DRAW_3D_LINE -180, 95, 180, 180, 95, 180, 00D8FFFFh
+    DRAW_3D_LINE -180, 95, 320, 180, 95, 320, 003080D0h
+    DRAW_3D_LINE -180, -45, 420, -180, 95, 420, 00D8FFFFh
+    DRAW_3D_LINE 180, -45, 420, 180, 95, 420, 00D8FFFFh
+    DRAW_3D_BOX -178, -45, 118, -132, 86, 214, 003080D0h
+    DRAW_3D_BOX 132, -45, 118, 178, 86, 214, 00FF90FFh
 
     mov eax, dword ptr [LevelPulseTicks]
     and eax, 00000008h
@@ -2077,11 +2103,21 @@ draw_terminal_screen_done:
     FILL_GOP_RECT 154, 252, 62, 6, 00182A38h
     FILL_GOP_RECT 170, 258, 30, 4, 00D8FFFFh
     FILL_GOP_RECT 178, 270, 14, 30, 00030A10h
-    mov ecx, 1
-    mov edx, 184
-    mov r8d, 248
-    mov r9d, 28
-    call DrawEngine64Model
+    cmp dword ptr [ObjectiveState], 1
+    jb draw_terminal_box_locked
+    cmp dword ptr [ObjectiveState], 2
+    jb draw_terminal_box_active
+    DRAW_3D_BOX -158, -42, 210, -104, 38, 278, 0020D060h
+    jmp draw_terminal_box_done
+
+draw_terminal_box_active:
+    DRAW_3D_BOX -158, -42, 210, -104, 38, 278, 00FFE66Dh
+    jmp draw_terminal_box_done
+
+draw_terminal_box_locked:
+    DRAW_3D_BOX -158, -42, 210, -104, 38, 278, 00FF4058h
+
+draw_terminal_box_done:
 
     mov ecx, 142
     mov edx, 286
@@ -2101,6 +2137,7 @@ draw_terminal_label:
     FILL_GOP_RECT 506, 360, 46, 6, 0020D060h
     FILL_GOP_RECT 516, 318, 26, 34, 00D8FFFFh
     FILL_GOP_RECT 524, 326, 10, 20, 00070B12h
+    DRAW_3D_BOX 126, -44, 178, 174, 64, 264, 0020D060h
     cmp dword ptr [HitFlashTicks], 0
     je draw_exit_open_no_flash
     FILL_GOP_RECT 508, 312, 42, 46, 00B0FFC8h
@@ -2115,6 +2152,7 @@ draw_exit_locked:
     FILL_GOP_RECT 506, 360, 46, 6, 003080D0h
     FILL_GOP_RECT 516, 318, 26, 34, 00182A38h
     FILL_GOP_RECT 526, 318, 6, 34, 00FF4058h
+    DRAW_3D_BOX 126, -44, 178, 174, 64, 264, 00FF4058h
 
 draw_exit_ready:
     mov ecx, 508
@@ -2152,11 +2190,15 @@ draw_warden_body_ready:
     FILL_GOP_RECT 274, 220, 28, 6, 00FF90FFh
     FILL_GOP_RECT 350, 220, 28, 6, 00FF90FFh
     FILL_GOP_RECT 306, 246, 40, 5, 00FFE66Dh
-    mov ecx, 0
-    mov edx, 326
-    mov r8d, 220
-    mov r9d, 38
-    call DrawEngine64Model
+    cmp dword ptr [HitFlashTicks], 0
+    je draw_warden_box_normal
+    DRAW_3D_BOX -46, -10, 154, 46, 78, 226, 00FFE66Dh
+    jmp draw_warden_box_done
+
+draw_warden_box_normal:
+    DRAW_3D_BOX -46, -10, 154, 46, 78, 226, 00D8FFFFh
+
+draw_warden_box_done:
 
     cmp dword ptr [EnemyHp], 1
     jb draw_enemy_label
@@ -3329,6 +3371,35 @@ gop_rect_done:
     pop rbx
     ret
 DrawGopRect ENDP
+
+ProjectLevelPoint3D PROC
+    push rbx
+
+    mov r11d, edx
+    mov ebx, r8d
+    cmp ebx, 32
+    jge project_z_ready
+    mov ebx, 32
+
+project_z_ready:
+    mov eax, ecx
+    imul eax, 180
+    cdq
+    idiv ebx
+    add eax, 320
+    mov r10d, eax
+
+    mov eax, r11d
+    imul eax, 180
+    cdq
+    idiv ebx
+    mov edx, 302
+    sub edx, eax
+    mov eax, r10d
+
+    pop rbx
+    ret
+ProjectLevelPoint3D ENDP
 
 DrawGopLine PROC
     push rbx

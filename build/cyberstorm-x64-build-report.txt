@@ -1,15 +1,15 @@
 CyberStorm x64 UEFI Build Report
-Generated: 2026-06-12 14:10:10 -06:00
+Generated: 2026-06-12 14:24:51 -06:00
 Status: pass
 Target: x64-uefi
-Artifact: cyberstorm-x64-visualfix3.iso
+Artifact: cyberstorm-x64-materialfog.iso
 ml64.exe: C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.40.33807\bin\Hostx64\x64\ml64.exe (parameter)
 link.exe: C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.40.33807\bin\Hostx64\x64\link.exe (parameter)
 Object: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\bootx64.obj
 Listing: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\bootx64.lst
 Link map: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\bootx64.map
 Boot-alert check image: False
-BOOTX64.EFI: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\EFI\BOOT\BOOTX64.EFI (70656 bytes)
+BOOTX64.EFI: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\EFI\BOOT\BOOTX64.EFI (96768 bytes)
 Pack binary: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\X64PACK.BIN (2000 bytes)
 Pack manifest: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\X64MAN.TXT
 Pack chunks: 9
@@ -26,7 +26,7 @@ Title status fields: render/present status and input state are logged for VM smo
 Input MVP: UEFI SimpleTextInput title menu plus first-level keyboard controls
 Input actions: title arrows/W/S select, Enter/Space/Right/D confirm, Esc/Left/A/Backspace backs out
 Gameplay slice: NEW GAME enters LEVEL 01 NEON SPINE with WASD movement, reticle, Warden fight, breach terminal, extraction gate, hit counting, and mission-complete state
-Gameplay presentation: x64 internal xRGB8888 framebuffer with 32-bit depth buffer, projected filled triangles, clipped screen bounds, animated pulse rails, readable Warden volume, terminal console volume, exit-gate volume, and compact keyboard-first HUD
+Gameplay presentation: x64 internal xRGB8888 framebuffer with 32-bit depth buffer, projected filled triangles, clipped screen bounds, per-triangle material/depth fog tint, animated pulse rails, denser authored corridor geometry, readable Warden volume, terminal console volume, exit-gate volume, and compact keyboard-first HUD
 Gameplay fire: Enter/Space fire through keyboard fallback; UEFI SimplePointer left-click fires when firmware exposes a pointer protocol; active shots draw player-to-reticle beam and world-depth hit feedback
 Runtime pack loader: LoadedImage -> SimpleFileSystem -> X64PACK.BIN read into scratch arena
 Runtime pack validation: CSX64PK0 magic, version, record size, bounds, alignment, known chunk IDs, FNV-1a checksums
@@ -41,16 +41,16 @@ Runtime log: first 128 bytes of log arena contain magic, milestone, failure code
 Failure path: firmware text fallback when GOP cannot be located or initialized
 Failure path: framebuffer failure screen when arena allocation or layout validation fails
 Failure-screen validation: internal debug image is available for VM checks
-ISO: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-x64-visualfix3.iso (1597440 bytes)
+ISO: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-x64-materialfog.iso (1624064 bytes)
 ISO volume: CYBERSTORM_X64
 El Torito catalog LBA: 19
 EFI FAT image LBA: 23
 EFI FAT image bytes: 1474560
 ISO payloads:
 EFIBOOT.IMG;1: LBA 23, 1474560 bytes
-BOOTX64.EFI;1: LBA 743, 70656 bytes
-X64PACK.BIN;1: LBA 778, 2000 bytes
-X64MAN.TXT;1: LBA 779, 1616 bytes
+BOOTX64.EFI;1: LBA 743, 96768 bytes
+X64PACK.BIN;1: LBA 791, 2000 bytes
+X64MAN.TXT;1: LBA 792, 1616 bytes
 FAT payloads:
-X64PACK BIN: cluster 142, 2000 bytes
-X64MAN  TXT: cluster 146, 1616 bytes
+X64PACK BIN: cluster 193, 2000 bytes
+X64MAN  TXT: cluster 197, 1616 bytes

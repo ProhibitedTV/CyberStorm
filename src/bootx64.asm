@@ -2900,6 +2900,36 @@ render_level_warden_color_ready:
     DRAW_LEVEL_QUAD 260, -64, 540, 260, -64, 96, 260, 130, 96, 260, 130, 540, 00030A10h
     DRAW_LEVEL_QUAD -260, -64, 540, 260, -64, 540, 260, 130, 540, -260, 130, 540, 00101820h
 
+    DRAW_LEVEL_QUAD -260, -63, 124, 260, -63, 124, 260, -63, 134, -260, -63, 134, 00203244h
+    DRAW_LEVEL_QUAD -260, -63, 174, 260, -63, 174, 260, -63, 188, -260, -63, 188, 00142632h
+    DRAW_LEVEL_QUAD -260, -63, 246, 260, -63, 246, 260, -63, 264, -260, -63, 264, 00203244h
+    DRAW_LEVEL_QUAD -260, -63, 348, 260, -63, 348, 260, -63, 372, -260, -63, 372, 00142632h
+    DRAW_LEVEL_QUAD -16, -61, 96, 16, -61, 96, 16, -61, 540, -16, -61, 540, 00203244h
+    DRAW_LEVEL_QUAD -132, -61, 96, -108, -61, 96, -108, -61, 540, -132, -61, 540, 00070B12h
+    DRAW_LEVEL_QUAD 108, -61, 96, 132, -61, 96, 132, -61, 540, 108, -61, 540, 00070B12h
+    DRAW_LEVEL_TRI -78, -60, 142, 0, -60, 116, 78, -60, 142, 00FFE66Dh
+    DRAW_LEVEL_TRI -98, -60, 220, 0, -60, 184, 98, -60, 220, 003080D0h
+    DRAW_LEVEL_TRI -122, -60, 336, 0, -60, 288, 122, -60, 336, 00FF90FFh
+    DRAW_LEVEL_TRI -150, -60, 486, 0, -60, 424, 150, -60, 486, 00D8FFFFh
+
+    DRAW_LEVEL_BOX_FILLED -260, 114, 120, 260, 130, 146, 00142632h
+    DRAW_LEVEL_BOX_FILLED -260, 114, 206, 260, 130, 234, 00101820h
+    DRAW_LEVEL_BOX_FILLED -260, 114, 326, 260, 130, 362, 00142632h
+    DRAW_LEVEL_BOX_FILLED -214, 72, 156, -150, 110, 218, 00182A38h
+    DRAW_LEVEL_BOX_FILLED 150, 72, 156, 214, 110, 218, 00182A38h
+    DRAW_LEVEL_BOX_FILLED -208, 68, 272, -134, 106, 334, 00101820h
+    DRAW_LEVEL_BOX_FILLED 134, 68, 272, 208, 106, 334, 00101820h
+    DRAW_LEVEL_QUAD -232, 36, 138, -232, 36, 178, -232, 74, 178, -232, 74, 138, 00D8FFFFh
+    DRAW_LEVEL_QUAD 232, 36, 178, 232, 36, 138, 232, 74, 138, 232, 74, 178, 00FF90FFh
+    DRAW_LEVEL_QUAD -232, 12, 238, -232, 12, 296, -232, 70, 296, -232, 70, 238, 00FFE66Dh
+    DRAW_LEVEL_QUAD 232, 12, 296, 232, 12, 238, 232, 70, 238, 232, 70, 296, 00FF4058h
+    DRAW_LEVEL_QUAD -232, 30, 384, -232, 30, 470, -232, 86, 470, -232, 86, 384, 003080D0h
+    DRAW_LEVEL_QUAD 232, 30, 470, 232, 30, 384, 232, 86, 384, 232, 86, 470, 0020D060h
+    DRAW_LEVEL_TRI -258, -24, 136, -258, 42, 178, -258, -24, 220, 003080D0h
+    DRAW_LEVEL_TRI 258, -24, 220, 258, 42, 178, 258, -24, 136, 00FF90FFh
+    DRAW_LEVEL_TRI -258, 0, 276, -258, 72, 328, -258, 0, 386, 00D8FFFFh
+    DRAW_LEVEL_TRI 258, 0, 386, 258, 72, 328, 258, 0, 276, 00FFE66Dh
+
     DRAW_LEVEL_QUAD -166, -58, 96, -146, -58, 96, -146, -58, 540, -166, -58, 540, dword ptr [LevelRailColor]
     DRAW_LEVEL_QUAD 146, -58, 96, 166, -58, 96, 166, -58, 540, 146, -58, 540, dword ptr [LevelRailColor]
     DRAW_LEVEL_QUAD -258, 0, 96, -258, 0, 540, -258, 12, 540, -258, 12, 96, 003080D0h
@@ -2911,24 +2941,37 @@ render_level_warden_color_ready:
     DRAW_LEVEL_BOX_FILLED 204, -64, 128, 248, 112, 220, 00101820h
     DRAW_LEVEL_BOX_FILLED -236, -60, 300, -204, 118, 382, 00070B12h
     DRAW_LEVEL_BOX_FILLED 204, -60, 300, 236, 118, 382, 00070B12h
+    DRAW_LEVEL_BOX_FILLED -250, -64, 420, -210, 120, 512, 00142632h
+    DRAW_LEVEL_BOX_FILLED 210, -64, 420, 250, 120, 512, 00142632h
 
     DRAW_LEVEL_BOX_FILLED -178, -64, 268, -108, 48, 338, dword ptr [LevelTerminalColor]
     DRAW_LEVEL_QUAD -164, -2, 258, -122, -2, 258, -122, 32, 258, -164, 32, 258, dword ptr [LevelScreenColor]
     DRAW_LEVEL_BOX_FILLED -158, -64, 338, -128, -14, 390, 000B1924h
+    DRAW_LEVEL_QUAD -196, -36, 248, -170, -12, 232, -118, -12, 232, -92, -36, 248, 00182A38h
+    DRAW_LEVEL_QUAD -188, -50, 246, -100, -50, 246, -116, -36, 282, -174, -36, 282, dword ptr [LevelScreenColor]
+    DRAW_LEVEL_TRI -178, 52, 286, -140, 86, 304, -108, 52, 322, 00D8FFFFh
 
     DRAW_LEVEL_BOX_FILLED 128, -64, 270, 190, 106, 348, dword ptr [LevelExitColor]
     DRAW_LEVEL_QUAD 144, -44, 264, 176, -44, 264, 176, 76, 264, 144, 76, 264, dword ptr [LevelExitCoreColor]
     DRAW_LEVEL_BOX_FILLED 118, -64, 348, 200, 116, 402, 00070B12h
+    DRAW_LEVEL_BOX_FILLED 110, -64, 248, 126, 114, 408, 00101820h
+    DRAW_LEVEL_BOX_FILLED 192, -64, 248, 208, 114, 408, 00101820h
+    DRAW_LEVEL_BOX_FILLED 110, 96, 248, 208, 118, 408, 00142632h
+    DRAW_LEVEL_TRI 126, 78, 250, 160, 118, 282, 192, 78, 250, dword ptr [LevelExitCoreColor]
 
     cmp dword ptr [EnemyAlive], 0
     je render_level_warden_down
 
     DRAW_LEVEL_BOX_FILLED -54, -22, 174, 54, 88, 252, dword ptr [LevelWardenColor]
+    DRAW_LEVEL_TRI -86, 26, 192, -54, 82, 214, -54, 10, 250, dword ptr [LevelWardenColor]
+    DRAW_LEVEL_TRI 86, 26, 192, 54, 10, 250, 54, 82, 214, dword ptr [LevelWardenColor]
+    DRAW_LEVEL_TRI -44, 88, 188, 0, 126, 224, 44, 88, 188, 00142632h
     DRAW_LEVEL_BOX_FILLED -34, 0, 162, 34, 68, 218, 00070B12h
     DRAW_LEVEL_QUAD -30, 22, 158, -8, 22, 158, -8, 38, 158, -30, 38, 158, 00D8FFFFh
     DRAW_LEVEL_QUAD 8, 22, 158, 30, 22, 158, 30, 38, 158, 8, 38, 158, 00FF4058h
     DRAW_LEVEL_BOX_FILLED -72, 4, 190, -52, 28, 242, 00FF90FFh
     DRAW_LEVEL_BOX_FILLED 52, 4, 190, 72, 28, 242, 00FF90FFh
+    DRAW_LEVEL_BOX_FILLED -18, -48, 206, 18, -20, 246, 003080D0h
     jmp render_level_actor_done
 
 render_level_warden_down:
@@ -3800,6 +3843,51 @@ DrawProjectedTriangleDepth PROC
 
 tri_area_ready:
     mov dword ptr [TriArea], r10d
+    mov eax, dword ptr [TriangleColor]
+    mov dword ptr [TriangleShadeColor], eax
+    cmp eax, 00D8FFFFh
+    je tri_shade_ready
+    cmp eax, 00FF90FFh
+    je tri_shade_ready
+    cmp eax, 00FFE66Dh
+    je tri_shade_ready
+    cmp eax, 00FF4058h
+    je tri_shade_ready
+    cmp eax, 0020D060h
+    je tri_shade_ready
+    cmp eax, 00B0FFC8h
+    je tri_shade_ready
+
+    mov eax, dword ptr [ProjectedZ0]
+    add eax, dword ptr [ProjectedZ1]
+    add eax, dword ptr [ProjectedZ2]
+    cdq
+    mov ecx, 3
+    idiv ecx
+    cmp eax, 420
+    jge tri_far_shade
+    cmp eax, 300
+    jl tri_shade_ready
+
+    mov eax, dword ptr [TriangleColor]
+    and eax, 00FEFEFEh
+    shr eax, 1
+    mov ecx, dword ptr [TriangleColor]
+    and ecx, 00FCFCFCh
+    shr ecx, 2
+    add eax, ecx
+    add eax, 00020406h
+    mov dword ptr [TriangleShadeColor], eax
+    jmp tri_shade_ready
+
+tri_far_shade:
+    mov eax, dword ptr [TriangleColor]
+    and eax, 00FEFEFEh
+    shr eax, 1
+    add eax, 0004080Dh
+    mov dword ptr [TriangleShadeColor], eax
+
+tri_shade_ready:
 
     mov eax, dword ptr [ProjectedX0]
     mov ecx, dword ptr [ProjectedX1]
@@ -4024,7 +4112,7 @@ tri_pixel_loop:
     cmp eax, dword ptr [rdi]
     jge tri_skip_pixel
     mov dword ptr [rdi], eax
-    mov eax, dword ptr [TriangleColor]
+    mov eax, dword ptr [TriangleShadeColor]
     mov dword ptr [rsi], eax
     inc dword ptr [RendererDepthWrites]
 
@@ -5036,6 +5124,7 @@ LevelExitColor dd 00FF4058h
 LevelExitCoreColor dd 00182A38h
 LevelWardenColor dd 00182A38h
 TriangleColor dd 0
+TriangleShadeColor dd 0
 TriArea dd 0
 TriMinX dd 0
 TriMaxX dd 0

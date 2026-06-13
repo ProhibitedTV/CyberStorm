@@ -1,10 +1,21 @@
 CyberStorm x64 Smoke Report
-Generated: 2026-06-12 14:24:51 -06:00
-Status: not run
-Reason: build path generated and statically validated the UEFI ISO; run the x64 UEFI VM smoke lane to verify boot, GOP title output, and keyboard menu input.
-Run: powershell -ExecutionPolicy Bypass -File .\scripts\build.ps1 -VmSmoke
+Generated: 2026-06-13 14:29:45 -06:00
+Status: pass
+Target: x64-uefi
+VM: CyberStormX64Megacity
+State: running
+Frontend: gui
 Boot mode: UEFI x64
 Display mode: UEFI GOP, 640x480 internal xRGB8888 title frame
-ISO: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-x64-materialfog.iso
-BOOTX64.EFI: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\EFI\BOOT\BOOTX64.EFI
-Host preview: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-x64-demo-preview.png
+ISO: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-x64-true3d-gameplay3.iso
+VM log: C:\Users\RhythmicCarnage\Desktop\CyberStorm\deploy\virtualbox\CyberStormX64Megacity\Logs\VBox.log
+Title capture: pass
+Title screenshot: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-x64-true3d-gameplay3-live.png
+Input smoke: pass
+Down screenshot: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-x64-true3d-gameplay3-live-down.png
+Enter screenshot: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-x64-true3d-gameplay3-live-enter.png
+Gameplay smoke: pass
+Gameplay screenshot: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-x64-true3d-gameplay3-live-gameplay.png
+Gameplay fire screenshot: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-x64-true3d-gameplay3-live-gameplay-fire.png
+Checks: UEFI VM boots the x64 ISO, GOP title frame is nonblack/accented, menu accepts Down and Enter, NEW GAME reaches the first level, WASD moves, Enter fires with visible beam feedback, the Warden/terminal/exit landmarks are visible, and the VM remains running.
+Recovery: input smoke sends Esc and Up after capture; gameplay smoke sends Esc after capture so the live GUI returns to the title path.

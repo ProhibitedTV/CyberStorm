@@ -122,6 +122,10 @@ PLAYER_MIN_X                  equ 00000068h
 PLAYER_MAX_X                  equ 00000218h
 PLAYER_MIN_Y                  equ 000000D8h
 PLAYER_MAX_Y                  equ 00000198h
+PLAYER_WORLD_MIN_X            equ -000000B8h
+PLAYER_WORLD_MAX_X            equ 000000B8h
+PLAYER_WORLD_MIN_Z            equ 00000000h
+PLAYER_WORLD_MAX_Z            equ 000001A4h
 CROSSHAIR_MIN_X               equ 00000050h
 CROSSHAIR_MAX_X               equ 00000230h
 CROSSHAIR_MIN_Y               equ 00000070h
@@ -1557,46 +1561,50 @@ gameplay_key:
 
 game_move_up:
     mov dword ptr [InputLastAction], INPUT_ACTION_UP
-    mov eax, dword ptr [PlayerY]
-    sub eax, 12
-    cmp eax, PLAYER_MIN_Y
-    jge game_move_up_store
-    mov eax, PLAYER_MIN_Y
+    mov eax, dword ptr [PlayerWorldZ]
+    add eax, 24
+    cmp eax, PLAYER_WORLD_MAX_Z
+    jle game_move_up_store
+    mov eax, PLAYER_WORLD_MAX_Z
 game_move_up_store:
-    mov dword ptr [PlayerY], eax
+    mov dword ptr [PlayerWorldZ], eax
+    call SyncPlayerScreenFromWorld
     ret
 
 game_move_down:
     mov dword ptr [InputLastAction], INPUT_ACTION_DOWN
-    mov eax, dword ptr [PlayerY]
-    add eax, 12
-    cmp eax, PLAYER_MAX_Y
-    jle game_move_down_store
-    mov eax, PLAYER_MAX_Y
+    mov eax, dword ptr [PlayerWorldZ]
+    sub eax, 24
+    cmp eax, PLAYER_WORLD_MIN_Z
+    jge game_move_down_store
+    mov eax, PLAYER_WORLD_MIN_Z
 game_move_down_store:
-    mov dword ptr [PlayerY], eax
+    mov dword ptr [PlayerWorldZ], eax
+    call SyncPlayerScreenFromWorld
     ret
 
 game_move_left:
     mov dword ptr [InputLastAction], INPUT_ACTION_BACK
-    mov eax, dword ptr [PlayerX]
-    sub eax, 16
-    cmp eax, PLAYER_MIN_X
+    mov eax, dword ptr [PlayerWorldX]
+    sub eax, 24
+    cmp eax, PLAYER_WORLD_MIN_X
     jge game_move_left_store
-    mov eax, PLAYER_MIN_X
+    mov eax, PLAYER_WORLD_MIN_X
 game_move_left_store:
-    mov dword ptr [PlayerX], eax
+    mov dword ptr [PlayerWorldX], eax
+    call SyncPlayerScreenFromWorld
     ret
 
 game_move_right:
     mov dword ptr [InputLastAction], INPUT_ACTION_CONFIRM
-    mov eax, dword ptr [PlayerX]
-    add eax, 16
-    cmp eax, PLAYER_MAX_X
+    mov eax, dword ptr [PlayerWorldX]
+    add eax, 24
+    cmp eax, PLAYER_WORLD_MAX_X
     jle game_move_right_store
-    mov eax, PLAYER_MAX_X
+    mov eax, PLAYER_WORLD_MAX_X
 game_move_right_store:
-    mov dword ptr [PlayerX], eax
+    mov dword ptr [PlayerWorldX], eax
+    call SyncPlayerScreenFromWorld
     ret
 
 game_fire:
@@ -1612,11 +1620,41 @@ game_back_to_title:
     ret
 HandleInputKey ENDP
 
+SyncPlayerScreenFromWorld PROC
+    mov eax, dword ptr [PlayerWorldX]
+    add eax, 320
+    cmp eax, PLAYER_MIN_X
+    jge sync_player_x_min_ok
+    mov eax, PLAYER_MIN_X
+sync_player_x_min_ok:
+    cmp eax, PLAYER_MAX_X
+    jle sync_player_x_ready
+    mov eax, PLAYER_MAX_X
+sync_player_x_ready:
+    mov dword ptr [PlayerX], eax
+
+    mov eax, dword ptr [PlayerWorldZ]
+    shr eax, 1
+    mov ecx, PLAYER_MAX_Y
+    sub ecx, eax
+    cmp ecx, PLAYER_MIN_Y
+    jge sync_player_y_min_ok
+    mov ecx, PLAYER_MIN_Y
+sync_player_y_min_ok:
+    cmp ecx, PLAYER_MAX_Y
+    jle sync_player_y_ready
+    mov ecx, PLAYER_MAX_Y
+sync_player_y_ready:
+    mov dword ptr [PlayerY], ecx
+    ret
+SyncPlayerScreenFromWorld ENDP
+
 StartFirstLevel PROC
     mov dword ptr [GameMode], GAME_MODE_PLAY
     mov dword ptr [MenuPanel], 0
-    mov dword ptr [PlayerX], 320
-    mov dword ptr [PlayerY], 388
+    mov dword ptr [PlayerWorldX], 0
+    mov dword ptr [PlayerWorldZ], 0
+    call SyncPlayerScreenFromWorld
     mov dword ptr [CrosshairX], 320
     mov dword ptr [CrosshairY], 224
     mov dword ptr [EnemyHp], 3
@@ -1641,17 +1679,15 @@ ReturnToTitle PROC
 ReturnToTitle ENDP
 
 UpdateLevelCameraFromPlayer PROC
-    mov eax, dword ptr [PlayerX]
-    sub eax, 320
+    mov eax, dword ptr [PlayerWorldX]
     cdq
     mov ecx, 3
     idiv ecx
     mov dword ptr [LevelCameraX], eax
 
-    mov eax, 388
-    sub eax, dword ptr [PlayerY]
+    mov eax, dword ptr [PlayerWorldZ]
     cdq
-    mov ecx, 4
+    mov ecx, 8
     idiv ecx
     mov dword ptr [LevelCameraZ], eax
     ret
@@ -1759,15 +1795,15 @@ UpdateLevelObjective PROC
     cmp eax, 1
     jne objective_done
 
-    mov eax, dword ptr [PlayerX]
-    cmp eax, 136
+    mov eax, dword ptr [PlayerWorldX]
+    cmp eax, -190
     jl objective_done
-    cmp eax, 246
+    cmp eax, -88
     jg objective_done
-    mov eax, dword ptr [PlayerY]
-    cmp eax, 326
+    mov eax, dword ptr [PlayerWorldZ]
+    cmp eax, 248
     jl objective_done
-    cmp eax, PLAYER_MAX_Y
+    cmp eax, 356
     jg objective_done
     mov dword ptr [ObjectiveState], 2
     mov dword ptr [HitFlashTicks], 10
@@ -1775,15 +1811,15 @@ UpdateLevelObjective PROC
     jmp objective_done
 
 objective_check_exit:
-    mov eax, dword ptr [PlayerX]
-    cmp eax, 488
+    mov eax, dword ptr [PlayerWorldX]
+    cmp eax, 108
     jl objective_done
-    cmp eax, PLAYER_MAX_X
+    cmp eax, 220
     jg objective_done
-    mov eax, dword ptr [PlayerY]
-    cmp eax, 336
+    mov eax, dword ptr [PlayerWorldZ]
+    cmp eax, 300
     jl objective_done
-    cmp eax, PLAYER_MAX_Y
+    cmp eax, PLAYER_WORLD_MAX_Z
     jg objective_done
     mov dword ptr [ObjectiveState], 3
     mov dword ptr [HitFlashTicks], 12
@@ -2932,6 +2968,8 @@ render_level_warden_color_ready:
 
     DRAW_LEVEL_QUAD -166, -58, 96, -146, -58, 96, -146, -58, 540, -166, -58, 540, dword ptr [LevelRailColor]
     DRAW_LEVEL_QUAD 146, -58, 96, 166, -58, 96, 166, -58, 540, 146, -58, 540, dword ptr [LevelRailColor]
+    DRAW_LEVEL_QUAD -190, -60, 248, -88, -60, 248, -88, -60, 356, -190, -60, 356, dword ptr [LevelTerminalColor]
+    DRAW_LEVEL_QUAD 108, -60, 300, 220, -60, 300, 220, -60, 420, 108, -60, 420, dword ptr [LevelExitColor]
     DRAW_LEVEL_QUAD -258, 0, 96, -258, 0, 540, -258, 12, 540, -258, 12, 96, 003080D0h
     DRAW_LEVEL_QUAD 258, 0, 540, 258, 0, 96, 258, 12, 96, 258, 12, 540, 00FF90FFh
     DRAW_LEVEL_QUAD -216, 92, 116, 216, 92, 116, 216, 92, 520, -216, 92, 520, 000B1924h
@@ -2939,10 +2977,16 @@ render_level_warden_color_ready:
 
     DRAW_LEVEL_BOX_FILLED -248, -64, 128, -204, 112, 220, 00101820h
     DRAW_LEVEL_BOX_FILLED 204, -64, 128, 248, 112, 220, 00101820h
+    DRAW_LEVEL_BOX_FILLED -120, -64, 138, -92, -20, 186, 00142632h
+    DRAW_LEVEL_BOX_FILLED 92, -64, 138, 120, -20, 186, 00142632h
+    DRAW_LEVEL_BOX_FILLED -18, -64, 310, 18, -28, 360, 00182A38h
     DRAW_LEVEL_BOX_FILLED -236, -60, 300, -204, 118, 382, 00070B12h
     DRAW_LEVEL_BOX_FILLED 204, -60, 300, 236, 118, 382, 00070B12h
     DRAW_LEVEL_BOX_FILLED -250, -64, 420, -210, 120, 512, 00142632h
     DRAW_LEVEL_BOX_FILLED 210, -64, 420, 250, 120, 512, 00142632h
+    DRAW_LEVEL_BOX_FILLED -90, 82, 430, -48, 122, 520, 00101820h
+    DRAW_LEVEL_BOX_FILLED 48, 82, 430, 90, 122, 520, 00101820h
+    DRAW_LEVEL_QUAD -90, 74, 452, 90, 74, 452, 90, 86, 484, -90, 86, 484, 003080D0h
 
     DRAW_LEVEL_BOX_FILLED -178, -64, 268, -108, 48, 338, dword ptr [LevelTerminalColor]
     DRAW_LEVEL_QUAD -164, -2, 258, -122, -2, 258, -122, 32, 258, -164, 32, 258, dword ptr [LevelScreenColor]
@@ -5088,6 +5132,8 @@ PointerRightButton db 0
 PointerStatePad dw 0
 PlayerX dd 320
 PlayerY dd 388
+PlayerWorldX dd 0
+PlayerWorldZ dd 0
 CrosshairX dd 320
 CrosshairY dd 224
 EnemyHp dd 3
@@ -5179,7 +5225,7 @@ LevelObjectiveBreachLine db 'BREACH TERMINAL',0
 LevelObjectiveExitLine db 'REACH EXIT GATE',0
 LevelObjectiveClearLine db 'MISSION COMPLETE',0
 LevelLoopLine db 'DOWN WARDEN BREACH EXTRACT',0
-LevelHintLine db 'WASD MOVE  ENTER FIRE  ESC MENU',0
+LevelHintLine db 'W S MOVE  A D STRAFE  FIRE  ESC',0
 LevelStatusLine db 'SHOTS 0000 HITS 0000',0
 LevelClearLine db 'WARDEN DOWN',0
 LevelExitOpenLine db 'EXIT ROUTE OPEN',0

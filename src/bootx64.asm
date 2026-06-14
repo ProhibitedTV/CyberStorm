@@ -1652,7 +1652,7 @@ input_loop:
     or r13d, eax
 
     cmp dword ptr [GameMode], GAME_MODE_PLAY
-    jne input_redraw_check
+    jne input_title_tick
     call UpdateLevelObjective
     or r13d, eax
     inc dword ptr [LevelPulseTicks]
@@ -1671,6 +1671,14 @@ input_hit_flash_check:
     cmp dword ptr [HitFlashTicks], 0
     je input_redraw_check
     dec dword ptr [HitFlashTicks]
+    mov r13d, 1
+    jmp input_redraw_check
+
+input_title_tick:
+    inc dword ptr [TitlePulseTicks]
+    mov eax, dword ptr [TitlePulseTicks]
+    and eax, 00000003h
+    jnz input_redraw_check
     mov r13d, 1
 
 input_redraw_check:
@@ -2044,6 +2052,10 @@ StartFirstLevel PROC
     mov dword ptr [CrosshairY], 224
     mov dword ptr [EnemyHp], 3
     mov dword ptr [EnemyAlive], 1
+    mov dword ptr [SentryLeftHp], 1
+    mov dword ptr [SentryLeftAlive], 1
+    mov dword ptr [SentryRightHp], 1
+    mov dword ptr [SentryRightAlive], 1
     mov dword ptr [ObjectiveState], 0
     mov dword ptr [ShotFlashTicks], 0
     mov dword ptr [HitFlashTicks], 0
@@ -2065,6 +2077,26 @@ ReturnToTitle PROC
     mov dword ptr [PointerLeftLatch], 0
     ret
 ReturnToTitle ENDP
+
+UpdateHostileObjective PROC
+    cmp dword ptr [EnemyAlive], 0
+    jne hostile_objective_not_clear
+    cmp dword ptr [SentryLeftAlive], 0
+    jne hostile_objective_not_clear
+    cmp dword ptr [SentryRightAlive], 0
+    jne hostile_objective_not_clear
+    cmp dword ptr [ObjectiveState], 1
+    jae hostile_objective_already_ready
+    mov dword ptr [ObjectiveState], 1
+
+hostile_objective_already_ready:
+    mov eax, 1
+    ret
+
+hostile_objective_not_clear:
+    xor eax, eax
+    ret
+UpdateHostileObjective ENDP
 
 UpdateLevelCameraFromPlayer PROC
     mov eax, dword ptr [PlayerWorldX]
@@ -2143,7 +2175,7 @@ FireWeapon PROC
     call UpdateLevelCameraFromPlayer
 
     cmp dword ptr [EnemyAlive], 0
-    je fire_check_terminal
+    je fire_check_sentries
 
     mov ecx, MAP_VOLUME_WARDEN
     call FindMapVolume
@@ -2155,27 +2187,27 @@ FireWeapon PROC
     sar ecx, 1
     call ProjectCrosshairAtWorldZ
     cmp eax, dword ptr [r10 + 4]
-    jl fire_done
+    jl fire_check_sentries
     cmp eax, dword ptr [r10 + 16]
-    jg fire_done
+    jg fire_check_sentries
 
     cmp edx, dword ptr [r10 + 8]
-    jl fire_done
+    jl fire_check_sentries
     cmp edx, dword ptr [r10 + 20]
-    jg fire_done
+    jg fire_check_sentries
     jmp fire_enemy_hit
 
 fire_enemy_legacy_check:
     mov ecx, 196
     call ProjectCrosshairAtWorldZ
     cmp eax, -60
-    jl fire_done
+    jl fire_check_sentries
     cmp eax, 60
-    jg fire_done
+    jg fire_check_sentries
     cmp edx, -32
-    jl fire_done
+    jl fire_check_sentries
     cmp edx, 106
-    jg fire_done
+    jg fire_check_sentries
 
 fire_enemy_hit:
     inc dword ptr [MissionHits]
@@ -2190,7 +2222,63 @@ fire_enemy_hit:
 
 fire_enemy_down:
     mov dword ptr [EnemyAlive], 0
-    mov dword ptr [ObjectiveState], 1
+    call UpdateHostileObjective
+    jmp fire_done
+
+fire_check_sentries:
+    cmp dword ptr [SentryLeftAlive], 0
+    je fire_check_right_sentry
+    mov ecx, 326
+    call ProjectCrosshairAtWorldZ
+    cmp eax, -112
+    jl fire_check_right_sentry
+    cmp eax, -18
+    jg fire_check_right_sentry
+    cmp edx, -52
+    jl fire_check_right_sentry
+    cmp edx, 180
+    jg fire_check_right_sentry
+    inc dword ptr [MissionHits]
+    mov dword ptr [HitFlashTicks], 10
+    mov eax, dword ptr [SentryLeftHp]
+    test eax, eax
+    jz fire_left_sentry_down
+    dec eax
+    mov dword ptr [SentryLeftHp], eax
+    test eax, eax
+    jnz fire_done
+
+fire_left_sentry_down:
+    mov dword ptr [SentryLeftAlive], 0
+    call UpdateHostileObjective
+    jmp fire_done
+
+fire_check_right_sentry:
+    cmp dword ptr [SentryRightAlive], 0
+    je fire_check_terminal
+    mov ecx, 326
+    call ProjectCrosshairAtWorldZ
+    cmp eax, 18
+    jl fire_check_terminal
+    cmp eax, 112
+    jg fire_check_terminal
+    cmp edx, -52
+    jl fire_check_terminal
+    cmp edx, 180
+    jg fire_check_terminal
+    inc dword ptr [MissionHits]
+    mov dword ptr [HitFlashTicks], 10
+    mov eax, dword ptr [SentryRightHp]
+    test eax, eax
+    jz fire_right_sentry_down
+    dec eax
+    mov dword ptr [SentryRightHp], eax
+    test eax, eax
+    jnz fire_done
+
+fire_right_sentry_down:
+    mov dword ptr [SentryRightAlive], 0
+    call UpdateHostileObjective
     jmp fire_done
 
 fire_check_terminal:
@@ -2357,28 +2445,51 @@ DrawMenuOptions PROC
     push rdi
     sub rsp, 20h
 
+    mov eax, dword ptr [TitlePulseTicks]
+    and eax, 00000008h
+    jz menu_pulse_cyan
+    mov dword ptr [TitleSelectColor], 00FF90FFh
+    mov dword ptr [TitlePulseColor], 00FFE66Dh
+    jmp menu_pulse_ready
+
+menu_pulse_cyan:
+    mov dword ptr [TitleSelectColor], 00D8FFFFh
+    mov dword ptr [TitlePulseColor], 00FF90FFh
+
+menu_pulse_ready:
     FILL_GOP_RECT 404, 22, 212, 136, 00070B12h
     FILL_GOP_RECT 408, 28, 4, 124, DIAG_ACCENT
     FILL_GOP_RECT 416, 150, 184, 2, 00FF90FFh
 
     cmp dword ptr [MenuSelection], 0
     jne menu_select_log
-    FILL_GOP_RECT 420, 54, 152, 24, DIAG_ACCENT
-    FILL_GOP_RECT 414, 60, 4, 12, 00FF90FFh
+    FILL_GOP_RECT 420, 54, 152, 24, dword ptr [TitleSelectColor]
+    FILL_GOP_RECT 414, 60, 4, 12, dword ptr [TitlePulseColor]
     jmp menu_highlight_done
 
 menu_select_log:
     cmp dword ptr [MenuSelection], 1
     jne menu_select_credits
-    FILL_GOP_RECT 420, 86, 152, 24, DIAG_ACCENT
-    FILL_GOP_RECT 414, 92, 4, 12, 00FF90FFh
+    FILL_GOP_RECT 420, 86, 152, 24, dword ptr [TitleSelectColor]
+    FILL_GOP_RECT 414, 92, 4, 12, dword ptr [TitlePulseColor]
     jmp menu_highlight_done
 
 menu_select_credits:
-    FILL_GOP_RECT 420, 118, 152, 24, DIAG_ACCENT
-    FILL_GOP_RECT 414, 124, 4, 12, 00FF90FFh
+    FILL_GOP_RECT 420, 118, 152, 24, dword ptr [TitleSelectColor]
+    FILL_GOP_RECT 414, 124, 4, 12, dword ptr [TitlePulseColor]
 
 menu_highlight_done:
+    mov eax, dword ptr [TitlePulseTicks]
+    and eax, 0000000Fh
+    shl eax, 3
+    add eax, 420
+    mov ecx, eax
+    mov edx, 150
+    mov r8d, 24
+    mov r9d, 2
+    mov eax, dword ptr [TitlePulseColor]
+    call DrawGopRect
+
     mov ecx, 424
     mov edx, 32
     lea r8, MenuTitleLine
@@ -2479,6 +2590,18 @@ title_offset_y_ready:
     mov dword ptr [DrawOffsetY], eax
     mov dword ptr [DrawOffsetEnabled], 1
 
+    mov eax, dword ptr [TitlePulseTicks]
+    and eax, 00000008h
+    jz title_pulse_cyan
+    mov dword ptr [TitleSelectColor], 00FF90FFh
+    mov dword ptr [TitlePulseColor], 00FFE66Dh
+    jmp title_pulse_ready
+
+title_pulse_cyan:
+    mov dword ptr [TitleSelectColor], 00D8FFFFh
+    mov dword ptr [TitlePulseColor], 00FF90FFh
+
+title_pulse_ready:
     call DrawTitleHero3DOverlay
 
     FILL_GOP_RECT 28, 24, 374, 112, 00070B12h
@@ -2547,6 +2670,40 @@ DrawTitleHero3DOverlay PROC
     FILL_GOP_RECT 164, 210, 8, 48, 00FFE66Dh
     FILL_GOP_RECT 424, 184, 52, 8, 00D8FFFFh
     FILL_GOP_RECT 548, 218, 8, 44, 00FF4058h
+
+    mov eax, dword ptr [TitlePulseTicks]
+    and eax, 0000003Fh
+    shl eax, 3
+    add eax, 32
+    mov ecx, eax
+    mov edx, 246
+    mov r8d, 52
+    mov r9d, 2
+    mov eax, dword ptr [TitlePulseColor]
+    call DrawGopRect
+
+    mov eax, dword ptr [TitlePulseTicks]
+    and eax, 0000001Fh
+    shl eax, 2
+    add eax, 184
+    mov ecx, 604
+    mov edx, eax
+    mov r8d, 4
+    mov r9d, 28
+    mov eax, 003080D0h
+    call DrawGopRect
+
+    mov eax, dword ptr [TitlePulseTicks]
+    add eax, 00000010h
+    and eax, 0000001Fh
+    shl eax, 2
+    add eax, 154
+    mov ecx, 22
+    mov edx, eax
+    mov r8d, 4
+    mov r9d, 26
+    mov eax, 00FF90FFh
+    call DrawGopRect
 
     mov ecx, 320
     mov edx, 220
@@ -3232,7 +3389,7 @@ hud_objective_ready:
     call DrawString
 
     cmp dword ptr [EnemyAlive], 0
-    je hud_enemy_down
+    je hud_sentry_pips
 
     cmp dword ptr [EnemyHp], 1
     jb hud_enemy_pips_done
@@ -3260,10 +3417,10 @@ hud_objective_ready:
     call DrawGopRect
 
 hud_enemy_pips_done:
-    jmp hud_after_world_labels
+    jmp hud_sentry_pips
 
 hud_enemy_down:
-    jmp hud_after_world_labels
+    jmp hud_sentry_pips
 
     mov ecx, 250
     mov edx, 78
@@ -3278,6 +3435,26 @@ hud_enemy_down:
 hud_enemy_down_label:
     mov r9d, DIAG_OK
     call DrawString
+
+hud_sentry_pips:
+    cmp dword ptr [SentryLeftAlive], 0
+    je hud_sentry_right_pip
+    mov ecx, 264
+    mov edx, 96
+    mov r8d, 16
+    mov r9d, 5
+    mov eax, 00FF90FFh
+    call DrawGopRect
+
+hud_sentry_right_pip:
+    cmp dword ptr [SentryRightAlive], 0
+    je hud_terminal_label
+    mov ecx, 364
+    mov edx, 96
+    mov r8d, 16
+    mov r9d, 5
+    mov eax, 00FF90FFh
+    call DrawGopRect
 
 hud_terminal_label:
     mov ecx, 116
@@ -3636,9 +3813,11 @@ render_level_terminal_color_ready:
 
 render_level_exit_color_ready:
     mov dword ptr [LevelWardenColor], 00182A38h
+    mov dword ptr [LevelSentryColor], 00FF4058h
     cmp dword ptr [HitFlashTicks], 0
     je render_level_warden_color_ready
     mov dword ptr [LevelWardenColor], 00FFE66Dh
+    mov dword ptr [LevelSentryColor], 00FFE66Dh
 
 render_level_warden_color_ready:
     mov eax, 0004080Dh
@@ -3668,7 +3847,11 @@ render_level_warden_color_ready:
 
     call RenderTexturedLevelFromChunks
     test eax, eax
-    jz render_level_actor_done
+    jnz render_level_chunk_fallback
+    mov dword ptr [TriangleTexturedMode], 0
+    jmp render_level_runtime_actors
+
+render_level_chunk_fallback:
     mov dword ptr [TriangleTexturedMode], 0
 
     DRAW_LEVEL_QUAD -260, -64, 96, 260, -64, 96, 260, -64, 540, -260, -64, 540, 000B1924h
@@ -3745,6 +3928,7 @@ render_level_warden_color_ready:
     DRAW_LEVEL_BOX_FILLED 110, 96, 248, 208, 118, 408, 00142632h
     DRAW_LEVEL_TRI 126, 78, 250, 160, 118, 282, 192, 78, 250, dword ptr [LevelExitCoreColor]
 
+render_level_runtime_actors:
     cmp dword ptr [EnemyAlive], 0
     je render_level_warden_down
 
@@ -3758,11 +3942,39 @@ render_level_warden_color_ready:
     DRAW_LEVEL_BOX_FILLED -72, 4, 190, -52, 28, 242, 00FF90FFh
     DRAW_LEVEL_BOX_FILLED 52, 4, 190, 72, 28, 242, 00FF90FFh
     DRAW_LEVEL_BOX_FILLED -18, -48, 206, 18, -20, 246, 003080D0h
-    jmp render_level_actor_done
+    jmp render_level_sentries
 
 render_level_warden_down:
     DRAW_LEVEL_BOX_FILLED -42, -64, 194, 42, -44, 252, 0020D060h
     DRAW_LEVEL_QUAD -70, -56, 206, 70, -56, 206, 50, -52, 280, -50, -52, 280, 00D8FFFFh
+
+render_level_sentries:
+    cmp dword ptr [SentryLeftAlive], 0
+    je render_level_left_sentry_down
+    DRAW_LEVEL_BOX_FILLED -126, -18, 294, -74, 56, 356, dword ptr [LevelSentryColor]
+    DRAW_LEVEL_TRI -150, 18, 312, -126, 54, 334, -126, -8, 350, dword ptr [LevelSentryColor]
+    DRAW_LEVEL_BOX_FILLED -112, 2, 286, -86, 34, 314, 00070B12h
+    DRAW_LEVEL_QUAD -106, 10, 282, -92, 10, 282, -92, 26, 282, -106, 26, 282, 00FFE66Dh
+    DRAW_LEVEL_BOX_FILLED -96, -50, 318, -78, -18, 350, 003080D0h
+    jmp render_level_right_sentry
+
+render_level_left_sentry_down:
+    DRAW_LEVEL_BOX_FILLED -124, -64, 306, -76, -52, 360, 0020D060h
+    DRAW_LEVEL_QUAD -144, -58, 318, -84, -58, 318, -92, -54, 372, -134, -54, 372, 00D8FFFFh
+
+render_level_right_sentry:
+    cmp dword ptr [SentryRightAlive], 0
+    je render_level_right_sentry_down
+    DRAW_LEVEL_BOX_FILLED 74, -18, 294, 126, 56, 356, dword ptr [LevelSentryColor]
+    DRAW_LEVEL_TRI 150, 18, 312, 126, -8, 350, 126, 54, 334, dword ptr [LevelSentryColor]
+    DRAW_LEVEL_BOX_FILLED 86, 2, 286, 112, 34, 314, 00070B12h
+    DRAW_LEVEL_QUAD 92, 10, 282, 106, 10, 282, 106, 26, 282, 92, 26, 282, 00D8FFFFh
+    DRAW_LEVEL_BOX_FILLED 78, -50, 318, 96, -18, 350, 003080D0h
+    jmp render_level_actor_done
+
+render_level_right_sentry_down:
+    DRAW_LEVEL_BOX_FILLED 76, -64, 306, 124, -52, 360, 0020D060h
+    DRAW_LEVEL_QUAD 84, -58, 318, 144, -58, 318, 134, -54, 372, 92, -54, 372, 00D8FFFFh
 
 render_level_actor_done:
     mov qword ptr [FrameArenaUsed], ENGINE64_FRAME_BYTES
@@ -6156,6 +6368,10 @@ CrosshairX dd 320
 CrosshairY dd 224
 EnemyHp dd 3
 EnemyAlive dd 1
+SentryLeftHp dd 1
+SentryLeftAlive dd 1
+SentryRightHp dd 1
+SentryRightAlive dd 1
 ObjectiveState dd 0
 ShotFlashTicks dd 0
 HitFlashTicks dd 0
@@ -6193,6 +6409,10 @@ LevelScreenColor dd 003080D0h
 LevelExitColor dd 00FF4058h
 LevelExitCoreColor dd 00182A38h
 LevelWardenColor dd 00182A38h
+LevelSentryColor dd 00FF4058h
+TitlePulseTicks dd 0
+TitleSelectColor dd 00D8FFFFh
+TitlePulseColor dd 00FF90FFh
 TriangleColor dd 0
 TriangleShadeColor dd 0
 TriArea dd 0
@@ -6256,8 +6476,8 @@ MenuPanelDiag db 'RUN',0
 MenuPanelLog db 'FX',0
 MenuPanelCredits db 'CR',0
 LevelTitleLine db 'LEVEL 01 NEON SPINE',0
-LevelObjectiveLine db 'ELIMINATE WARDEN',0
-LevelObjectiveKillLine db 'ELIMINATE WARDEN',0
+LevelObjectiveLine db 'ELIMINATE HOSTILES',0
+LevelObjectiveKillLine db 'ELIMINATE HOSTILES',0
 LevelObjectiveBreachLine db 'BREACH TERMINAL',0
 LevelObjectiveExitLine db 'REACH EXIT GATE',0
 LevelObjectiveClearLine db 'MISSION COMPLETE',0

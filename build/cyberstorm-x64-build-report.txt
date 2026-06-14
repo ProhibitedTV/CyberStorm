@@ -1,26 +1,26 @@
 CyberStorm x64 UEFI Build Report
-Generated: 2026-06-13 19:29:22 -06:00
+Generated: 2026-06-13 20:22:55 -06:00
 Status: pass
 Target: x64-uefi
-Artifact: cyberstorm-x64-renderer-v2.iso
+Artifact: cyberstorm-x64-renderer-v3.iso
 ml64.exe: C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.40.33807\bin\Hostx64\x64\ml64.exe (parameter)
 link.exe: C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.40.33807\bin\Hostx64\x64\link.exe (parameter)
 Object: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\bootx64.obj
 Listing: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\bootx64.lst
 Link map: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\bootx64.map
 Boot-alert check image: False
-BOOTX64.EFI: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\EFI\BOOT\BOOTX64.EFI (111616 bytes)
-Pack binary: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\X64PACK.BIN (278864 bytes)
+BOOTX64.EFI: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\EFI\BOOT\BOOTX64.EFI (126464 bytes)
+Pack binary: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\X64PACK.BIN (280672 bytes)
 Pack manifest: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\X64MAN.TXT
 Pack chunks: 9
 ENGINE64 chunk: 620 bytes, assembly-built x64 renderer payload data
 TEXTURE atlas: 262144 bytes, 64 tiles, 256x256 xRGB8888
-MATERIAL records: 10
-MESH records: 928 vertices, 464 triangles, bounds x[-302,302] y[-68,138] z[72,760]
-Textured triangles: 464
+MATERIAL records: 11
+MESH records: 1040 vertices, 520 triangles, bounds x[-302,302] y[-68,138] z[72,760]
+Textured triangles: 520
 MAP records: 1 instance(s), 3 objective/actor volume(s)
 Host preview: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-x64-demo-preview.png (25420 bytes, 640x480, 12 palette entries, 4 model entries, 46 model triangles)
-Pack SHA256: CDFF427C7565BBE087B46209098E17BA723AA82986DA52994955199E3E09BAA2
+Pack SHA256: D708BD3E6D04177DA1D3C5F4740A49F327CA1A758FFDBD3D043D24B599689561
 PE machine: 0x8664
 PE optional header: 0x020B
 PE subsystem: 10 (EFI application)
@@ -31,13 +31,13 @@ Title status fields: render/present status and input state are logged for VM smo
 Input MVP: UEFI SimpleTextInput title menu plus first-level keyboard controls
 Input actions: title arrows/W/S select, Enter/Space/Right/D confirm, Esc/Left/A/Backspace backs out
 Gameplay slice: NEW GAME enters LEVEL 01 NEON SPINE with world-space WASD advance/strafe movement, reticle, Warden fight, breach terminal, extraction gate, hit counting, and mission-complete state
-Gameplay presentation: x64 internal xRGB8888 framebuffer with 32-bit depth buffer, generated textured mesh chunks, near-plane guarded projection, clipped screen bounds, material/depth fog tint, animated pulse rails, readable Warden volume, terminal console volume, exit-gate volume, visible 3D trigger pads, and compact keyboard-first HUD
-Gameplay world model: player X/Z position drives camera parallax and map-driven Warden/terminal/exit trigger volumes while derived screen coordinates preserve HUD and smoke-test compatibility
+Gameplay presentation: x64 internal xRGB8888 framebuffer with 32-bit depth buffer, generated textured mesh chunks, near-plane guarded projection, clipped screen bounds, material/depth fog tint, animated pulse rails, readable Warden/sentry hostile pack, terminal console volume, exit-gate volume, visible 3D trigger pads, and compact keyboard-first HUD
+Gameplay world model: player X/Z position drives camera parallax and map-driven Warden/terminal/exit trigger volumes while side sentries reward strafe-and-fire positioning and derived screen coordinates preserve HUD and smoke-test compatibility
 Gameplay fire: Enter/Space fire through keyboard fallback; UEFI SimplePointer left-click fires when firmware exposes a pointer protocol; active shots draw player-to-reticle beam and world-depth hit feedback
 Runtime pack loader: LoadedImage -> SimpleFileSystem -> X64PACK.BIN read into scratch arena
 Runtime pack validation: CSX64PK0 magic, version, record size, bounds, alignment, known chunk IDs, FNV-1a checksums
 ENGINE64 validation: CS64ENG0 payload header, 640x480 xRGB8888 target, deterministic expanded title-scene palette table, and assembly-authored model table
-ENGINE64 render path: loaded ENGINE64 chunk renders the layered title scene; gameplay renders the first level through the x64 filled-triangle depth backend before GOP presentation
+ENGINE64 render path: loaded ENGINE64 chunk renders the layered animated title scene; gameplay renders the first level through the x64 filled-triangle depth backend before GOP presentation
 ENGINE64 model assets: WARDEN, TERMNL, PYLON, and GATE records carry signed 3D vertices plus triangle face/material references authored directly in assembly
 Framebuffer abstraction: internal xRGB8888 frame arena with GOP direct/swap present modes for BGR, RGB, and matching bitmask layouts
 Host preview: deterministic PNG rendered from ENGINE64.BIN for release review while UEFI VM smoke remains the boot/input acceptance gate
@@ -47,16 +47,16 @@ Runtime log: first 128 bytes of log arena contain magic, milestone, failure code
 Failure path: firmware text fallback when GOP cannot be located or initialized
 Failure path: framebuffer failure screen when arena allocation or layout validation fails
 Failure-screen validation: internal debug image is available for VM checks
-ISO: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-x64-renderer-v2.iso (1916928 bytes)
+ISO: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-x64-renderer-v3.iso (1933312 bytes)
 ISO volume: CYBERSTORM_X64
 El Torito catalog LBA: 19
 EFI FAT image LBA: 23
 EFI FAT image bytes: 1474560
 ISO payloads:
 EFIBOOT.IMG;1: LBA 23, 1474560 bytes
-BOOTX64.EFI;1: LBA 743, 111616 bytes
-X64PACK.BIN;1: LBA 798, 278864 bytes
-X64MAN.TXT;1: LBA 935, 1630 bytes
+BOOTX64.EFI;1: LBA 743, 126464 bytes
+X64PACK.BIN;1: LBA 805, 280672 bytes
+X64MAN.TXT;1: LBA 943, 1630 bytes
 FAT payloads:
-X64PACK BIN: cluster 222, 278864 bytes
-X64MAN  TXT: cluster 767, 1630 bytes
+X64PACK BIN: cluster 251, 280672 bytes
+X64MAN  TXT: cluster 800, 1630 bytes

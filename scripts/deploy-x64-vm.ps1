@@ -207,6 +207,7 @@ $downPath = $null
 $enterPath = $null
 $gameplayPath = $null
 $gameplayFirePath = $null
+$hostilesPath = $null
 $missionPath = $null
 $missionCompletePath = $null
 $afterEscPath = $null
@@ -240,6 +241,7 @@ if ($InputSmoke.IsPresent) {
 if ($GameplaySmoke.IsPresent) {
     $gameplayPath = Get-SmokeScreenshotPath -BasePath $ScreenshotPath -Suffix 'gameplay'
     $gameplayFirePath = Get-SmokeScreenshotPath -BasePath $ScreenshotPath -Suffix 'gameplay-fire'
+    $hostilesPath = Get-SmokeScreenshotPath -BasePath $ScreenshotPath -Suffix 'hostiles-clear'
     $missionPath = Get-SmokeScreenshotPath -BasePath $ScreenshotPath -Suffix 'mission-progress'
     $missionCompletePath = Get-SmokeScreenshotPath -BasePath $ScreenshotPath -Suffix 'mission-complete'
     $afterEscPath = Get-SmokeScreenshotPath -BasePath $ScreenshotPath -Suffix 'after-esc'
@@ -259,7 +261,15 @@ if ($GameplaySmoke.IsPresent) {
     Assert-LiveTitleScreenshot -Path $gameplayFirePath -Label 'x64 gameplay fire screenshot'
 
     Invoke-X64KeyTap -Name $VmName -ScanCodes @('1c', '9c') -Count 2 -DelayMilliseconds 320
-    Invoke-X64KeyTap -Name $VmName -ScanCodes @('1e', '9e') -Count 7 -DelayMilliseconds 220
+    Invoke-X64KeyTap -Name $VmName -ScanCodes @('1e', '9e') -Count 4 -DelayMilliseconds 220
+    Invoke-X64KeyTap -Name $VmName -ScanCodes @('1c', '9c') -Count 1 -DelayMilliseconds 320
+    Invoke-X64KeyTap -Name $VmName -ScanCodes @('20', 'a0') -Count 10 -DelayMilliseconds 220
+    Invoke-X64KeyTap -Name $VmName -ScanCodes @('1c', '9c') -Count 1 -DelayMilliseconds 320
+    Start-Sleep -Milliseconds 900
+    Invoke-VmScreenshot -Name $VmName -OutputPath $hostilesPath -Context 'x64 hostiles-clear capture'
+    Assert-LiveTitleScreenshot -Path $hostilesPath -Label 'x64 hostiles-clear screenshot'
+
+    Invoke-X64KeyTap -Name $VmName -ScanCodes @('1e', '9e') -Count 12 -DelayMilliseconds 220
     Invoke-X64KeyTap -Name $VmName -ScanCodes @('11', '91') -Count 12 -DelayMilliseconds 220
     Start-Sleep -Milliseconds 1200
     Invoke-VmScreenshot -Name $VmName -OutputPath $missionPath -Context 'x64 mission-progress capture'
@@ -306,10 +316,11 @@ $reportLines = @(
     ('Gameplay smoke: {0}' -f $gameplaySmokeStatus),
     ('Gameplay screenshot: {0}' -f (Resolve-ExistingPathText -Path $gameplayPath)),
     ('Gameplay fire screenshot: {0}' -f (Resolve-ExistingPathText -Path $gameplayFirePath)),
+    ('Hostiles clear screenshot: {0}' -f (Resolve-ExistingPathText -Path $hostilesPath)),
     ('Mission progress screenshot: {0}' -f (Resolve-ExistingPathText -Path $missionPath)),
     ('Mission complete screenshot: {0}' -f (Resolve-ExistingPathText -Path $missionCompletePath)),
     ('After Esc screenshot: {0}' -f (Resolve-ExistingPathText -Path $afterEscPath)),
-    'Checks: UEFI VM boots the x64 ISO, GOP title frame is nonblack/accented, menu accepts Down and Enter, NEW GAME reaches the first level, WASD moves, Enter fires with visible beam feedback, repeated fire advances the Warden fight, WASD reaches the terminal and exit volumes, Esc returns to a clean title viewport, and the VM remains running.',
+    'Checks: UEFI VM boots the x64 ISO, GOP title frame is nonblack/accented, menu accepts Down and Enter, NEW GAME reaches the first level, WASD moves, Enter fires with visible beam feedback, repeated fire clears the Warden plus left/right sentries, WASD reaches the terminal and exit volumes, Esc returns to a clean title viewport, and the VM remains running.',
     'Recovery: input smoke sends Esc and Up after capture; gameplay smoke sends Esc after capture and validates the returned title frame.'
 )
 Set-Content -Path $ReportPath -Value $reportLines -Encoding ASCII
@@ -324,6 +335,7 @@ Set-Content -Path $ReportPath -Value $reportLines -Encoding ASCII
     EnterScreenshot = $enterPath
     GameplayScreenshot = $gameplayPath
     GameplayFireScreenshot = $gameplayFirePath
+    HostilesClearScreenshot = $hostilesPath
     MissionProgressScreenshot = $missionPath
     MissionCompleteScreenshot = $missionCompletePath
     AfterEscScreenshot = $afterEscPath

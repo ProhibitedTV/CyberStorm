@@ -153,15 +153,21 @@ CROSSHAIR_MIN_Y               equ 00000070h
 CROSSHAIR_MAX_Y               equ 00000170h
 
 FILL_GOP_RECT MACRO RectX, RectY, RectW, RectH, RectColor
-LOCAL row_loop
+LOCAL row_loop, offset_ready
     mov eax, RectColor
     call ConvertXrgbToGop
     mov r11d, eax
     mov r10, qword ptr [GopFrameBase]
     mov edx, dword ptr [GopStride]
-    mov rax, RectY
+    mov eax, RectY
+    mov ecx, RectX
+    cmp dword ptr [DrawOffsetEnabled], 0
+    je offset_ready
+    add eax, dword ptr [DrawOffsetY]
+    add ecx, dword ptr [DrawOffsetX]
+offset_ready:
     imul rax, rdx
-    add rax, RectX
+    add rax, rcx
     shl rax, 2
     lea rdi, [r10 + rax]
     mov r8d, RectH
@@ -2030,6 +2036,7 @@ SyncPlayerScreenFromWorld ENDP
 StartFirstLevel PROC
     mov dword ptr [GameMode], GAME_MODE_PLAY
     mov dword ptr [MenuPanel], 0
+    mov dword ptr [DrawOffsetEnabled], 0
     mov dword ptr [PlayerWorldX], 0
     mov dword ptr [PlayerWorldZ], 0
     call SyncPlayerScreenFromWorld
@@ -2050,6 +2057,9 @@ StartFirstLevel ENDP
 ReturnToTitle PROC
     mov dword ptr [GameMode], GAME_MODE_TITLE
     mov dword ptr [MenuPanel], 0
+    mov dword ptr [DrawOffsetEnabled], 0
+    mov dword ptr [DrawOffsetX], 0
+    mov dword ptr [DrawOffsetY], 0
     mov dword ptr [ShotFlashTicks], 0
     mov dword ptr [HitFlashTicks], 0
     mov dword ptr [PointerLeftLatch], 0
@@ -2437,7 +2447,38 @@ DrawTitleScreen PROC
     push rdi
     sub rsp, 20h
 
+    mov dword ptr [DrawOffsetEnabled], 0
+    mov eax, 00000000h
+    call FillScreen
     call DrawEngine64Showcase
+
+    mov eax, dword ptr [GopWidth]
+    cmp eax, ENGINE64_EXPECTED_WIDTH
+    jb title_offset_x_zero
+    sub eax, ENGINE64_EXPECTED_WIDTH
+    shr eax, 1
+    jmp title_offset_x_ready
+
+title_offset_x_zero:
+    xor eax, eax
+
+title_offset_x_ready:
+    mov dword ptr [DrawOffsetX], eax
+
+    mov eax, dword ptr [GopHeight]
+    cmp eax, ENGINE64_EXPECTED_HEIGHT
+    jb title_offset_y_zero
+    sub eax, ENGINE64_EXPECTED_HEIGHT
+    shr eax, 1
+    jmp title_offset_y_ready
+
+title_offset_y_zero:
+    xor eax, eax
+
+title_offset_y_ready:
+    mov dword ptr [DrawOffsetY], eax
+    mov dword ptr [DrawOffsetEnabled], 1
+
     call DrawTitleHero3DOverlay
 
     FILL_GOP_RECT 28, 24, 374, 112, 00070B12h
@@ -2479,6 +2520,7 @@ DrawTitleScreen PROC
     mov r9d, DIAG_MUTED
     call DrawString
 
+    mov dword ptr [DrawOffsetEnabled], 0
     add rsp, 20h
     pop rdi
     ret
@@ -5608,6 +5650,12 @@ DrawString4x PROC
     mov r13d, edx
     mov r14, r8
     mov r15d, r9d
+    cmp dword ptr [DrawOffsetEnabled], 0
+    je string4_no_offset
+    add r12d, dword ptr [DrawOffsetX]
+    add r13d, dword ptr [DrawOffsetY]
+
+string4_no_offset:
 
 string4_loop:
     movzx eax, byte ptr [r14]

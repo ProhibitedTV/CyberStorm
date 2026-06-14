@@ -722,6 +722,18 @@ function New-X64BreachTextureChunk {
                 } else {
                     $color = Join-Xrgb 6 20 24
                 }
+            } elseif ($tile -eq 10) {
+                $ring = (($localX - 15) * ($localX - 15) + ($localY - 15) * ($localY - 15))
+                $scan = (($localY % 6) -eq 0)
+                if ($ring -lt 52) {
+                    $color = Join-Xrgb 255 230 109
+                } elseif ($ring -lt 104) {
+                    $color = Join-Xrgb 255 64 128
+                } elseif ($scan) {
+                    $color = Join-Xrgb 80 24 64
+                } else {
+                    $color = Join-Xrgb 18 24 38
+                }
             } else {
                 $color = Join-Xrgb (8 + [int]($noise / 3)) (18 + [int]($noise / 2)) (24 + [int]($noise / 2))
             }
@@ -752,7 +764,8 @@ function New-X64BreachMaterialChunk {
         [pscustomobject]@{ Name = 'terminal.screen'; Base = (Join-Xrgb 176 255 200); Tile = 6; Flags = 1 },
         [pscustomobject]@{ Name = 'warden.armor'; Base = (Join-Xrgb 255 64 88); Tile = 7; Flags = 2 },
         [pscustomobject]@{ Name = 'exit.signage'; Base = (Join-Xrgb 32 208 96); Tile = 8; Flags = 1 },
-        [pscustomobject]@{ Name = 'dark.infrastructure'; Base = (Join-Xrgb 18 32 42); Tile = 9; Flags = 2 }
+        [pscustomobject]@{ Name = 'dark.infrastructure'; Base = (Join-Xrgb 18 32 42); Tile = 9; Flags = 2 },
+        [pscustomobject]@{ Name = 'sentry.optic'; Base = (Join-Xrgb 255 64 128); Tile = 10; Flags = 1 }
     )
 
     $headerBytes = 24
@@ -870,6 +883,15 @@ function New-X64BreachMeshChunk {
     & $addQuad @(-42, 18, 148) @(-10, 18, 148) @(-10, 44, 148) @(-42, 44, 148) 4
     & $addQuad @(10, 18, 148) @(42, 18, 148) @(42, 44, 148) @(10, 44, 148) 3
     & $addQuad @(-62, 66, 150) @(62, 66, 150) @(42, 86, 150) @(-42, 86, 150) 4
+
+    & $addBox -132 -30 286 -70 68 366 10
+    & $addBox 70 -30 286 132 68 366 10
+    & $addBox -164 18 306 -132 58 358 1
+    & $addBox 132 18 306 164 58 358 1
+    & $addQuad @(-112, 8, 278) @(-88, 8, 278) @(-88, 34, 278) @(-112, 34, 278) 10
+    & $addQuad @(88, 8, 278) @(112, 8, 278) @(112, 34, 278) @(88, 34, 278) 10
+    & $addQuad @(-146, 70, 304) @(-76, 70, 304) @(-92, 94, 348) @(-132, 94, 348) 4
+    & $addQuad @(76, 70, 304) @(146, 70, 304) @(132, 94, 348) @(92, 94, 348) 4
 
     for ($i = 0; $i -lt $triangles.Count; $i++) {
         $tri = $triangles[$i]
@@ -1180,13 +1202,13 @@ function Write-X64BootstrapReports {
         'Input MVP: UEFI SimpleTextInput title menu plus first-level keyboard controls'
         'Input actions: title arrows/W/S select, Enter/Space/Right/D confirm, Esc/Left/A/Backspace backs out'
         'Gameplay slice: NEW GAME enters LEVEL 01 NEON SPINE with world-space WASD advance/strafe movement, reticle, Warden fight, breach terminal, extraction gate, hit counting, and mission-complete state'
-        'Gameplay presentation: x64 internal xRGB8888 framebuffer with 32-bit depth buffer, generated textured mesh chunks, near-plane guarded projection, clipped screen bounds, material/depth fog tint, animated pulse rails, readable Warden volume, terminal console volume, exit-gate volume, visible 3D trigger pads, and compact keyboard-first HUD'
-        'Gameplay world model: player X/Z position drives camera parallax and map-driven Warden/terminal/exit trigger volumes while derived screen coordinates preserve HUD and smoke-test compatibility'
+        'Gameplay presentation: x64 internal xRGB8888 framebuffer with 32-bit depth buffer, generated textured mesh chunks, near-plane guarded projection, clipped screen bounds, material/depth fog tint, animated pulse rails, readable Warden/sentry hostile pack, terminal console volume, exit-gate volume, visible 3D trigger pads, and compact keyboard-first HUD'
+        'Gameplay world model: player X/Z position drives camera parallax and map-driven Warden/terminal/exit trigger volumes while side sentries reward strafe-and-fire positioning and derived screen coordinates preserve HUD and smoke-test compatibility'
         'Gameplay fire: Enter/Space fire through keyboard fallback; UEFI SimplePointer left-click fires when firmware exposes a pointer protocol; active shots draw player-to-reticle beam and world-depth hit feedback'
         'Runtime pack loader: LoadedImage -> SimpleFileSystem -> X64PACK.BIN read into scratch arena'
         'Runtime pack validation: CSX64PK0 magic, version, record size, bounds, alignment, known chunk IDs, FNV-1a checksums'
         'ENGINE64 validation: CS64ENG0 payload header, 640x480 xRGB8888 target, deterministic expanded title-scene palette table, and assembly-authored model table'
-        'ENGINE64 render path: loaded ENGINE64 chunk renders the layered title scene; gameplay renders the first level through the x64 filled-triangle depth backend before GOP presentation'
+        'ENGINE64 render path: loaded ENGINE64 chunk renders the layered animated title scene; gameplay renders the first level through the x64 filled-triangle depth backend before GOP presentation'
         'ENGINE64 model assets: WARDEN, TERMNL, PYLON, and GATE records carry signed 3D vertices plus triangle face/material references authored directly in assembly'
         'Framebuffer abstraction: internal xRGB8888 frame arena with GOP direct/swap present modes for BGR, RGB, and matching bitmask layouts'
         'Host preview: deterministic PNG rendered from ENGINE64.BIN for release review while UEFI VM smoke remains the boot/input acceptance gate'
@@ -1216,6 +1238,7 @@ function Write-X64BootstrapReports {
         'Milestone: M2 deterministic pack scaffold and ENGINE64 framebuffer foundation'
         'Milestone: M3 first x64 filled-triangle depth backend for playable level rendering plus material/depth fog, denser first-level scene composition, and world-space movement/trigger volumes'
         'Milestone: Renderer Foundation v2 with triangle-record UV interpolation, richer deterministic cyberpunk atlas tiles, deeper NEON SPINE mesh composition, mission-progress capture, and after-Esc visual regression capture'
+        'Milestone: Renderer Foundation v3 with animated title/menu heartbeat, generated sentry optic material, two additional sentry enemies, hostile-pack objective flow, and expanded mission smoke path'
         ("Pack binary: {0}" -f $PackArtifacts.PackPath)
         ("Pack manifest: {0}" -f $PackArtifacts.ManifestPath)
         ("Pack bytes: {0}" -f $PackArtifacts.Bytes)

@@ -82,6 +82,7 @@ PACK_STATUS_CHUNK_ID          equ 0000000Ah
 PACK_STATUS_CHUNK_MASK        equ 0000000Bh
 PACK_STATUS_ENGINE64          equ 0000000Ch
 PACK_STATUS_STAGE             equ 0000000Dh
+PACK_STATUS_ASSET             equ 0000000Eh
 ENGINE64_EXPECTED_WIDTH       equ 00000280h
 ENGINE64_EXPECTED_HEIGHT      equ 000001E0h
 ENGINE64_MIN_BYTES            equ 00000060h
@@ -93,6 +94,26 @@ ENGINE64_MODEL_RECORD_FIELD   equ 00000040h
 ENGINE64_MODEL_RECORD_BYTES   equ 00000020h
 ENGINE64_VERTEX_BYTES         equ 00000006h
 ENGINE64_FACE_BYTES           equ 00000004h
+TEXTURE_CHUNK_HEADER_BYTES    equ 00000020h
+TEXTURE_ATLAS_WIDTH           equ 00000100h
+TEXTURE_ATLAS_HEIGHT          equ 00000100h
+TEXTURE_TILE_SIZE             equ 00000020h
+TEXTURE_TILE_COUNT            equ 00000040h
+TEXTURE_ATLAS_BYTES           equ 00040000h
+MATERIAL_CHUNK_HEADER_BYTES   equ 00000018h
+MATERIAL_RECORD_BYTES         equ 00000010h
+MESH_CHUNK_HEADER_BYTES       equ 00000020h
+MESH_VERTEX_BYTES             equ 00000008h
+MESH_TRIANGLE_BYTES           equ 00000010h
+MAP_CHUNK_HEADER_BYTES        equ 00000020h
+MAP_INSTANCE_BYTES            equ 00000010h
+MAP_VOLUME_BYTES              equ 00000020h
+MAP_VOLUME_WARDEN             equ 00000001h
+MAP_VOLUME_TERMINAL           equ 00000002h
+MAP_VOLUME_EXIT               equ 00000003h
+RENDER_NEAR_PLANE             equ 00000020h
+MATERIAL_FLAG_EMISSIVE        equ 00000001h
+MATERIAL_FLAG_FOG             equ 00000002h
 PRESENT_MODE_DIRECT           equ 00000000h
 PRESENT_MODE_SWAP_RB          equ 00000001h
 RENDER_STATUS_OK              equ 00000000h
@@ -657,6 +678,27 @@ LoadX64Pack PROC
     mov dword ptr [Engine64ModelRecordBytes], 0
     mov qword ptr [Engine64ChunkBase], 0
     mov dword ptr [Engine64ChunkBytes], 0
+    mov qword ptr [TextureChunkBase], 0
+    mov dword ptr [TextureChunkBytes], 0
+    mov qword ptr [TextureAtlasPixels], 0
+    mov dword ptr [TextureAtlasBytes], 0
+    mov qword ptr [MaterialChunkBase], 0
+    mov dword ptr [MaterialChunkBytes], 0
+    mov qword ptr [MaterialRecordBase], 0
+    mov dword ptr [MaterialCount], 0
+    mov qword ptr [MeshChunkBase], 0
+    mov dword ptr [MeshChunkBytes], 0
+    mov qword ptr [MeshVertexBase], 0
+    mov qword ptr [MeshTriangleBase], 0
+    mov dword ptr [MeshVertexCount], 0
+    mov dword ptr [MeshTriangleCount], 0
+    mov qword ptr [MapChunkBase], 0
+    mov dword ptr [MapChunkBytes], 0
+    mov qword ptr [MapInstanceBase], 0
+    mov qword ptr [MapVolumeBase], 0
+    mov dword ptr [MapInstanceCount], 0
+    mov dword ptr [MapVolumeCount], 0
+    mov dword ptr [AssetValidationStatus], 0
     mov dword ptr [RenderStatus], RENDER_STATUS_NO_ENGINE
     mov dword ptr [PresentStatus], PRESENT_STATUS_NO_FRAME
     mov dword ptr [RenderFramePixels], 0
@@ -891,6 +933,9 @@ validate_mask:
     jne validate_mask_fail
     cmp dword ptr [PackStageMask], PACK_EXPECTED_MASK
     jne validate_stage_fail
+    call ValidateX64AssetChunks
+    test eax, eax
+    jnz validate_asset_fail
     xor eax, eax
     jmp validate_done
 
@@ -931,6 +976,11 @@ validate_stage_fail:
 
 validate_mask_fail:
     mov dword ptr [PackStatusCode], PACK_STATUS_CHUNK_MASK
+    mov eax, 1
+    jmp validate_done
+
+validate_asset_fail:
+    mov dword ptr [PackStatusCode], PACK_STATUS_ASSET
     mov eax, 1
 
 validate_done:
@@ -1073,6 +1123,308 @@ engine64_fail:
     ret
 ValidateEngine64Chunk ENDP
 
+ValidateX64AssetChunks PROC
+    call ValidateTextureChunk
+    test eax, eax
+    jnz validate_assets_fail
+    call ValidateMaterialChunk
+    test eax, eax
+    jnz validate_assets_fail
+    call ValidateMeshChunk
+    test eax, eax
+    jnz validate_assets_fail
+    call ValidateMapChunk
+    test eax, eax
+    jnz validate_assets_fail
+
+    mov dword ptr [AssetValidationStatus], 0
+    xor eax, eax
+    ret
+
+validate_assets_fail:
+    mov dword ptr [AssetValidationStatus], PACK_STATUS_ASSET
+    mov eax, 1
+    ret
+ValidateX64AssetChunks ENDP
+
+ValidateTextureChunk PROC
+    mov rdx, qword ptr [TextureChunkBase]
+    test rdx, rdx
+    jz texture_chunk_fail
+    mov ecx, dword ptr [TextureChunkBytes]
+    cmp ecx, TEXTURE_CHUNK_HEADER_BYTES + TEXTURE_ATLAS_BYTES
+    jb texture_chunk_fail
+
+    mov rax, qword ptr [TextureChunkMagic]
+    cmp qword ptr [rdx], rax
+    jne texture_chunk_fail
+    cmp dword ptr [rdx + 8], 1
+    jne texture_chunk_fail
+    cmp dword ptr [rdx + 12], TEXTURE_ATLAS_WIDTH
+    jne texture_chunk_fail
+    cmp dword ptr [rdx + 16], TEXTURE_ATLAS_HEIGHT
+    jne texture_chunk_fail
+    cmp dword ptr [rdx + 20], TEXTURE_TILE_SIZE
+    jne texture_chunk_fail
+    cmp dword ptr [rdx + 24], TEXTURE_TILE_COUNT
+    jne texture_chunk_fail
+    cmp dword ptr [rdx + 28], 0
+    jne texture_chunk_fail
+
+    lea rax, [rdx + TEXTURE_CHUNK_HEADER_BYTES]
+    mov qword ptr [TextureAtlasPixels], rax
+    mov dword ptr [TextureAtlasBytes], TEXTURE_ATLAS_BYTES
+    xor eax, eax
+    ret
+
+texture_chunk_fail:
+    mov eax, 1
+    ret
+ValidateTextureChunk ENDP
+
+ValidateMaterialChunk PROC
+    mov rdx, qword ptr [MaterialChunkBase]
+    test rdx, rdx
+    jz material_chunk_fail
+    mov ecx, dword ptr [MaterialChunkBytes]
+    cmp ecx, MATERIAL_CHUNK_HEADER_BYTES
+    jb material_chunk_fail
+
+    mov rax, qword ptr [MaterialChunkMagic]
+    cmp qword ptr [rdx], rax
+    jne material_chunk_fail
+    cmp dword ptr [rdx + 8], 1
+    jne material_chunk_fail
+    mov r8d, dword ptr [rdx + 12]
+    test r8d, r8d
+    jz material_chunk_fail
+    cmp r8d, 64
+    ja material_chunk_fail
+    cmp dword ptr [rdx + 16], MATERIAL_RECORD_BYTES
+    jne material_chunk_fail
+
+    mov eax, r8d
+    imul eax, eax, MATERIAL_RECORD_BYTES
+    add eax, MATERIAL_CHUNK_HEADER_BYTES
+    jc material_chunk_fail
+    cmp eax, ecx
+    ja material_chunk_fail
+
+    lea rax, [rdx + MATERIAL_CHUNK_HEADER_BYTES]
+    mov qword ptr [MaterialRecordBase], rax
+    mov dword ptr [MaterialCount], r8d
+
+    xor r9d, r9d
+material_validate_loop:
+    cmp r9d, r8d
+    jae material_valid
+    mov eax, r9d
+    imul eax, eax, MATERIAL_RECORD_BYTES
+    mov r10, qword ptr [MaterialRecordBase]
+    add r10, rax
+    mov eax, dword ptr [r10 + 4]
+    cmp eax, TEXTURE_TILE_COUNT
+    jae material_chunk_fail
+    inc r9d
+    jmp material_validate_loop
+
+material_valid:
+    xor eax, eax
+    ret
+
+material_chunk_fail:
+    mov eax, 1
+    ret
+ValidateMaterialChunk ENDP
+
+ValidateMeshChunk PROC
+    mov rdx, qword ptr [MeshChunkBase]
+    test rdx, rdx
+    jz mesh_chunk_fail
+    mov ecx, dword ptr [MeshChunkBytes]
+    cmp ecx, MESH_CHUNK_HEADER_BYTES
+    jb mesh_chunk_fail
+
+    mov rax, qword ptr [MeshChunkMagic]
+    cmp qword ptr [rdx], rax
+    jne mesh_chunk_fail
+    cmp dword ptr [rdx + 8], 1
+    jne mesh_chunk_fail
+
+    mov r8d, dword ptr [rdx + 12]
+    test r8d, r8d
+    jz mesh_chunk_fail
+    cmp r8d, 2048
+    ja mesh_chunk_fail
+    mov r9d, dword ptr [rdx + 16]
+    test r9d, r9d
+    jz mesh_chunk_fail
+    cmp r9d, 4096
+    ja mesh_chunk_fail
+
+    mov r10d, dword ptr [rdx + 20]
+    cmp r10d, MESH_CHUNK_HEADER_BYTES
+    jb mesh_chunk_fail
+    cmp r10d, ecx
+    jae mesh_chunk_fail
+    mov eax, r8d
+    imul eax, eax, MESH_VERTEX_BYTES
+    add eax, r10d
+    jc mesh_chunk_fail
+    cmp eax, ecx
+    ja mesh_chunk_fail
+
+    mov r11d, dword ptr [rdx + 24]
+    cmp r11d, MESH_CHUNK_HEADER_BYTES
+    jb mesh_chunk_fail
+    cmp r11d, ecx
+    jae mesh_chunk_fail
+    mov eax, r9d
+    imul eax, eax, MESH_TRIANGLE_BYTES
+    add eax, r11d
+    jc mesh_chunk_fail
+    cmp eax, ecx
+    ja mesh_chunk_fail
+
+    lea rax, [rdx + r10]
+    mov qword ptr [MeshVertexBase], rax
+    lea rax, [rdx + r11]
+    mov qword ptr [MeshTriangleBase], rax
+    mov dword ptr [MeshVertexCount], r8d
+    mov dword ptr [MeshTriangleCount], r9d
+
+    xor r12d, r12d
+mesh_validate_loop:
+    cmp r12d, r9d
+    jae mesh_valid
+    mov eax, r12d
+    imul eax, eax, MESH_TRIANGLE_BYTES
+    mov r10, qword ptr [MeshTriangleBase]
+    add r10, rax
+
+    movzx eax, word ptr [r10]
+    cmp eax, r8d
+    jae mesh_chunk_fail
+    movzx ecx, word ptr [r10 + 2]
+    cmp ecx, r8d
+    jae mesh_chunk_fail
+    movzx edx, word ptr [r10 + 4]
+    cmp edx, r8d
+    jae mesh_chunk_fail
+    cmp eax, ecx
+    je mesh_chunk_fail
+    cmp eax, edx
+    je mesh_chunk_fail
+    cmp ecx, edx
+    je mesh_chunk_fail
+    movzx eax, word ptr [r10 + 6]
+    cmp eax, dword ptr [MaterialCount]
+    jae mesh_chunk_fail
+
+    inc r12d
+    jmp mesh_validate_loop
+
+mesh_valid:
+    xor eax, eax
+    ret
+
+mesh_chunk_fail:
+    mov eax, 1
+    ret
+ValidateMeshChunk ENDP
+
+ValidateMapChunk PROC
+    mov rdx, qword ptr [MapChunkBase]
+    test rdx, rdx
+    jz map_chunk_fail
+    mov ecx, dword ptr [MapChunkBytes]
+    cmp ecx, MAP_CHUNK_HEADER_BYTES
+    jb map_chunk_fail
+
+    mov rax, qword ptr [MapChunkMagic]
+    cmp qword ptr [rdx], rax
+    jne map_chunk_fail
+    cmp dword ptr [rdx + 8], 1
+    jne map_chunk_fail
+
+    mov r8d, dword ptr [rdx + 12]
+    test r8d, r8d
+    jz map_chunk_fail
+    cmp r8d, 16
+    ja map_chunk_fail
+    mov r9d, dword ptr [rdx + 16]
+    test r9d, r9d
+    jz map_chunk_fail
+    cmp r9d, 32
+    ja map_chunk_fail
+
+    mov r10d, dword ptr [rdx + 20]
+    cmp r10d, MAP_CHUNK_HEADER_BYTES
+    jb map_chunk_fail
+    cmp r10d, ecx
+    jae map_chunk_fail
+    mov eax, r8d
+    imul eax, eax, MAP_INSTANCE_BYTES
+    add eax, r10d
+    jc map_chunk_fail
+    cmp eax, ecx
+    ja map_chunk_fail
+
+    mov r11d, dword ptr [rdx + 24]
+    cmp r11d, MAP_CHUNK_HEADER_BYTES
+    jb map_chunk_fail
+    cmp r11d, ecx
+    jae map_chunk_fail
+    mov eax, r9d
+    imul eax, eax, MAP_VOLUME_BYTES
+    add eax, r11d
+    jc map_chunk_fail
+    cmp eax, ecx
+    ja map_chunk_fail
+
+    lea rax, [rdx + r10]
+    mov qword ptr [MapInstanceBase], rax
+    lea rax, [rdx + r11]
+    mov qword ptr [MapVolumeBase], rax
+    mov dword ptr [MapInstanceCount], r8d
+    mov dword ptr [MapVolumeCount], r9d
+
+    xor r12d, r12d
+map_validate_loop:
+    cmp r12d, r9d
+    jae map_valid
+    mov eax, r12d
+    imul eax, eax, MAP_VOLUME_BYTES
+    mov r10, qword ptr [MapVolumeBase]
+    add r10, rax
+
+    mov eax, dword ptr [r10]
+    cmp eax, MAP_VOLUME_WARDEN
+    jb map_chunk_fail
+    cmp eax, MAP_VOLUME_EXIT
+    ja map_chunk_fail
+    mov eax, dword ptr [r10 + 4]
+    cmp eax, dword ptr [r10 + 16]
+    jge map_chunk_fail
+    mov eax, dword ptr [r10 + 8]
+    cmp eax, dword ptr [r10 + 20]
+    jge map_chunk_fail
+    mov eax, dword ptr [r10 + 12]
+    cmp eax, dword ptr [r10 + 24]
+    jge map_chunk_fail
+
+    inc r12d
+    jmp map_validate_loop
+
+map_valid:
+    xor eax, eax
+    ret
+
+map_chunk_fail:
+    mov eax, 1
+    ret
+ValidateMapChunk ENDP
+
 StageX64Chunk PROC
     push rbx
     push rsi
@@ -1119,6 +1471,19 @@ stage_texture:
     ja stage_fail
     mov rdi, qword ptr [TextureArenaBase]
     add rdi, qword ptr [TextureArenaUsed]
+    cmp r8d, 00000002h
+    jne stage_material_record
+    mov qword ptr [TextureChunkBase], rdi
+    mov dword ptr [TextureChunkBytes], ebx
+    jmp stage_texture_copy
+
+stage_material_record:
+    cmp r8d, 00000008h
+    jne stage_texture_copy
+    mov qword ptr [MaterialChunkBase], rdi
+    mov dword ptr [MaterialChunkBytes], ebx
+
+stage_texture_copy:
     mov rsi, rdx
     mov ecx, ebx
     rep movsb
@@ -1153,6 +1518,19 @@ stage_mesh:
     ja stage_fail
     mov rdi, qword ptr [MeshArenaBase]
     add rdi, qword ptr [MeshArenaUsed]
+    cmp r8d, 00000004h
+    jne stage_map_record
+    mov qword ptr [MeshChunkBase], rdi
+    mov dword ptr [MeshChunkBytes], ebx
+    jmp stage_mesh_copy
+
+stage_map_record:
+    cmp r8d, 00000010h
+    jne stage_mesh_copy
+    mov qword ptr [MapChunkBase], rdi
+    mov dword ptr [MapChunkBytes], ebx
+
+stage_mesh_copy:
     mov rsi, rdx
     mov ecx, ebx
     rep movsb
@@ -1693,6 +2071,30 @@ UpdateLevelCameraFromPlayer PROC
     ret
 UpdateLevelCameraFromPlayer ENDP
 
+FindMapVolume PROC
+    mov rdx, qword ptr [MapVolumeBase]
+    test rdx, rdx
+    jz find_volume_fail
+    mov r8d, dword ptr [MapVolumeCount]
+    test r8d, r8d
+    jz find_volume_fail
+
+find_volume_loop:
+    cmp dword ptr [rdx], ecx
+    je find_volume_ok
+    add rdx, MAP_VOLUME_BYTES
+    dec r8d
+    jnz find_volume_loop
+
+find_volume_fail:
+    xor eax, eax
+    ret
+
+find_volume_ok:
+    mov eax, 1
+    ret
+FindMapVolume ENDP
+
 ProjectCrosshairAtWorldZ PROC
     push rbx
 
@@ -1727,24 +2129,45 @@ ProjectCrosshairAtWorldZ ENDP
 
 FireWeapon PROC
     inc dword ptr [MissionShots]
-    mov dword ptr [ShotFlashTicks], 10
+    mov dword ptr [ShotFlashTicks], 36
     call UpdateLevelCameraFromPlayer
 
     cmp dword ptr [EnemyAlive], 0
     je fire_check_terminal
 
+    mov ecx, MAP_VOLUME_WARDEN
+    call FindMapVolume
+    test eax, eax
+    jz fire_enemy_legacy_check
+    mov r10, rdx
+    mov ecx, dword ptr [r10 + 12]
+    add ecx, dword ptr [r10 + 24]
+    sar ecx, 1
+    call ProjectCrosshairAtWorldZ
+    cmp eax, dword ptr [r10 + 4]
+    jl fire_done
+    cmp eax, dword ptr [r10 + 16]
+    jg fire_done
+
+    cmp edx, dword ptr [r10 + 8]
+    jl fire_done
+    cmp edx, dword ptr [r10 + 20]
+    jg fire_done
+    jmp fire_enemy_hit
+
+fire_enemy_legacy_check:
     mov ecx, 196
     call ProjectCrosshairAtWorldZ
     cmp eax, -60
     jl fire_done
     cmp eax, 60
     jg fire_done
-
     cmp edx, -32
     jl fire_done
     cmp edx, 106
     jg fire_done
 
+fire_enemy_hit:
     inc dword ptr [MissionHits]
     mov dword ptr [HitFlashTicks], 8
     mov eax, dword ptr [EnemyHp]
@@ -1764,18 +2187,39 @@ fire_check_terminal:
     cmp dword ptr [ObjectiveState], 1
     jne fire_done
 
+    mov ecx, MAP_VOLUME_TERMINAL
+    call FindMapVolume
+    test eax, eax
+    jz fire_terminal_legacy_check
+    mov r10, rdx
+    mov ecx, dword ptr [r10 + 12]
+    add ecx, dword ptr [r10 + 24]
+    sar ecx, 1
+    call ProjectCrosshairAtWorldZ
+    cmp eax, dword ptr [r10 + 4]
+    jl fire_done
+    cmp eax, dword ptr [r10 + 16]
+    jg fire_done
+
+    cmp edx, dword ptr [r10 + 8]
+    jl fire_done
+    cmp edx, dword ptr [r10 + 20]
+    jg fire_done
+    jmp fire_terminal_hit
+
+fire_terminal_legacy_check:
     mov ecx, 292
     call ProjectCrosshairAtWorldZ
     cmp eax, -190
     jl fire_done
     cmp eax, -96
     jg fire_done
-
     cmp edx, -84
     jl fire_done
     cmp edx, 88
     jg fire_done
 
+fire_terminal_hit:
     inc dword ptr [MissionHits]
     mov dword ptr [HitFlashTicks], 10
     mov dword ptr [ObjectiveState], 2
@@ -1795,6 +2239,24 @@ UpdateLevelObjective PROC
     cmp eax, 1
     jne objective_done
 
+    mov ecx, MAP_VOLUME_TERMINAL
+    call FindMapVolume
+    test eax, eax
+    jz objective_terminal_legacy
+    mov r10, rdx
+    mov eax, dword ptr [PlayerWorldX]
+    cmp eax, dword ptr [r10 + 4]
+    jl objective_done
+    cmp eax, dword ptr [r10 + 16]
+    jg objective_done
+    mov eax, dword ptr [PlayerWorldZ]
+    cmp eax, dword ptr [r10 + 12]
+    jl objective_done
+    cmp eax, dword ptr [r10 + 24]
+    jg objective_done
+    jmp objective_terminal_breach
+
+objective_terminal_legacy:
     mov eax, dword ptr [PlayerWorldX]
     cmp eax, -190
     jl objective_done
@@ -1805,12 +2267,32 @@ UpdateLevelObjective PROC
     jl objective_done
     cmp eax, 356
     jg objective_done
+
+objective_terminal_breach:
     mov dword ptr [ObjectiveState], 2
     mov dword ptr [HitFlashTicks], 10
     mov ecx, 1
     jmp objective_done
 
 objective_check_exit:
+    mov ecx, MAP_VOLUME_EXIT
+    call FindMapVolume
+    test eax, eax
+    jz objective_exit_legacy
+    mov r10, rdx
+    mov eax, dword ptr [PlayerWorldX]
+    cmp eax, dword ptr [r10 + 4]
+    jl objective_done
+    cmp eax, dword ptr [r10 + 16]
+    jg objective_done
+    mov eax, dword ptr [PlayerWorldZ]
+    cmp eax, dword ptr [r10 + 12]
+    jl objective_done
+    cmp eax, dword ptr [r10 + 24]
+    jg objective_done
+    jmp objective_exit_complete
+
+objective_exit_legacy:
     mov eax, dword ptr [PlayerWorldX]
     cmp eax, 108
     jl objective_done
@@ -1821,6 +2303,8 @@ objective_check_exit:
     jl objective_done
     cmp eax, PLAYER_WORLD_MAX_Z
     jg objective_done
+
+objective_exit_complete:
     mov dword ptr [ObjectiveState], 3
     mov dword ptr [HitFlashTicks], 12
     mov ecx, 1
@@ -2630,10 +3114,39 @@ DrawFirstLevelHudOverlay PROC
     push rdi
     sub rsp, 20h
 
-    FILL_GOP_RECT 0, 0, 640, 44, 00070B12h
-    FILL_GOP_RECT 0, 44, 640, 2, 00FF90FFh
-    FILL_GOP_RECT 44, 456, 552, 28, 00070B12h
-    FILL_GOP_RECT 44, 456, 552, 2, 003080D0h
+    mov eax, dword ptr [GopPresentX]
+    mov dword ptr [DrawOffsetX], eax
+    mov eax, dword ptr [GopPresentY]
+    mov dword ptr [DrawOffsetY], eax
+    mov dword ptr [DrawOffsetEnabled], 1
+
+    mov ecx, 0
+    mov edx, 0
+    mov r8d, 640
+    mov r9d, 44
+    mov eax, 00070B12h
+    call DrawGopRect
+
+    mov ecx, 0
+    mov edx, 44
+    mov r8d, 640
+    mov r9d, 2
+    mov eax, 00FF90FFh
+    call DrawGopRect
+
+    mov ecx, 44
+    mov edx, 456
+    mov r8d, 552
+    mov r9d, 24
+    mov eax, 00070B12h
+    call DrawGopRect
+
+    mov ecx, 44
+    mov edx, 456
+    mov r8d, 552
+    mov r9d, 2
+    mov eax, 003080D0h
+    call DrawGopRect
 
     mov ecx, 28
     mov edx, 16
@@ -2678,11 +3191,6 @@ hud_objective_ready:
 
     cmp dword ptr [EnemyAlive], 0
     je hud_enemy_down
-    mov ecx, 292
-    mov edx, 78
-    lea r8, LevelEnemyLine
-    mov r9d, DIAG_WARN
-    call DrawString
 
     cmp dword ptr [EnemyHp], 1
     jb hud_enemy_pips_done
@@ -2710,9 +3218,11 @@ hud_objective_ready:
     call DrawGopRect
 
 hud_enemy_pips_done:
-    jmp hud_terminal_label
+    jmp hud_after_world_labels
 
 hud_enemy_down:
+    jmp hud_after_world_labels
+
     mov ecx, 250
     mov edx, 78
     lea r8, LevelClearLine
@@ -2750,6 +3260,7 @@ hud_terminal_draw_label:
 hud_exit_draw_label:
     call DrawString
 
+hud_after_world_labels:
     cmp dword ptr [ShotFlashTicks], 0
     je hud_crosshair
 
@@ -2833,15 +3344,183 @@ hud_crosshair:
     call DrawGopRect
 
 hud_weapon:
-    FILL_GOP_RECT 286, 414, 68, 18, 00030A10h
-    FILL_GOP_RECT 308, 398, 28, 22, 00182A38h
-    FILL_GOP_RECT 324, 404, 42, 8, 00FFE66Dh
-    FILL_GOP_RECT 314, 396, 14, 6, 00E8F8FFh
+    mov ecx, 286
+    mov edx, 414
+    mov r8d, 68
+    mov r9d, 18
+    mov eax, 00030A10h
+    call DrawGopRect
 
+    mov ecx, 308
+    mov edx, 398
+    mov r8d, 28
+    mov r9d, 22
+    mov eax, 00182A38h
+    call DrawGopRect
+
+    mov ecx, 324
+    mov edx, 404
+    mov r8d, 42
+    mov r9d, 8
+    mov eax, 00FFE66Dh
+    call DrawGopRect
+
+    mov ecx, 314
+    mov edx, 396
+    mov r8d, 14
+    mov r9d, 6
+    mov eax, 00E8F8FFh
+    call DrawGopRect
+
+    mov dword ptr [DrawOffsetEnabled], 0
     add rsp, 20h
     pop rdi
     ret
 DrawFirstLevelHudOverlay ENDP
+
+RenderTexturedLevelFromChunks PROC
+    push rbx
+    push rsi
+    push rdi
+    push r12
+    push r13
+    push r14
+    push r15
+    sub rsp, 20h
+
+    cmp dword ptr [AssetValidationStatus], 0
+    jne render_chunks_fail
+    cmp qword ptr [TextureAtlasPixels], 0
+    je render_chunks_fail
+    cmp qword ptr [MaterialRecordBase], 0
+    je render_chunks_fail
+    cmp qword ptr [MeshVertexBase], 0
+    je render_chunks_fail
+    cmp qword ptr [MeshTriangleBase], 0
+    je render_chunks_fail
+    cmp dword ptr [MeshTriangleCount], 0
+    je render_chunks_fail
+
+    xor r12d, r12d
+
+render_chunks_loop:
+    cmp r12d, dword ptr [MeshTriangleCount]
+    jae render_chunks_ok
+
+    mov rbx, qword ptr [MeshTriangleBase]
+    mov eax, r12d
+    imul eax, eax, MESH_TRIANGLE_BYTES
+    add rbx, rax
+
+    movzx eax, word ptr [rbx + 6]
+    mov dword ptr [TriangleMaterialIndex], eax
+    cmp eax, 7
+    jne render_chunks_material_visible
+    cmp dword ptr [EnemyAlive], 0
+    je render_chunks_next
+
+render_chunks_material_visible:
+    mov rsi, qword ptr [MaterialRecordBase]
+    mov ecx, dword ptr [TriangleMaterialIndex]
+    shl rcx, 4
+    add rsi, rcx
+    mov eax, dword ptr [rsi]
+    mov dword ptr [TriangleBaseColor], eax
+    mov eax, dword ptr [rsi + 4]
+    mov dword ptr [TriangleTextureTile], eax
+    mov eax, dword ptr [rsi + 8]
+    mov dword ptr [TriangleMaterialFlags], eax
+
+    movzx eax, word ptr [rbx]
+    cmp eax, dword ptr [MeshVertexCount]
+    jae render_chunks_reject
+    mov rdi, qword ptr [MeshVertexBase]
+    imul rax, rax, MESH_VERTEX_BYTES
+    add rdi, rax
+    movsx ecx, word ptr [rdi]
+    movsx edx, word ptr [rdi + 2]
+    movsx r8d, word ptr [rdi + 4]
+    mov r11d, r8d
+    sub r11d, dword ptr [LevelCameraZ]
+    cmp r11d, RENDER_NEAR_PLANE
+    jl render_chunks_near_reject
+    call ProjectLevelPoint3D
+    mov dword ptr [ProjectedX0], eax
+    mov dword ptr [ProjectedY0], edx
+    mov dword ptr [ProjectedZ0], r8d
+
+    movzx eax, word ptr [rbx + 2]
+    cmp eax, dword ptr [MeshVertexCount]
+    jae render_chunks_reject
+    mov rdi, qword ptr [MeshVertexBase]
+    imul rax, rax, MESH_VERTEX_BYTES
+    add rdi, rax
+    movsx ecx, word ptr [rdi]
+    movsx edx, word ptr [rdi + 2]
+    movsx r8d, word ptr [rdi + 4]
+    mov r11d, r8d
+    sub r11d, dword ptr [LevelCameraZ]
+    cmp r11d, RENDER_NEAR_PLANE
+    jl render_chunks_near_reject
+    call ProjectLevelPoint3D
+    mov dword ptr [ProjectedX1], eax
+    mov dword ptr [ProjectedY1], edx
+    mov dword ptr [ProjectedZ1], r8d
+
+    movzx eax, word ptr [rbx + 4]
+    cmp eax, dword ptr [MeshVertexCount]
+    jae render_chunks_reject
+    mov rdi, qword ptr [MeshVertexBase]
+    imul rax, rax, MESH_VERTEX_BYTES
+    add rdi, rax
+    movsx ecx, word ptr [rdi]
+    movsx edx, word ptr [rdi + 2]
+    movsx r8d, word ptr [rdi + 4]
+    mov r11d, r8d
+    sub r11d, dword ptr [LevelCameraZ]
+    cmp r11d, RENDER_NEAR_PLANE
+    jl render_chunks_near_reject
+    call ProjectLevelPoint3D
+    mov dword ptr [ProjectedX2], eax
+    mov dword ptr [ProjectedY2], edx
+    mov dword ptr [ProjectedZ2], r8d
+
+    mov dword ptr [TriangleTexturedMode], 1
+    mov eax, dword ptr [TriangleBaseColor]
+    call DrawProjectedTriangleDepth
+    mov dword ptr [TriangleTexturedMode], 0
+    jmp render_chunks_next
+
+render_chunks_near_reject:
+    inc dword ptr [RendererNearRejectedTriangles]
+
+render_chunks_reject:
+    inc dword ptr [RendererRejectedTriangles]
+
+render_chunks_next:
+    inc r12d
+    jmp render_chunks_loop
+
+render_chunks_ok:
+    mov dword ptr [TriangleTexturedMode], 0
+    xor eax, eax
+    jmp render_chunks_done
+
+render_chunks_fail:
+    mov dword ptr [TriangleTexturedMode], 0
+    mov eax, 1
+
+render_chunks_done:
+    add rsp, 20h
+    pop r15
+    pop r14
+    pop r13
+    pop r12
+    pop rdi
+    pop rsi
+    pop rbx
+    ret
+RenderTexturedLevelFromChunks ENDP
 
 RenderFirstLevel3DFrame PROC
     sub rsp, 20h
@@ -2850,8 +3529,11 @@ RenderFirstLevel3DFrame PROC
     mov dword ptr [PresentStatus], PRESENT_STATUS_NO_FRAME
     mov dword ptr [RenderFramePixels], 0
     mov dword ptr [PresentFramePixels], 0
+    mov dword ptr [TriangleTexturedMode], 0
     mov dword ptr [RendererTriangleCount], 0
+    mov dword ptr [RendererTexturedTriangleCount], 0
     mov dword ptr [RendererRejectedTriangles], 0
+    mov dword ptr [RendererNearRejectedTriangles], 0
     mov dword ptr [RendererDepthWrites], 0
 
     mov rax, qword ptr [FrameArenaBase]
@@ -2928,6 +3610,11 @@ render_level_warden_color_ready:
     mov r9d, 208
     mov eax, 00030A10h
     call FillFrameRect
+
+    call RenderTexturedLevelFromChunks
+    test eax, eax
+    jz render_level_actor_done
+    mov dword ptr [TriangleTexturedMode], 0
 
     DRAW_LEVEL_QUAD -260, -64, 96, 260, -64, 96, 260, -64, 540, -260, -64, 540, 000B1924h
     DRAW_LEVEL_QUAD -86, -62, 96, 86, -62, 96, 86, -62, 540, -86, -62, 540, 00182A38h
@@ -4156,7 +4843,92 @@ tri_pixel_loop:
     cmp eax, dword ptr [rdi]
     jge tri_skip_pixel
     mov dword ptr [rdi], eax
+    cmp dword ptr [TriangleTexturedMode], 0
+    je tri_write_flat_pixel
+
+    mov eax, dword ptr [TriangleTextureTile]
+    mov r15d, eax
+    and eax, 00000007h
+    shl eax, 5
+    mov ecx, r14d
+    and ecx, TEXTURE_TILE_SIZE - 1
+    add eax, ecx
+    mov ecx, r15d
+    shr ecx, 3
+    shl ecx, 5
+    mov r11d, r12d
+    and r11d, TEXTURE_TILE_SIZE - 1
+    add ecx, r11d
+    shl ecx, 8
+    add eax, ecx
+    shl rax, 2
+    mov r15, qword ptr [TextureAtlasPixels]
+    add r15, rax
+    mov eax, dword ptr [r15]
+    cmp dword ptr [TriangleMaterialIndex], 7
+    jne tri_tex_not_warden
+    cmp dword ptr [HitFlashTicks], 0
+    je tri_tex_not_warden
+    mov eax, 00FFE66Dh
+
+tri_tex_not_warden:
+    cmp dword ptr [TriangleMaterialIndex], 6
+    jne tri_tex_not_terminal
+    cmp dword ptr [ObjectiveState], 1
+    jb tri_tex_terminal_locked
+    cmp dword ptr [ObjectiveState], 2
+    jb tri_tex_terminal_active
+    mov eax, 00B0FFC8h
+    jmp tri_tex_dynamic_ready
+
+tri_tex_terminal_active:
+    mov eax, 00FFE66Dh
+    jmp tri_tex_dynamic_ready
+
+tri_tex_terminal_locked:
+    mov eax, 00FF4058h
+    jmp tri_tex_dynamic_ready
+
+tri_tex_not_terminal:
+    cmp dword ptr [TriangleMaterialIndex], 8
+    jne tri_tex_dynamic_ready
+    cmp dword ptr [ObjectiveState], 2
+    jae tri_tex_exit_open
+    mov eax, 00FF4058h
+    jmp tri_tex_dynamic_ready
+
+tri_tex_exit_open:
+    mov eax, 0020D060h
+
+tri_tex_dynamic_ready:
+    mov ecx, dword ptr [TriangleMaterialFlags]
+    test ecx, MATERIAL_FLAG_EMISSIVE
+    jnz tri_write_pixel
+    mov ecx, r10d
+    sar ecx, 8
+    cmp ecx, 420
+    jge tri_tex_far_fog
+    cmp ecx, 300
+    jl tri_write_pixel
+    and eax, 00FEFEFEh
+    shr eax, 1
+    mov ecx, dword ptr [TriangleBaseColor]
+    and ecx, 00FCFCFCh
+    shr ecx, 2
+    add eax, ecx
+    add eax, 00020406h
+    jmp tri_write_pixel
+
+tri_tex_far_fog:
+    and eax, 00FEFEFEh
+    shr eax, 1
+    add eax, 0004080Dh
+    jmp tri_write_pixel
+
+tri_write_flat_pixel:
     mov eax, dword ptr [TriangleShadeColor]
+
+tri_write_pixel:
     mov dword ptr [rsi], eax
     inc dword ptr [RendererDepthWrites]
 
@@ -4183,6 +4955,9 @@ tri_reject:
 
 tri_done:
     inc dword ptr [RendererTriangleCount]
+    cmp dword ptr [TriangleTexturedMode], 0
+    je tri_exit
+    inc dword ptr [RendererTexturedTriangleCount]
 
 tri_exit:
     pop r15
@@ -4361,6 +5136,12 @@ DrawGopRect PROC
     mov r13d, edx
     mov r14d, r8d
     mov r15d, r9d
+    cmp dword ptr [DrawOffsetEnabled], 0
+    je gop_rect_no_offset
+    add r12d, dword ptr [DrawOffsetX]
+    add r13d, dword ptr [DrawOffsetY]
+
+gop_rect_no_offset:
     call ConvertXrgbToGop
     mov ebx, eax
 
@@ -4438,6 +5219,14 @@ DrawGopLine PROC
     sub rsp, 20h
 
     mov esi, eax
+    cmp dword ptr [DrawOffsetEnabled], 0
+    je gop_line_no_offset
+    add ecx, dword ptr [DrawOffsetX]
+    add edx, dword ptr [DrawOffsetY]
+    add r8d, dword ptr [DrawOffsetX]
+    add r9d, dword ptr [DrawOffsetY]
+
+gop_line_no_offset:
     mov r12d, ecx
     shl r12d, 8
     mov r13d, edx
@@ -4694,6 +5483,12 @@ DrawString PROC
     mov r13d, edx
     mov r14, r8
     mov r15d, r9d
+    cmp dword ptr [DrawOffsetEnabled], 0
+    je string_no_offset
+    add r12d, dword ptr [DrawOffsetX]
+    add r13d, dword ptr [DrawOffsetY]
+
+string_no_offset:
 
 string_loop:
     movzx eax, byte ptr [r14]
@@ -5041,6 +5836,9 @@ GopBlueMask dd 0
 GopPresentMode dd 0
 GopPresentX dd 0
 GopPresentY dd 0
+DrawOffsetEnabled dd 0
+DrawOffsetX dd 0
+DrawOffsetY dd 0
 
 align 8
 ArenaAllocBase dq 0
@@ -5105,6 +5903,28 @@ Engine64ModelRecordBytes dd 0
 align 8
 Engine64ChunkBase dq 0
 Engine64ChunkBytes dd 0
+align 8
+TextureChunkBase dq 0
+TextureChunkBytes dd 0
+TextureAtlasPixels dq 0
+TextureAtlasBytes dd 0
+MaterialChunkBase dq 0
+MaterialChunkBytes dd 0
+MaterialRecordBase dq 0
+MaterialCount dd 0
+MeshChunkBase dq 0
+MeshChunkBytes dd 0
+MeshVertexBase dq 0
+MeshTriangleBase dq 0
+MeshVertexCount dd 0
+MeshTriangleCount dd 0
+MapChunkBase dq 0
+MapChunkBytes dd 0
+MapInstanceBase dq 0
+MapVolumeBase dq 0
+MapInstanceCount dd 0
+MapVolumeCount dd 0
+AssetValidationStatus dd 0
 RenderStatus dd RENDER_STATUS_NO_ENGINE
 PresentStatus dd PRESENT_STATUS_NO_FRAME
 RenderFramePixels dd 0
@@ -5185,8 +6005,15 @@ TriEdge1Dx dd 0
 TriEdge1Dy dd 0
 TriEdge2Dx dd 0
 TriEdge2Dy dd 0
+TriangleTexturedMode dd 0
+TriangleTextureTile dd 0
+TriangleMaterialIndex dd 0
+TriangleMaterialFlags dd 0
+TriangleBaseColor dd 0
 RendererTriangleCount dd 0
+RendererTexturedTriangleCount dd 0
 RendererRejectedTriangles dd 0
+RendererNearRejectedTriangles dd 0
 RendererDepthWrites dd 0
 
 TitleLine db 'CYBERSTORM',0
@@ -5243,6 +6070,10 @@ PackFileName LABEL WORD
 align 8
 PackMagicValue dq 0304B503436585343h
 Engine64MagicValue dq 030474E4534365343h
+TextureChunkMagic dq 03130305845545343h
+MaterialChunkMagic dq 031303054414D5343h
+MeshChunkMagic dq 031303048534D5343h
+MapChunkMagic dq 031303050414D5343h
 PackTypeEngine dq 03436454E49474E45h
 PackTypeTexture dq 00045525554584554h
 PackTypeMesh dq 0000000004853454Dh

@@ -127,6 +127,12 @@ function Write-UInt16Le {
     $Bytes[$Offset + 1] = [byte](($Value -shr 8) -band 0xFF)
 }
 
+function Write-Int16Le {
+    param([byte[]]$Bytes, [int]$Offset, [int]$Value)
+
+    Write-UInt16Le -Bytes $Bytes -Offset $Offset -Value ($Value -band 0xFFFF)
+}
+
 function Write-UInt32Le {
     param([byte[]]$Bytes, [int]$Offset, [uint32]$Value)
 
@@ -134,6 +140,13 @@ function Write-UInt32Le {
     $Bytes[$Offset + 1] = [byte](($Value -shr 8) -band 0xFF)
     $Bytes[$Offset + 2] = [byte](($Value -shr 16) -band 0xFF)
     $Bytes[$Offset + 3] = [byte](($Value -shr 24) -band 0xFF)
+}
+
+function Write-Int32Le {
+    param([byte[]]$Bytes, [int]$Offset, [int]$Value)
+
+    $unsigned = [BitConverter]::ToUInt32([BitConverter]::GetBytes([int32]$Value), 0)
+    Write-UInt32Le -Bytes $Bytes -Offset $Offset -Value $unsigned
 }
 
 function Write-UInt64Le {
@@ -581,6 +594,346 @@ function Get-AsciiChunkBytes {
     return [Text.Encoding]::ASCII.GetBytes($text)
 }
 
+function Join-Xrgb {
+    param([int]$R, [int]$G, [int]$B)
+
+    $r8 = [Math]::Max(0, [Math]::Min(255, $R))
+    $g8 = [Math]::Max(0, [Math]::Min(255, $G))
+    $b8 = [Math]::Max(0, [Math]::Min(255, $B))
+    return [uint32]((($r8 -band 0xFF) -shl 16) -bor (($g8 -band 0xFF) -shl 8) -bor ($b8 -band 0xFF))
+}
+
+function New-X64BreachTextureChunk {
+    $width = 256
+    $height = 256
+    $tileSize = 32
+    $tileCount = 64
+    $headerBytes = 32
+    $bytes = New-Object byte[] ($headerBytes + ($width * $height * 4))
+
+    [Array]::Copy([Text.Encoding]::ASCII.GetBytes('CSTEX001'), 0, $bytes, 0, 8)
+    Write-UInt32Le -Bytes $bytes -Offset 8 -Value 1
+    Write-UInt32Le -Bytes $bytes -Offset 12 -Value $width
+    Write-UInt32Le -Bytes $bytes -Offset 16 -Value $height
+    Write-UInt32Le -Bytes $bytes -Offset 20 -Value $tileSize
+    Write-UInt32Le -Bytes $bytes -Offset 24 -Value $tileCount
+    Write-UInt32Le -Bytes $bytes -Offset 28 -Value 0
+
+    for ($y = 0; $y -lt $height; $y++) {
+        $tileY = [int]($y / $tileSize)
+        $localY = $y % $tileSize
+        for ($x = 0; $x -lt $width; $x++) {
+            $tileX = [int]($x / $tileSize)
+            $localX = $x % $tileSize
+            $tile = ($tileY * 8) + $tileX
+            $noise = (($x * 17) -bxor ($y * 29) -bxor ($tile * 37)) -band 31
+
+            if ($tile -eq 0) {
+                $color = Join-Xrgb (22 + $noise) (30 + [int]($noise / 2)) (36 + $noise)
+                if ((($localX + ($localY * 3)) % 19) -eq 0) { $color = Join-Xrgb 64 82 92 }
+            } elseif ($tile -eq 1) {
+                $stripe = if (($localY % 6) -eq 0) { 34 } else { 0 }
+                $color = Join-Xrgb (42 + $stripe + [int]($noise / 3)) (52 + $stripe) (60 + $stripe)
+            } elseif ($tile -eq 2) {
+                $line = (($localX % 8) -eq 0) -or (($localY % 8) -eq 0)
+                $color = if ($line) { Join-Xrgb 76 96 108 } else { Join-Xrgb (14 + $noise) (22 + $noise) (28 + $noise) }
+            } elseif ($tile -eq 3) {
+                $diag = (($localX + $localY) % 16) -lt 8
+                $color = if ($diag) { Join-Xrgb 255 214 74 } else { Join-Xrgb 24 10 14 }
+            } elseif ($tile -eq 4) {
+                $core = ($localY -ge 12 -and $localY -le 19)
+                $edge = ($localY -eq 10 -or $localY -eq 21)
+                $color = if ($core) { Join-Xrgb 24 235 255 } elseif ($edge) { Join-Xrgb 255 80 214 } else { Join-Xrgb 4 18 28 }
+            } elseif ($tile -eq 5) {
+                $scan = (($localY % 7) -eq 0)
+                $color = if ($scan) { Join-Xrgb 255 230 109 } else { Join-Xrgb 12 84 130 }
+            } elseif ($tile -eq 6) {
+                $scan = (($localY % 5) -eq 0) -or (($localX % 13) -eq 0)
+                $color = if ($scan) { Join-Xrgb 176 255 200 } else { Join-Xrgb 0 112 92 }
+            } elseif ($tile -eq 7) {
+                $plate = (($localX % 11) -eq 0) -or (($localY % 11) -eq 0)
+                $color = if ($plate) { Join-Xrgb 255 64 88 } else { Join-Xrgb 26 42 56 }
+            } elseif ($tile -eq 8) {
+                $sign = ($localY -ge 10 -and $localY -le 21)
+                $color = if ($sign) { Join-Xrgb 32 208 96 } else { Join-Xrgb 6 20 24 }
+            } else {
+                $color = Join-Xrgb (8 + [int]($noise / 3)) (18 + [int]($noise / 2)) (24 + [int]($noise / 2))
+            }
+
+            $offset = $headerBytes + (($y * $width + $x) * 4)
+            Write-UInt32Le -Bytes $bytes -Offset $offset -Value $color
+        }
+    }
+
+    return [pscustomobject]@{
+        Bytes = $bytes
+        Width = $width
+        Height = $height
+        TileSize = $tileSize
+        TileCount = $tileCount
+        AtlasBytes = ($width * $height * 4)
+    }
+}
+
+function New-X64BreachMaterialChunk {
+    $records = @(
+        [pscustomobject]@{ Name = 'wet.concrete'; Base = (Join-Xrgb 34 46 56); Tile = 0; Flags = 2 },
+        [pscustomobject]@{ Name = 'brushed.metal'; Base = (Join-Xrgb 70 82 92); Tile = 1; Flags = 2 },
+        [pscustomobject]@{ Name = 'floor.grate'; Base = (Join-Xrgb 42 62 72); Tile = 2; Flags = 2 },
+        [pscustomobject]@{ Name = 'hazard.diagonal'; Base = (Join-Xrgb 255 214 74); Tile = 3; Flags = 0 },
+        [pscustomobject]@{ Name = 'neon.rail'; Base = (Join-Xrgb 24 235 255); Tile = 4; Flags = 1 },
+        [pscustomobject]@{ Name = 'glass.panel'; Base = (Join-Xrgb 48 140 200); Tile = 5; Flags = 3 },
+        [pscustomobject]@{ Name = 'terminal.screen'; Base = (Join-Xrgb 176 255 200); Tile = 6; Flags = 1 },
+        [pscustomobject]@{ Name = 'warden.armor'; Base = (Join-Xrgb 255 64 88); Tile = 7; Flags = 2 },
+        [pscustomobject]@{ Name = 'exit.signage'; Base = (Join-Xrgb 32 208 96); Tile = 8; Flags = 1 },
+        [pscustomobject]@{ Name = 'dark.infrastructure'; Base = (Join-Xrgb 18 32 42); Tile = 9; Flags = 2 }
+    )
+
+    $headerBytes = 24
+    $recordBytes = 16
+    $bytes = New-Object byte[] ($headerBytes + ($records.Count * $recordBytes))
+    [Array]::Copy([Text.Encoding]::ASCII.GetBytes('CSMAT001'), 0, $bytes, 0, 8)
+    Write-UInt32Le -Bytes $bytes -Offset 8 -Value 1
+    Write-UInt32Le -Bytes $bytes -Offset 12 -Value $records.Count
+    Write-UInt32Le -Bytes $bytes -Offset 16 -Value $recordBytes
+    Write-UInt32Le -Bytes $bytes -Offset 20 -Value 0
+
+    for ($i = 0; $i -lt $records.Count; $i++) {
+        $offset = $headerBytes + ($i * $recordBytes)
+        Write-UInt32Le -Bytes $bytes -Offset $offset -Value $records[$i].Base
+        Write-UInt32Le -Bytes $bytes -Offset ($offset + 4) -Value $records[$i].Tile
+        Write-UInt32Le -Bytes $bytes -Offset ($offset + 8) -Value $records[$i].Flags
+        Write-UInt32Le -Bytes $bytes -Offset ($offset + 12) -Value 0
+    }
+
+    return [pscustomobject]@{
+        Bytes = $bytes
+        Records = $records
+        Count = $records.Count
+        RecordBytes = $recordBytes
+    }
+}
+
+function New-X64BreachMeshChunk {
+    param([int]$MaterialCount)
+
+    $vertices = New-Object 'System.Collections.Generic.List[object]'
+    $triangles = New-Object 'System.Collections.Generic.List[object]'
+
+    $addVertex = {
+        param([int]$X, [int]$Y, [int]$Z)
+        $vertices.Add([pscustomobject]@{ X = $X; Y = $Y; Z = $Z }) | Out-Null
+        return ($vertices.Count - 1)
+    }
+
+    $addTriangle = {
+        param([int]$V0, [int]$V1, [int]$V2, [int]$Material, [int[]]$Uv)
+        $triangles.Add([pscustomobject]@{
+            V0 = $V0; V1 = $V1; V2 = $V2; Material = $Material; Uv = $Uv
+        }) | Out-Null
+    }
+
+    $addQuad = {
+        param([int[]]$A, [int[]]$B, [int[]]$C, [int[]]$D, [int]$Material)
+        $i0 = & $addVertex $A[0] $A[1] $A[2]
+        $i1 = & $addVertex $B[0] $B[1] $B[2]
+        $i2 = & $addVertex $C[0] $C[1] $C[2]
+        $i3 = & $addVertex $D[0] $D[1] $D[2]
+        & $addTriangle $i0 $i1 $i2 $Material @(0, 0, 255, 0, 255, 255)
+        & $addTriangle $i0 $i2 $i3 $Material @(0, 0, 255, 255, 0, 255)
+    }
+
+    $addBox = {
+        param([int]$MinX, [int]$MinY, [int]$MinZ, [int]$MaxX, [int]$MaxY, [int]$MaxZ, [int]$Material)
+        & $addQuad @($MinX, $MinY, $MinZ) @($MaxX, $MinY, $MinZ) @($MaxX, $MaxY, $MinZ) @($MinX, $MaxY, $MinZ) $Material
+        & $addQuad @($MaxX, $MinY, $MaxZ) @($MinX, $MinY, $MaxZ) @($MinX, $MaxY, $MaxZ) @($MaxX, $MaxY, $MaxZ) $Material
+        & $addQuad @($MinX, $MinY, $MaxZ) @($MinX, $MinY, $MinZ) @($MinX, $MaxY, $MinZ) @($MinX, $MaxY, $MaxZ) $Material
+        & $addQuad @($MaxX, $MinY, $MinZ) @($MaxX, $MinY, $MaxZ) @($MaxX, $MaxY, $MaxZ) @($MaxX, $MaxY, $MinZ) $Material
+        & $addQuad @($MinX, $MaxY, $MinZ) @($MaxX, $MaxY, $MinZ) @($MaxX, $MaxY, $MaxZ) @($MinX, $MaxY, $MaxZ) $Material
+        & $addQuad @($MinX, $MinY, $MaxZ) @($MaxX, $MinY, $MaxZ) @($MaxX, $MinY, $MinZ) @($MinX, $MinY, $MinZ) $Material
+    }
+
+    & $addQuad @(-280, -64, 80) @(280, -64, 80) @(280, -64, 680) @(-280, -64, 680) 2
+    & $addQuad @(-90, -62, 80) @(90, -62, 80) @(90, -62, 680) @(-90, -62, 680) 0
+    & $addQuad @(-280, 132, 80) @(-280, 132, 680) @(280, 132, 680) @(280, 132, 80) 9
+    & $addQuad @(-280, -64, 80) @(-280, -64, 680) @(-280, 132, 680) @(-280, 132, 80) 0
+    & $addQuad @(280, -64, 680) @(280, -64, 80) @(280, 132, 80) @(280, 132, 680) 0
+    & $addQuad @(-280, -64, 680) @(280, -64, 680) @(280, 132, 680) @(-280, 132, 680) 1
+
+    foreach ($z in @(128, 210, 328, 486)) {
+        & $addQuad @(-280, -61, $z) @(280, -61, $z) @(280, -61, ($z + 16)) @(-280, -61, ($z + 16)) 3
+    }
+
+    & $addBox -170 -62 80 -148 -56 680 4
+    & $addBox 148 -62 80 170 -56 680 4
+    & $addBox -282 -20 116 -274 84 224 5
+    & $addBox 274 -20 116 282 84 224 5
+    & $addBox -282 -8 276 -274 92 410 5
+    & $addBox 274 -8 276 282 92 410 5
+    & $addBox -260 -64 146 -214 120 230 9
+    & $addBox 214 -64 146 260 120 230 9
+    & $addBox -236 -64 348 -202 120 454 9
+    & $addBox 202 -64 348 236 120 454 9
+    & $addBox -28 -64 356 28 116 430 1
+
+    & $addBox -190 -64 248 -98 52 350 6
+    & $addQuad @(-178, -6, 244) @(-110, -6, 244) @(-110, 40, 244) @(-178, 40, 244) 6
+    & $addBox 114 -64 280 214 116 416 8
+    & $addQuad @(136, -42, 276) @(194, -42, 276) @(194, 82, 276) @(136, 82, 276) 8
+
+    & $addBox -58 -28 168 58 92 256 7
+    & $addBox -92 8 190 -58 42 250 7
+    & $addBox 58 8 190 92 42 250 7
+    & $addBox -36 92 186 36 126 230 7
+    & $addQuad @(-34, 18, 162) @(-8, 18, 162) @(-8, 42, 162) @(-34, 42, 162) 4
+    & $addQuad @(8, 18, 162) @(34, 18, 162) @(34, 42, 162) @(8, 42, 162) 3
+
+    for ($i = 0; $i -lt $triangles.Count; $i++) {
+        $tri = $triangles[$i]
+        if ($tri.V0 -eq $tri.V1 -or $tri.V1 -eq $tri.V2 -or $tri.V0 -eq $tri.V2) {
+            throw ("Degenerate generated mesh triangle at index {0}." -f $i)
+        }
+        if ($tri.V0 -lt 0 -or $tri.V0 -ge $vertices.Count -or $tri.V1 -lt 0 -or $tri.V1 -ge $vertices.Count -or $tri.V2 -lt 0 -or $tri.V2 -ge $vertices.Count) {
+            throw ("Generated mesh triangle {0} has an invalid vertex reference." -f $i)
+        }
+        if ($tri.Material -lt 0 -or $tri.Material -ge $MaterialCount) {
+            throw ("Generated mesh triangle {0} has an invalid material reference." -f $i)
+        }
+        foreach ($uv in $tri.Uv) {
+            if ($uv -lt 0 -or $uv -gt 255) {
+                throw ("Generated mesh triangle {0} has an invalid UV value." -f $i)
+            }
+        }
+    }
+
+    $headerBytes = 32
+    $vertexBytes = 8
+    $triangleBytes = 16
+    $vertexOffset = $headerBytes
+    $triangleOffset = $vertexOffset + ($vertices.Count * $vertexBytes)
+    $bytes = New-Object byte[] ($triangleOffset + ($triangles.Count * $triangleBytes))
+    [Array]::Copy([Text.Encoding]::ASCII.GetBytes('CSMSH001'), 0, $bytes, 0, 8)
+    Write-UInt32Le -Bytes $bytes -Offset 8 -Value 1
+    Write-UInt32Le -Bytes $bytes -Offset 12 -Value $vertices.Count
+    Write-UInt32Le -Bytes $bytes -Offset 16 -Value $triangles.Count
+    Write-UInt32Le -Bytes $bytes -Offset 20 -Value $vertexOffset
+    Write-UInt32Le -Bytes $bytes -Offset 24 -Value $triangleOffset
+    Write-UInt32Le -Bytes $bytes -Offset 28 -Value 0
+
+    for ($i = 0; $i -lt $vertices.Count; $i++) {
+        $offset = $vertexOffset + ($i * $vertexBytes)
+        Write-Int16Le -Bytes $bytes -Offset $offset -Value $vertices[$i].X
+        Write-Int16Le -Bytes $bytes -Offset ($offset + 2) -Value $vertices[$i].Y
+        Write-Int16Le -Bytes $bytes -Offset ($offset + 4) -Value $vertices[$i].Z
+        Write-Int16Le -Bytes $bytes -Offset ($offset + 6) -Value 0
+    }
+
+    for ($i = 0; $i -lt $triangles.Count; $i++) {
+        $offset = $triangleOffset + ($i * $triangleBytes)
+        $tri = $triangles[$i]
+        Write-UInt16Le -Bytes $bytes -Offset $offset -Value $tri.V0
+        Write-UInt16Le -Bytes $bytes -Offset ($offset + 2) -Value $tri.V1
+        Write-UInt16Le -Bytes $bytes -Offset ($offset + 4) -Value $tri.V2
+        Write-UInt16Le -Bytes $bytes -Offset ($offset + 6) -Value $tri.Material
+        for ($uvIndex = 0; $uvIndex -lt 6; $uvIndex++) {
+            $bytes[$offset + 8 + $uvIndex] = [byte]$tri.Uv[$uvIndex]
+        }
+        Write-UInt16Le -Bytes $bytes -Offset ($offset + 14) -Value 0
+    }
+
+    return [pscustomobject]@{
+        Bytes = $bytes
+        VertexCount = $vertices.Count
+        TriangleCount = $triangles.Count
+        VertexBytes = $vertexBytes
+        TriangleBytes = $triangleBytes
+        Bounds = 'x[-282,282] y[-64,132] z[80,680]'
+    }
+}
+
+function New-X64BreachMapChunk {
+    $instances = @(
+        [pscustomobject]@{ Mesh = 0; X = 0; Y = 0; Z = 0 }
+    )
+    $volumes = @(
+        [pscustomobject]@{ Kind = 1; MinX = -92; MinY = -36; MinZ = 150; MaxX = 92; MaxY = 128; MaxZ = 274; Flags = 0 },
+        [pscustomobject]@{ Kind = 2; MinX = -202; MinY = -80; MinZ = 238; MaxX = -88; MaxY = 76; MaxZ = 372; Flags = 0 },
+        [pscustomobject]@{ Kind = 3; MinX = 104; MinY = -80; MinZ = 278; MaxX = 226; MaxY = 132; MaxZ = 438; Flags = 0 }
+    )
+
+    foreach ($volume in $volumes) {
+        if ($volume.MinX -ge $volume.MaxX -or $volume.MinY -ge $volume.MaxY -or $volume.MinZ -ge $volume.MaxZ) {
+            throw ("Invalid generated map volume kind {0}." -f $volume.Kind)
+        }
+        if ($volume.MinX -lt -320 -or $volume.MaxX -gt 320 -or $volume.MinY -lt -128 -or $volume.MaxY -gt 160 -or $volume.MinZ -lt 0 -or $volume.MaxZ -gt 720) {
+            throw ("Generated map volume kind {0} is outside NEON SPINE bounds." -f $volume.Kind)
+        }
+    }
+
+    $headerBytes = 32
+    $instanceBytes = 16
+    $volumeBytes = 32
+    $instanceOffset = $headerBytes
+    $volumeOffset = $instanceOffset + ($instances.Count * $instanceBytes)
+    $bytes = New-Object byte[] ($volumeOffset + ($volumes.Count * $volumeBytes))
+    [Array]::Copy([Text.Encoding]::ASCII.GetBytes('CSMAP001'), 0, $bytes, 0, 8)
+    Write-UInt32Le -Bytes $bytes -Offset 8 -Value 1
+    Write-UInt32Le -Bytes $bytes -Offset 12 -Value $instances.Count
+    Write-UInt32Le -Bytes $bytes -Offset 16 -Value $volumes.Count
+    Write-UInt32Le -Bytes $bytes -Offset 20 -Value $instanceOffset
+    Write-UInt32Le -Bytes $bytes -Offset 24 -Value $volumeOffset
+    Write-UInt32Le -Bytes $bytes -Offset 28 -Value 0
+
+    for ($i = 0; $i -lt $instances.Count; $i++) {
+        $offset = $instanceOffset + ($i * $instanceBytes)
+        Write-UInt32Le -Bytes $bytes -Offset $offset -Value $instances[$i].Mesh
+        Write-Int32Le -Bytes $bytes -Offset ($offset + 4) -Value $instances[$i].X
+        Write-Int32Le -Bytes $bytes -Offset ($offset + 8) -Value $instances[$i].Y
+        Write-Int32Le -Bytes $bytes -Offset ($offset + 12) -Value $instances[$i].Z
+    }
+
+    for ($i = 0; $i -lt $volumes.Count; $i++) {
+        $offset = $volumeOffset + ($i * $volumeBytes)
+        $volume = $volumes[$i]
+        Write-UInt32Le -Bytes $bytes -Offset $offset -Value $volume.Kind
+        Write-Int32Le -Bytes $bytes -Offset ($offset + 4) -Value $volume.MinX
+        Write-Int32Le -Bytes $bytes -Offset ($offset + 8) -Value $volume.MinY
+        Write-Int32Le -Bytes $bytes -Offset ($offset + 12) -Value $volume.MinZ
+        Write-Int32Le -Bytes $bytes -Offset ($offset + 16) -Value $volume.MaxX
+        Write-Int32Le -Bytes $bytes -Offset ($offset + 20) -Value $volume.MaxY
+        Write-Int32Le -Bytes $bytes -Offset ($offset + 24) -Value $volume.MaxZ
+        Write-UInt32Le -Bytes $bytes -Offset ($offset + 28) -Value $volume.Flags
+    }
+
+    return [pscustomobject]@{
+        Bytes = $bytes
+        InstanceCount = $instances.Count
+        VolumeCount = $volumes.Count
+        ObjectiveVolumeCount = $volumes.Count
+    }
+}
+
+function New-X64BreachRunnerAssets {
+    $texture = New-X64BreachTextureChunk
+    $materials = New-X64BreachMaterialChunk
+
+    foreach ($record in $materials.Records) {
+        if ($record.Tile -lt 0 -or $record.Tile -ge $texture.TileCount) {
+            throw ("Material {0} references invalid texture tile {1}." -f $record.Name, $record.Tile)
+        }
+    }
+
+    $mesh = New-X64BreachMeshChunk -MaterialCount $materials.Count
+    $map = New-X64BreachMapChunk
+
+    return [pscustomobject]@{
+        Texture = $texture
+        Materials = $materials
+        Mesh = $mesh
+        Map = $map
+    }
+}
+
 function New-X64PackArtifacts {
     param(
         [string]$PackPath,
@@ -589,13 +942,14 @@ function New-X64PackArtifacts {
     )
 
     Assert-PathExists -Path $Engine64PayloadPath -Label 'engine64 payload'
+    $breachAssets = New-X64BreachRunnerAssets
 
     $chunks = @(
         [pscustomobject]@{ Type = 'ENGINE64'; Name = 'engine64.bootstrap'; Load = [uint64]0x00100000; Align = 4096; Description = 'runtime code payload slot'; PayloadPath = $Engine64PayloadPath },
-        [pscustomobject]@{ Type = 'TEXTURE'; Name = 'title.texture.atlas'; Load = [uint64]0x02000000; Align = 4096; Description = 'xRGB8888 texture atlas slot'; PayloadPath = $null },
-        [pscustomobject]@{ Type = 'MESH'; Name = 'title.hero.mesh'; Load = [uint64]0x02400000; Align = 4096; Description = 'hero mesh payload slot'; PayloadPath = $null },
-        [pscustomobject]@{ Type = 'MATERIAL'; Name = 'title.materials'; Load = [uint64]0x02600000; Align = 4096; Description = 'material table slot'; PayloadPath = $null },
-        [pscustomobject]@{ Type = 'MAP'; Name = 'district.slice.map'; Load = [uint64]0x02800000; Align = 4096; Description = 'mission map chunk slot'; PayloadPath = $null },
+        [pscustomobject]@{ Type = 'TEXTURE'; Name = 'neon.spine.texture.atlas'; Load = [uint64]0x02000000; Align = 4096; Description = '256x256 xRGB8888 atlas with 32x32 procedural tiles'; PayloadPath = $null; PayloadBytes = $breachAssets.Texture.Bytes; SourceName = 'generated binary TEXTURE chunk' },
+        [pscustomobject]@{ Type = 'MESH'; Name = 'neon.spine.mesh'; Load = [uint64]0x02400000; Align = 4096; Description = 'textured corridor, terminal, gate, and Warden mesh'; PayloadPath = $null; PayloadBytes = $breachAssets.Mesh.Bytes; SourceName = 'generated binary MESH chunk' },
+        [pscustomobject]@{ Type = 'MATERIAL'; Name = 'neon.spine.materials'; Load = [uint64]0x02600000; Align = 4096; Description = 'x64 material table with tile refs and emissive/fog flags'; PayloadPath = $null; PayloadBytes = $breachAssets.Materials.Bytes; SourceName = 'generated binary MATERIAL chunk' },
+        [pscustomobject]@{ Type = 'MAP'; Name = 'neon.spine.map'; Load = [uint64]0x02800000; Align = 4096; Description = 'mission instances and Warden/terminal/exit volumes'; PayloadPath = $null; PayloadBytes = $breachAssets.Map.Bytes; SourceName = 'generated binary MAP chunk' },
         [pscustomobject]@{ Type = 'SCRIPT'; Name = 'campaign.script'; Load = [uint64]0x02A00000; Align = 4096; Description = 'objective script slot'; PayloadPath = $null },
         [pscustomobject]@{ Type = 'AUDIO'; Name = 'title.audio.bank'; Load = [uint64]0x02C00000; Align = 4096; Description = 'music and sfx bank slot'; PayloadPath = $null },
         [pscustomobject]@{ Type = 'TITLE'; Name = 'title.scene'; Load = [uint64]0x03000000; Align = 4096; Description = 'title scene graph slot'; PayloadPath = $null },
@@ -610,13 +964,15 @@ function New-X64PackArtifacts {
     foreach ($chunk in $chunks) {
         $bytes = if ($chunk.PayloadPath) {
             [IO.File]::ReadAllBytes($chunk.PayloadPath)
+        } elseif ($chunk.PSObject.Properties.Name -contains 'PayloadBytes' -and $chunk.PayloadBytes) {
+            $chunk.PayloadBytes
         } else {
             Get-AsciiChunkBytes -Type $chunk.Type -Name $chunk.Name -Description $chunk.Description
         }
         $chunkRecords.Add([pscustomobject]@{
             Type = $chunk.Type
             Name = $chunk.Name
-            Source = if ($chunk.PayloadPath) { $chunk.PayloadPath } else { 'generated metadata scaffold' }
+            Source = if ($chunk.PayloadPath) { $chunk.PayloadPath } elseif ($chunk.PSObject.Properties.Name -contains 'SourceName' -and $chunk.SourceName) { $chunk.SourceName } else { 'generated metadata scaffold' }
             Load = $chunk.Load
             Align = $chunk.Align
             Offset = $payloadOffset
@@ -675,6 +1031,15 @@ function New-X64PackArtifacts {
         Sha256 = $sha
         ChunkCount = $chunkRecords.Count
         Engine64Bytes = ($chunkRecords | Where-Object { $_.Type -eq 'ENGINE64' } | Select-Object -First 1).Bytes.Length
+        AtlasBytes = $breachAssets.Texture.AtlasBytes
+        TextureTileCount = $breachAssets.Texture.TileCount
+        MaterialCount = $breachAssets.Materials.Count
+        MeshVertexCount = $breachAssets.Mesh.VertexCount
+        MeshTriangleCount = $breachAssets.Mesh.TriangleCount
+        TexturedTriangleCount = $breachAssets.Mesh.TriangleCount
+        MeshBounds = $breachAssets.Mesh.Bounds
+        MapInstanceCount = $breachAssets.Map.InstanceCount
+        ObjectiveVolumeCount = $breachAssets.Map.ObjectiveVolumeCount
         ChunkSummary = @($chunkRecords | ForEach-Object {
             "{0}: {1}, offset 0x{2:X8}, {3} bytes, load 0x{4:X16}, align 0x{5:X8}, fnv 0x{6:X8}, source {7}" -f $_.Type, $_.Name, $_.Offset, $_.Bytes.Length, $_.Load, $_.Align, $_.Checksum, $_.Source
         })
@@ -715,6 +1080,11 @@ function Write-X64BootstrapReports {
         ("Pack manifest: {0}" -f $PackArtifacts.ManifestPath)
         ("Pack chunks: {0}" -f $PackArtifacts.ChunkCount)
         ("ENGINE64 chunk: {0} bytes, assembly-built x64 renderer payload data" -f $PackArtifacts.Engine64Bytes)
+        ("TEXTURE atlas: {0} bytes, {1} tiles, 256x256 xRGB8888" -f $PackArtifacts.AtlasBytes, $PackArtifacts.TextureTileCount)
+        ("MATERIAL records: {0}" -f $PackArtifacts.MaterialCount)
+        ("MESH records: {0} vertices, {1} triangles, bounds {2}" -f $PackArtifacts.MeshVertexCount, $PackArtifacts.MeshTriangleCount, $PackArtifacts.MeshBounds)
+        ("Textured triangles: {0}" -f $PackArtifacts.TexturedTriangleCount)
+        ("MAP records: {0} instance(s), {1} objective/actor volume(s)" -f $PackArtifacts.MapInstanceCount, $PackArtifacts.ObjectiveVolumeCount)
         ("Host preview: {0} ({1} bytes, {2}x{3}, {4} palette entries, {5} model entries, {6} model triangles)" -f $PreviewResult.Path, $PreviewResult.Bytes, $PreviewResult.Width, $PreviewResult.Height, $PreviewResult.PaletteEntries, $PreviewResult.ModelEntries, $PreviewResult.ModelTriangles)
         ("Pack SHA256: {0}" -f $PackArtifacts.Sha256)
         ("PE machine: 0x{0:X4}" -f $PeValidation.Machine)
@@ -727,8 +1097,8 @@ function Write-X64BootstrapReports {
         'Input MVP: UEFI SimpleTextInput title menu plus first-level keyboard controls'
         'Input actions: title arrows/W/S select, Enter/Space/Right/D confirm, Esc/Left/A/Backspace backs out'
         'Gameplay slice: NEW GAME enters LEVEL 01 NEON SPINE with world-space WASD advance/strafe movement, reticle, Warden fight, breach terminal, extraction gate, hit counting, and mission-complete state'
-        'Gameplay presentation: x64 internal xRGB8888 framebuffer with 32-bit depth buffer, projected filled triangles, clipped screen bounds, per-triangle material/depth fog tint, animated pulse rails, denser authored corridor geometry, readable Warden volume, terminal console volume, exit-gate volume, visible 3D trigger pads, and compact keyboard-first HUD'
-        'Gameplay world model: player X/Z position drives camera parallax and terminal/exit trigger volumes while derived screen coordinates preserve HUD and smoke-test compatibility'
+        'Gameplay presentation: x64 internal xRGB8888 framebuffer with 32-bit depth buffer, generated textured mesh chunks, near-plane guarded projection, clipped screen bounds, material/depth fog tint, animated pulse rails, readable Warden volume, terminal console volume, exit-gate volume, visible 3D trigger pads, and compact keyboard-first HUD'
+        'Gameplay world model: player X/Z position drives camera parallax and map-driven Warden/terminal/exit trigger volumes while derived screen coordinates preserve HUD and smoke-test compatibility'
         'Gameplay fire: Enter/Space fire through keyboard fallback; UEFI SimplePointer left-click fires when firmware exposes a pointer protocol; active shots draw player-to-reticle beam and world-depth hit feedback'
         'Runtime pack loader: LoadedImage -> SimpleFileSystem -> X64PACK.BIN read into scratch arena'
         'Runtime pack validation: CSX64PK0 magic, version, record size, bounds, alignment, known chunk IDs, FNV-1a checksums'
@@ -771,12 +1141,22 @@ function Write-X64BootstrapReports {
         ("ENGINE64 bytes: {0}" -f $PackArtifacts.Engine64Bytes)
         ("ENGINE64 model records: {0} ({1})" -f $PreviewResult.ModelEntries, $PreviewResult.ModelNames)
         ("ENGINE64 model triangles: {0}" -f $PreviewResult.ModelTriangles)
+        ("TEXTURE atlas bytes: {0}" -f $PackArtifacts.AtlasBytes)
+        ("TEXTURE tile count: {0}" -f $PackArtifacts.TextureTileCount)
+        ("MATERIAL count: {0}" -f $PackArtifacts.MaterialCount)
+        ("MESH vertex count: {0}" -f $PackArtifacts.MeshVertexCount)
+        ("MESH triangle count: {0}" -f $PackArtifacts.MeshTriangleCount)
+        ("MESH textured triangle count: {0}" -f $PackArtifacts.TexturedTriangleCount)
+        ("MESH bounds: {0}" -f $PackArtifacts.MeshBounds)
+        ("MAP instance count: {0}" -f $PackArtifacts.MapInstanceCount)
+        ("MAP objective/actor volume count: {0}" -f $PackArtifacts.ObjectiveVolumeCount)
+        'Renderer validation budget: chunk magic/version/count/bounds checks, material tile references, mesh vertex/material/UV references, degenerate-face rejection, screen bounds clipping, and 640x480 depth writes.'
         'Chunk record: type[8], offset32, size32, load64, fnv1a32, align32'
         'Chunk summary:'
     )
     $packReportLines += $PackArtifacts.ChunkSummary
     $packReportLines += @(
-        'Pack metadata: reserved for engine, textures, meshes, materials, maps, scripts, audio, title scene, and campaign scenes.'
+        'Pack metadata: binary TEXTURE, MATERIAL, MESH, and MAP chunks feed the x64 Breach Runner renderer; script/audio/title/campaign remain reserved scaffold chunks.'
         'Assembly model assets: ENGINE64 header carries model table offset/count/record bytes; records point at signed vertex arrays and triangle/material face arrays.'
         'Runtime arena allocation: UEFI AllocatePages / EfiLoaderData'
         'Runtime arena total: 0x02000000 bytes'

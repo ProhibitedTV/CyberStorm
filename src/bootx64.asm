@@ -3473,6 +3473,19 @@ render_chunks_material_visible:
     mov eax, dword ptr [rsi + 8]
     mov dword ptr [TriangleMaterialFlags], eax
 
+    movzx eax, byte ptr [rbx + 8]
+    mov dword ptr [ProjectedU0], eax
+    movzx eax, byte ptr [rbx + 9]
+    mov dword ptr [ProjectedV0], eax
+    movzx eax, byte ptr [rbx + 10]
+    mov dword ptr [ProjectedU1], eax
+    movzx eax, byte ptr [rbx + 11]
+    mov dword ptr [ProjectedV1], eax
+    movzx eax, byte ptr [rbx + 12]
+    mov dword ptr [ProjectedU2], eax
+    movzx eax, byte ptr [rbx + 13]
+    mov dword ptr [ProjectedV2], eax
+
     movzx eax, word ptr [rbx]
     cmp eax, dword ptr [MeshVertexCount]
     jae render_chunks_reject
@@ -4612,6 +4625,16 @@ DrawProjectedTriangleDepth PROC
     mov eax, dword ptr [ProjectedZ1]
     xchg eax, dword ptr [ProjectedZ2]
     mov dword ptr [ProjectedZ1], eax
+    cmp dword ptr [TriangleTexturedMode], 0
+    je tri_swap_done
+    mov eax, dword ptr [ProjectedU1]
+    xchg eax, dword ptr [ProjectedU2]
+    mov dword ptr [ProjectedU1], eax
+    mov eax, dword ptr [ProjectedV1]
+    xchg eax, dword ptr [ProjectedV2]
+    mov dword ptr [ProjectedV1], eax
+
+tri_swap_done:
     neg r10d
 
 tri_area_ready:
@@ -4776,6 +4799,89 @@ tri_maxy_clamped:
     idiv dword ptr [TriArea]
     mov dword ptr [TriDzDy], eax
 
+    cmp dword ptr [TriangleTexturedMode], 0
+    je tri_uv_gradients_zero
+
+    mov eax, dword ptr [ProjectedU1]
+    sub eax, dword ptr [ProjectedU0]
+    mov ecx, dword ptr [ProjectedY2]
+    sub ecx, dword ptr [ProjectedY0]
+    imul eax, ecx
+    mov r11d, eax
+    mov eax, dword ptr [ProjectedU2]
+    sub eax, dword ptr [ProjectedU0]
+    mov ecx, dword ptr [ProjectedY1]
+    sub ecx, dword ptr [ProjectedY0]
+    imul eax, ecx
+    sub r11d, eax
+    mov eax, r11d
+    imul eax, 256
+    cdq
+    idiv dword ptr [TriArea]
+    mov dword ptr [TriDuDx], eax
+
+    mov eax, dword ptr [ProjectedX1]
+    sub eax, dword ptr [ProjectedX0]
+    mov ecx, dword ptr [ProjectedU2]
+    sub ecx, dword ptr [ProjectedU0]
+    imul eax, ecx
+    mov r11d, eax
+    mov eax, dword ptr [ProjectedX2]
+    sub eax, dword ptr [ProjectedX0]
+    mov ecx, dword ptr [ProjectedU1]
+    sub ecx, dword ptr [ProjectedU0]
+    imul eax, ecx
+    sub r11d, eax
+    mov eax, r11d
+    imul eax, 256
+    cdq
+    idiv dword ptr [TriArea]
+    mov dword ptr [TriDuDy], eax
+
+    mov eax, dword ptr [ProjectedV1]
+    sub eax, dword ptr [ProjectedV0]
+    mov ecx, dword ptr [ProjectedY2]
+    sub ecx, dword ptr [ProjectedY0]
+    imul eax, ecx
+    mov r11d, eax
+    mov eax, dword ptr [ProjectedV2]
+    sub eax, dword ptr [ProjectedV0]
+    mov ecx, dword ptr [ProjectedY1]
+    sub ecx, dword ptr [ProjectedY0]
+    imul eax, ecx
+    sub r11d, eax
+    mov eax, r11d
+    imul eax, 256
+    cdq
+    idiv dword ptr [TriArea]
+    mov dword ptr [TriDvDx], eax
+
+    mov eax, dword ptr [ProjectedX1]
+    sub eax, dword ptr [ProjectedX0]
+    mov ecx, dword ptr [ProjectedV2]
+    sub ecx, dword ptr [ProjectedV0]
+    imul eax, ecx
+    mov r11d, eax
+    mov eax, dword ptr [ProjectedX2]
+    sub eax, dword ptr [ProjectedX0]
+    mov ecx, dword ptr [ProjectedV1]
+    sub ecx, dword ptr [ProjectedV0]
+    imul eax, ecx
+    sub r11d, eax
+    mov eax, r11d
+    imul eax, 256
+    cdq
+    idiv dword ptr [TriArea]
+    mov dword ptr [TriDvDy], eax
+    jmp tri_uv_gradients_ready
+
+tri_uv_gradients_zero:
+    mov dword ptr [TriDuDx], 0
+    mov dword ptr [TriDuDy], 0
+    mov dword ptr [TriDvDx], 0
+    mov dword ptr [TriDvDy], 0
+
+tri_uv_gradients_ready:
     mov eax, dword ptr [ProjectedY2]
     sub eax, dword ptr [ProjectedY1]
     mov dword ptr [TriEdge0Dx], eax
@@ -4811,6 +4917,36 @@ tri_maxy_clamped:
     imul eax, ecx
     add r10d, eax
     mov dword ptr [TriZRow], r10d
+
+    mov eax, dword ptr [ProjectedU0]
+    shl eax, 8
+    mov r10d, eax
+    mov ecx, dword ptr [TriMinX]
+    sub ecx, dword ptr [ProjectedX0]
+    mov eax, dword ptr [TriDuDx]
+    imul eax, ecx
+    add r10d, eax
+    mov ecx, dword ptr [TriMinY]
+    sub ecx, dword ptr [ProjectedY0]
+    mov eax, dword ptr [TriDuDy]
+    imul eax, ecx
+    add r10d, eax
+    mov dword ptr [TriURow], r10d
+
+    mov eax, dword ptr [ProjectedV0]
+    shl eax, 8
+    mov r10d, eax
+    mov ecx, dword ptr [TriMinX]
+    sub ecx, dword ptr [ProjectedX0]
+    mov eax, dword ptr [TriDvDx]
+    imul eax, ecx
+    add r10d, eax
+    mov ecx, dword ptr [TriMinY]
+    sub ecx, dword ptr [ProjectedY0]
+    mov eax, dword ptr [TriDvDy]
+    imul eax, ecx
+    add r10d, eax
+    mov dword ptr [TriVRow], r10d
 
     mov r12d, dword ptr [TriMinY]
 
@@ -4859,6 +4995,8 @@ tri_row_loop:
 
     mov r14d, dword ptr [TriMinX]
     mov r10d, dword ptr [TriZRow]
+    mov r8d, dword ptr [TriURow]
+    mov r9d, dword ptr [TriVRow]
 
     mov eax, r12d
     imul eax, eax, ENGINE64_EXPECTED_WIDTH
@@ -4892,14 +5030,18 @@ tri_pixel_loop:
     mov r15d, eax
     and eax, 00000007h
     shl eax, 5
-    mov ecx, r14d
-    and ecx, TEXTURE_TILE_SIZE - 1
+    mov ecx, r8d
+    sar ecx, 8
+    and ecx, 000000FFh
+    shr ecx, 3
     add eax, ecx
     mov ecx, r15d
     shr ecx, 3
     shl ecx, 5
-    mov r11d, r12d
-    and r11d, TEXTURE_TILE_SIZE - 1
+    mov r11d, r9d
+    sar r11d, 8
+    and r11d, 000000FFh
+    shr r11d, 3
     add ecx, r11d
     shl ecx, 8
     add eax, ecx
@@ -4979,6 +5121,8 @@ tri_skip_pixel:
     add r13d, dword ptr [TriEdge1Dx]
     add edx, dword ptr [TriEdge2Dx]
     add r10d, dword ptr [TriDzDx]
+    add r8d, dword ptr [TriDuDx]
+    add r9d, dword ptr [TriDvDx]
     add rdi, 4
     add rsi, 4
     inc r14d
@@ -4988,6 +5132,12 @@ tri_next_row:
     mov eax, dword ptr [TriZRow]
     add eax, dword ptr [TriDzDy]
     mov dword ptr [TriZRow], eax
+    mov eax, dword ptr [TriURow]
+    add eax, dword ptr [TriDuDy]
+    mov dword ptr [TriURow], eax
+    mov eax, dword ptr [TriVRow]
+    add eax, dword ptr [TriDvDy]
+    mov dword ptr [TriVRow], eax
     inc r12d
     jmp tri_row_loop
 
@@ -6023,12 +6173,18 @@ CurrentModelScale dd 0
 ProjectedX0 dd 0
 ProjectedY0 dd 0
 ProjectedZ0 dd 0
+ProjectedU0 dd 0
+ProjectedV0 dd 0
 ProjectedX1 dd 0
 ProjectedY1 dd 0
 ProjectedZ1 dd 0
+ProjectedU1 dd 0
+ProjectedV1 dd 0
 ProjectedX2 dd 0
 ProjectedY2 dd 0
 ProjectedZ2 dd 0
+ProjectedU2 dd 0
+ProjectedV2 dd 0
 LevelCameraX dd 0
 LevelCameraZ dd 0
 LevelRailColor dd 00D8FFFFh
@@ -6047,6 +6203,12 @@ TriMaxY dd 0
 TriDzDx dd 0
 TriDzDy dd 0
 TriZRow dd 0
+TriDuDx dd 0
+TriDuDy dd 0
+TriDvDx dd 0
+TriDvDy dd 0
+TriURow dd 0
+TriVRow dd 0
 TriEdge0Dx dd 0
 TriEdge0Dy dd 0
 TriEdge1Dx dd 0

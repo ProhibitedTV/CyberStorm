@@ -629,33 +629,99 @@ function New-X64BreachTextureChunk {
             $noise = (($x * 17) -bxor ($y * 29) -bxor ($tile * 37)) -band 31
 
             if ($tile -eq 0) {
-                $color = Join-Xrgb (22 + $noise) (30 + [int]($noise / 2)) (36 + $noise)
-                if ((($localX + ($localY * 3)) % 19) -eq 0) { $color = Join-Xrgb 64 82 92 }
+                $seam = (($localX % 16) -eq 0) -or (($localY % 16) -eq 0)
+                $puddle = (($localX - 22) * ($localX - 22) + ($localY - 8) * ($localY - 8)) -lt 58
+                $scratch = ((($localX * 5) + ($localY * 11)) % 31) -eq 0
+                if ($puddle) {
+                    $color = Join-Xrgb (42 + $noise) (80 + $noise) (96 + $noise)
+                } elseif ($seam) {
+                    $color = Join-Xrgb 10 18 24
+                } elseif ($scratch) {
+                    $color = Join-Xrgb 78 94 104
+                } else {
+                    $color = Join-Xrgb (20 + $noise) (29 + [int]($noise / 2)) (38 + $noise)
+                }
             } elseif ($tile -eq 1) {
                 $stripe = if (($localY % 6) -eq 0) { 34 } else { 0 }
-                $color = Join-Xrgb (42 + $stripe + [int]($noise / 3)) (52 + $stripe) (60 + $stripe)
+                $rivet = (($localX % 16) -eq 4 -and ($localY % 16) -eq 4)
+                if ($rivet) {
+                    $color = Join-Xrgb 118 132 142
+                } else {
+                    $color = Join-Xrgb (38 + $stripe + [int]($noise / 3)) (50 + $stripe) (60 + $stripe)
+                }
             } elseif ($tile -eq 2) {
-                $line = (($localX % 8) -eq 0) -or (($localY % 8) -eq 0)
-                $color = if ($line) { Join-Xrgb 76 96 108 } else { Join-Xrgb (14 + $noise) (22 + $noise) (28 + $noise) }
+                $bar = (($localX % 8) -le 1) -or (($localY % 10) -le 1)
+                $well = (($localX % 16) -gt 5 -and ($localX % 16) -lt 11 -and ($localY % 16) -gt 5 -and ($localY % 16) -lt 11)
+                if ($bar) {
+                    $color = Join-Xrgb 86 116 126
+                } elseif ($well) {
+                    $color = Join-Xrgb 4 10 14
+                } else {
+                    $color = Join-Xrgb (12 + [int]($noise / 2)) (24 + $noise) (32 + $noise)
+                }
             } elseif ($tile -eq 3) {
                 $diag = (($localX + $localY) % 16) -lt 8
-                $color = if ($diag) { Join-Xrgb 255 214 74 } else { Join-Xrgb 24 10 14 }
+                $edge = ($localX -eq 0 -or $localY -eq 0 -or $localX -eq 31 -or $localY -eq 31)
+                if ($edge) {
+                    $color = Join-Xrgb 6 8 10
+                } elseif ($diag) {
+                    $color = Join-Xrgb 255 214 74
+                } else {
+                    $color = Join-Xrgb 26 10 18
+                }
             } elseif ($tile -eq 4) {
-                $core = ($localY -ge 12 -and $localY -le 19)
-                $edge = ($localY -eq 10 -or $localY -eq 21)
-                $color = if ($core) { Join-Xrgb 24 235 255 } elseif ($edge) { Join-Xrgb 255 80 214 } else { Join-Xrgb 4 18 28 }
+                $center = [Math]::Abs($localY - 15)
+                $glow = [Math]::Max(0, 14 - $center)
+                $core = ($center -le 2)
+                $spark = ((($localX * 13) + ($localY * 7)) % 37) -eq 0
+                if ($core) {
+                    $color = Join-Xrgb 214 255 255
+                } elseif ($spark) {
+                    $color = Join-Xrgb 255 80 214
+                } else {
+                    $color = Join-Xrgb (4 + $glow) (18 + ($glow * 10)) (28 + ($glow * 12))
+                }
             } elseif ($tile -eq 5) {
                 $scan = (($localY % 7) -eq 0)
-                $color = if ($scan) { Join-Xrgb 255 230 109 } else { Join-Xrgb 12 84 130 }
+                $vertical = (($localX % 13) -eq 0)
+                $reflection = ($localX + $localY -gt 22 -and $localX + $localY -lt 29)
+                if ($reflection) {
+                    $color = Join-Xrgb 220 240 255
+                } elseif ($scan -or $vertical) {
+                    $color = Join-Xrgb 255 230 109
+                } else {
+                    $color = Join-Xrgb (10 + [int]($noise / 2)) (76 + $noise) (126 + $noise)
+                }
             } elseif ($tile -eq 6) {
                 $scan = (($localY % 5) -eq 0) -or (($localX % 13) -eq 0)
-                $color = if ($scan) { Join-Xrgb 176 255 200 } else { Join-Xrgb 0 112 92 }
+                $glyph = (($localY -gt 6 -and $localY -lt 25) -and (($localX + ($localY * 2)) % 11 -lt 2))
+                if ($glyph) {
+                    $color = Join-Xrgb 176 255 200
+                } elseif ($scan) {
+                    $color = Join-Xrgb 42 196 158
+                } else {
+                    $color = Join-Xrgb 0 84 78
+                }
             } elseif ($tile -eq 7) {
                 $plate = (($localX % 11) -eq 0) -or (($localY % 11) -eq 0)
-                $color = if ($plate) { Join-Xrgb 255 64 88 } else { Join-Xrgb 26 42 56 }
+                $eye = ($localY -ge 12 -and $localY -le 16 -and ($localX -lt 12 -or $localX -gt 20))
+                if ($eye) {
+                    $color = Join-Xrgb 255 70 112
+                } elseif ($plate) {
+                    $color = Join-Xrgb 118 48 68
+                } else {
+                    $color = Join-Xrgb (20 + [int]($noise / 2)) (34 + [int]($noise / 2)) (48 + $noise)
+                }
             } elseif ($tile -eq 8) {
                 $sign = ($localY -ge 10 -and $localY -le 21)
-                $color = if ($sign) { Join-Xrgb 32 208 96 } else { Join-Xrgb 6 20 24 }
+                $arrow = ($sign -and $localX -gt 9 -and (($localY - 15) -le [Math]::Abs($localX - 23)))
+                if ($arrow) {
+                    $color = Join-Xrgb 210 255 226
+                } elseif ($sign) {
+                    $color = Join-Xrgb 32 208 96
+                } else {
+                    $color = Join-Xrgb 6 20 24
+                }
             } else {
                 $color = Join-Xrgb (8 + [int]($noise / 3)) (18 + [int]($noise / 2)) (24 + [int]($noise / 2))
             }
@@ -753,40 +819,57 @@ function New-X64BreachMeshChunk {
         & $addQuad @($MinX, $MinY, $MaxZ) @($MaxX, $MinY, $MaxZ) @($MaxX, $MinY, $MinZ) @($MinX, $MinY, $MinZ) $Material
     }
 
-    & $addQuad @(-280, -64, 80) @(280, -64, 80) @(280, -64, 680) @(-280, -64, 680) 2
-    & $addQuad @(-90, -62, 80) @(90, -62, 80) @(90, -62, 680) @(-90, -62, 680) 0
-    & $addQuad @(-280, 132, 80) @(-280, 132, 680) @(280, 132, 680) @(280, 132, 80) 9
-    & $addQuad @(-280, -64, 80) @(-280, -64, 680) @(-280, 132, 680) @(-280, 132, 80) 0
-    & $addQuad @(280, -64, 680) @(280, -64, 80) @(280, 132, 80) @(280, 132, 680) 0
-    & $addQuad @(-280, -64, 680) @(280, -64, 680) @(280, 132, 680) @(-280, 132, 680) 1
+    & $addQuad @(-300, -68, 72) @(300, -68, 72) @(300, -68, 760) @(-300, -68, 760) 2
+    & $addQuad @(-92, -65, 72) @(92, -65, 72) @(92, -65, 760) @(-92, -65, 760) 0
+    & $addQuad @(-300, 138, 72) @(-300, 138, 760) @(300, 138, 760) @(300, 138, 72) 9
+    & $addQuad @(-300, -68, 72) @(-300, -68, 760) @(-300, 138, 760) @(-300, 138, 72) 0
+    & $addQuad @(300, -68, 760) @(300, -68, 72) @(300, 138, 72) @(300, 138, 760) 0
+    & $addQuad @(-300, -68, 760) @(300, -68, 760) @(300, 138, 760) @(-300, 138, 760) 1
 
-    foreach ($z in @(128, 210, 328, 486)) {
-        & $addQuad @(-280, -61, $z) @(280, -61, $z) @(280, -61, ($z + 16)) @(-280, -61, ($z + 16)) 3
+    foreach ($z in @(118, 176, 238, 318, 420, 548, 676)) {
+        & $addQuad @(-300, -63, $z) @(300, -63, $z) @(300, -63, ($z + 14)) @(-300, -63, ($z + 14)) 3
+        & $addBox -292 106 $z 292 136 ($z + 12) 1
     }
 
-    & $addBox -170 -62 80 -148 -56 680 4
-    & $addBox 148 -62 80 170 -56 680 4
-    & $addBox -282 -20 116 -274 84 224 5
-    & $addBox 274 -20 116 282 84 224 5
-    & $addBox -282 -8 276 -274 92 410 5
-    & $addBox 274 -8 276 282 92 410 5
-    & $addBox -260 -64 146 -214 120 230 9
-    & $addBox 214 -64 146 260 120 230 9
-    & $addBox -236 -64 348 -202 120 454 9
-    & $addBox 202 -64 348 236 120 454 9
-    & $addBox -28 -64 356 28 116 430 1
+    & $addBox -178 -65 72 -150 -56 760 4
+    & $addBox 150 -65 72 178 -56 760 4
+    & $addBox -128 -66 86 -116 -52 732 4
+    & $addBox 116 -66 86 128 -52 732 4
+    & $addBox -302 -22 104 -292 92 228 5
+    & $addBox 292 -22 104 302 92 228 5
+    & $addBox -302 -10 270 -292 104 424 5
+    & $addBox 292 -10 270 302 104 424 5
+    & $addBox -302 -6 504 -292 114 668 5
+    & $addBox 292 -6 504 302 114 668 5
+    & $addBox -272 -68 138 -214 128 238 9
+    & $addBox 214 -68 138 272 128 238 9
+    & $addBox -248 -68 340 -202 128 464 9
+    & $addBox 202 -68 340 248 128 464 9
+    & $addBox -276 -68 548 -228 128 700 9
+    & $addBox 228 -68 548 276 128 700 9
+    & $addBox -34 -68 352 34 122 438 1
+    & $addBox -72 -68 562 72 118 622 1
+    & $addQuad @(-142, -66, 146) @(-104, -66, 146) @(-104, -66, 730) @(-142, -66, 730) 3
+    & $addQuad @(104, -66, 146) @(142, -66, 146) @(142, -66, 730) @(104, -66, 730) 3
 
-    & $addBox -190 -64 248 -98 52 350 6
-    & $addQuad @(-178, -6, 244) @(-110, -6, 244) @(-110, 40, 244) @(-178, 40, 244) 6
-    & $addBox 114 -64 280 214 116 416 8
-    & $addQuad @(136, -42, 276) @(194, -42, 276) @(194, 82, 276) @(136, 82, 276) 8
+    & $addBox -204 -68 238 -96 58 364 6
+    & $addBox -218 -68 222 -82 -42 382 1
+    & $addQuad @(-188, -6, 232) @(-108, -6, 232) @(-108, 46, 232) @(-188, 46, 232) 6
+    & $addQuad @(-182, -52, 238) @(-112, -52, 238) @(-112, -22, 238) @(-182, -22, 238) 4
+    & $addBox 104 -68 270 226 126 438 8
+    & $addBox 84 -68 252 246 -44 454 1
+    & $addQuad @(132, -42, 262) @(198, -42, 262) @(198, 90, 262) @(132, 90, 262) 8
+    & $addQuad @(118, 92, 258) @(214, 92, 258) @(214, 126, 258) @(118, 126, 258) 4
 
-    & $addBox -58 -28 168 58 92 256 7
-    & $addBox -92 8 190 -58 42 250 7
-    & $addBox 58 8 190 92 42 250 7
-    & $addBox -36 92 186 36 126 230 7
-    & $addQuad @(-34, 18, 162) @(-8, 18, 162) @(-8, 42, 162) @(-34, 42, 162) 4
-    & $addQuad @(8, 18, 162) @(34, 18, 162) @(34, 42, 162) @(8, 42, 162) 3
+    & $addBox -70 -34 156 70 104 264 7
+    & $addBox -114 2 178 -70 52 256 7
+    & $addBox 70 2 178 114 52 256 7
+    & $addBox -44 104 178 44 134 236 7
+    & $addBox -40 -68 188 -12 -34 246 7
+    & $addBox 12 -68 188 40 -34 246 7
+    & $addQuad @(-42, 18, 148) @(-10, 18, 148) @(-10, 44, 148) @(-42, 44, 148) 4
+    & $addQuad @(10, 18, 148) @(42, 18, 148) @(42, 44, 148) @(10, 44, 148) 3
+    & $addQuad @(-62, 66, 150) @(62, 66, 150) @(42, 86, 150) @(-42, 86, 150) 4
 
     for ($i = 0; $i -lt $triangles.Count; $i++) {
         $tri = $triangles[$i]
@@ -847,7 +930,7 @@ function New-X64BreachMeshChunk {
         TriangleCount = $triangles.Count
         VertexBytes = $vertexBytes
         TriangleBytes = $triangleBytes
-        Bounds = 'x[-282,282] y[-64,132] z[80,680]'
+        Bounds = 'x[-302,302] y[-68,138] z[72,760]'
     }
 }
 
@@ -1132,6 +1215,7 @@ function Write-X64BootstrapReports {
         'Milestone: M1 GOP title runtime, arena bootstrap, boot-alert/log channel, and input MVP'
         'Milestone: M2 deterministic pack scaffold and ENGINE64 framebuffer foundation'
         'Milestone: M3 first x64 filled-triangle depth backend for playable level rendering plus material/depth fog, denser first-level scene composition, and world-space movement/trigger volumes'
+        'Milestone: Renderer Foundation v2 with triangle-record UV interpolation, richer deterministic cyberpunk atlas tiles, deeper NEON SPINE mesh composition, mission-progress capture, and after-Esc visual regression capture'
         ("Pack binary: {0}" -f $PackArtifacts.PackPath)
         ("Pack manifest: {0}" -f $PackArtifacts.ManifestPath)
         ("Pack bytes: {0}" -f $PackArtifacts.Bytes)
@@ -1150,7 +1234,7 @@ function Write-X64BootstrapReports {
         ("MESH bounds: {0}" -f $PackArtifacts.MeshBounds)
         ("MAP instance count: {0}" -f $PackArtifacts.MapInstanceCount)
         ("MAP objective/actor volume count: {0}" -f $PackArtifacts.ObjectiveVolumeCount)
-        'Renderer validation budget: chunk magic/version/count/bounds checks, material tile references, mesh vertex/material/UV references, degenerate-face rejection, screen bounds clipping, and 640x480 depth writes.'
+        'Renderer validation budget: chunk magic/version/count/bounds checks, material tile references, mesh vertex/material/UV references, degenerate-face rejection, near-plane rejection for unsafe crossings, per-triangle UV interpolation, screen bounds clipping, and 640x480 depth writes.'
         'Chunk record: type[8], offset32, size32, load64, fnv1a32, align32'
         'Chunk summary:'
     )

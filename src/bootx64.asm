@@ -6931,9 +6931,9 @@ LevelCompleteLine db 'MISSION COMPLETE',0
 LevelEnemyLine db 'WARDEN',0
 LevelTerminalLine db 'NODE',0
 LevelExitLine db 'EXIT',0
-PanicTitleLine db 'CYBERSTORM X64 BOOT ALERT',0
+PanicTitleLine db 'CYBERSTORM X64 RECOVERY',0
 PanicArenaLine db 'ARENA ALLOC FAIL',0
-PanicForcedLine db 'BOOT ALERT CHECK',0
+PanicForcedLine db 'RECOVERY PATH CHECK',0
 
 PackFileName LABEL WORD
     dw 'X','6','4','P','A','C','K','.','B','I','N',0

@@ -1,5 +1,5 @@
 CyberStorm x64 Smoke Report
-Generated: 2026-06-15 08:01:00 -06:00
+Generated: 2026-06-15 08:49:37 -06:00
 Status: pass
 Target: x64-uefi
 VM: CyberStormX64Megacity
@@ -7,20 +7,20 @@ State: running
 Frontend: gui
 Boot mode: UEFI x64
 Display mode: UEFI GOP, 640x480 internal xRGB8888 title frame
-ISO: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-x64-renderer-v5.iso
+ISO: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-x64-renderer-v5-production-diagnostics.iso
 VM log: C:\Users\RhythmicCarnage\Desktop\CyberStorm\deploy\virtualbox\CyberStormX64Megacity\Logs\VBox.log
 Title capture: pass
-Title screenshot: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-x64-visual-gates-live.png
+Title screenshot: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-x64-production-diagnostics-live.png
 Input smoke: pass
-Down screenshot: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-x64-visual-gates-live-down.png
-Enter screenshot: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-x64-visual-gates-live-enter.png
+Down screenshot: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-x64-production-diagnostics-live-down.png
+Enter screenshot: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-x64-production-diagnostics-live-enter.png
 Gameplay smoke: pass
-Gameplay screenshot: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-x64-visual-gates-live-gameplay.png
-Gameplay fire screenshot: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-x64-visual-gates-live-gameplay-fire.png
-Hostiles clear screenshot: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-x64-visual-gates-live-hostiles-clear.png
-Mission progress screenshot: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-x64-visual-gates-live-mission-progress.png
-Mission complete screenshot: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-x64-visual-gates-live-mission-complete.png
-After Esc screenshot: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-x64-visual-gates-live-after-esc.png
+Gameplay screenshot: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-x64-production-diagnostics-live-gameplay.png
+Gameplay fire screenshot: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-x64-production-diagnostics-live-gameplay-fire.png
+Hostiles clear screenshot: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-x64-production-diagnostics-live-hostiles-clear.png
+Mission progress screenshot: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-x64-production-diagnostics-live-mission-progress.png
+Mission complete screenshot: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-x64-production-diagnostics-live-mission-complete.png
+After Esc screenshot: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-x64-production-diagnostics-live-after-esc.png
 Visual gate title: pass
 Visual gate down: pass
 Visual gate enter: pass
@@ -30,5 +30,6 @@ Visual gate hostiles clear: pass
 Visual gate mission progress: pass
 Visual gate mission complete: pass
 Visual gate after Esc: pass
-Checks: UEFI VM boots the x64 ISO, GOP title frame is nonblack/accented, typed title/gameplay visual gates reject black frames and stale overlays, menu accepts Down and Enter, NEW GAME reaches the first level, WASD moves, Enter fires with visible beam feedback, floor glow/shadow ray probes and atmosphere shafts remain visible in gameplay captures, repeated fire clears the Warden plus left/right sentries, WASD reaches the terminal and exit volumes, Esc returns to a clean title viewport, and the VM remains running.
+Production diagnostic gate: pass
+Checks: UEFI VM boots the x64 ISO, GOP title frame is nonblack/accented, typed title/gameplay visual gates reject black frames, stale overlays, and recovery/debug screens, menu accepts Down and Enter, NEW GAME reaches the first level, WASD moves, Enter fires with visible beam feedback, floor glow/shadow ray probes and atmosphere shafts remain visible in gameplay captures, repeated fire clears the Warden plus left/right sentries, WASD reaches the terminal and exit volumes, Esc returns to a clean title viewport, and the VM remains running.
 Recovery: input smoke sends Esc and Up after capture; gameplay smoke sends Esc after capture and validates the returned title frame.

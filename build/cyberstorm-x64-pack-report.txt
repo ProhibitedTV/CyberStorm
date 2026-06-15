@@ -1,5 +1,5 @@
 CyberStorm x64 Pack Report
-Generated: 2026-06-15 08:57:08 -06:00
+Generated: 2026-06-15 09:11:44 -06:00
 Status: pass
 Target: x64-uefi
 Milestone: M1 GOP title runtime, arena bootstrap, recovery/log channel, and input MVP
@@ -10,10 +10,11 @@ Milestone: Renderer Foundation v3 with animated title/menu heartbeat, generated 
 Milestone: Renderer Foundation v4 with bounded software ray-traced floor glow, actor contact shadows, shot glints, and renderer ray counters
 Milestone: Renderer Foundation v5 with screen/world bounded ray-marched atmosphere shafts, muzzle bloom, and atmosphere sample counters
 Milestone: Renderer Foundation v6 with projected-coordinate guard-band rejection and small-area triangle rejection for renderer stability
+Milestone: Renderer Foundation v7 with richer deterministic NEON SPINE mesh/material/atlas art chunks for the x64 visual benchmark
 Pack binary: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\X64PACK.BIN
 Pack manifest: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\X64MAN.TXT
-Pack bytes: 280672
-Pack SHA256: D708BD3E6D04177DA1D3C5F4740A49F327CA1A758FFDBD3D043D24B599689561
+Pack bytes: 298544
+Pack SHA256: 09392B1A7ED9DE0E3F32993C3218C6E03E172726F921081E514A545F014D8F72
 Host preview: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-x64-demo-preview.png
 Chunks: 9
 ENGINE64 bytes: 620
@@ -21,10 +22,11 @@ ENGINE64 model records: 4 (WARDEN,TERMNL,PYLON,GATE)
 ENGINE64 model triangles: 46
 TEXTURE atlas bytes: 262144
 TEXTURE tile count: 64
-MATERIAL count: 11
-MESH vertex count: 1040
-MESH triangle count: 520
-MESH textured triangle count: 520
+MATERIAL count: 16
+MATERIAL palette: wet.concrete, brushed.metal, floor.grate, hazard.diagonal, neon.rail, glass.panel, terminal.screen, warden.armor, exit.signage, dark.infrastructure, sentry.optic, holo.billboard, wet.floor.highlight, magenta.glass, ceiling.cable, distant.megacity
+MESH vertex count: 2152
+MESH triangle count: 1076
+MESH textured triangle count: 1076
 MESH bounds: x[-302,302] y[-68,138] z[72,760]
 MAP instance count: 1
 MAP objective/actor volume count: 3
@@ -32,14 +34,14 @@ Renderer validation budget: chunk magic/version/count/bounds checks, material ti
 Chunk record: type[8], offset32, size32, load64, fnv1a32, align32
 Chunk summary:
 ENGINE64: engine64.bootstrap, offset 0x00000140, 620 bytes, load 0x0000000000100000, align 0x00001000, fnv 0xEC09A8CC, source C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\ENGINE64.BIN
-TEXTURE: neon.spine.texture.atlas, offset 0x000003B0, 262176 bytes, load 0x0000000002000000, align 0x00001000, fnv 0xDA6C2CE1, source generated binary TEXTURE chunk
-MESH: neon.spine.mesh, offset 0x000403D0, 16672 bytes, load 0x0000000002400000, align 0x00001000, fnv 0x38EDF3D3, source generated binary MESH chunk
-MATERIAL: neon.spine.materials, offset 0x000444F0, 200 bytes, load 0x0000000002600000, align 0x00001000, fnv 0xA9E1BDA2, source generated binary MATERIAL chunk
-MAP: neon.spine.map, offset 0x000445C0, 144 bytes, load 0x0000000002800000, align 0x00001000, fnv 0xE6C19DD7, source generated binary MAP chunk
-SCRIPT: campaign.script, offset 0x00044650, 124 bytes, load 0x0000000002A00000, align 0x00001000, fnv 0x861F6A06, source generated metadata scaffold
-AUDIO: title.audio.bank, offset 0x000446D0, 126 bytes, load 0x0000000002C00000, align 0x00001000, fnv 0x727A601B, source generated metadata scaffold
-TITLE: title.scene, offset 0x00044750, 120 bytes, load 0x0000000003000000, align 0x00001000, fnv 0x61D32E92, source generated metadata scaffold
-CAMPAIGN: campaign.scenes, offset 0x000447D0, 134 bytes, load 0x0000000003200000, align 0x00001000, fnv 0xF75D1E22, source generated metadata scaffold
+TEXTURE: neon.spine.texture.atlas, offset 0x000003B0, 262176 bytes, load 0x0000000002000000, align 0x00001000, fnv 0x63705EF7, source generated binary TEXTURE chunk
+MESH: neon.spine.mesh, offset 0x000403D0, 34464 bytes, load 0x0000000002400000, align 0x00001000, fnv 0xF2C69AF4, source generated binary MESH chunk
+MATERIAL: neon.spine.materials, offset 0x00048A70, 280 bytes, load 0x0000000002600000, align 0x00001000, fnv 0x2F2ECE9B, source generated binary MATERIAL chunk
+MAP: neon.spine.map, offset 0x00048B90, 144 bytes, load 0x0000000002800000, align 0x00001000, fnv 0xE6C19DD7, source generated binary MAP chunk
+SCRIPT: campaign.script, offset 0x00048C20, 124 bytes, load 0x0000000002A00000, align 0x00001000, fnv 0x861F6A06, source generated metadata scaffold
+AUDIO: title.audio.bank, offset 0x00048CA0, 126 bytes, load 0x0000000002C00000, align 0x00001000, fnv 0x727A601B, source generated metadata scaffold
+TITLE: title.scene, offset 0x00048D20, 120 bytes, load 0x0000000003000000, align 0x00001000, fnv 0x61D32E92, source generated metadata scaffold
+CAMPAIGN: campaign.scenes, offset 0x00048DA0, 134 bytes, load 0x0000000003200000, align 0x00001000, fnv 0xF75D1E22, source generated metadata scaffold
 Pack metadata: binary TEXTURE, MATERIAL, MESH, and MAP chunks feed the x64 Breach Runner renderer; script/audio/title/campaign remain reserved scaffold chunks.
 Assembly model assets: ENGINE64 header carries model table offset/count/record bytes; records point at signed vertex arrays and triangle/material face arrays.
 Runtime arena allocation: UEFI AllocatePages / EfiLoaderData

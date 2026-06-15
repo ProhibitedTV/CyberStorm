@@ -734,6 +734,60 @@ function New-X64BreachTextureChunk {
                 } else {
                     $color = Join-Xrgb 18 24 38
                 }
+            } elseif ($tile -eq 11) {
+                $border = ($localX -le 1 -or $localY -le 1 -or $localX -ge 30 -or $localY -ge 30)
+                $glyph = ($localY -gt 8 -and $localY -lt 24 -and (($localX * 3 + $localY * 5) % 17 -lt 4))
+                $scan = (($localY % 4) -eq 0)
+                if ($border) {
+                    $color = Join-Xrgb 255 64 214
+                } elseif ($glyph) {
+                    $color = Join-Xrgb 214 255 255
+                } elseif ($scan) {
+                    $color = Join-Xrgb 70 30 96
+                } else {
+                    $color = Join-Xrgb 18 14 36
+                }
+            } elseif ($tile -eq 12) {
+                $lane = [Math]::Abs($localX - 15)
+                $glow = [Math]::Max(0, 13 - $lane)
+                $ripple = ((($localX * 7) + ($localY * 3)) % 19) -lt 2
+                if ($lane -le 2) {
+                    $color = Join-Xrgb 180 255 255
+                } elseif ($ripple) {
+                    $color = Join-Xrgb 255 72 196
+                } else {
+                    $color = Join-Xrgb (6 + $glow) (18 + ($glow * 6)) (24 + ($glow * 9))
+                }
+            } elseif ($tile -eq 13) {
+                $reflection = ($localX + (31 - $localY) -gt 20 -and $localX + (31 - $localY) -lt 28)
+                $divider = (($localX % 10) -eq 0) -or (($localY % 12) -eq 0)
+                if ($reflection) {
+                    $color = Join-Xrgb 240 224 255
+                } elseif ($divider) {
+                    $color = Join-Xrgb 170 48 180
+                } else {
+                    $color = Join-Xrgb (22 + [int]($noise / 2)) (38 + [int]($noise / 2)) (70 + $noise)
+                }
+            } elseif ($tile -eq 14) {
+                $cable = (($localY - 7) % 9) -le 2
+                $clamp = (($localX % 14) -eq 0)
+                if ($clamp) {
+                    $color = Join-Xrgb 112 126 134
+                } elseif ($cable) {
+                    $color = Join-Xrgb 12 18 22
+                } else {
+                    $color = Join-Xrgb (30 + [int]($noise / 4)) (42 + [int]($noise / 4)) (48 + [int]($noise / 3))
+                }
+            } elseif ($tile -eq 15) {
+                $window = (($localX % 7) -lt 3 -and ($localY % 9) -lt 4)
+                $tower = ($localX -lt 6 -or ($localX -gt 13 -and $localX -lt 21) -or $localX -gt 26)
+                if ($window) {
+                    $color = Join-Xrgb 255 214 96
+                } elseif ($tower) {
+                    $color = Join-Xrgb 18 30 44
+                } else {
+                    $color = Join-Xrgb 4 10 18
+                }
             } else {
                 $color = Join-Xrgb (8 + [int]($noise / 3)) (18 + [int]($noise / 2)) (24 + [int]($noise / 2))
             }
@@ -765,7 +819,12 @@ function New-X64BreachMaterialChunk {
         [pscustomobject]@{ Name = 'warden.armor'; Base = (Join-Xrgb 255 64 88); Tile = 7; Flags = 2 },
         [pscustomobject]@{ Name = 'exit.signage'; Base = (Join-Xrgb 32 208 96); Tile = 8; Flags = 1 },
         [pscustomobject]@{ Name = 'dark.infrastructure'; Base = (Join-Xrgb 18 32 42); Tile = 9; Flags = 2 },
-        [pscustomobject]@{ Name = 'sentry.optic'; Base = (Join-Xrgb 255 64 128); Tile = 10; Flags = 1 }
+        [pscustomobject]@{ Name = 'sentry.optic'; Base = (Join-Xrgb 255 64 128); Tile = 10; Flags = 1 },
+        [pscustomobject]@{ Name = 'holo.billboard'; Base = (Join-Xrgb 255 64 214); Tile = 11; Flags = 1 },
+        [pscustomobject]@{ Name = 'wet.floor.highlight'; Base = (Join-Xrgb 80 220 255); Tile = 12; Flags = 3 },
+        [pscustomobject]@{ Name = 'magenta.glass'; Base = (Join-Xrgb 170 48 180); Tile = 13; Flags = 3 },
+        [pscustomobject]@{ Name = 'ceiling.cable'; Base = (Join-Xrgb 44 54 60); Tile = 14; Flags = 2 },
+        [pscustomobject]@{ Name = 'distant.megacity'; Base = (Join-Xrgb 255 214 96); Tile = 15; Flags = 1 }
     )
 
     $headerBytes = 24
@@ -892,6 +951,42 @@ function New-X64BreachMeshChunk {
     & $addQuad @(88, 8, 278) @(112, 8, 278) @(112, 34, 278) @(88, 34, 278) 10
     & $addQuad @(-146, 70, 304) @(-76, 70, 304) @(-92, 94, 348) @(-132, 94, 348) 4
     & $addQuad @(76, 70, 304) @(146, 70, 304) @(132, 94, 348) @(92, 94, 348) 4
+
+    foreach ($z in @(96, 150, 214, 292, 386, 504, 646)) {
+        & $addBox -292 118 $z 292 138 ($z + 8) 14
+        & $addBox -238 96 $z -210 138 ($z + 10) 14
+        & $addBox 210 96 $z 238 138 ($z + 10) 14
+    }
+
+    foreach ($z in @(132, 256, 418, 604)) {
+        & $addQuad @(-246, -67, $z) @(-164, -67, ($z + 18)) @(-136, -67, ($z + 52)) @(-228, -67, ($z + 32)) 12
+        & $addQuad @(164, -67, ($z + 18)) @(246, -67, $z) @(228, -67, ($z + 32)) @(136, -67, ($z + 52)) 12
+        & $addBox -82 -66 ($z + 8) -60 -58 ($z + 82) 4
+        & $addBox 60 -66 ($z + 8) 82 -58 ($z + 82) 4
+    }
+
+    foreach ($z in @(168, 360, 588)) {
+        & $addBox -300 20 $z -286 126 ($z + 112) 13
+        & $addBox 286 20 $z 300 126 ($z + 112) 13
+        & $addQuad @(-286, 34, ($z + 12)) @(-286, 92, ($z + 12)) @(-286, 92, ($z + 92)) @(-286, 34, ($z + 92)) 11
+        & $addQuad @(286, 92, ($z + 12)) @(286, 34, ($z + 12)) @(286, 34, ($z + 92)) @(286, 92, ($z + 92)) 11
+    }
+
+    & $addBox -124 108 108 124 132 154 11
+    & $addQuad @(-106, 82, 104) @(106, 82, 104) @(106, 116, 104) @(-106, 116, 104) 11
+    & $addBox -262 108 468 -92 136 520 11
+    & $addBox 92 108 468 262 136 520 11
+    & $addQuad @(-64, 10, 758) @(-18, 10, 758) @(-18, 118, 758) @(-64, 118, 758) 15
+    & $addQuad @(-10, 28, 758) @(38, 28, 758) @(38, 126, 758) @(-10, 126, 758) 15
+    & $addQuad @(52, -4, 758) @(104, -4, 758) @(104, 106, 758) @(52, 106, 758) 15
+    & $addQuad @(-118, 12, 758) @(-78, 12, 758) @(-78, 96, 758) @(-118, 96, 758) 15
+
+    & $addBox -224 -68 452 -184 70 500 1
+    & $addBox -218 4 446 -190 54 452 11
+    & $addBox 184 -68 452 224 70 500 1
+    & $addBox 190 4 446 218 54 452 11
+    & $addBox -36 -68 642 36 -28 706 12
+    & $addQuad @(-52, -66, 636) @(52, -66, 636) @(68, -66, 710) @(-68, -66, 710) 4
 
     for ($i = 0; $i -lt $triangles.Count; $i++) {
         $tri = $triangles[$i]
@@ -1052,7 +1147,7 @@ function New-X64PackArtifacts {
     $chunks = @(
         [pscustomobject]@{ Type = 'ENGINE64'; Name = 'engine64.bootstrap'; Load = [uint64]0x00100000; Align = 4096; Description = 'runtime code payload slot'; PayloadPath = $Engine64PayloadPath },
         [pscustomobject]@{ Type = 'TEXTURE'; Name = 'neon.spine.texture.atlas'; Load = [uint64]0x02000000; Align = 4096; Description = '256x256 xRGB8888 atlas with 32x32 procedural tiles'; PayloadPath = $null; PayloadBytes = $breachAssets.Texture.Bytes; SourceName = 'generated binary TEXTURE chunk' },
-        [pscustomobject]@{ Type = 'MESH'; Name = 'neon.spine.mesh'; Load = [uint64]0x02400000; Align = 4096; Description = 'textured corridor, terminal, gate, and Warden mesh'; PayloadPath = $null; PayloadBytes = $breachAssets.Mesh.Bytes; SourceName = 'generated binary MESH chunk' },
+        [pscustomobject]@{ Type = 'MESH'; Name = 'neon.spine.mesh'; Load = [uint64]0x02400000; Align = 4096; Description = 'textured corridor, terminal, gate, Warden, signage, glass, cable, and megacity mesh'; PayloadPath = $null; PayloadBytes = $breachAssets.Mesh.Bytes; SourceName = 'generated binary MESH chunk' },
         [pscustomobject]@{ Type = 'MATERIAL'; Name = 'neon.spine.materials'; Load = [uint64]0x02600000; Align = 4096; Description = 'x64 material table with tile refs and emissive/fog flags'; PayloadPath = $null; PayloadBytes = $breachAssets.Materials.Bytes; SourceName = 'generated binary MATERIAL chunk' },
         [pscustomobject]@{ Type = 'MAP'; Name = 'neon.spine.map'; Load = [uint64]0x02800000; Align = 4096; Description = 'mission instances and Warden/terminal/exit volumes'; PayloadPath = $null; PayloadBytes = $breachAssets.Map.Bytes; SourceName = 'generated binary MAP chunk' },
         [pscustomobject]@{ Type = 'SCRIPT'; Name = 'campaign.script'; Load = [uint64]0x02A00000; Align = 4096; Description = 'objective script slot'; PayloadPath = $null },
@@ -1139,6 +1234,7 @@ function New-X64PackArtifacts {
         AtlasBytes = $breachAssets.Texture.AtlasBytes
         TextureTileCount = $breachAssets.Texture.TileCount
         MaterialCount = $breachAssets.Materials.Count
+        MaterialNames = (@($breachAssets.Materials.Records | ForEach-Object { $_.Name }) -join ', ')
         MeshVertexCount = $breachAssets.Mesh.VertexCount
         MeshTriangleCount = $breachAssets.Mesh.TriangleCount
         TexturedTriangleCount = $breachAssets.Mesh.TriangleCount
@@ -1187,6 +1283,7 @@ function Write-X64BootstrapReports {
         ("ENGINE64 chunk: {0} bytes, assembly-built x64 renderer payload data" -f $PackArtifacts.Engine64Bytes)
         ("TEXTURE atlas: {0} bytes, {1} tiles, 256x256 xRGB8888" -f $PackArtifacts.AtlasBytes, $PackArtifacts.TextureTileCount)
         ("MATERIAL records: {0}" -f $PackArtifacts.MaterialCount)
+        ("MATERIAL palette: {0}" -f $PackArtifacts.MaterialNames)
         ("MESH records: {0} vertices, {1} triangles, bounds {2}" -f $PackArtifacts.MeshVertexCount, $PackArtifacts.MeshTriangleCount, $PackArtifacts.MeshBounds)
         ("Textured triangles: {0}" -f $PackArtifacts.TexturedTriangleCount)
         ("MAP records: {0} instance(s), {1} objective/actor volume(s)" -f $PackArtifacts.MapInstanceCount, $PackArtifacts.ObjectiveVolumeCount)
@@ -1242,6 +1339,7 @@ function Write-X64BootstrapReports {
         'Milestone: Renderer Foundation v4 with bounded software ray-traced floor glow, actor contact shadows, shot glints, and renderer ray counters'
         'Milestone: Renderer Foundation v5 with screen/world bounded ray-marched atmosphere shafts, muzzle bloom, and atmosphere sample counters'
         'Milestone: Renderer Foundation v6 with projected-coordinate guard-band rejection and small-area triangle rejection for renderer stability'
+        'Milestone: Renderer Foundation v7 with richer deterministic NEON SPINE mesh/material/atlas art chunks for the x64 visual benchmark'
         ("Pack binary: {0}" -f $PackArtifacts.PackPath)
         ("Pack manifest: {0}" -f $PackArtifacts.ManifestPath)
         ("Pack bytes: {0}" -f $PackArtifacts.Bytes)
@@ -1254,6 +1352,7 @@ function Write-X64BootstrapReports {
         ("TEXTURE atlas bytes: {0}" -f $PackArtifacts.AtlasBytes)
         ("TEXTURE tile count: {0}" -f $PackArtifacts.TextureTileCount)
         ("MATERIAL count: {0}" -f $PackArtifacts.MaterialCount)
+        ("MATERIAL palette: {0}" -f $PackArtifacts.MaterialNames)
         ("MESH vertex count: {0}" -f $PackArtifacts.MeshVertexCount)
         ("MESH triangle count: {0}" -f $PackArtifacts.MeshTriangleCount)
         ("MESH textured triangle count: {0}" -f $PackArtifacts.TexturedTriangleCount)

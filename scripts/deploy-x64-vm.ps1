@@ -112,10 +112,47 @@ function Get-X64VmLogPath {
     return (Join-Path $base ("{0}\Logs\VBox.log" -f $Name))
 }
 
-function Assert-LiveTitleScreenshot {
+function Get-X64ScreenshotRegionStats {
+    param(
+        [System.Drawing.Bitmap]$Bitmap,
+        [double[]]$Region
+    )
+
+    $x0 = [int]($Bitmap.Width * $Region[0])
+    $y0 = [int]($Bitmap.Height * $Region[1])
+    $x1 = [int]($Bitmap.Width * $Region[2])
+    $y1 = [int]($Bitmap.Height * $Region[3])
+    $sampled = 0
+    $nonBlack = 0
+    $brightAccent = 0
+
+    for ($y = $y0; $y -lt $y1; $y += 8) {
+        for ($x = $x0; $x -lt $x1; $x += 8) {
+            $pixel = $Bitmap.GetPixel($x, $y)
+            $luma = [int]$pixel.R + [int]$pixel.G + [int]$pixel.B
+            $sampled++
+            if ($luma -gt 36) {
+                $nonBlack++
+            }
+            if ($pixel.R -gt 140 -or $pixel.G -gt 180 -or $pixel.B -gt 180) {
+                $brightAccent++
+            }
+        }
+    }
+
+    return [pscustomobject]@{
+        Sampled = $sampled
+        NonBlack = $nonBlack
+        Accent = $brightAccent
+    }
+}
+
+function Assert-X64VisualScreenshot {
     param(
         [string]$Path,
-        [string]$Label
+        [string]$Label,
+        [ValidateSet('title', 'gameplay')]
+        [string]$FrameKind = 'title'
     )
 
     Assert-LocalPath -Path $Path -Label $Label
@@ -123,26 +160,30 @@ function Assert-LiveTitleScreenshot {
 
     $bitmap = [System.Drawing.Bitmap]::FromFile((Resolve-Path -LiteralPath $Path).Path)
     try {
-        $sampled = 0
-        $nonBlack = 0
-        $brightAccent = 0
+        $all = Get-X64ScreenshotRegionStats -Bitmap $bitmap -Region @(0.00, 0.00, 1.00, 1.00)
+        $header = Get-X64ScreenshotRegionStats -Bitmap $bitmap -Region @(0.15, 0.12, 0.85, 0.30)
+        $menu = Get-X64ScreenshotRegionStats -Bitmap $bitmap -Region @(0.56, 0.12, 0.83, 0.40)
+        $playfield = Get-X64ScreenshotRegionStats -Bitmap $bitmap -Region @(0.15, 0.30, 0.85, 0.78)
+        $lowerHud = Get-X64ScreenshotRegionStats -Bitmap $bitmap -Region @(0.15, 0.70, 0.85, 0.88)
 
-        for ($y = 0; $y -lt $bitmap.Height; $y += 8) {
-            for ($x = 0; $x -lt $bitmap.Width; $x += 8) {
-                $pixel = $bitmap.GetPixel($x, $y)
-                $luma = [int]$pixel.R + [int]$pixel.G + [int]$pixel.B
-                $sampled++
-                if ($luma -gt 36) {
-                    $nonBlack++
-                }
-                if ($pixel.R -gt 140 -or $pixel.G -gt 180 -or $pixel.B -gt 180) {
-                    $brightAccent++
-                }
-            }
+        if ($all.Sampled -eq 0 -or $all.NonBlack -lt 120 -or $all.Accent -lt 20) {
+            throw ("{0} failed base visual gate: kind={1}, sampled={2}, nonblack={3}, accent={4}, path={5}" -f $Label, $FrameKind, $all.Sampled, $all.NonBlack, $all.Accent, $Path)
         }
 
-        if ($sampled -eq 0 -or $nonBlack -lt 120 -or $brightAccent -lt 20) {
-            throw ("{0} did not look like a live CyberStorm title frame: sampled={1}, nonblack={2}, accent={3}, path={4}" -f $Label, $sampled, $nonBlack, $brightAccent, $Path)
+        if ($FrameKind -eq 'title') {
+            if ($header.NonBlack -lt 90 -or $header.Accent -lt 60 -or $menu.NonBlack -lt 50 -or $menu.Accent -lt 40) {
+                throw ("{0} failed title gate: headerNonBlack={1}, headerAccent={2}, menuNonBlack={3}, menuAccent={4}, path={5}" -f $Label, $header.NonBlack, $header.Accent, $menu.NonBlack, $menu.Accent, $Path)
+            }
+            if ($lowerHud.NonBlack -gt 180) {
+                throw ("{0} looked like stale gameplay was still overlaid on the title: lowerHudNonBlack={1}, path={2}" -f $Label, $lowerHud.NonBlack, $Path)
+            }
+        } else {
+            if ($playfield.NonBlack -lt 1400 -or $playfield.Accent -lt 80 -or $lowerHud.NonBlack -lt 140) {
+                throw ("{0} failed gameplay gate: playfieldNonBlack={1}, playfieldAccent={2}, lowerHudNonBlack={3}, path={4}" -f $Label, $playfield.NonBlack, $playfield.Accent, $lowerHud.NonBlack, $Path)
+            }
+            if ($header.NonBlack -lt 100 -or $header.Accent -lt 80) {
+                throw ("{0} failed gameplay HUD gate: headerNonBlack={1}, headerAccent={2}, path={3}" -f $Label, $header.NonBlack, $header.Accent, $Path)
+            }
         }
     } finally {
         $bitmap.Dispose()
@@ -214,7 +255,7 @@ $afterEscPath = $null
 if ($Capture.IsPresent -or $InputSmoke.IsPresent -or $GameplaySmoke.IsPresent) {
     Ensure-VmReadyForCapture -Name $VmName -Context 'x64 title capture'
     Invoke-VmScreenshot -Name $VmName -OutputPath $ScreenshotPath -Context 'x64 title capture'
-    Assert-LiveTitleScreenshot -Path $ScreenshotPath -Label 'x64 title screenshot'
+    Assert-X64VisualScreenshot -Path $ScreenshotPath -Label 'x64 title screenshot' -FrameKind title
     $capturePath = $ScreenshotPath
 }
 
@@ -225,12 +266,12 @@ if ($InputSmoke.IsPresent) {
     Invoke-VBoxManage -Arguments @('controlvm', $VmName, 'keyboardputscancode', 'e0', '50', 'e0', 'd0') -TimeoutSeconds 30 | Out-Null
     Start-Sleep -Milliseconds 750
     Invoke-VmScreenshot -Name $VmName -OutputPath $downPath -Context 'x64 down-key capture'
-    Assert-LiveTitleScreenshot -Path $downPath -Label 'x64 down-key screenshot'
+    Assert-X64VisualScreenshot -Path $downPath -Label 'x64 down-key screenshot' -FrameKind title
 
     Invoke-VBoxManage -Arguments @('controlvm', $VmName, 'keyboardputscancode', '1c', '9c') -TimeoutSeconds 30 | Out-Null
     Start-Sleep -Milliseconds 750
     Invoke-VmScreenshot -Name $VmName -OutputPath $enterPath -Context 'x64 enter-key capture'
-    Assert-LiveTitleScreenshot -Path $enterPath -Label 'x64 enter-key screenshot'
+    Assert-X64VisualScreenshot -Path $enterPath -Label 'x64 enter-key screenshot' -FrameKind title
 
     Invoke-VBoxManage -Arguments @('controlvm', $VmName, 'keyboardputscancode', '01', '81') -TimeoutSeconds 30 | Out-Null
     Start-Sleep -Milliseconds 250
@@ -249,7 +290,7 @@ if ($GameplaySmoke.IsPresent) {
     Invoke-VBoxManage -Arguments @('controlvm', $VmName, 'keyboardputscancode', '1c', '9c') -TimeoutSeconds 30 | Out-Null
     Start-Sleep -Milliseconds 1300
     Invoke-VmScreenshot -Name $VmName -OutputPath $gameplayPath -Context 'x64 gameplay capture'
-    Assert-LiveTitleScreenshot -Path $gameplayPath -Label 'x64 gameplay screenshot'
+    Assert-X64VisualScreenshot -Path $gameplayPath -Label 'x64 gameplay screenshot' -FrameKind gameplay
 
     Invoke-VBoxManage -Arguments @('controlvm', $VmName, 'keyboardputscancode', '11', '91') -TimeoutSeconds 30 | Out-Null
     Start-Sleep -Milliseconds 250
@@ -258,7 +299,7 @@ if ($GameplaySmoke.IsPresent) {
     Invoke-VBoxManage -Arguments @('controlvm', $VmName, 'keyboardputscancode', '1c', '9c') -TimeoutSeconds 30 | Out-Null
     Start-Sleep -Milliseconds 250
     Invoke-VmScreenshot -Name $VmName -OutputPath $gameplayFirePath -Context 'x64 gameplay fire capture'
-    Assert-LiveTitleScreenshot -Path $gameplayFirePath -Label 'x64 gameplay fire screenshot'
+    Assert-X64VisualScreenshot -Path $gameplayFirePath -Label 'x64 gameplay fire screenshot' -FrameKind gameplay
 
     Invoke-X64KeyTap -Name $VmName -ScanCodes @('1c', '9c') -Count 2 -DelayMilliseconds 320
     Invoke-X64KeyTap -Name $VmName -ScanCodes @('1e', '9e') -Count 4 -DelayMilliseconds 220
@@ -267,24 +308,24 @@ if ($GameplaySmoke.IsPresent) {
     Invoke-X64KeyTap -Name $VmName -ScanCodes @('1c', '9c') -Count 1 -DelayMilliseconds 320
     Start-Sleep -Milliseconds 900
     Invoke-VmScreenshot -Name $VmName -OutputPath $hostilesPath -Context 'x64 hostiles-clear capture'
-    Assert-LiveTitleScreenshot -Path $hostilesPath -Label 'x64 hostiles-clear screenshot'
+    Assert-X64VisualScreenshot -Path $hostilesPath -Label 'x64 hostiles-clear screenshot' -FrameKind gameplay
 
     Invoke-X64KeyTap -Name $VmName -ScanCodes @('1e', '9e') -Count 12 -DelayMilliseconds 220
     Invoke-X64KeyTap -Name $VmName -ScanCodes @('11', '91') -Count 12 -DelayMilliseconds 220
     Start-Sleep -Milliseconds 1200
     Invoke-VmScreenshot -Name $VmName -OutputPath $missionPath -Context 'x64 mission-progress capture'
-    Assert-LiveTitleScreenshot -Path $missionPath -Label 'x64 mission-progress screenshot'
+    Assert-X64VisualScreenshot -Path $missionPath -Label 'x64 mission-progress screenshot' -FrameKind gameplay
 
     Invoke-X64KeyTap -Name $VmName -ScanCodes @('20', 'a0') -Count 13 -DelayMilliseconds 220
     Invoke-X64KeyTap -Name $VmName -ScanCodes @('11', '91') -Count 2 -DelayMilliseconds 220
     Start-Sleep -Milliseconds 1200
     Invoke-VmScreenshot -Name $VmName -OutputPath $missionCompletePath -Context 'x64 mission-complete capture'
-    Assert-LiveTitleScreenshot -Path $missionCompletePath -Label 'x64 mission-complete screenshot'
+    Assert-X64VisualScreenshot -Path $missionCompletePath -Label 'x64 mission-complete screenshot' -FrameKind gameplay
 
     Invoke-VBoxManage -Arguments @('controlvm', $VmName, 'keyboardputscancode', '01', '81') -TimeoutSeconds 30 | Out-Null
-    Start-Sleep -Milliseconds 750
+    Start-Sleep -Milliseconds 1500
     Invoke-VmScreenshot -Name $VmName -OutputPath $afterEscPath -Context 'x64 after-esc title capture'
-    Assert-LiveTitleScreenshot -Path $afterEscPath -Label 'x64 after-esc title screenshot'
+    Assert-X64VisualScreenshot -Path $afterEscPath -Label 'x64 after-esc title screenshot' -FrameKind title
 }
 
 $finalState = Get-VmState -Name $VmName -Context 'x64 deploy final state'
@@ -296,6 +337,15 @@ if ($reportDirectory) {
 $inputSmokeStatus = if ($InputSmoke.IsPresent) { 'pass' } else { 'not requested' }
 $gameplaySmokeStatus = if ($GameplaySmoke.IsPresent) { 'pass' } else { 'not requested' }
 $captureStatus = if ($Capture.IsPresent -or $InputSmoke.IsPresent -or $GameplaySmoke.IsPresent) { 'pass' } else { 'not requested' }
+$titleVisualGateStatus = if ($Capture.IsPresent -or $InputSmoke.IsPresent -or $GameplaySmoke.IsPresent) { 'pass' } else { 'not requested' }
+$downVisualGateStatus = if ($InputSmoke.IsPresent) { 'pass' } else { 'not requested' }
+$enterVisualGateStatus = if ($InputSmoke.IsPresent) { 'pass' } else { 'not requested' }
+$gameplayVisualGateStatus = if ($GameplaySmoke.IsPresent) { 'pass' } else { 'not requested' }
+$gameplayFireVisualGateStatus = if ($GameplaySmoke.IsPresent) { 'pass' } else { 'not requested' }
+$hostilesVisualGateStatus = if ($GameplaySmoke.IsPresent) { 'pass' } else { 'not requested' }
+$missionVisualGateStatus = if ($GameplaySmoke.IsPresent) { 'pass' } else { 'not requested' }
+$missionCompleteVisualGateStatus = if ($GameplaySmoke.IsPresent) { 'pass' } else { 'not requested' }
+$afterEscVisualGateStatus = if ($GameplaySmoke.IsPresent) { 'pass' } else { 'not requested' }
 $reportLines = @(
     'CyberStorm x64 Smoke Report',
     ('Generated: {0:yyyy-MM-dd HH:mm:ss zzz}' -f (Get-Date)),
@@ -320,7 +370,16 @@ $reportLines = @(
     ('Mission progress screenshot: {0}' -f (Resolve-ExistingPathText -Path $missionPath)),
     ('Mission complete screenshot: {0}' -f (Resolve-ExistingPathText -Path $missionCompletePath)),
     ('After Esc screenshot: {0}' -f (Resolve-ExistingPathText -Path $afterEscPath)),
-    'Checks: UEFI VM boots the x64 ISO, GOP title frame is nonblack/accented, menu accepts Down and Enter, NEW GAME reaches the first level, WASD moves, Enter fires with visible beam feedback, floor glow/shadow ray probes and atmosphere shafts remain visible in gameplay captures, repeated fire clears the Warden plus left/right sentries, WASD reaches the terminal and exit volumes, Esc returns to a clean title viewport, and the VM remains running.',
+    ('Visual gate title: {0}' -f $titleVisualGateStatus),
+    ('Visual gate down: {0}' -f $downVisualGateStatus),
+    ('Visual gate enter: {0}' -f $enterVisualGateStatus),
+    ('Visual gate gameplay: {0}' -f $gameplayVisualGateStatus),
+    ('Visual gate gameplay fire: {0}' -f $gameplayFireVisualGateStatus),
+    ('Visual gate hostiles clear: {0}' -f $hostilesVisualGateStatus),
+    ('Visual gate mission progress: {0}' -f $missionVisualGateStatus),
+    ('Visual gate mission complete: {0}' -f $missionCompleteVisualGateStatus),
+    ('Visual gate after Esc: {0}' -f $afterEscVisualGateStatus),
+    'Checks: UEFI VM boots the x64 ISO, GOP title frame is nonblack/accented, typed title/gameplay visual gates reject black frames and stale overlays, menu accepts Down and Enter, NEW GAME reaches the first level, WASD moves, Enter fires with visible beam feedback, floor glow/shadow ray probes and atmosphere shafts remain visible in gameplay captures, repeated fire clears the Warden plus left/right sentries, WASD reaches the terminal and exit volumes, Esc returns to a clean title viewport, and the VM remains running.',
     'Recovery: input smoke sends Esc and Up after capture; gameplay smoke sends Esc after capture and validates the returned title frame.'
 )
 Set-Content -Path $ReportPath -Value $reportLines -Encoding ASCII

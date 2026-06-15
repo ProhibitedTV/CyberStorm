@@ -3754,6 +3754,263 @@ render_chunks_done:
     ret
 RenderTexturedLevelFromChunks ENDP
 
+RenderLevelRayTracePass PROC
+    push rbx
+    push rsi
+    push rdi
+    push r12
+    push r13
+    push r14
+    push r15
+
+    mov r12d, 304
+
+raytrace_row_loop:
+    cmp r12d, 448
+    jg raytrace_done
+
+    mov ebx, r12d
+    sub ebx, 270
+    cmp ebx, 16
+    jge raytrace_denominator_ready
+    mov ebx, 16
+
+raytrace_denominator_ready:
+    mov r14d, 96
+
+raytrace_column_loop:
+    cmp r14d, 544
+    jg raytrace_next_row
+
+    inc dword ptr [RendererRayCount]
+
+    mov eax, r14d
+    sub eax, 320
+    imul eax, 320
+    cdq
+    idiv ebx
+    add eax, dword ptr [LevelCameraX]
+    mov r8d, eax
+
+    mov eax, 43200
+    cdq
+    idiv ebx
+    add eax, dword ptr [LevelCameraZ]
+    mov r9d, eax
+
+    cmp r9d, 72
+    jl raytrace_skip
+    cmp r9d, 760
+    jg raytrace_skip
+
+    xor r15d, r15d
+
+    cmp dword ptr [EnemyAlive], 0
+    je raytrace_left_sentry_shadow
+    cmp r8d, -76
+    jl raytrace_left_sentry_shadow
+    cmp r8d, 76
+    jg raytrace_left_sentry_shadow
+    cmp r9d, 142
+    jl raytrace_left_sentry_shadow
+    cmp r9d, 286
+    jg raytrace_left_sentry_shadow
+    mov r15d, 00030608h
+    inc dword ptr [RendererRayShadowHits]
+    jmp raytrace_write_hit
+
+raytrace_left_sentry_shadow:
+    cmp dword ptr [SentryLeftAlive], 0
+    je raytrace_right_sentry_shadow
+    cmp r8d, -148
+    jl raytrace_right_sentry_shadow
+    cmp r8d, -54
+    jg raytrace_right_sentry_shadow
+    cmp r9d, 284
+    jl raytrace_right_sentry_shadow
+    cmp r9d, 382
+    jg raytrace_right_sentry_shadow
+    mov r15d, 00030608h
+    inc dword ptr [RendererRayShadowHits]
+    jmp raytrace_write_hit
+
+raytrace_right_sentry_shadow:
+    cmp dword ptr [SentryRightAlive], 0
+    je raytrace_light_tests
+    cmp r8d, 54
+    jl raytrace_light_tests
+    cmp r8d, 148
+    jg raytrace_light_tests
+    cmp r9d, 284
+    jl raytrace_light_tests
+    cmp r9d, 382
+    jg raytrace_light_tests
+    mov r15d, 00030608h
+    inc dword ptr [RendererRayShadowHits]
+    jmp raytrace_write_hit
+
+raytrace_light_tests:
+    cmp r8d, -180
+    jl raytrace_right_rail
+    cmp r8d, -126
+    jg raytrace_right_rail
+    mov eax, r9d
+    add eax, dword ptr [LevelPulseTicks]
+    and eax, 0000003Fh
+    cmp eax, 24
+    ja raytrace_right_rail
+    mov r15d, dword ptr [LevelRailColor]
+    jmp raytrace_write_hit
+
+raytrace_right_rail:
+    cmp r8d, 126
+    jl raytrace_center_wet_lane
+    cmp r8d, 180
+    jg raytrace_center_wet_lane
+    mov eax, r9d
+    add eax, dword ptr [LevelPulseTicks]
+    and eax, 0000003Fh
+    cmp eax, 24
+    ja raytrace_center_wet_lane
+    mov r15d, dword ptr [LevelRailColor]
+    jmp raytrace_write_hit
+
+raytrace_center_wet_lane:
+    cmp r8d, -36
+    jl raytrace_terminal_glow
+    cmp r8d, 36
+    jg raytrace_terminal_glow
+    mov eax, r9d
+    and eax, 0000001Fh
+    cmp eax, 10
+    ja raytrace_terminal_glow
+    mov r15d, 003080D0h
+    jmp raytrace_write_hit
+
+raytrace_terminal_glow:
+    cmp r8d, -220
+    jl raytrace_exit_glow
+    cmp r8d, -70
+    jg raytrace_exit_glow
+    cmp r9d, 210
+    jl raytrace_exit_glow
+    cmp r9d, 410
+    jg raytrace_exit_glow
+    mov r15d, dword ptr [LevelTerminalColor]
+    jmp raytrace_write_hit
+
+raytrace_exit_glow:
+    cmp r8d, 72
+    jl raytrace_shot_glint
+    cmp r8d, 240
+    jg raytrace_shot_glint
+    cmp r9d, 248
+    jl raytrace_shot_glint
+    cmp r9d, 458
+    jg raytrace_shot_glint
+    mov r15d, dword ptr [LevelExitColor]
+    jmp raytrace_write_hit
+
+raytrace_shot_glint:
+    cmp dword ptr [ShotFlashTicks], 0
+    je raytrace_skip
+    cmp r8d, -24
+    jl raytrace_skip
+    cmp r8d, 24
+    jg raytrace_skip
+    cmp r9d, 110
+    jl raytrace_skip
+    cmp r9d, 520
+    jg raytrace_skip
+    mov r15d, 00FFE66Dh
+
+raytrace_write_hit:
+    test r15d, r15d
+    jz raytrace_skip
+    inc dword ptr [RendererRayHits]
+
+    mov eax, r12d
+    imul eax, eax, ENGINE64_EXPECTED_WIDTH
+    add eax, r14d
+    shl rax, 2
+    mov rdi, qword ptr [FrameArenaBase]
+    add rdi, rax
+    mov ecx, 4
+
+raytrace_blend_row0:
+    mov eax, dword ptr [rdi]
+    cmp r15d, 00030608h
+    jne raytrace_blend_glow0
+    and eax, 00FCFCFCh
+    shr eax, 2
+    add eax, 00010203h
+    jmp raytrace_store0
+
+raytrace_blend_glow0:
+    and eax, 00FEFEFEh
+    shr eax, 1
+    mov edx, r15d
+    and edx, 00FEFEFEh
+    shr edx, 1
+    add eax, edx
+
+raytrace_store0:
+    mov dword ptr [rdi], eax
+    add rdi, 4
+    loop raytrace_blend_row0
+
+    mov eax, r12d
+    inc eax
+    cmp eax, ENGINE64_EXPECTED_HEIGHT
+    jae raytrace_skip
+    imul eax, eax, ENGINE64_EXPECTED_WIDTH
+    add eax, r14d
+    shl rax, 2
+    mov rdi, qword ptr [FrameArenaBase]
+    add rdi, rax
+    mov ecx, 4
+
+raytrace_blend_row1:
+    mov eax, dword ptr [rdi]
+    cmp r15d, 00030608h
+    jne raytrace_blend_glow1
+    and eax, 00FCFCFCh
+    shr eax, 2
+    add eax, 00010203h
+    jmp raytrace_store1
+
+raytrace_blend_glow1:
+    and eax, 00FEFEFEh
+    shr eax, 1
+    mov edx, r15d
+    and edx, 00FEFEFEh
+    shr edx, 1
+    add eax, edx
+
+raytrace_store1:
+    mov dword ptr [rdi], eax
+    add rdi, 4
+    loop raytrace_blend_row1
+
+raytrace_skip:
+    add r14d, 4
+    jmp raytrace_column_loop
+
+raytrace_next_row:
+    add r12d, 4
+    jmp raytrace_row_loop
+
+raytrace_done:
+    pop r15
+    pop r14
+    pop r13
+    pop r12
+    pop rdi
+    pop rsi
+    pop rbx
+    ret
+RenderLevelRayTracePass ENDP
+
 RenderFirstLevel3DFrame PROC
     sub rsp, 20h
 
@@ -3767,6 +4024,9 @@ RenderFirstLevel3DFrame PROC
     mov dword ptr [RendererRejectedTriangles], 0
     mov dword ptr [RendererNearRejectedTriangles], 0
     mov dword ptr [RendererDepthWrites], 0
+    mov dword ptr [RendererRayCount], 0
+    mov dword ptr [RendererRayHits], 0
+    mov dword ptr [RendererRayShadowHits], 0
 
     mov rax, qword ptr [FrameArenaBase]
     test rax, rax
@@ -3929,6 +4189,8 @@ render_level_chunk_fallback:
     DRAW_LEVEL_TRI 126, 78, 250, 160, 118, 282, 192, 78, 250, dword ptr [LevelExitCoreColor]
 
 render_level_runtime_actors:
+    call RenderLevelRayTracePass
+
     cmp dword ptr [EnemyAlive], 0
     je render_level_warden_down
 
@@ -6445,6 +6707,9 @@ RendererTexturedTriangleCount dd 0
 RendererRejectedTriangles dd 0
 RendererNearRejectedTriangles dd 0
 RendererDepthWrites dd 0
+RendererRayCount dd 0
+RendererRayHits dd 0
+RendererRayShadowHits dd 0
 
 TitleLine db 'CYBERSTORM',0
 SubtitleLine db 'NEON DISTRICT',0

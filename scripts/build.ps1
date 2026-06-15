@@ -1179,7 +1179,7 @@ function Write-X64BootstrapReports {
         ("Object: {0}" -f $ObjectPath)
         ("Listing: {0}" -f $ListPath)
         ("Link map: {0}" -f $MapPath)
-        ("Boot-alert check image: {0}" -f $ForcePanic)
+        ("Recovery-path check image: {0}" -f $ForcePanic)
         ("BOOTX64.EFI: {0} ({1} bytes)" -f $PeValidation.Path, $PeValidation.Bytes)
         ("Pack binary: {0} ({1} bytes)" -f $PackArtifacts.PackPath, $PackArtifacts.Bytes)
         ("Pack manifest: {0}" -f $PackArtifacts.ManifestPath)
@@ -1217,7 +1217,7 @@ function Write-X64BootstrapReports {
         'Runtime log: first 128 bytes of log arena contain magic, milestone, failure code, GOP base, arena base/end, frame/depth/log addresses, pack status/bytes/chunks/mask, engine64 status/size/target, staged chunks/bytes/mask, render/present status, and presented pixel count'
         'Failure path: firmware text fallback when GOP cannot be located or initialized'
         'Failure path: framebuffer failure screen when arena allocation or layout validation fails'
-        'Failure-screen validation: internal debug image is available for VM checks'
+        'Failure-path validation: dedicated recovery image is available for VM checks without appearing in normal title/gameplay captures'
         ("ISO: {0} ({1} bytes)" -f $IsoResult.IsoPath, $IsoResult.TotalBytes)
         ("ISO volume: {0}" -f $IsoResult.VolumeId)
         ("El Torito catalog LBA: {0}" -f $IsoResult.BootCatalogLba)
@@ -1234,7 +1234,7 @@ function Write-X64BootstrapReports {
         ("Generated: {0}" -f $timestamp)
         'Status: pass'
         'Target: x64-uefi'
-        'Milestone: M1 GOP title runtime, arena bootstrap, boot-alert/log channel, and input MVP'
+        'Milestone: M1 GOP title runtime, arena bootstrap, recovery/log channel, and input MVP'
         'Milestone: M2 deterministic pack scaffold and ENGINE64 framebuffer foundation'
         'Milestone: M3 first x64 filled-triangle depth backend for playable level rendering plus material/depth fog, denser first-level scene composition, and world-space movement/trigger volumes'
         'Milestone: Renderer Foundation v2 with triangle-record UV interpolation, richer deterministic cyberpunk atlas tiles, deeper NEON SPINE mesh composition, mission-progress capture, and after-Esc visual regression capture'

@@ -247,7 +247,7 @@ if ($GameplaySmoke.IsPresent) {
     $afterEscPath = Get-SmokeScreenshotPath -BasePath $ScreenshotPath -Suffix 'after-esc'
 
     Invoke-VBoxManage -Arguments @('controlvm', $VmName, 'keyboardputscancode', '1c', '9c') -TimeoutSeconds 30 | Out-Null
-    Start-Sleep -Milliseconds 900
+    Start-Sleep -Milliseconds 1300
     Invoke-VmScreenshot -Name $VmName -OutputPath $gameplayPath -Context 'x64 gameplay capture'
     Assert-LiveTitleScreenshot -Path $gameplayPath -Label 'x64 gameplay screenshot'
 
@@ -320,7 +320,7 @@ $reportLines = @(
     ('Mission progress screenshot: {0}' -f (Resolve-ExistingPathText -Path $missionPath)),
     ('Mission complete screenshot: {0}' -f (Resolve-ExistingPathText -Path $missionCompletePath)),
     ('After Esc screenshot: {0}' -f (Resolve-ExistingPathText -Path $afterEscPath)),
-    'Checks: UEFI VM boots the x64 ISO, GOP title frame is nonblack/accented, menu accepts Down and Enter, NEW GAME reaches the first level, WASD moves, Enter fires with visible beam feedback, floor glow/shadow ray probes remain visible in gameplay captures, repeated fire clears the Warden plus left/right sentries, WASD reaches the terminal and exit volumes, Esc returns to a clean title viewport, and the VM remains running.',
+    'Checks: UEFI VM boots the x64 ISO, GOP title frame is nonblack/accented, menu accepts Down and Enter, NEW GAME reaches the first level, WASD moves, Enter fires with visible beam feedback, floor glow/shadow ray probes and atmosphere shafts remain visible in gameplay captures, repeated fire clears the Warden plus left/right sentries, WASD reaches the terminal and exit volumes, Esc returns to a clean title viewport, and the VM remains running.',
     'Recovery: input smoke sends Esc and Up after capture; gameplay smoke sends Esc after capture and validates the returned title frame.'
 )
 Set-Content -Path $ReportPath -Value $reportLines -Encoding ASCII

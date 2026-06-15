@@ -4011,6 +4011,177 @@ raytrace_done:
     ret
 RenderLevelRayTracePass ENDP
 
+RenderLevelAtmospherePass PROC
+    push rbx
+    push rsi
+    push rdi
+    push r12
+    push r13
+    push r14
+    push r15
+
+    mov r12d, 176
+
+atmosphere_row_loop:
+    cmp r12d, 336
+    jg atmosphere_done
+
+    mov r14d, 96
+
+atmosphere_column_loop:
+    cmp r14d, 544
+    jg atmosphere_next_row
+
+    inc dword ptr [RendererAtmosphereSamples]
+    xor r15d, r15d
+
+    mov eax, r14d
+    add eax, r12d
+    add eax, dword ptr [LevelPulseTicks]
+    and eax, 0000003Fh
+    cmp eax, 44
+    ja atmosphere_center_shaft
+
+    mov eax, r12d
+    sub eax, 176
+    sar eax, 1
+    add eax, 184
+    mov ebx, r14d
+    sub ebx, eax
+    jns atmosphere_left_abs_ready
+    neg ebx
+
+atmosphere_left_abs_ready:
+    cmp ebx, 20
+    ja atmosphere_right_shaft
+    mov r15d, 003080D0h
+    jmp atmosphere_write_hit
+
+atmosphere_right_shaft:
+    mov eax, r12d
+    sub eax, 176
+    sar eax, 1
+    mov ebx, 456
+    sub ebx, eax
+    mov eax, r14d
+    sub eax, ebx
+    jns atmosphere_right_abs_ready
+    neg eax
+
+atmosphere_right_abs_ready:
+    cmp eax, 20
+    ja atmosphere_center_shaft
+    mov r15d, 00FF90FFh
+    jmp atmosphere_write_hit
+
+atmosphere_center_shaft:
+    cmp r12d, 214
+    jl atmosphere_shot_bloom
+    cmp r14d, 292
+    jl atmosphere_shot_bloom
+    cmp r14d, 348
+    jg atmosphere_shot_bloom
+    mov eax, r14d
+    sub eax, 320
+    jns atmosphere_center_abs_ready
+    neg eax
+
+atmosphere_center_abs_ready:
+    cmp eax, 12
+    ja atmosphere_shot_bloom
+    mov r15d, 00FFE66Dh
+    jmp atmosphere_write_hit
+
+atmosphere_shot_bloom:
+    cmp dword ptr [ShotFlashTicks], 0
+    je atmosphere_skip
+    cmp r12d, 244
+    jl atmosphere_skip
+    cmp r12d, 328
+    jg atmosphere_skip
+    mov eax, r14d
+    sub eax, 320
+    jns atmosphere_shot_abs_ready
+    neg eax
+
+atmosphere_shot_abs_ready:
+    cmp eax, 38
+    ja atmosphere_skip
+    mov r15d, 00FFE66Dh
+
+atmosphere_write_hit:
+    test r15d, r15d
+    jz atmosphere_skip
+    inc dword ptr [RendererAtmosphereHits]
+
+    mov eax, r12d
+    imul eax, eax, ENGINE64_EXPECTED_WIDTH
+    add eax, r14d
+    shl rax, 2
+    mov rdi, qword ptr [FrameArenaBase]
+    add rdi, rax
+    mov ecx, 6
+
+atmosphere_blend_row0:
+    mov eax, dword ptr [rdi]
+    mov edx, eax
+    and eax, 00FEFEFEh
+    shr eax, 1
+    and edx, 00FCFCFCh
+    shr edx, 2
+    add eax, edx
+    mov edx, r15d
+    and edx, 00FCFCFCh
+    shr edx, 2
+    add eax, edx
+    mov dword ptr [rdi], eax
+    add rdi, 4
+    loop atmosphere_blend_row0
+
+    mov eax, r12d
+    inc eax
+    imul eax, eax, ENGINE64_EXPECTED_WIDTH
+    add eax, r14d
+    shl rax, 2
+    mov rdi, qword ptr [FrameArenaBase]
+    add rdi, rax
+    mov ecx, 6
+
+atmosphere_blend_row1:
+    mov eax, dword ptr [rdi]
+    mov edx, eax
+    and eax, 00FEFEFEh
+    shr eax, 1
+    and edx, 00FCFCFCh
+    shr edx, 2
+    add eax, edx
+    mov edx, r15d
+    and edx, 00FCFCFCh
+    shr edx, 2
+    add eax, edx
+    mov dword ptr [rdi], eax
+    add rdi, 4
+    loop atmosphere_blend_row1
+
+atmosphere_skip:
+    add r14d, 6
+    jmp atmosphere_column_loop
+
+atmosphere_next_row:
+    add r12d, 6
+    jmp atmosphere_row_loop
+
+atmosphere_done:
+    pop r15
+    pop r14
+    pop r13
+    pop r12
+    pop rdi
+    pop rsi
+    pop rbx
+    ret
+RenderLevelAtmospherePass ENDP
+
 RenderFirstLevel3DFrame PROC
     sub rsp, 20h
 
@@ -4027,6 +4198,8 @@ RenderFirstLevel3DFrame PROC
     mov dword ptr [RendererRayCount], 0
     mov dword ptr [RendererRayHits], 0
     mov dword ptr [RendererRayShadowHits], 0
+    mov dword ptr [RendererAtmosphereSamples], 0
+    mov dword ptr [RendererAtmosphereHits], 0
 
     mov rax, qword ptr [FrameArenaBase]
     test rax, rax
@@ -4190,6 +4363,7 @@ render_level_chunk_fallback:
 
 render_level_runtime_actors:
     call RenderLevelRayTracePass
+    call RenderLevelAtmospherePass
 
     cmp dword ptr [EnemyAlive], 0
     je render_level_warden_down
@@ -6710,6 +6884,8 @@ RendererDepthWrites dd 0
 RendererRayCount dd 0
 RendererRayHits dd 0
 RendererRayShadowHits dd 0
+RendererAtmosphereSamples dd 0
+RendererAtmosphereHits dd 0
 
 TitleLine db 'CYBERSTORM',0
 SubtitleLine db 'NEON DISTRICT',0

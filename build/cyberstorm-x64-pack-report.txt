@@ -1,5 +1,5 @@
 CyberStorm x64 Pack Report
-Generated: 2026-06-15 08:46:43 -06:00
+Generated: 2026-06-15 08:57:08 -06:00
 Status: pass
 Target: x64-uefi
 Milestone: M1 GOP title runtime, arena bootstrap, recovery/log channel, and input MVP
@@ -9,6 +9,7 @@ Milestone: Renderer Foundation v2 with triangle-record UV interpolation, richer 
 Milestone: Renderer Foundation v3 with animated title/menu heartbeat, generated sentry optic material, two additional sentry enemies, hostile-pack objective flow, and expanded mission smoke path
 Milestone: Renderer Foundation v4 with bounded software ray-traced floor glow, actor contact shadows, shot glints, and renderer ray counters
 Milestone: Renderer Foundation v5 with screen/world bounded ray-marched atmosphere shafts, muzzle bloom, and atmosphere sample counters
+Milestone: Renderer Foundation v6 with projected-coordinate guard-band rejection and small-area triangle rejection for renderer stability
 Pack binary: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\X64PACK.BIN
 Pack manifest: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\X64MAN.TXT
 Pack bytes: 280672
@@ -27,7 +28,7 @@ MESH textured triangle count: 520
 MESH bounds: x[-302,302] y[-68,138] z[72,760]
 MAP instance count: 1
 MAP objective/actor volume count: 3
-Renderer validation budget: chunk magic/version/count/bounds checks, material tile references, mesh vertex/material/UV references, degenerate-face rejection, near-plane rejection for unsafe crossings, per-triangle UV interpolation, screen bounds clipping, and 640x480 depth writes.
+Renderer validation budget: chunk magic/version/count/bounds checks, material tile references, mesh vertex/material/UV references, degenerate-face rejection, near-plane rejection for unsafe crossings, projected-coordinate guard-band rejection, per-triangle UV interpolation, screen bounds clipping, and 640x480 depth writes.
 Chunk record: type[8], offset32, size32, load64, fnv1a32, align32
 Chunk summary:
 ENGINE64: engine64.bootstrap, offset 0x00000140, 620 bytes, load 0x0000000000100000, align 0x00001000, fnv 0xEC09A8CC, source C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\ENGINE64.BIN

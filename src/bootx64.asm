@@ -112,6 +112,10 @@ MAP_VOLUME_WARDEN             equ 00000001h
 MAP_VOLUME_TERMINAL           equ 00000002h
 MAP_VOLUME_EXIT               equ 00000003h
 RENDER_NEAR_PLANE             equ 00000020h
+RENDER_GUARD_MIN_X            equ -00000280h
+RENDER_GUARD_MAX_X            equ 000004FFh
+RENDER_GUARD_MIN_Y            equ -000001E0h
+RENDER_GUARD_MAX_Y            equ 000003BFh
 MATERIAL_FLAG_EMISSIVE        equ 00000001h
 MATERIAL_FLAG_FOG             equ 00000002h
 PRESENT_MODE_DIRECT           equ 00000000h
@@ -4194,6 +4198,7 @@ RenderFirstLevel3DFrame PROC
     mov dword ptr [RendererTexturedTriangleCount], 0
     mov dword ptr [RendererRejectedTriangles], 0
     mov dword ptr [RendererNearRejectedTriangles], 0
+    mov dword ptr [RendererGuardRejectedTriangles], 0
     mov dword ptr [RendererDepthWrites], 0
     mov dword ptr [RendererRayCount], 0
     mov dword ptr [RendererRayHits], 0
@@ -5286,6 +5291,34 @@ tri_swap_done:
     neg r10d
 
 tri_area_ready:
+    cmp r10d, 16
+    jl tri_reject
+
+    cmp dword ptr [ProjectedX0], RENDER_GUARD_MIN_X
+    jl tri_guard_reject
+    cmp dword ptr [ProjectedX0], RENDER_GUARD_MAX_X
+    jg tri_guard_reject
+    cmp dword ptr [ProjectedX1], RENDER_GUARD_MIN_X
+    jl tri_guard_reject
+    cmp dword ptr [ProjectedX1], RENDER_GUARD_MAX_X
+    jg tri_guard_reject
+    cmp dword ptr [ProjectedX2], RENDER_GUARD_MIN_X
+    jl tri_guard_reject
+    cmp dword ptr [ProjectedX2], RENDER_GUARD_MAX_X
+    jg tri_guard_reject
+    cmp dword ptr [ProjectedY0], RENDER_GUARD_MIN_Y
+    jl tri_guard_reject
+    cmp dword ptr [ProjectedY0], RENDER_GUARD_MAX_Y
+    jg tri_guard_reject
+    cmp dword ptr [ProjectedY1], RENDER_GUARD_MIN_Y
+    jl tri_guard_reject
+    cmp dword ptr [ProjectedY1], RENDER_GUARD_MAX_Y
+    jg tri_guard_reject
+    cmp dword ptr [ProjectedY2], RENDER_GUARD_MIN_Y
+    jl tri_guard_reject
+    cmp dword ptr [ProjectedY2], RENDER_GUARD_MAX_Y
+    jg tri_guard_reject
+
     mov dword ptr [TriArea], r10d
     mov eax, dword ptr [TriangleColor]
     mov dword ptr [TriangleShadeColor], eax
@@ -5788,6 +5821,9 @@ tri_next_row:
     mov dword ptr [TriVRow], eax
     inc r12d
     jmp tri_row_loop
+
+tri_guard_reject:
+    inc dword ptr [RendererGuardRejectedTriangles]
 
 tri_reject:
     inc dword ptr [RendererRejectedTriangles]
@@ -6880,6 +6916,7 @@ RendererTriangleCount dd 0
 RendererTexturedTriangleCount dd 0
 RendererRejectedTriangles dd 0
 RendererNearRejectedTriangles dd 0
+RendererGuardRejectedTriangles dd 0
 RendererDepthWrites dd 0
 RendererRayCount dd 0
 RendererRayHits dd 0

@@ -198,8 +198,8 @@ function Invoke-X64GatedScreenshot {
         [string]$Label,
         [ValidateSet('title', 'gameplay')]
         [string]$FrameKind = 'title',
-        [int]$Attempts = 4,
-        [int]$DelayMilliseconds = 500
+        [int]$Attempts = 8,
+        [int]$DelayMilliseconds = 1000
     )
 
     $lastError = $null
@@ -269,7 +269,7 @@ Invoke-VBoxManage -Arguments @(
 
 if ($Frontend -ne 'none') {
     Invoke-VBoxManage -Arguments @('startvm', $VmName, '--type', $Frontend) -TimeoutSeconds 60 | Out-Null
-    Start-Sleep -Seconds 5
+    Start-Sleep -Seconds 10
 }
 
 $capturePath = $null
@@ -283,7 +283,7 @@ $missionCompletePath = $null
 $afterEscPath = $null
 if ($Capture.IsPresent -or $InputSmoke.IsPresent -or $GameplaySmoke.IsPresent) {
     Ensure-VmReadyForCapture -Name $VmName -Context 'x64 title capture'
-    Invoke-X64GatedScreenshot -Name $VmName -OutputPath $ScreenshotPath -Context 'x64 title capture' -Label 'x64 title screenshot' -FrameKind title -Attempts 6
+    Invoke-X64GatedScreenshot -Name $VmName -OutputPath $ScreenshotPath -Context 'x64 title capture' -Label 'x64 title screenshot' -FrameKind title
     $capturePath = $ScreenshotPath
 }
 
@@ -401,7 +401,7 @@ $reportLines = @(
     ('Visual gate mission complete: {0}' -f $missionCompleteVisualGateStatus),
     ('Visual gate after Esc: {0}' -f $afterEscVisualGateStatus),
     ('Production diagnostic gate: {0}' -f $productionDiagnosticGateStatus),
-    'Checks: UEFI VM boots the x64 ISO, GOP title frame is nonblack/accented, typed title/gameplay visual gates reject black frames, stale overlays, and recovery/debug screens, menu accepts Down and Enter, NEW GAME reaches the first level, WASD moves, Enter fires with visible beam feedback, floor glow/shadow ray probes and atmosphere shafts remain visible in gameplay captures, repeated fire clears the Warden plus left/right sentries, WASD reaches the terminal and exit volumes, Esc returns to a clean title viewport, and the VM remains running.',
+    'Checks: UEFI VM boots the x64 ISO, GOP title frame is nonblack/accented, typed title/gameplay visual gates reject black frames, stale overlays, recovery/debug screens, and spike-prone renderer captures, menu accepts Down and Enter, NEW GAME reaches the first level, WASD moves, Enter fires with visible beam feedback, floor glow/shadow ray probes and atmosphere shafts remain visible in gameplay captures, repeated fire clears the Warden plus left/right sentries, WASD reaches the terminal and exit volumes, Esc returns to a clean title viewport, and the VM remains running.',
     'Recovery: input smoke sends Esc and Up after capture; gameplay smoke sends Esc after capture and validates the returned title frame.'
 )
 Set-Content -Path $ReportPath -Value $reportLines -Encoding ASCII

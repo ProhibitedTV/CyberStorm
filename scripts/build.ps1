@@ -1202,13 +1202,13 @@ function Write-X64BootstrapReports {
         'Input MVP: UEFI SimpleTextInput title menu plus first-level keyboard controls'
         'Input actions: title arrows/W/S select, Enter/Space/Right/D confirm, Esc/Left/A/Backspace backs out'
         'Gameplay slice: NEW GAME enters LEVEL 01 NEON SPINE with world-space WASD advance/strafe movement, reticle, Warden fight, breach terminal, extraction gate, hit counting, and mission-complete state'
-        'Gameplay presentation: x64 internal xRGB8888 framebuffer with 32-bit depth buffer, generated textured mesh chunks, near-plane guarded projection, clipped screen bounds, material/depth fog tint, bounded software ray-traced floor glow/shadow probes, ray-marched atmosphere shafts, animated pulse rails, readable Warden/sentry hostile pack, terminal console volume, exit-gate volume, visible 3D trigger pads, and compact keyboard-first HUD'
+        'Gameplay presentation: x64 internal xRGB8888 framebuffer with 32-bit depth buffer, generated textured mesh chunks, near-plane guarded projection, projected-coordinate guard-band rejection, clipped screen bounds, material/depth fog tint, bounded software ray-traced floor glow/shadow probes, ray-marched atmosphere shafts, animated pulse rails, readable Warden/sentry hostile pack, terminal console volume, exit-gate volume, visible 3D trigger pads, and compact keyboard-first HUD'
         'Gameplay world model: player X/Z position drives camera parallax and map-driven Warden/terminal/exit trigger volumes while side sentries reward strafe-and-fire positioning and derived screen coordinates preserve HUD and smoke-test compatibility'
         'Gameplay fire: Enter/Space fire through keyboard fallback; UEFI SimplePointer left-click fires when firmware exposes a pointer protocol; active shots draw player-to-reticle beam and world-depth hit feedback'
         'Runtime pack loader: LoadedImage -> SimpleFileSystem -> X64PACK.BIN read into scratch arena'
         'Runtime pack validation: CSX64PK0 magic, version, record size, bounds, alignment, known chunk IDs, FNV-1a checksums'
         'ENGINE64 validation: CS64ENG0 payload header, 640x480 xRGB8888 target, deterministic expanded title-scene palette table, and assembly-authored model table'
-        'ENGINE64 render path: loaded ENGINE64 chunk renders the layered animated title scene; gameplay renders the first level through the x64 filled-triangle depth backend plus bounded ray-traced floor reflections and atmosphere before GOP presentation'
+        'ENGINE64 render path: loaded ENGINE64 chunk renders the layered animated title scene; gameplay renders the first level through the x64 filled-triangle depth backend with small-area/guard-band rejection plus bounded ray-traced floor reflections and atmosphere before GOP presentation'
         'ENGINE64 model assets: WARDEN, TERMNL, PYLON, and GATE records carry signed 3D vertices plus triangle face/material references authored directly in assembly'
         'Framebuffer abstraction: internal xRGB8888 frame arena with GOP direct/swap present modes for BGR, RGB, and matching bitmask layouts'
         'Host preview: deterministic PNG rendered from ENGINE64.BIN for release review while UEFI VM smoke remains the boot/input acceptance gate'
@@ -1241,6 +1241,7 @@ function Write-X64BootstrapReports {
         'Milestone: Renderer Foundation v3 with animated title/menu heartbeat, generated sentry optic material, two additional sentry enemies, hostile-pack objective flow, and expanded mission smoke path'
         'Milestone: Renderer Foundation v4 with bounded software ray-traced floor glow, actor contact shadows, shot glints, and renderer ray counters'
         'Milestone: Renderer Foundation v5 with screen/world bounded ray-marched atmosphere shafts, muzzle bloom, and atmosphere sample counters'
+        'Milestone: Renderer Foundation v6 with projected-coordinate guard-band rejection and small-area triangle rejection for renderer stability'
         ("Pack binary: {0}" -f $PackArtifacts.PackPath)
         ("Pack manifest: {0}" -f $PackArtifacts.ManifestPath)
         ("Pack bytes: {0}" -f $PackArtifacts.Bytes)
@@ -1259,7 +1260,7 @@ function Write-X64BootstrapReports {
         ("MESH bounds: {0}" -f $PackArtifacts.MeshBounds)
         ("MAP instance count: {0}" -f $PackArtifacts.MapInstanceCount)
         ("MAP objective/actor volume count: {0}" -f $PackArtifacts.ObjectiveVolumeCount)
-        'Renderer validation budget: chunk magic/version/count/bounds checks, material tile references, mesh vertex/material/UV references, degenerate-face rejection, near-plane rejection for unsafe crossings, per-triangle UV interpolation, screen bounds clipping, and 640x480 depth writes.'
+        'Renderer validation budget: chunk magic/version/count/bounds checks, material tile references, mesh vertex/material/UV references, degenerate-face rejection, near-plane rejection for unsafe crossings, projected-coordinate guard-band rejection, per-triangle UV interpolation, screen bounds clipping, and 640x480 depth writes.'
         'Chunk record: type[8], offset32, size32, load64, fnv1a32, align32'
         'Chunk summary:'
     )

@@ -7123,6 +7123,7 @@ if ($Target -eq 'x64-uefi') {
         $x64SmokeScreenshotPath = Join-Path $buildDir 'cyberstorm-x64-vm-smoke-title.png'
         $x64SmokeResult = & $x64DeployScript `
             -Frontend headless `
+            -IsoPath $x64IsoPath `
             -Capture `
             -InputSmoke `
             -GameplaySmoke `

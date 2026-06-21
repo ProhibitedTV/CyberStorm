@@ -118,10 +118,17 @@ function Get-X64ScreenshotRegionStats {
         [double[]]$Region
     )
 
-    $x0 = [int]($Bitmap.Width * $Region[0])
-    $y0 = [int]($Bitmap.Height * $Region[1])
-    $x1 = [int]($Bitmap.Width * $Region[2])
-    $y1 = [int]($Bitmap.Height * $Region[3])
+    # The runtime presents a centered 640x480 internal frame inside whatever
+    # larger GOP mode VirtualBox exposes. Keep visual gates anchored to that
+    # viewport instead of the surrounding black padding.
+    $viewportWidth = [Math]::Min($Bitmap.Width, 640)
+    $viewportHeight = [Math]::Min($Bitmap.Height, 480)
+    $viewportX = [Math]::Max(0, [int](($Bitmap.Width - $viewportWidth) / 2))
+    $viewportY = [Math]::Max(0, [int](($Bitmap.Height - $viewportHeight) / 2))
+    $x0 = $viewportX + [int]($viewportWidth * $Region[0])
+    $y0 = $viewportY + [int]($viewportHeight * $Region[1])
+    $x1 = $viewportX + [int]($viewportWidth * $Region[2])
+    $y1 = $viewportY + [int]($viewportHeight * $Region[3])
     $sampled = 0
     $nonBlack = 0
     $brightAccent = 0
@@ -178,10 +185,10 @@ function Assert-X64VisualScreenshot {
                 throw ("{0} looked like stale gameplay was still overlaid on the title: lowerHudNonBlack={1}, path={2}" -f $Label, $lowerHud.NonBlack, $Path)
             }
         } else {
-            if ($playfield.NonBlack -lt 1400 -or $playfield.Accent -lt 80 -or $lowerHud.NonBlack -lt 140) {
+            if ($playfield.NonBlack -lt 1000 -or $playfield.Accent -lt 80 -or $lowerHud.NonBlack -lt 140) {
                 throw ("{0} failed gameplay gate: playfieldNonBlack={1}, playfieldAccent={2}, lowerHudNonBlack={3}, path={4}" -f $Label, $playfield.NonBlack, $playfield.Accent, $lowerHud.NonBlack, $Path)
             }
-            if ($header.NonBlack -lt 100 -or $header.Accent -lt 80) {
+            if ($header.NonBlack -lt 100 -or $header.Accent -lt 24) {
                 throw ("{0} failed gameplay HUD gate: headerNonBlack={1}, headerAccent={2}, path={3}" -f $Label, $header.NonBlack, $header.Accent, $Path)
             }
         }

@@ -1,26 +1,27 @@
 CyberStorm x64 UEFI Build Report
-Generated: 2026-06-15 08:57:08 -06:00
+Generated: 2026-06-20 18:13:36 -06:00
 Status: pass
 Target: x64-uefi
-Artifact: cyberstorm-x64-renderer-v6-guard.iso
-ml64.exe: C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.40.33807\bin\Hostx64\x64\ml64.exe (parameter)
-link.exe: C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.40.33807\bin\Hostx64\x64\link.exe (parameter)
+Artifact: cyberstorm-x64-neon-spine-v7.iso
+ml64.exe: C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.40.33807\bin\Hostx64\x64\ml64.exe (vswhere)
+link.exe: C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.40.33807\bin\Hostx64\x64\link.exe (vswhere)
 Object: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\bootx64.obj
 Listing: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\bootx64.lst
 Link map: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\bootx64.map
 Recovery-path check image: False
 BOOTX64.EFI: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\EFI\BOOT\BOOTX64.EFI (128000 bytes)
-Pack binary: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\X64PACK.BIN (280672 bytes)
+Pack binary: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\X64PACK.BIN (298544 bytes)
 Pack manifest: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\X64MAN.TXT
 Pack chunks: 9
 ENGINE64 chunk: 620 bytes, assembly-built x64 renderer payload data
 TEXTURE atlas: 262144 bytes, 64 tiles, 256x256 xRGB8888
-MATERIAL records: 11
-MESH records: 1040 vertices, 520 triangles, bounds x[-302,302] y[-68,138] z[72,760]
-Textured triangles: 520
+MATERIAL records: 16
+MATERIAL palette: wet.concrete, brushed.metal, floor.grate, hazard.diagonal, neon.rail, glass.panel, terminal.screen, warden.armor, exit.signage, dark.infrastructure, sentry.optic, holo.billboard, wet.floor.highlight, magenta.glass, ceiling.cable, distant.megacity
+MESH records: 2152 vertices, 1076 triangles, bounds x[-302,302] y[-68,138] z[72,760]
+Textured triangles: 1076
 MAP records: 1 instance(s), 3 objective/actor volume(s)
 Host preview: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-x64-demo-preview.png (25420 bytes, 640x480, 12 palette entries, 4 model entries, 46 model triangles)
-Pack SHA256: D708BD3E6D04177DA1D3C5F4740A49F327CA1A758FFDBD3D043D24B599689561
+Pack SHA256: 09392B1A7ED9DE0E3F32993C3218C6E03E172726F921081E514A545F014D8F72
 PE machine: 0x8664
 PE optional header: 0x020B
 PE subsystem: 10 (EFI application)
@@ -47,7 +48,7 @@ Runtime log: first 128 bytes of log arena contain magic, milestone, failure code
 Failure path: firmware text fallback when GOP cannot be located or initialized
 Failure path: framebuffer failure screen when arena allocation or layout validation fails
 Failure-path validation: dedicated recovery image is available for VM checks without appearing in normal title/gameplay captures
-ISO: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-x64-renderer-v6-guard.iso (1935360 bytes)
+ISO: C:\Users\RhythmicCarnage\Desktop\CyberStorm\build\cyberstorm-x64-neon-spine-v7.iso (1951744 bytes)
 ISO volume: CYBERSTORM_X64
 El Torito catalog LBA: 19
 EFI FAT image LBA: 23
@@ -55,8 +56,8 @@ EFI FAT image bytes: 1474560
 ISO payloads:
 EFIBOOT.IMG;1: LBA 23, 1474560 bytes
 BOOTX64.EFI;1: LBA 743, 128000 bytes
-X64PACK.BIN;1: LBA 806, 280672 bytes
-X64MAN.TXT;1: LBA 944, 1630 bytes
+X64PACK.BIN;1: LBA 806, 298544 bytes
+X64MAN.TXT;1: LBA 952, 1630 bytes
 FAT payloads:
-X64PACK BIN: cluster 254, 280672 bytes
-X64MAN  TXT: cluster 803, 1630 bytes
+X64PACK BIN: cluster 254, 298544 bytes
+X64MAN  TXT: cluster 838, 1630 bytes

@@ -48,14 +48,10 @@ function Replace-ExactOnce {
     Write-Host ("Prepared: {0}" -f $Name)
 }
 
-$helperOld = @'
-ReturnToTitle ENDP
-
-UpdateHostileObjective PROC
-'@
+# Anchor directly on the objective routine instead of ReturnToTitle so this
+# codemod composes with the integrity-pressure helper insertion in either order.
+$helperOld = 'UpdateHostileObjective PROC'
 $helperNew = @'
-ReturnToTitle ENDP
-
 StartTerminalTraceResponse PROC
 terminal_trace_response:
     ; First x64 response beat deliberately reuses the existing side-sentry slots.

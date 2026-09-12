@@ -11,12 +11,17 @@ if ([string]::IsNullOrWhiteSpace($ReportPath)) {
 
 $gamePath = Join-Path $RepoRoot 'src\game.asm'
 $flowPath = Join-Path $RepoRoot 'src\game\flow.asm'
+$sectorSourcePath = Join-Path $RepoRoot 'assets\sectors.psd1'
+$generatedSectorPath = Join-Path $RepoRoot 'build\generated_sector_content.inc'
 
-if (-not (Test-Path $gamePath)) { throw "Missing $gamePath" }
-if (-not (Test-Path $flowPath)) { throw "Missing $flowPath" }
+foreach ($requiredPath in @($gamePath, $flowPath, $sectorSourcePath, $generatedSectorPath)) {
+    if (-not (Test-Path $requiredPath)) { throw "Missing $requiredPath" }
+}
 
 $game = Get-Content -Raw $gamePath
 $flow = Get-Content -Raw $flowPath
+$sectorSource = Get-Content -Raw $sectorSourcePath
+$generatedSector = Get-Content -Raw $generatedSectorPath
 $checks = New-Object System.Collections.Generic.List[object]
 
 function Add-Check {
@@ -90,6 +95,9 @@ Add-Check 'Demo oracle bypass exists' `
 Add-Check 'Flame spends pulse reserve' `
     ($flow.Contains('dec byte ptr [pulse_count]') -and $flow.Contains('mov al, MSG_NOPULSE')) `
     'C is blocked dry and successful starts spend one pulse'
+Add-Check 'Cooldown rollover flame still spends' `
+    ($flow.Contains('mov al, [adventure_flame_timer]') -and $flow.Contains('cmp al, 1') -and $flow.Contains('ja breach_flow_pre_done')) `
+    'timer 0 or 1 is treated as a fire-capable frame because the stock core decrements before handling C'
 Add-Check 'Damage breaks momentum' `
     ($flow.Contains('mov byte ptr [breach_flow_value], 0') -and $flow.Contains('BREACH_FLOW_FLASH_BREAK')) `
     'shield loss resets FLOW'
@@ -99,6 +107,29 @@ Add-Check '16-bit register safety guard' `
 Add-Check 'No PURGE dependency remains' `
     (-not $game.Contains('PURGE process_play_input') -and -not $game.Contains('PURGE render_game_screen')) `
     'hook uses MASM-redefinable TEXTEQU names instead of macro PURGE semantics'
+
+# Keep the checked-in runtime table synchronized with the authored Campaign
+# ObjectiveCounts. This caught a real 20-vs-12 Subgrid drift during this pass.
+$sourceShardMatches = [regex]::Matches($sectorSource, 'RequiredDataShards\s*=\s*(\d+)')
+$generatedShardMatch = [regex]::Match(
+    $generatedSector,
+    '(?m)^campaign_district_required_gems_table\s+db\s+([0-9, ]+)\s*$'
+)
+$sourceShardCounts = @()
+foreach ($match in $sourceShardMatches) {
+    $sourceShardCounts += [int]$match.Groups[1].Value
+}
+$generatedShardCounts = @()
+if ($generatedShardMatch.Success) {
+    foreach ($value in ($generatedShardMatch.Groups[1].Value -split ',')) {
+        $generatedShardCounts += [int]$value.Trim()
+    }
+}
+$sourceShardText = ($sourceShardCounts -join ',')
+$generatedShardText = ($generatedShardCounts -join ',')
+Add-Check 'Authored/generated shard requirements match' `
+    ($sourceShardCounts.Count -eq 4 -and $generatedShardCounts.Count -eq 4 -and $sourceShardText -eq $generatedShardText) `
+    "source=$sourceShardText generated=$generatedShardText"
 
 # Small deterministic model of the intended economy. Two kills plus two progress
 # events should hit max FLOW, recharge one pulse, and fall back to the bonus tier.

@@ -55,13 +55,14 @@ breach_flow_pre_input:
     call breach_flow_sync_run_state
     call breach_flow_try_recharge
 
-    ; Flame is now tied to the pulse reserve shown in the adventure HUD. Only
-    ; consume a pulse when the flame timer is idle and this press can actually
-    ; start a new flame action.
+    ; The stock adventure core decrements the flame timer before it evaluates C,
+    ; so both timer=0 and timer=1 can start a flame during this frame. Charge a
+    ; pulse for exactly those cases; larger cooldown values cannot fire yet.
     cmp byte ptr [pressed_c], 0
     je breach_flow_pre_done
-    cmp byte ptr [adventure_flame_timer], 0
-    jne breach_flow_pre_done
+    mov al, [adventure_flame_timer]
+    cmp al, 1
+    ja breach_flow_pre_done
     cmp byte ptr [pulse_count], 0
     jne breach_flow_spend_pulse
 

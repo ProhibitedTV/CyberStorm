@@ -344,10 +344,15 @@ draw_breach_flow_pip:
     push dx
     push bp
 
-    mov al, PAL_PANEL2
-    cmp byte ptr [breach_flow_value], dil
-    jb breach_flow_pip_color_ready
+    xor ax, ax
+    mov al, [breach_flow_value]
+    cmp ax, di
+    jb breach_flow_pip_inactive
     call breach_flow_get_color
+    jmp breach_flow_pip_color_ready
+
+breach_flow_pip_inactive:
+    mov al, PAL_PANEL2
 
 breach_flow_pip_color_ready:
     mov dx, 31

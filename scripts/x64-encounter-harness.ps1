@@ -79,7 +79,6 @@ $responseCount = [int]$mission.Tuning.ResponseCount
 $extraShots = $responseHp * $responseCount
 Add-Check 'Response TTK stays compact' ($responseHp -ge 1 -and $responseHp -le 2 -and $responseCount -eq 2 -and $extraShots -le 4) "hp=$responseHp count=$responseCount minimum-extra-shots=$extraShots"
 
-# Deterministic mission model.
 $objective = 0
 $warden = 1
 $left = 1
@@ -104,12 +103,14 @@ if ($objective -eq 2 -and -not $exitLocked) { $objective = 3 }
 Add-Check 'Deterministic response model reaches mission complete' ($objective -eq 3 -and -not $exitLocked) "final-objective=$objective exitLocked=$exitLocked"
 
 # Runtime integration is one deliberately isolated gate. The apply script adds
-# all three markers together so partial source edits cannot masquerade as done.
+# these markers together so partial source edits cannot masquerade as done.
 $runtimeHasResponseHelper = $runtime.Contains('terminal_trace_response:')
 $runtimeHasTracePrompt = $runtime.Contains("LevelObjectiveExitLine db 'BREAK TRACE / REACH EXIT',0")
+$runtimeHasTraceStatus = $runtime.Contains("LevelExitOpenLine db 'TRACE RESPONSE',0")
 $runtimeHasExitGate = $runtime.Contains('; TRACE response gate: extraction stays locked until both rebooted sentries are down.')
+$runtimeHasVisualGate = $runtime.Contains('; TRACE response visual gate: do not paint an open exit while response sentries live.')
 $runtimeCallsResponse = ([regex]::Matches($runtime, 'call StartTerminalTraceResponse')).Count -eq 2
-Add-Check 'Runtime response patch landed' ($runtimeHasResponseHelper -and $runtimeHasTracePrompt -and $runtimeHasExitGate -and $runtimeCallsResponse) ('helper={0} prompt={1} gate={2} calls={3}' -f $runtimeHasResponseHelper, $runtimeHasTracePrompt, $runtimeHasExitGate, $runtimeCallsResponse)
+Add-Check 'Runtime response patch landed' ($runtimeHasResponseHelper -and $runtimeHasTracePrompt -and $runtimeHasTraceStatus -and $runtimeHasExitGate -and $runtimeHasVisualGate -and $runtimeCallsResponse) ('helper={0} prompt={1} status={2} gate={3} visual={4} calls={5}' -f $runtimeHasResponseHelper, $runtimeHasTracePrompt, $runtimeHasTraceStatus, $runtimeHasExitGate, $runtimeHasVisualGate, $runtimeCallsResponse)
 
 $failed = @($checks | Where-Object { -not $_.Passed })
 $runtimePending = @($checks | Where-Object { $_.Name -eq 'Runtime response patch landed' -and -not $_.Passed })

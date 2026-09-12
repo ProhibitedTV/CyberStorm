@@ -7,7 +7,7 @@
 ; - Adventure flame consumes one pulse when it actually starts.
 ; - Kills build flow quickly; gems/objectives build it slowly.
 ; - Taking damage breaks flow.
-; - Flow decays after a short inactivity window.
+; - Flow decays after a district-specific inactivity window.
 ; - Sustained flow grants a small kill-score bonus.
 ; - Max flow converts into one pulse recharge, then falls back to the bonus tier.
 ; - Demo/replay runs bypass this layer so existing deterministic oracle scripts
@@ -20,7 +20,10 @@ BREACH_FLOW_BONUS_THRESHOLD     equ 4
 BREACH_FLOW_KILL_BONUS          equ 20
 BREACH_FLOW_RECHARGE_THRESHOLD  equ 8
 BREACH_FLOW_RECHARGE_COST       equ 4
-BREACH_FLOW_DECAY_DELAY         equ 90
+BREACH_FLOW_DECAY_DISTRICT_1    equ 120
+BREACH_FLOW_DECAY_DISTRICT_2    equ 90
+BREACH_FLOW_DECAY_DISTRICT_3    equ 75
+BREACH_FLOW_DECAY_DISTRICT_4    equ 60
 BREACH_FLOW_DECAY_STEP          equ 30
 BREACH_FLOW_FLASH_TICKS         equ 8
 BREACH_FLOW_FLASH_NONE          equ 0
@@ -110,7 +113,7 @@ breach_flow_flash_tick_done:
 breach_flow_no_damage:
     cmp byte ptr [breach_flow_progressed], 0
     je breach_flow_post_idle
-    mov byte ptr [breach_flow_decay_timer], BREACH_FLOW_DECAY_DELAY
+    call breach_flow_arm_decay
     call breach_flow_try_recharge
     jmp breach_flow_post_track
 
@@ -245,6 +248,22 @@ breach_flow_try_recharge:
 breach_flow_recharge_done:
     ret
 
+breach_flow_arm_decay:
+    mov al, BREACH_FLOW_DECAY_DISTRICT_1
+    cmp byte ptr [current_district], 2
+    jb breach_flow_arm_decay_store
+    mov al, BREACH_FLOW_DECAY_DISTRICT_2
+    cmp byte ptr [current_district], 3
+    jb breach_flow_arm_decay_store
+    mov al, BREACH_FLOW_DECAY_DISTRICT_3
+    cmp byte ptr [current_district], 4
+    jb breach_flow_arm_decay_store
+    mov al, BREACH_FLOW_DECAY_DISTRICT_4
+
+breach_flow_arm_decay_store:
+    mov [breach_flow_decay_timer], al
+    ret
+
 breach_flow_decay:
     cmp byte ptr [breach_flow_value], 0
     je breach_flow_decay_done
@@ -273,6 +292,14 @@ IF DEBUG_LEGACY_GAMEPLAY EQ 0
     jne breach_flow_render_done
     cmp byte ptr [demo_active], 0
     jne breach_flow_render_done
+
+    ; Render helpers are allowed to borrow DS/ES. Reassert the stage-two tiny
+    ; model contracts before drawing the post-pass overlay.
+    push cs
+    pop ds
+    mov ax, BACKBUFFER_SEG
+    mov es, ax
+
     call breach_flow_sync_run_state
     call draw_breach_flow_overlay
 breach_flow_render_done:

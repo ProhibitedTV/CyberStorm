@@ -47,6 +47,7 @@ include game\render\tiles.asm
 include game\render\entities.asm
 include game\render\effects.asm
 include game\flow.asm
+include game\response.asm
 include game\state.asm
 include game\art.asm
 include game\render\enhanced_present.asm

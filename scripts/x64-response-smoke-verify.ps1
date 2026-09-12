@@ -99,6 +99,45 @@ function Compare-InternalRegion {
     }
 }
 
+function Get-LockTelegraphStats {
+    param([System.Drawing.Bitmap]$Bitmap)
+
+    $viewport = Get-Viewport -Bitmap $Bitmap
+    $x0 = 276
+    $x1 = 364
+    $y0 = 198
+    $y1 = 282
+    $sampled = 0
+    $magenta = 0
+    $red = 0
+
+    for ($y = $y0; $y -lt $y1; $y++) {
+        for ($x = $x0; $x -lt $x1; $x++) {
+            $pixel = $Bitmap.GetPixel($viewport.X + $x, $viewport.Y + $y)
+            $sampled++
+
+            # Authored lock beam/bracket color is XRGB FF90FF. Allow generous
+            # screenshot tolerance while still requiring the intended magenta read.
+            if ($pixel.R -ge 220 -and $pixel.G -ge 105 -and $pixel.G -le 185 -and $pixel.B -ge 210) {
+                $magenta++
+            }
+
+            # The pulsing inner cross uses XRGB FF4058. It may be absent on one
+            # animation phase, so it is reported separately rather than required.
+            if ($pixel.R -ge 220 -and $pixel.G -le 110 -and $pixel.B -ge 45 -and $pixel.B -le 150) {
+                $red++
+            }
+        }
+    }
+
+    return [pscustomobject]@{
+        Sampled = $sampled
+        Magenta = $magenta
+        Red = $red
+        LockColorPixels = $magenta + $red
+    }
+}
+
 $traceHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $tracePath).Hash
 $traceClearHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $traceClearPath).Hash
 $completeHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $completePath).Hash
@@ -112,10 +151,12 @@ try {
     $completionTransition = Compare-InternalRegion -A $traceClear -B $complete -X0 150 -Y0 54 -X1 520 -Y1 172 -Step 3
     $wholeTraceToClear = Compare-InternalRegion -A $trace -B $traceClear -X0 0 -Y0 0 -X1 640 -Y1 480 -Step 8
     $wholeClearToComplete = Compare-InternalRegion -A $traceClear -B $complete -X0 0 -Y0 0 -X1 640 -Y1 480 -Step 8
+    $traceLock = Get-LockTelegraphStats -Bitmap $trace
 
     $checks = @(
         [pscustomobject]@{ Name = 'TRACE and clear captures have distinct hashes'; Passed = ($traceHash -ne $traceClearHash); Detail = "$traceHash -> $traceClearHash" },
         [pscustomobject]@{ Name = 'Clear and complete captures have distinct hashes'; Passed = ($traceClearHash -ne $completeHash); Detail = "$traceClearHash -> $completeHash" },
+        [pscustomobject]@{ Name = 'TRACE response shows hostile lock telegraph'; Passed = ($traceLock.Magenta -ge 36 -and $traceLock.LockColorPixels -ge 40); Detail = "magenta=$($traceLock.Magenta) red=$($traceLock.Red) total=$($traceLock.LockColorPixels)/$($traceLock.Sampled)" },
         [pscustomobject]@{ Name = 'Exit presentation changes when TRACE breaks'; Passed = ($exitTransition.Different -ge 24 -and $exitTransition.DifferentPercent -ge 1.5); Detail = "different=$($exitTransition.Different)/$($exitTransition.Sampled) ($($exitTransition.DifferentPercent)%)" },
         [pscustomobject]@{ Name = 'Objective HUD changes on mission completion'; Passed = ($completionTransition.Different -ge 20 -and $completionTransition.DifferentPercent -ge 0.8); Detail = "different=$($completionTransition.Different)/$($completionTransition.Sampled) ($($completionTransition.DifferentPercent)%)" },
         [pscustomobject]@{ Name = 'TRACE-to-clear frame is not stale'; Passed = ($wholeTraceToClear.Different -ge 16); Detail = "different=$($wholeTraceToClear.Different)/$($wholeTraceToClear.Sampled)" },
@@ -124,7 +165,7 @@ try {
 
     $failed = @($checks | Where-Object { -not $_.Passed })
     $lines = New-Object System.Collections.Generic.List[string]
-    $lines.Add('CyberStorm x64 TRACE Visual Smoke Verification')
+    $lines.Add('CyberStorm x64 TRACE / Hostile Attack Visual Smoke Verification')
     $lines.Add(('Generated: {0:u}' -f (Get-Date).ToUniversalTime()))
     $lines.Add(('TRACE response: {0}' -f (Resolve-Path -LiteralPath $tracePath).Path))
     $lines.Add(('TRACE clear: {0}' -f (Resolve-Path -LiteralPath $traceClearPath).Path))

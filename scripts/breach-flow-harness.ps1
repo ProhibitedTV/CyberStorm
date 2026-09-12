@@ -65,22 +65,25 @@ Add-Check 'District decay tightens monotonically' `
     ($d1 -gt $d2 -and $d2 -gt $d3 -and $d3 -gt $d4 -and $d4 -gt 0) `
     "D1=$d1 D2=$d2 D3=$d3 D4=$d4"
 
-$mainStart = Index-Of-OrFail $game 'process_play_input TEXTEQU <breach_flow_process_play_input>'
+$mainRedirect = Index-Of-OrFail $game 'process_play_input TEXTEQU <breach_flow_process_play_input>'
 $mainInclude = Index-Of-OrFail $game 'include game\main.asm'
-$mainPurge = Index-Of-OrFail $game 'PURGE process_play_input'
+$mainStock = Index-Of-OrFail $game 'process_play_input TEXTEQU <breach_flow_stock_process_play_input>'
 $gameplayInclude = Index-Of-OrFail $game 'include game\gameplay.asm'
 Add-Check 'Gameplay caller interception order' `
-    ($mainStart -lt $mainInclude -and $mainInclude -lt $mainPurge -and $mainPurge -lt $gameplayInclude) `
-    'redirect -> main caller -> purge -> stock gameplay implementation'
+    ($mainRedirect -lt $mainInclude -and $mainInclude -lt $mainStock -and $mainStock -lt $gameplayInclude) `
+    'wrapper alias -> main caller -> stock alias -> gameplay implementation'
 
-$renderStart = Index-Of-OrFail $game 'render_game_screen TEXTEQU <breach_flow_render_game_screen>'
+$renderRedirect = Index-Of-OrFail $game 'render_game_screen TEXTEQU <breach_flow_render_game_screen>'
 $sceneInclude = Index-Of-OrFail $game 'include game\render\scenes.asm'
-$renderPurge = Index-Of-OrFail $game 'PURGE render_game_screen'
+$renderStock = Index-Of-OrFail $game 'render_game_screen TEXTEQU <breach_flow_stock_render_game_screen>'
 $hudInclude = Index-Of-OrFail $game 'include game\render\hud.asm'
 Add-Check 'Renderer caller interception order' `
-    ($renderStart -lt $sceneInclude -and $sceneInclude -lt $renderPurge -and $renderPurge -lt $hudInclude) `
-    'redirect -> scenes caller -> purge -> stock HUD/game renderer implementation'
+    ($renderRedirect -lt $sceneInclude -and $sceneInclude -lt $renderStock -and $renderStock -lt $hudInclude) `
+    'wrapper alias -> scenes caller -> stock alias -> HUD/game renderer implementation'
 
+Add-Check 'Flow module sees stock aliases' `
+    ($game.IndexOf('include game\flow.asm', [System.StringComparison]::Ordinal) -gt $hudInclude) `
+    'flow.asm is assembled after stock process/render aliases are active'
 Add-Check 'Demo oracle bypass exists' `
     ($flow.Contains('cmp byte ptr [demo_active], 0') -and $flow.Contains('jne breach_flow_input_passthrough')) `
     'deterministic demo/replay input retains the historical core path'
@@ -93,6 +96,9 @@ Add-Check 'Damage breaks momentum' `
 Add-Check '16-bit register safety guard' `
     (-not [regex]::IsMatch($flow, '(?i)\b(dil|sil|spl|bpl)\b')) `
     'flow.asm avoids x64-only low-byte register names'
+Add-Check 'No PURGE dependency remains' `
+    (-not $game.Contains('PURGE process_play_input') -and -not $game.Contains('PURGE render_game_screen')) `
+    'hook uses MASM-redefinable TEXTEQU names instead of macro PURGE semantics'
 
 # Small deterministic model of the intended economy. Two kills plus two progress
 # events should hit max FLOW, recharge one pulse, and fall back to the bonus tier.

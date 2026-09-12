@@ -71,7 +71,7 @@ $unknownReactivate = @($reactivate | Where-Object { $_ -notin $actorIds })
 Add-Check 'Response wave references known actors only' ($unknownReactivate.Count -eq 0 -and $reactivate.Count -gt 0) "reactivate=$($reactivate -join ',')"
 
 Add-Check 'Response is bounded by the live-hostile cap' ([int]$mission.MaxLiveHostiles -le @($mission.Actors).Count -and [int]$mission.MaxLiveHostiles -le 3) "cap=$($mission.MaxLiveHostiles) actor-pool=$(@($mission.Actors).Count)"
-Add-Check 'TRACE telegraph is long enough to read' ([int]$responses[0].TelegraphTicks -ge 30 -and [int]$responses[0].TelegraphTicks -le 90) "ticks=$($responses[0].TelegraphTicks)"
+Add-Check 'TRACE design telegraph is readable' ([int]$responses[0].TelegraphTicks -ge 30 -and [int]$responses[0].TelegraphTicks -le 90) "design-ticks=$($responses[0].TelegraphTicks); runtime first pass uses persistent objective text instead of a timer"
 Add-Check 'Exit is explicitly locked during the response beat' ([bool]$responses[0].ExitLockedUntilClear) 'terminal breach cannot become a free sprint past the response wave'
 
 $responseHp = [int]$mission.Tuning.ResponseSentryHp
@@ -79,11 +79,11 @@ $responseCount = [int]$mission.Tuning.ResponseCount
 $extraShots = $responseHp * $responseCount
 Add-Check 'Response TTK stays compact' ($responseHp -ge 1 -and $responseHp -le 2 -and $responseCount -eq 2 -and $extraShots -le 4) "hp=$responseHp count=$responseCount minimum-extra-shots=$extraShots"
 
+# Deterministic mission model.
 $objective = 0
 $warden = 1
 $left = 1
 $right = 1
-$trace = 0
 $exitLocked = $true
 
 $warden = 0
@@ -94,7 +94,6 @@ if ($objective -eq 1) {
     $objective = 2
     $left = 1
     $right = 1
-    $trace = [int]$responses[0].TelegraphTicks
     $exitLocked = [bool]$responses[0].ExitLockedUntilClear
 }
 $left = 0
@@ -102,11 +101,15 @@ $right = 0
 if (($left + $right) -eq 0) { $exitLocked = $false }
 if ($objective -eq 2 -and -not $exitLocked) { $objective = 3 }
 
-Add-Check 'Deterministic response model reaches mission complete' ($objective -eq 3 -and $trace -gt 0 -and -not $exitLocked) "final-objective=$objective trace=$trace exitLocked=$exitLocked"
+Add-Check 'Deterministic response model reaches mission complete' ($objective -eq 3 -and -not $exitLocked) "final-objective=$objective exitLocked=$exitLocked"
 
-$runtimeHasTraceState = $runtime.Contains('TraceTicks dd')
-$runtimeHasResponseGate = $runtime.Contains('terminal_trace_response:')
-Add-Check 'Runtime response patch landed' ($runtimeHasTraceState -and $runtimeHasResponseGate) ('TraceTicks={0} response-label={1}' -f $runtimeHasTraceState, $runtimeHasResponseGate)
+# Runtime integration is one deliberately isolated gate. The apply script adds
+# all three markers together so partial source edits cannot masquerade as done.
+$runtimeHasResponseHelper = $runtime.Contains('terminal_trace_response:')
+$runtimeHasTracePrompt = $runtime.Contains("LevelObjectiveExitLine db 'BREAK TRACE / REACH EXIT',0")
+$runtimeHasExitGate = $runtime.Contains('; TRACE response gate: extraction stays locked until both rebooted sentries are down.')
+$runtimeCallsResponse = ([regex]::Matches($runtime, 'call StartTerminalTraceResponse')).Count -eq 2
+Add-Check 'Runtime response patch landed' ($runtimeHasResponseHelper -and $runtimeHasTracePrompt -and $runtimeHasExitGate -and $runtimeCallsResponse) ('helper={0} prompt={1} gate={2} calls={3}' -f $runtimeHasResponseHelper, $runtimeHasTracePrompt, $runtimeHasExitGate, $runtimeCallsResponse)
 
 $failed = @($checks | Where-Object { -not $_.Passed })
 $runtimePending = @($checks | Where-Object { $_.Name -eq 'Runtime response patch landed' -and -not $_.Passed })

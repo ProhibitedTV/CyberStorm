@@ -22,15 +22,20 @@ function Invoke-Step {
 $tracePatch = Join-Path $RepoRoot 'scripts\apply-x64-breach-response.ps1'
 $integrityPatch = Join-Path $RepoRoot 'scripts\apply-x64-integrity-pressure.ps1'
 $smokePatch = Join-Path $RepoRoot 'scripts\apply-x64-response-smoke.ps1'
+$compositionHarness = Join-Path $RepoRoot 'scripts\x64-codemod-composition-harness.ps1'
 $encounterHarness = Join-Path $RepoRoot 'scripts\x64-encounter-harness.ps1'
 $integrityHarness = Join-Path $RepoRoot 'scripts\x64-integrity-harness.ps1'
 $buildScript = Join-Path $RepoRoot 'scripts\build.ps1'
 $visualVerify = Join-Path $RepoRoot 'scripts\x64-response-smoke-verify.ps1'
 
-foreach ($required in @($tracePatch, $integrityPatch, $smokePatch, $encounterHarness, $integrityHarness, $buildScript, $visualVerify)) {
+foreach ($required in @($tracePatch, $integrityPatch, $smokePatch, $compositionHarness, $encounterHarness, $integrityHarness, $buildScript, $visualVerify)) {
     if (-not (Test-Path -LiteralPath $required)) {
         throw "Missing x64 combat validation component: $required"
     }
+}
+
+Invoke-Step -Label 'Validate TRACE/integrity codemod composition' -Action {
+    & powershell -ExecutionPolicy Bypass -File $compositionHarness -RepoRoot $RepoRoot
 }
 
 if ($CheckOnly) {
@@ -44,7 +49,7 @@ if ($CheckOnly) {
         & powershell -ExecutionPolicy Bypass -File $smokePatch -RepoRoot $RepoRoot -CheckOnly
     }
     Write-Host ''
-    Write-Host 'x64 combat patch anchors are valid. No source files changed.'
+    Write-Host 'x64 combat codemods compose and all patch anchors are valid. No source files changed.'
     exit 0
 }
 
@@ -70,7 +75,7 @@ Invoke-Step -Label 'Validate x64 integrity pressure model' -Action {
 
 if ($SkipBuild) {
     Write-Host ''
-    Write-Host 'Skipped x64 build/VM smoke by request. Source patches and deterministic combat harnesses passed.'
+    Write-Host 'Skipped x64 build/VM smoke by request. Codemod composition, source patches, and deterministic combat harnesses passed.'
     exit 0
 }
 
@@ -95,4 +100,4 @@ Invoke-Step -Label 'Verify TRACE visual state transitions' -Action {
 }
 
 Write-Host ''
-Write-Host 'x64 combat validation passed: TRACE response, integrity pressure, deterministic models, x64 build, VM gameplay smoke, and visual transition gates are green.'
+Write-Host 'x64 combat validation passed: codemod composition, TRACE response, integrity pressure, deterministic models, x64 build, VM gameplay smoke, and visual transition gates are green.'

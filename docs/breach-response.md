@@ -1,109 +1,97 @@
-# Breach Response Encounter Pass
+# Breach Response — x64 Encounter Design
 
-Breach Response is the encounter-design companion to Breach Flow. FLOW gives the player a reason to keep momentum; Response gives the world a reason to push back when the player makes meaningful progress.
+Breach Response is a **deferred x64-forward design**, not active stage-two runtime code.
 
-## Problem
+During the gameplay pass, objective-triggered hunter waves were prototyped for the four-district adventure campaign. The interaction tested well on paper with the new resource loop, but the current stage-two binary is already within roughly 838 bytes of its 64 KiB load limit. A full spawn/telegraph module is therefore the wrong architectural trade for the legacy single-segment runtime.
 
-The four-district adventure campaign already has authored routes, enemy roles, relays, keys, hazards, and a strong district progression. But completing a relay or picking up the key mostly changed counters and gate state. The world did not visibly react to the breach.
+The design is retained here because it fits the newer x64 `NEON SPINE` direction extremely well.
 
-That creates a pacing problem: objectives can feel like errands placed inside combat rather than the events that *cause* combat to change.
+## Core Rule
 
-## New Rule
+Meaningful objective progress should create an explicit world response:
 
-Every completed relay/key objective can trigger a short hunter response beat.
+**breach -> get traced -> fight or route -> recover resources -> breach again**
 
-The system does **not** run on an arbitrary timer and does not continuously spawn enemies. It listens to the same `adventure_objectives_done` delta that feeds FLOW. If the objective count did not advance, no response wave is created.
+A response is event-driven, never an arbitrary endless spawn timer. Relay, terminal, key, or equivalent mission events should emit a response event that encounter logic can consume.
 
-The intended read is simple:
+The intended player read is simple:
 
 > I breached the grid. The grid noticed.
 
-## District Escalation
+## Escalation Model
 
-Response composition uses the existing three hunter roles rather than inventing new controls or enemy state.
+The four-district prototype used this pressure curve as a reference:
 
-### Subgrid Ingress
+- **Subgrid:** one pursuit hunter per objective beat.
+- **Switchyard:** singles early, then a two-angle Rusher + Flanker response.
+- **Thermal:** Flanker pressure, mixed pursuit, then a late Warden.
+- **Apex:** two-hunter lockdown beats culminating in Warden + Flanker pressure.
 
-- Objective 1: one Rusher.
-- Objective 2: one Flanker.
-
-This teaches the response rule without turning the first district into an attrition fight.
-
-### Switchyard Spine
-
-- Objective 1: one Rusher.
-- Objective 2: one Flanker.
-- Objective 3: one Flanker plus one Rusher.
-
-The final beat creates the first deliberate two-angle pursuit, matching Switchyard's safe-loop versus hot-hinge identity.
-
-### Thermal Foundry
-
-- Objective 1: one Flanker.
-- Objective 2: one Flanker plus one Rusher.
-- Objective 3: one Warden.
-
-Foundry uses response composition to escalate from route pressure into an elite late-run threat without changing the district's normal opening population.
-
-### Apex Vault
-
-- Objective 1: one Flanker plus one Rusher.
-- Objective 2: two Flankers.
-- Objective 3: one Warden plus one Flanker.
-
-Apex is the lockdown district. Its response beats are deliberately the strongest, but the global live-enemy cap prevents an objective rush from producing an unreadable pile-up.
+The x64 implementation should preserve the *shape* of that escalation without copying these exact counts blindly.
 
 ## Fairness Contract
 
-Response spawning is intentionally conservative.
+Any future response system should guarantee:
 
-A candidate spawn must:
+- no contact spawns;
+- no spawning inside objective or hazard volumes;
+- a hard live-hostile cap;
+- readable ingress direction;
+- no immediate free attack on the frame the response appears;
+- a visible/audio trace warning before the response becomes dangerous.
 
-- remain inside playable map bounds;
-- be plain floor;
-- not already contain an enemy;
-- fit inside the normal enemy table;
-- keep the live population below six hunters.
+The player should understand why pressure increased.
 
-Candidates are searched in a ring around the current player, starting roughly four to five tiles away and falling back to three tiles only in tight corridors. This avoids contact spawns while keeping the existing simple hunter steering close enough to create actual pressure.
+## Map-Driven Ingress
 
-Because only `TILE_FLOOR` is accepted, response hunters cannot replace a shard, relay, key, hazard, locked/open gate, or other dynamic tile.
+The x64 version should not search arbitrary nearby floor tiles. `NEON SPINE` already has map-driven actor/objective volumes and a pack architecture; response ingress should become authored map data as well.
+
+Useful future volume/record types include:
+
+- security door;
+- lift shaft;
+- maintenance hatch;
+- side-corridor ingress;
+- rooftop/drop ingress;
+- reinforcement-disabled safe room.
+
+Each response event can choose from valid ingress points based on distance, visibility, live-enemy cap, and encounter phase.
+
+## Event Vocabulary
+
+The x64 gameplay layer should expose explicit events/state for:
+
+- `OBJECTIVE_COMPLETED`
+- `HOSTILE_KILLED`
+- `PLAYER_DAMAGED`
+- `RESOURCE_SPENT`
+- `RESOURCE_RECHARGED`
+- `RESPONSE_STARTED`
+- `RESPONSE_CLEARED`
+
+That vocabulary gives FLOW/resource systems, HUD feedback, audio, encounter scripting, and future scoring one shared contract instead of hard-wiring every feature into one routine.
 
 ## Telegraphing
 
-A successful response wave produces a short `TRACE` HUD flash showing how many hunters actually entered the encounter. The pressure system is immediately recalculated and the existing enemy-reveal camera logic is allowed to react when the new threat qualifies.
+The prototype used a short `TRACE` cue. The x64 presentation can go further:
 
-New hunters do **not** receive an immediate free enemy turn. The objective action completes, the response appears, and normal action-driven enemy cadence resumes afterward.
+- HUD trace-strength flash;
+- security-door emissive transition;
+- directional warning wedge;
+- short audio chirp/siren;
+- environment light pulse toward the ingress point;
+- hostile silhouette before activation.
 
-That is important: the response is a consequence the player can read, not hidden damage attached to touching an objective.
+The warning should be stylish but mechanically useful.
 
-## Interaction With Breach Flow
+## Relationship To The Compact Stage-Two Economy
 
-The two systems are intentionally coupled but not hard-coded into one another.
+The stage-two pass now uses `pulse_count` itself as the visible resource: flame spends pulses, while kills, shards, and objectives can earn them back.
 
-- Objective completion adds FLOW and may summon response pressure.
-- Response hunters become opportunities to extend FLOW through kills.
-- Spending flame to solve a response costs pulse reserve.
-- Sustained aggressive play can recharge that reserve.
-- Taking damage from the response breaks FLOW.
+That is a useful proof of the core rhythm without introducing another meter. If that loop feels good in playtesting, x64 can expand it into an explicit FLOW/response model because it is not trapped inside the legacy 64 KiB segment.
 
-The resulting rhythm is:
+## Implementation Gate
 
-**breach -> get traced -> fight or route -> build FLOW -> recover resources -> breach again**.
+Do not port this design into stage two unless the runtime first gains meaningful code-space headroom through banked gameplay code or another architectural change.
 
-## Playtest Questions
-
-The first manual pass should answer these before any further difficulty increase:
-
-- Does the `TRACE` cue give enough warning before the new hunters matter?
-- Do response hunters appear close enough to matter without feeling like teleporting contact damage?
-- Is the six-hunter live cap sufficient in Apex when the player leaves opening enemies alive?
-- Does the Foundry Warden feel like escalation, or does it slow the run too much?
-- Does killing the response naturally feed FLOW strongly enough that aggressive players perceive the intended risk/reward loop?
-- Are there map locations where every candidate ring tile is blocked, causing an objective to receive no response? A few intentional safe moments are acceptable; systematic dead zones should be fixed with map-specific ingress candidates later.
-
-## Future Direction
-
-If the system survives playtesting, the next refinement should move response ingress points into authored campaign data instead of increasing raw spawn counts. That would let each route beat define named security doors, lift shafts, or breach apertures while keeping the runtime rules unchanged.
-
-The x64 `NEON SPINE` runtime should eventually implement the same event vocabulary—objective event, response event, kill event, damage event—through its map/actor volume architecture rather than copying this stage-two assembly module literally.
+For x64, the next implementation step should be to extend map/actor data with one or more response ingress records and introduce a small gameplay-event dispatcher around the existing Warden/terminal/exit objective chain.

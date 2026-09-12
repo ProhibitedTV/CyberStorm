@@ -127,10 +127,54 @@ objective_exit_complete:
 '@
 Replace-ExactOnce -Name 'response extraction gate' -Old $exitOld -New $exitNew
 
+$exitVisualOld = @'
+    cmp dword ptr [ObjectiveState], 2
+    jb draw_exit_locked
+    FILL_GOP_RECT 492, 294, 74, 82, 000B1924h
+'@
+$exitVisualNew = @'
+    cmp dword ptr [ObjectiveState], 2
+    jb draw_exit_locked
+    ; TRACE response visual gate: do not paint an open exit while response sentries live.
+    cmp dword ptr [SentryLeftAlive], 0
+    jne draw_exit_locked
+    cmp dword ptr [SentryRightAlive], 0
+    jne draw_exit_locked
+    FILL_GOP_RECT 492, 294, 74, 82, 000B1924h
+'@
+Replace-ExactOnce -Name 'response exit visual gate' -Old $exitVisualOld -New $exitVisualNew
+
+$exitLabelOld = @'
+    lea r8, LevelExitLine
+    mov r9d, DIAG_MUTED
+    cmp dword ptr [ObjectiveState], 2
+    jb draw_exit_label
+    mov r9d, DIAG_OK
+draw_exit_label:
+'@
+$exitLabelNew = @'
+    lea r8, LevelExitLine
+    mov r9d, DIAG_MUTED
+    cmp dword ptr [ObjectiveState], 2
+    jb draw_exit_label
+    cmp dword ptr [SentryLeftAlive], 0
+    jne draw_exit_label
+    cmp dword ptr [SentryRightAlive], 0
+    jne draw_exit_label
+    mov r9d, DIAG_OK
+draw_exit_label:
+'@
+Replace-ExactOnce -Name 'response exit label state' -Old $exitLabelOld -New $exitLabelNew
+
 Replace-ExactOnce `
     -Name 'TRACE objective prompt' `
     -Old "LevelObjectiveExitLine db 'REACH EXIT GATE',0" `
     -New "LevelObjectiveExitLine db 'BREAK TRACE / REACH EXIT',0"
+
+Replace-ExactOnce `
+    -Name 'TRACE status read' `
+    -Old "LevelExitOpenLine db 'EXIT ROUTE OPEN',0" `
+    -New "LevelExitOpenLine db 'TRACE RESPONSE',0"
 
 Replace-ExactOnce `
     -Name 'mission loop tagline' `
@@ -144,8 +188,14 @@ if ($callCount -ne 2) {
 if (-not $text.Contains('; TRACE response gate: extraction stays locked until both rebooted sentries are down.')) {
     throw 'Prepared source is missing the extraction-gate marker.'
 }
+if (-not $text.Contains('; TRACE response visual gate: do not paint an open exit while response sentries live.')) {
+    throw 'Prepared source is missing the visual exit-gate marker.'
+}
 if (-not $text.Contains("LevelObjectiveExitLine db 'BREAK TRACE / REACH EXIT',0")) {
     throw 'Prepared source is missing the TRACE objective prompt.'
+}
+if (-not $text.Contains("LevelExitOpenLine db 'TRACE RESPONSE',0")) {
+    throw 'Prepared source is missing the TRACE status read.'
 }
 
 if ($CheckOnly) {

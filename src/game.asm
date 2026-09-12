@@ -15,12 +15,13 @@ include game\audio.asm
 include game\feedback.asm
 include game\input.asm
 
-; Redirect the caller while main.asm is assembled, then restore the stock
-; gameplay symbol before its implementation is included. This keeps the large
-; gameplay module untouched and gives flow.asm a narrow interception point.
+; Redirect the caller while main.asm is assembled, then retarget the text macro
+; to a private stock symbol before gameplay.asm defines the implementation.
+; TEXTEQU is intentionally used here because MASM allows text macros to be
+; redefined later in the same translation unit.
 process_play_input TEXTEQU <breach_flow_process_play_input>
 include game\main.asm
-PURGE process_play_input
+process_play_input TEXTEQU <breach_flow_stock_process_play_input>
 include game\gameplay.asm
 
 include game\render\framebuffer.asm
@@ -34,11 +35,12 @@ include game\render\palette.asm
 include game\render\text.asm
 include game\render\sprites.asm
 
-; Apply the same caller-only redirect to the gameplay renderer. scenes.asm emits
-; the render call, hud.asm still owns the original render_game_screen body.
+; scenes.asm emits the live gameplay render call. Redirect that call to the
+; Breach Flow post-pass, then retarget hud.asm's implementation to its private
+; stock name. The wrapper can now call the original renderer without recursion.
 render_game_screen TEXTEQU <breach_flow_render_game_screen>
 include game\render\scenes.asm
-PURGE render_game_screen
+render_game_screen TEXTEQU <breach_flow_stock_render_game_screen>
 include game\render\hud.asm
 
 include game\render\tiles.asm

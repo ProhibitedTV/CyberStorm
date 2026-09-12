@@ -1,67 +1,75 @@
-# Breach Flow Gameplay Pass
+# Breach Economy Gameplay Pass
 
-Breach Flow is a gameplay-design pass for CyberStorm's four-district stage-two adventure campaign. It does **not** change the separate x64 `LEVEL 01 NEON SPINE` runtime; the goal is to prove a stronger moment-to-moment resource and mastery loop in the mature campaign before deciding which pieces belong in the x64 path.
+This pass strengthens CyberStorm's four-district stage-two adventure loop while respecting the runtime's most important engineering constraint: stage two is already within roughly one kilobyte of its 64 KiB load ceiling.
+
+The first design iteration used a separate FLOW meter plus a dynamic response-wave system. The mechanics were promising, but the implementation was too large for the legacy single-segment runtime. The shippable stage-two version therefore compresses the same risk/reward idea into the resource already visible in the HUD: **PULSES**.
 
 ## Problem
 
-The adventure campaign already has good verbs: continuous movement, jump/glide, charge, flame, gems, relay breaches, hazards, enemy roles, score, shields, and a visible pulse reserve. The systems are individually useful, but the live loop did not strongly connect them.
+Adventure mode already has strong verbs—continuous movement, jump/glide, charge, flame, gems, relays, keys, hazards, and distinct hunter roles—but its flame attack was effectively free whenever the short cooldown expired. The HUD displayed `pulse_count`, districts reset it, and the older tactical path treated pulses as a real resource, but adventure flame did not consume it.
 
-The largest disconnect was flame. The adventure HUD exposed `pulse_count`, districts reset that reserve, and the older tactical path had explicit pulse spending/recharge logic, but adventure flame could start whenever its short timer was idle. That made the pulse display functionally irrelevant during the four-district run.
+That made one of the HUD's most prominent resources decorative and weakened the relationship between combat, routing, and objectives.
 
-The result was broad feature count without enough resource tension: charge and flame were answers, objectives were progression, score was mastery, and shields were punishment, but there was no shared rhythm that asked the player to move from one system into the next.
+## Compact Resource Loop
 
-## New Loop
+The new live-player economy is deliberately simple:
 
-Breach Flow connects those systems with one small meter and one real resource economy.
+1. A district begins with the existing pulse reserve.
+2. Starting a flame consumes one pulse.
+3. At zero pulses, `C` is blocked and the existing `NO PULSE` feedback is used.
+4. Every two kills recover one pulse, up to the existing cap.
+5. Every four collected data shards recover one pulse.
+6. Completing any relay/key objective recovers one pulse if there is room in the reserve.
+7. Taking shield damage clears partial kill/shard recharge progress.
 
-1. A new run starts with the existing three pulses.
-2. Starting a flame consumes one pulse. At zero pulses, flame is dry and the existing `NO PULSE` feedback is used.
-3. Kills add `3 FLOW`; gems, relays, and key progress add `1 FLOW`.
-4. At `4 FLOW`, kills begin earning a small `+20` mastery bonus.
-5. At `8 FLOW`, if the player is below the normal five-pulse cap, one pulse is restored and FLOW drops by `4` instead of resetting to zero.
-6. Shield damage breaks FLOW completely.
-7. Inactivity drains FLOW after a grace window. The grace tightens across districts: `120 / 90 / 75 / 60` simulation ticks from Subgrid through Apex, then FLOW drains one pip every 30 ticks.
+The loop becomes:
 
-This creates a repeatable rhythm: **spend -> attack -> route through progress -> recover -> keep moving**.
+**spend -> attack or route -> recover -> keep moving**.
 
-## Why This Fits CyberStorm
+There is no second meter to learn and no new control. The existing pulse digit is the authoritative resource display.
 
-### It deepens existing verbs instead of adding controls
+## Why This Fits The Game
 
-No new action key is required. The mechanic gives the existing `C` flame, charge kills, pickups, relay breaches, shield damage, score, and pulse HUD more meaning.
+### Flame now has opportunity cost
 
-### Aggression creates resources, not just score
+The player can still solve a dangerous Flanker immediately with flame, but repeated panic shots eventually run dry. That turns the weapon into a decision instead of a cooldown button.
 
-The player can spend flame to solve an immediate flanker problem, but strong follow-through can earn the pulse back. The system therefore rewards competence without making the weapon free.
+### Aggression pays for aggression
 
-### Damage has a mastery consequence without increasing raw damage
+Two kills return one pulse. Charge, hazards, and flame therefore feed the same combat economy rather than behaving like unrelated answers.
 
-Losing a shield already matters for survival. Breaking FLOW makes getting hit costly to an expert player too, while keeping enemy damage values and fairness rules unchanged.
+### Routing matters to combat readiness
 
-### District escalation comes from tempo
+Four shards return a pulse, so taking a richer line through the district can restore offensive capacity. Shards are no longer only a gate tax.
 
-Subgrid provides a forgiving two-second-plus FLOW grace at the 30 Hz simulation cadence. Apex cuts that window in half. The rules do not change, but the campaign increasingly asks the player to commit to a route and keep pressure on.
+### Objectives create recovery beats
 
-### The reward does not snowball without bound
+Relays and keys restore one pulse without replacing their existing objective message. Finishing progression under pressure therefore gives the player a small second wind.
 
-FLOW caps at eight, pulse inventory retains the existing five-pulse cap, and a recharge costs four FLOW. A successful recharge therefore returns the player to the bonus tier rather than leaving the meter permanently full.
+### Damage breaks momentum without adding damage
 
-## UI
-
-The live adventure view gets a compact `FLOW` strip in the upper-left gameplay viewport with eight pips.
-
-- Cyan: building momentum.
-- Amber: mastery bonus tier.
-- White flash: pulse recharge.
-- Red flash: chain broken or dry flame attempt.
-
-The existing pulse digit remains the authoritative resource count.
+A hit clears unfinished kill/shard recharge progress. Expert play gets an additional consequence for mistakes without increasing enemy damage or adding hidden punishment.
 
 ## Compatibility Strategy
 
-The implementation deliberately avoids invasive edits to the large gameplay and renderer translation units. `src/game.asm` uses MASM `TEXTEQU` redirection while each caller module is assembled, then redefines the same text symbol to a private stock label before the original implementation module is included. `src/game/flow.asm` wraps those stock labels. This keeps the established gameplay and HUD bodies intact while giving the live campaign two narrow extension points.
+`src/game.asm` redirects only the live `process_play_input` caller through a compact wrapper in `src/game/flow.asm`. The original gameplay implementation remains intact under a private MASM `TEXTEQU` name.
 
-Attract/demo and deterministic replay input bypass Breach Flow and continue through the historical gameplay core. This preserves the current replay oracle while the new live-player loop is playtested.
+Attract/demo and deterministic replay input bypass the wrapper and continue through the historical core.
+
+The implementation intentionally does **not** add a new render pass or dynamic stage-two response-wave runtime. The existing build report leaves only about 838 bytes before the 64 KiB stage-two limit, so byte cost is treated as a gameplay-design constraint, not an afterthought.
+
+## Campaign Pacing Correction
+
+During this pass a separate source/runtime drift was found: authored Subgrid data specifies `RequiredDataShards = 12`, while the checked-in generated runtime table still required 20 of its 24 shards.
+
+The generated table is synchronized to the authored district targets:
+
+- Subgrid: 12
+- Switchyard: 12
+- Thermal: 14
+- Apex: 14
+
+That restores route choice in the opening district instead of asking the player to vacuum up 83% of all available shards.
 
 ## Validation
 
@@ -71,21 +79,21 @@ Run:
 powershell -ExecutionPolicy Bypass -File .\scripts\breach-flow-harness.ps1
 ```
 
-The harness checks integration order, 16-bit register safety, threshold relationships, district tempo ordering, the three-shot starting flame economy, and the expected two-kills-plus-two-progress recharge sequence. It writes `build/cyberstorm-breach-flow-report.txt`.
+The harness checks the compact hook order, flame cooldown rollover case, pulse-spend behavior, recharge thresholds, damage-chain reset, demo bypass, 16-bit register safety, and authored/generated shard-target parity.
 
-The normal project build and VM smoke remain the final assembly/runtime gates.
+The normal stage-two build remains the decisive byte-budget gate. Because the pre-pass build report was already close to the segment limit, this PR should remain draft until a fresh Windows/MASM build confirms the final assembled size.
 
 ## Playtest Questions
 
-The first playtest should focus on feel rather than raw difficulty:
+- Are three starting flame shots enough to create tension without feeling stingy?
+- Is two kills per pulse fast enough that aggressive play feels self-sustaining?
+- Does four shards per pulse make optional routing attractive without encouraging tedious collection?
+- Do objective pulse restores feel like a useful second wind?
+- Does losing partial recharge progress on damage feel legible rather than arbitrary?
+- With Subgrid restored to 12 required shards, does the player naturally choose routes instead of clearing the map mechanically?
 
-- Do three starting flames create useful tension without making the opening stingy?
-- Does `2 kills + 2 progress` happen often enough to teach recharge organically?
-- Is the four-pip bonus tier readable as an invitation to stay aggressive?
-- Does a FLOW break after damage feel fair because the hit itself was well telegraphed?
-- Does Apex's shorter grace create urgency without forcing reckless play?
-- Are there encounter layouts where the player cannot reasonably rebuild resources after spending them? Those should be fixed in encounter placement before increasing gains or caps.
+## Deferred: Breach Response
 
-## x64 Follow-Through
+Objective-triggered hunter response waves are still a strong direction, but they are not appropriate to bolt into the nearly-full 16-bit segment. The design is retained in `docs/breach-response.md` as an x64-forward encounter system.
 
-The newer x64 `NEON SPINE` slice remains a separate runtime. If this loop survives playtesting, the best migration is not to copy the assembly wrapper literally. The x64 version should expose weapon charges, combat events, objective events, damage events, and FLOW as explicit gameplay state alongside map-driven actor/objective volumes. That will let the newer runtime keep the same risk/reward rhythm while using its own renderer, collision, and pack architecture.
+The x64 `NEON SPINE` runtime has the address space and map-volume architecture to implement explicit objective, response, kill, and damage events cleanly. That is where the fuller FLOW/Response design should graduate once the compact stage-two economy proves the underlying rhythm.

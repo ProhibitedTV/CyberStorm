@@ -22,8 +22,12 @@ $hadCrLf = $text.Contains("`r`n")
 $text = $text.Replace("`r`n", "`n")
 
 $marker = 'UpdateHostilePressure PROC'
+$rankMarker = "LevelRankLine db 'RANK C',0"
 if ($text.Contains($marker)) {
-    Write-Host 'x64 Integrity Pressure patch is already present.'
+    if (-not $text.Contains($rankMarker)) {
+        throw 'An older Integrity Pressure patch is present without mission-rank support. Restore/rebase bootx64.asm, then apply the current codemod so the runtime remains deterministic.'
+    }
+    Write-Host 'x64 Integrity Pressure + mission-rank patch is already present.'
     if (-not $SkipHarness -and (Test-Path -LiteralPath $harnessPath)) {
         & powershell -ExecutionPolicy Bypass -File $harnessPath -RepoRoot $RepoRoot
         if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -73,9 +77,14 @@ PRESSURE_WARN_TICKS           equ $([int]$combat.ExposureWarningTicks)
 PRESSURE_DAMAGE_COOLDOWN      equ $([int]$combat.DamageCooldownTicks)
 PRESSURE_DAMAGE_FLASH_TICKS   equ $([int]$combat.DamageFlashTicks)
 PRESSURE_REBOOT_NOTICE_TICKS  equ $([int]$combat.RebootNoticeTicks)
+RANK_A_INTEGRITY              equ $([int]$combat.Rank.ARequiresIntegrity)
+RANK_A_SHOTS_PER_HIT          equ $([int]$combat.Rank.AMaxShotsPerHit)
+RANK_B_INTEGRITY              equ $([int]$combat.Rank.BRequiresIntegrity)
+RANK_B_SHOTS_PER_HIT          equ $([int]$combat.Rank.BMaxShotsPerHit)
+RANK_DEFAULT_CHAR             equ '$($combat.Rank.DefaultRank)'
 CROSSHAIR_MIN_X               equ 00000050h
 "@
-Replace-ExactOnce -Name 'integrity tuning constants' -Old $constantOld -New $constantNew
+Replace-ExactOnce -Name 'integrity and rank tuning constants' -Old $constantOld -New $constantNew
 
 $inputOld = @'
     call UpdateLevelObjective
@@ -129,18 +138,58 @@ $formatNew = @'
     add al, '0'
     mov byte ptr [LevelStatusLine + 25], al
 
+    ; Completion rank rewards clean movement and accuracy using stats the x64
+    ; slice already tracks. No division is needed: compare shots against simple
+    ; hit multiples for predictable bare-metal behavior.
+    mov al, RANK_DEFAULT_CHAR
+    cmp dword ptr [ObjectiveState], 3
+    jb format_rank_store
+    cmp dword ptr [MissionShots], 0
+    je format_rank_store
+
+    cmp dword ptr [PlayerIntegrity], PLAYER_INTEGRITY_MAX
+    jne format_rank_a_check
+    mov ecx, dword ptr [MissionShots]
+    cmp ecx, dword ptr [MissionHits]
+    jne format_rank_a_check
+    mov al, 'S'
+    jmp format_rank_store
+
+format_rank_a_check:
+    cmp dword ptr [PlayerIntegrity], RANK_A_INTEGRITY
+    jb format_rank_b_check
+    mov ecx, dword ptr [MissionHits]
+    imul ecx, RANK_A_SHOTS_PER_HIT
+    cmp ecx, dword ptr [MissionShots]
+    jb format_rank_b_check
+    mov al, 'A'
+    jmp format_rank_store
+
+format_rank_b_check:
+    cmp dword ptr [PlayerIntegrity], RANK_B_INTEGRITY
+    jb format_rank_store
+    mov ecx, dword ptr [MissionHits]
+    imul ecx, RANK_B_SHOTS_PER_HIT
+    cmp ecx, dword ptr [MissionShots]
+    jb format_rank_store
+    mov al, 'B'
+
+format_rank_store:
+    mov byte ptr [LevelRankLine + 5], al
+
     add rsp, 20h
 '@
-Replace-ExactOnce -Name 'integrity HUD formatter' -Old $formatOld -New $formatNew
+Replace-ExactOnce -Name 'integrity and completion-rank HUD formatter' -Old $formatOld -New $formatNew
 
 Replace-ExactOnce `
-    -Name 'integrity HUD text' `
+    -Name 'integrity and rank HUD text' `
     -Old "LevelStatusLine db 'SHOTS 0000 HITS 0000',0" `
     -New @"
 LevelStatusLine db 'SHOTS 0000 HITS 0000 INT 3',0
 LevelPressureLine db 'HOSTILE LOCK',0
 LevelImpactLine db 'INTEGRITY HIT',0
 LevelRebootLine db 'LINK RESET',0
+LevelRankLine db 'RANK $($combat.Rank.DefaultRank)',0
 "@
 
 $dataOld = @'
@@ -255,6 +304,8 @@ UpdateHostilePressure ENDP
 DrawIntegrityThreat PROC
     sub rsp, 20h
 
+    cmp dword ptr [ObjectiveState], 3
+    jae integrity_draw_rank
     cmp dword ptr [RebootNoticeTicks], 0
     jne integrity_draw_reboot
     cmp dword ptr [DamageFlashTicks], 0
@@ -284,6 +335,14 @@ integrity_draw_reboot:
     lea r8, LevelRebootLine
     mov r9d, 00FF4058h
     call DrawString
+    jmp integrity_draw_done
+
+integrity_draw_rank:
+    mov ecx, 376
+    mov edx, 34
+    lea r8, LevelRankLine
+    mov r9d, DIAG_OK
+    call DrawString
 
 integrity_draw_done:
     add rsp, 20h
@@ -292,7 +351,7 @@ DrawIntegrityThreat ENDP
 
 UpdateHostileObjective PROC
 '@
-Replace-ExactOnce -Name 'integrity pressure runtime' -Old $helperOld -New $helperNew
+Replace-ExactOnce -Name 'integrity pressure and rank runtime' -Old $helperOld -New $helperNew
 
 $statusDrawOld = @'
     lea r8, LevelStatusLine
@@ -305,7 +364,7 @@ $statusDrawNew = @'
     call DrawString
     call DrawIntegrityThreat
 '@
-Replace-ExactCount -Name 'integrity threat HUD hook' -Old $statusDrawOld -New $statusDrawNew -ExpectedCount 2
+Replace-ExactCount -Name 'integrity threat/rank HUD hook' -Old $statusDrawOld -New $statusDrawNew -ExpectedCount 2
 
 $runtimeCalls = ([regex]::Matches($text, 'call UpdateHostilePressure')).Count
 $hudCalls = ([regex]::Matches($text, 'call DrawIntegrityThreat')).Count
@@ -318,12 +377,18 @@ if ($hudCalls -ne 2) {
 if (-not $text.Contains("LevelStatusLine db 'SHOTS 0000 HITS 0000 INT 3',0")) {
     throw 'Prepared source is missing the integrity HUD field.'
 }
+if (-not $text.Contains($rankMarker)) {
+    throw 'Prepared source is missing the mission-rank HUD field.'
+}
 if (-not $text.Contains('pressure_integrity_fail:')) {
     throw 'Prepared source is missing the integrity failure path.'
 }
+if (-not $text.Contains('format_rank_a_check:') -or -not $text.Contains('format_rank_b_check:')) {
+    throw 'Prepared source is missing the completion-rank calculation.'
+}
 
 if ($CheckOnly) {
-    Write-Host 'Integrity pressure patch anchors are valid. No files changed (-CheckOnly).'
+    Write-Host 'Integrity pressure + mission-rank patch anchors are valid. No files changed (-CheckOnly).'
     exit 0
 }
 

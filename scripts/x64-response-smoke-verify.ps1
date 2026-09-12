@@ -99,6 +99,11 @@ function Compare-InternalRegion {
     }
 }
 
+function Test-AttackRedPixel {
+    param([System.Drawing.Color]$Pixel)
+    return ($Pixel.R -ge 220 -and $Pixel.G -le 110 -and $Pixel.B -ge 45 -and $Pixel.B -le 150)
+}
+
 function Get-LockTelegraphStats {
     param([System.Drawing.Bitmap]$Bitmap)
 
@@ -124,7 +129,7 @@ function Get-LockTelegraphStats {
 
             # The pulsing inner cross uses XRGB FF4058. It may be absent on one
             # animation phase, so it is reported separately rather than required.
-            if ($pixel.R -ge 220 -and $pixel.G -le 110 -and $pixel.B -ge 45 -and $pixel.B -le 150) {
+            if (Test-AttackRedPixel -Pixel $pixel) {
                 $red++
             }
         }
@@ -135,6 +140,53 @@ function Get-LockTelegraphStats {
         Magenta = $magenta
         Red = $red
         LockColorPixels = $magenta + $red
+    }
+}
+
+function Get-ImpactFrameStats {
+    param([System.Drawing.Bitmap]$Bitmap)
+
+    $viewport = Get-Viewport -Bitmap $Bitmap
+    $inset = 16
+    $band = 3
+    $red = 0
+    $sampled = 0
+
+    # Sample narrow bands around the four authored impact-frame edges. A real
+    # impact frame paints hundreds of red pixels here; normal gameplay may have
+    # isolated red scenery/HUD pixels but should remain far below the threshold.
+    for ($y = $inset - $band; $y -le $inset + $band; $y++) {
+        for ($x = $inset; $x -le 640 - $inset; $x++) {
+            $pixel = $Bitmap.GetPixel($viewport.X + $x, $viewport.Y + $y)
+            $sampled++
+            if (Test-AttackRedPixel -Pixel $pixel) { $red++ }
+        }
+    }
+    for ($y = 480 - $inset - $band; $y -le 480 - $inset + $band; $y++) {
+        for ($x = $inset; $x -le 640 - $inset; $x++) {
+            $pixel = $Bitmap.GetPixel($viewport.X + $x, $viewport.Y + $y)
+            $sampled++
+            if (Test-AttackRedPixel -Pixel $pixel) { $red++ }
+        }
+    }
+    for ($x = $inset - $band; $x -le $inset + $band; $x++) {
+        for ($y = $inset; $y -le 480 - $inset; $y++) {
+            $pixel = $Bitmap.GetPixel($viewport.X + $x, $viewport.Y + $y)
+            $sampled++
+            if (Test-AttackRedPixel -Pixel $pixel) { $red++ }
+        }
+    }
+    for ($x = 640 - $inset - $band; $x -le 640 - $inset + $band; $x++) {
+        for ($y = $inset; $y -le 480 - $inset; $y++) {
+            $pixel = $Bitmap.GetPixel($viewport.X + $x, $viewport.Y + $y)
+            $sampled++
+            if (Test-AttackRedPixel -Pixel $pixel) { $red++ }
+        }
+    }
+
+    return [pscustomobject]@{
+        Sampled = $sampled
+        Red = $red
     }
 }
 
@@ -152,11 +204,13 @@ try {
     $wholeTraceToClear = Compare-InternalRegion -A $trace -B $traceClear -X0 0 -Y0 0 -X1 640 -Y1 480 -Step 8
     $wholeClearToComplete = Compare-InternalRegion -A $traceClear -B $complete -X0 0 -Y0 0 -X1 640 -Y1 480 -Step 8
     $traceLock = Get-LockTelegraphStats -Bitmap $trace
+    $traceImpact = Get-ImpactFrameStats -Bitmap $trace
 
     $checks = @(
         [pscustomobject]@{ Name = 'TRACE and clear captures have distinct hashes'; Passed = ($traceHash -ne $traceClearHash); Detail = "$traceHash -> $traceClearHash" },
         [pscustomobject]@{ Name = 'Clear and complete captures have distinct hashes'; Passed = ($traceClearHash -ne $completeHash); Detail = "$traceClearHash -> $completeHash" },
         [pscustomobject]@{ Name = 'TRACE response shows hostile lock telegraph'; Passed = ($traceLock.Magenta -ge 36 -and $traceLock.LockColorPixels -ge 40); Detail = "magenta=$($traceLock.Magenta) red=$($traceLock.Red) total=$($traceLock.LockColorPixels)/$($traceLock.Sampled)" },
+        [pscustomobject]@{ Name = 'TRACE response is captured before integrity impact'; Passed = ($traceImpact.Red -lt 100); Detail = "impact-border-red=$($traceImpact.Red)/$($traceImpact.Sampled)" },
         [pscustomobject]@{ Name = 'Exit presentation changes when TRACE breaks'; Passed = ($exitTransition.Different -ge 24 -and $exitTransition.DifferentPercent -ge 1.5); Detail = "different=$($exitTransition.Different)/$($exitTransition.Sampled) ($($exitTransition.DifferentPercent)%)" },
         [pscustomobject]@{ Name = 'Objective HUD changes on mission completion'; Passed = ($completionTransition.Different -ge 20 -and $completionTransition.DifferentPercent -ge 0.8); Detail = "different=$($completionTransition.Different)/$($completionTransition.Sampled) ($($completionTransition.DifferentPercent)%)" },
         [pscustomobject]@{ Name = 'TRACE-to-clear frame is not stale'; Passed = ($wholeTraceToClear.Different -ge 16); Detail = "different=$($wholeTraceToClear.Different)/$($wholeTraceToClear.Sampled)" },

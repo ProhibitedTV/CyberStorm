@@ -11,15 +11,17 @@ if ([string]::IsNullOrWhiteSpace($ReportPath)) {
 
 $gamePath = Join-Path $RepoRoot 'src\game.asm'
 $flowPath = Join-Path $RepoRoot 'src\game\flow.asm'
+$responsePath = Join-Path $RepoRoot 'src\game\response.asm'
 $sectorSourcePath = Join-Path $RepoRoot 'assets\sectors.psd1'
 $generatedSectorPath = Join-Path $RepoRoot 'build\generated_sector_content.inc'
 
-foreach ($requiredPath in @($gamePath, $flowPath, $sectorSourcePath, $generatedSectorPath)) {
+foreach ($requiredPath in @($gamePath, $flowPath, $responsePath, $sectorSourcePath, $generatedSectorPath)) {
     if (-not (Test-Path $requiredPath)) { throw "Missing $requiredPath" }
 }
 
 $game = Get-Content -Raw $gamePath
 $flow = Get-Content -Raw $flowPath
+$response = Get-Content -Raw $responsePath
 $sectorSource = Get-Content -Raw $sectorSourcePath
 $generatedSector = Get-Content -Raw $generatedSectorPath
 $checks = New-Object System.Collections.Generic.List[object]
@@ -33,12 +35,17 @@ function Add-Check {
     })
 }
 
+function Get-EquValueFrom {
+    param([string]$Text, [string]$Name)
+    $pattern = '(?m)^\s*' + [regex]::Escape($Name) + '\s+equ\s+(-?\d+)\s*$'
+    $m = [regex]::Match($Text, $pattern)
+    if (-not $m.Success) { throw "Could not find numeric EQU $Name" }
+    return [int]$m.Groups[1].Value
+}
+
 function Get-EquValue {
     param([string]$Name)
-    $pattern = '(?m)^\s*' + [regex]::Escape($Name) + '\s+equ\s+(-?\d+)\s*$'
-    $m = [regex]::Match($flow, $pattern)
-    if (-not $m.Success) { throw "Could not find numeric EQU $Name in flow.asm" }
-    return [int]$m.Groups[1].Value
+    return Get-EquValueFrom -Text $flow -Name $Name
 }
 
 function Index-Of-OrFail {
@@ -59,6 +66,8 @@ $d1 = Get-EquValue 'BREACH_FLOW_DECAY_DISTRICT_1'
 $d2 = Get-EquValue 'BREACH_FLOW_DECAY_DISTRICT_2'
 $d3 = Get-EquValue 'BREACH_FLOW_DECAY_DISTRICT_3'
 $d4 = Get-EquValue 'BREACH_FLOW_DECAY_DISTRICT_4'
+$responseMaxLive = Get-EquValueFrom -Text $response -Name 'BREACH_RESPONSE_MAX_LIVE'
+$responseFlashTicks = Get-EquValueFrom -Text $response -Name 'BREACH_RESPONSE_FLASH_TICKS'
 
 Add-Check 'Flow thresholds are ordered' `
     ($bonusThreshold -gt 0 -and $bonusThreshold -lt $rechargeThreshold -and $rechargeThreshold -le $flowMax) `
@@ -69,6 +78,12 @@ Add-Check 'Recharge cost preserves bonus tier' `
 Add-Check 'District decay tightens monotonically' `
     ($d1 -gt $d2 -and $d2 -gt $d3 -and $d3 -gt $d4 -and $d4 -gt 0) `
     "D1=$d1 D2=$d2 D3=$d3 D4=$d4"
+Add-Check 'Response live cap fits enemy table' `
+    ($responseMaxLive -gt 0 -and $responseMaxLive -lt 10) `
+    "response-cap=$responseMaxLive MAX_ENEMIES=10"
+Add-Check 'Response telegraph has visible lifetime' `
+    ($responseFlashTicks -ge 15 -and $responseFlashTicks -le 90) `
+    "TRACE ticks=$responseFlashTicks"
 
 $mainRedirect = Index-Of-OrFail $game 'process_play_input TEXTEQU <breach_flow_process_play_input>'
 $mainInclude = Index-Of-OrFail $game 'include game\main.asm'
@@ -86,9 +101,13 @@ Add-Check 'Renderer caller interception order' `
     ($renderRedirect -lt $sceneInclude -and $sceneInclude -lt $renderStock -and $renderStock -lt $hudInclude) `
     'wrapper alias -> scenes caller -> stock alias -> HUD/game renderer implementation'
 
-Add-Check 'Flow module sees stock aliases' `
-    ($game.IndexOf('include game\flow.asm', [System.StringComparison]::Ordinal) -gt $hudInclude) `
-    'flow.asm is assembled after stock process/render aliases are active'
+$flowInclude = Index-Of-OrFail $game 'include game\flow.asm'
+$responseInclude = Index-Of-OrFail $game 'include game\response.asm'
+$stateInclude = Index-Of-OrFail $game 'include game\state.asm'
+Add-Check 'Flow and response module include order' `
+    ($flowInclude -gt $hudInclude -and $flowInclude -lt $responseInclude -and $responseInclude -lt $stateInclude) `
+    'stock renderer -> flow wrapper -> response implementation -> state data'
+
 Add-Check 'Demo oracle bypass exists' `
     ($flow.Contains('cmp byte ptr [demo_active], 0') -and $flow.Contains('jne breach_flow_input_passthrough')) `
     'deterministic demo/replay input retains the historical core path'
@@ -101,9 +120,21 @@ Add-Check 'Cooldown rollover flame still spends' `
 Add-Check 'Damage breaks momentum' `
     ($flow.Contains('mov byte ptr [breach_flow_value], 0') -and $flow.Contains('BREACH_FLOW_FLASH_BREAK')) `
     'shield loss resets FLOW'
+Add-Check 'Objective progress invokes response wave' `
+    ($flow.Contains('call breach_response_objective_advanced') -and $flow.Contains('call draw_breach_response_overlay')) `
+    'objective deltas feed pressure and the live HUD telegraph'
+Add-Check 'Response spawn requires plain floor' `
+    ($response.Contains('cmp al, TILE_FLOOR') -and $response.Contains('call find_enemy_at')) `
+    'response hunters cannot overwrite objectives, hazards, shards, gates, or occupied tiles'
+Add-Check 'Response slot search is bounded' `
+    ($response.Contains('mov cx, MAX_ENEMIES') -and $response.Contains('breach_response_find_slot_loop:')) `
+    'a full enemy table fails safely instead of walking memory past the table'
+Add-Check 'Late campaign introduces response Warden' `
+    ($response.Contains('breach_response_d3_third:') -and $response.Contains('breach_response_d4_third:') -and $response.Contains('mov al, ENEMY_WARDEN')) `
+    'Foundry/Apex can escalate objective pressure with the elite hunter type'
 Add-Check '16-bit register safety guard' `
-    (-not [regex]::IsMatch($flow, '(?i)\b(dil|sil|spl|bpl)\b')) `
-    'flow.asm avoids x64-only low-byte register names'
+    (-not [regex]::IsMatch(($flow + "`n" + $response), '(?i)\b(dil|sil|spl|bpl)\b')) `
+    'flow/response modules avoid x64-only low-byte register names'
 Add-Check 'No PURGE dependency remains' `
     (-not $game.Contains('PURGE process_play_input') -and -not $game.Contains('PURGE render_game_screen')) `
     'hook uses MASM-redefinable TEXTEQU names instead of macro PURGE semantics'
@@ -175,6 +206,15 @@ $blocked = 0
 Add-Check 'Three-shot starting flame economy' `
     ($starts -eq 3 -and $blocked -eq 1 -and $simPulses -eq 0) `
     "starts=$starts blocked=$blocked remaining=$simPulses"
+
+# Response composition is intentionally bounded and readable. These are the
+# authored maximum requested spawns per objective beat before the live cap is
+# applied: D1 [1,1], D2 [1,1,2], D3 [1,2,1], D4 [2,2,2].
+$responseWaveSizes = @(1,1, 1,1,2, 1,2,1, 2,2,2)
+$oversizedWaves = @($responseWaveSizes | Where-Object { $_ -gt 2 })
+Add-Check 'Response waves stay readable' `
+    ($oversizedWaves.Count -eq 0 -and (($responseWaveSizes | Measure-Object -Maximum).Maximum -le 2)) `
+    'no single objective beat requests more than two new hunters'
 
 $failed = @($checks | Where-Object { -not $_.Passed })
 $lines = New-Object System.Collections.Generic.List[string]

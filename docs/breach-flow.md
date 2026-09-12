@@ -59,7 +59,7 @@ The existing pulse digit remains the authoritative resource count.
 
 ## Compatibility Strategy
 
-The implementation deliberately avoids invasive edits to the large gameplay and renderer translation units. `src/game.asm` redirects only the two call sites while their caller modules are assembled, then restores the original names before the stock implementations are included. `src/game/flow.asm` wraps those existing functions.
+The implementation deliberately avoids invasive edits to the large gameplay and renderer translation units. `src/game.asm` uses MASM `TEXTEQU` redirection while each caller module is assembled, then redefines the same text symbol to a private stock label before the original implementation module is included. `src/game/flow.asm` wraps those stock labels. This keeps the established gameplay and HUD bodies intact while giving the live campaign two narrow extension points.
 
 Attract/demo and deterministic replay input bypass Breach Flow and continue through the historical gameplay core. This preserves the current replay oracle while the new live-player loop is playtested.
 

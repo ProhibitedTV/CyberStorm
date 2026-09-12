@@ -6,7 +6,7 @@
 
 The combat rhythm becomes:
 
-**move -> break lock -> take a shot -> reposition -> clear pressure -> breach -> survive TRACE -> extract**
+**move -> break lock -> take a shot -> reposition -> clear pressure -> breach -> survive TRACE -> extract -> improve the run**
 
 The model is deliberately legible:
 
@@ -56,9 +56,23 @@ A second compact line at the same HUD cluster is conditional:
 
 - `HOSTILE LOCK` when exposure crosses the warning threshold;
 - `INTEGRITY HIT` during damage feedback;
-- `LINK RESET` after integrity failure/restart.
+- `LINK RESET` after integrity failure/restart;
+- `RANK S/A/B/C` after mission completion.
 
 There is deliberately no separate health bar or large overlay in this pass. Three integrity points are few enough that a single digit remains readable.
+
+## Completion rank
+
+The x64 slice already tracks `MissionShots` and `MissionHits`, so mission completion now turns those decorative counters plus remaining integrity into a replay target without adding another score subsystem.
+
+The authored rank contract is intentionally division-free:
+
+- **S** — full integrity and perfect accuracy (`shots == hits`).
+- **A** — full integrity and at least 50% accuracy (`hits * 2 >= shots`).
+- **B** — at least two integrity and at least 33% accuracy (`hits * 3 >= shots`).
+- **C** — everything else.
+
+The point is not a deep scoring economy yet. It is to make a five-minute vertical slice immediately ask, “can I clear that cleaner?” The thresholds live with the rest of combat tuning in `assets/x64_combat.psd1`.
 
 ## Reproducible runtime patch
 
@@ -71,10 +85,10 @@ powershell -ExecutionPolicy Bypass -File .\scripts\apply-x64-integrity-pressure.
 
 The codemod is idempotent and refuses missing/ambiguous anchors. It patches only:
 
-- x64 combat tuning constants;
+- x64 combat and rank tuning constants;
 - the central 10 ms gameplay tick;
 - LEVEL 01 reset state;
-- the mission HUD formatter and status line;
+- the mission HUD formatter and status/rank lines;
 - the two existing HUD draw paths;
 - compact pressure/integrity state;
 - `UpdateHostilePressure` and `DrawIntegrityThreat` helpers.
@@ -98,7 +112,16 @@ The deterministic harness verifies:
 - standing exposed costs exactly one integrity after the authored window;
 - damage cooldown prevents immediate follow-up loss;
 - clearing all hostiles clears pressure;
-- three deliberate hits reuse the existing level restart path exactly once.
+- three deliberate hits reuse the existing level restart path exactly once;
+- the current TRACE smoke pause remains shorter than the first damage window;
+- representative clean/damaged/sloppy runs resolve to S/A/B/C as authored.
+
+The composed runtime lane also proves that TRACE and integrity/rank codemods apply in either order and remain idempotent:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\run-x64-combat-validation.ps1 -CheckOnly
+powershell -ExecutionPolicy Bypass -File .\scripts\run-x64-combat-validation.ps1
+```
 
 After applying the patch, the integration gate should also pass.
 
@@ -109,5 +132,6 @@ After applying the patch, the integration gate should also pass.
 - Does three integrity create useful tension during the TRACE response without making the first Warden clear frustrating?
 - Is `HOSTILE LOCK` enough warning before the first integrity hit?
 - Does immediate level reboot at zero integrity feel clean enough for the vertical slice, or is the next pass worth spending on a dedicated fail/retry screen?
+- Do S/A/B/C thresholds motivate a cleaner rerun without encouraging tedious accuracy farming?
 
 The next evolution should only add explicit projectile/attack behavior after this simpler positioning loop proves that incoming threat improves the mission.

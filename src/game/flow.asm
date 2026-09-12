@@ -32,18 +32,18 @@ BREACH_FLOW_FLASH_DRY           equ 3
 ; Gameplay hook
 ; -----------------------------------------------------------------------------
 
-process_play_input:
+breach_flow_process_play_input:
 IF DEBUG_LEGACY_GAMEPLAY EQ 0
     cmp byte ptr [demo_active], 0
     jne breach_flow_input_passthrough
     call breach_flow_pre_input
-    call process_play_input_core
+    call process_play_input
     call breach_flow_post_input
     ret
 
 breach_flow_input_passthrough:
 ENDIF
-    jmp process_play_input_core
+    jmp process_play_input
 
 breach_flow_pre_input:
     cmp byte ptr [game_state], STATE_PLAYING
@@ -266,8 +266,8 @@ breach_flow_decay_done:
 ; Rendering hook
 ; -----------------------------------------------------------------------------
 
-render_game_screen:
-    call render_game_screen_core
+breach_flow_render_game_screen:
+    call render_game_screen
 IF DEBUG_LEGACY_GAMEPLAY EQ 0
     cmp byte ptr [game_state], STATE_PLAYING
     jne breach_flow_render_done

@@ -7,7 +7,7 @@
         ObjectiveStates = @(
             @{ State = 0; Id = 'clear-hostiles'; Prompt = 'ELIMINATE HOSTILES' }
             @{ State = 1; Id = 'breach-terminal'; Prompt = 'BREACH TERMINAL' }
-            @{ State = 2; Id = 'survive-trace'; Prompt = 'BREAK TRACE / REACH EXTRACTION' }
+            @{ State = 2; Id = 'survive-trace'; Prompt = 'BREAK TRACE / REACH EXIT' }
             @{ State = 3; Id = 'complete'; Prompt = 'MISSION COMPLETE' }
         )
         Actors = @(
@@ -21,7 +21,10 @@
                 Trigger = 'objective-1-to-2'
                 Telegraph = 'TRACE'
                 TelegraphTicks = 45
+                RuntimePrompt = 'BREAK TRACE / REACH EXIT'
+                RuntimeStatus = 'TRACE RESPONSE'
                 ExitLockedUntilClear = $true
+                ExitVisualLockedUntilClear = $true
                 Reactivate = @('sentry-left', 'sentry-right')
                 Notes = 'Terminal breach reboots the two side sentries. This reuses existing actors and hit logic, creates a second combat beat, and avoids inventing a new spawn system for the first x64 vertical slice.'
             }

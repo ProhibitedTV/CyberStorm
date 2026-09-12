@@ -85,6 +85,26 @@ powershell -ExecutionPolicy Bypass -File .\scripts\run-x64-combat-validation.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\run-x64-combat-validation.ps1
 ```
 
+## Automated visual evidence
+
+The existing TRACE-response VM screenshot is intentionally useful for this presentation layer.
+
+The smoke route waits **1.2 seconds after the last movement input** before capturing the TRACE response. With the current pressure tuning:
+
+- movement grace consumes the first 450 ms;
+- the lock warning threshold is reached after another 450 ms;
+- integrity damage does not occur until 900 ms of post-grace exposure.
+
+That places the capture around **750 ms into exposure**: past warning, but still about 150 ms before the authored hit threshold.
+
+`scripts/x64-response-smoke-verify.ps1` now checks the screenshot itself rather than trusting timing alone:
+
+- the center acquisition region must contain a meaningful cluster of the authored magenta/red lock colors;
+- the viewport-edge bands must **not** contain the red impact frame yet;
+- the later TRACE-clear and mission-complete frames must still pass their existing transition/staleness gates.
+
+If the smoke route gets slower enough that the player is hit before the warning screenshot, the visual verifier should fail instead of silently treating an impact frame as a successful lock-telegraph capture.
+
 ## What to look for in VM playtesting
 
 The first manual pass should answer these questions:

@@ -15,10 +15,9 @@ include game\audio.asm
 include game\feedback.asm
 include game\input.asm
 
-; Redirect the caller while main.asm is assembled, then retarget the text macro
-; to a private stock symbol before gameplay.asm defines the implementation.
-; TEXTEQU is intentionally used here because MASM allows text macros to be
-; redefined later in the same translation unit.
+; The adventure pulse economy is wrapped around the existing live input path.
+; Keep the stock implementation intact under a private text-macro name so this
+; costs one compact extension module instead of invasive gameplay edits.
 process_play_input TEXTEQU <breach_flow_process_play_input>
 include game\main.asm
 process_play_input TEXTEQU <breach_flow_stock_process_play_input>
@@ -34,20 +33,12 @@ include game\render\3d_gameplay.asm
 include game\render\palette.asm
 include game\render\text.asm
 include game\render\sprites.asm
-
-; scenes.asm emits the live gameplay render call. Redirect that call to the
-; Breach Flow post-pass, then retarget hud.asm's implementation to its private
-; stock name. The wrapper can now call the original renderer without recursion.
-render_game_screen TEXTEQU <breach_flow_render_game_screen>
 include game\render\scenes.asm
-render_game_screen TEXTEQU <breach_flow_stock_render_game_screen>
 include game\render\hud.asm
-
 include game\render\tiles.asm
 include game\render\entities.asm
 include game\render\effects.asm
 include game\flow.asm
-include game\response.asm
 include game\state.asm
 include game\art.asm
 include game\render\enhanced_present.asm

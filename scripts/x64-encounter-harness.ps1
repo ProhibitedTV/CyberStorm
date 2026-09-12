@@ -63,16 +63,18 @@ foreach ($actor in @($mission.Actors)) {
 Add-Check 'Encounter spec maps only to existing runtime actor state' $actorSymbolsValid "actors=$(@($mission.Actors).Count)"
 
 $responses = @($mission.Responses)
-Add-Check 'First response is terminal-breach driven' ($responses.Count -eq 1 -and $responses[0].Trigger -eq 'objective-1-to-2') "responses=$($responses.Count) trigger=$($responses[0].Trigger)"
+$response = $responses[0]
+Add-Check 'First response is terminal-breach driven' ($responses.Count -eq 1 -and $response.Trigger -eq 'objective-1-to-2') "responses=$($responses.Count) trigger=$($response.Trigger)"
 
-$reactivate = @($responses[0].Reactivate)
+$reactivate = @($response.Reactivate)
 $actorIds = @($mission.Actors | ForEach-Object { $_.Id })
 $unknownReactivate = @($reactivate | Where-Object { $_ -notin $actorIds })
 Add-Check 'Response wave references known actors only' ($unknownReactivate.Count -eq 0 -and $reactivate.Count -gt 0) "reactivate=$($reactivate -join ',')"
 
 Add-Check 'Response is bounded by the live-hostile cap' ([int]$mission.MaxLiveHostiles -le @($mission.Actors).Count -and [int]$mission.MaxLiveHostiles -le 3) "cap=$($mission.MaxLiveHostiles) actor-pool=$(@($mission.Actors).Count)"
-Add-Check 'TRACE design telegraph is readable' ([int]$responses[0].TelegraphTicks -ge 30 -and [int]$responses[0].TelegraphTicks -le 90) "design-ticks=$($responses[0].TelegraphTicks); runtime first pass uses persistent objective text instead of a timer"
-Add-Check 'Exit is explicitly locked during the response beat' ([bool]$responses[0].ExitLockedUntilClear) 'terminal breach cannot become a free sprint past the response wave'
+Add-Check 'TRACE design telegraph is readable' ([int]$response.TelegraphTicks -ge 30 -and [int]$response.TelegraphTicks -le 90) "design-ticks=$($response.TelegraphTicks); runtime first pass uses persistent objective text instead of a timer"
+Add-Check 'Exit is logically and visually locked during response' ([bool]$response.ExitLockedUntilClear -and [bool]$response.ExitVisualLockedUntilClear) "logical=$($response.ExitLockedUntilClear) visual=$($response.ExitVisualLockedUntilClear)"
+Add-Check 'Response presentation contract is authored' (-not [string]::IsNullOrWhiteSpace([string]$response.RuntimePrompt) -and -not [string]::IsNullOrWhiteSpace([string]$response.RuntimeStatus)) "prompt='$($response.RuntimePrompt)' status='$($response.RuntimeStatus)'"
 
 $responseHp = [int]$mission.Tuning.ResponseSentryHp
 $responseCount = [int]$mission.Tuning.ResponseCount
@@ -93,7 +95,7 @@ if ($objective -eq 1) {
     $objective = 2
     $left = 1
     $right = 1
-    $exitLocked = [bool]$responses[0].ExitLockedUntilClear
+    $exitLocked = [bool]$response.ExitLockedUntilClear
 }
 $left = 0
 $right = 0
@@ -105,8 +107,8 @@ Add-Check 'Deterministic response model reaches mission complete' ($objective -e
 # Runtime integration is one deliberately isolated gate. The apply script adds
 # these markers together so partial source edits cannot masquerade as done.
 $runtimeHasResponseHelper = $runtime.Contains('terminal_trace_response:')
-$runtimeHasTracePrompt = $runtime.Contains("LevelObjectiveExitLine db 'BREAK TRACE / REACH EXIT',0")
-$runtimeHasTraceStatus = $runtime.Contains("LevelExitOpenLine db 'TRACE RESPONSE',0")
+$runtimeHasTracePrompt = $runtime.Contains(("LevelObjectiveExitLine db '{0}',0" -f [string]$response.RuntimePrompt))
+$runtimeHasTraceStatus = $runtime.Contains(("LevelExitOpenLine db '{0}',0" -f [string]$response.RuntimeStatus))
 $runtimeHasExitGate = $runtime.Contains('; TRACE response gate: extraction stays locked until both rebooted sentries are down.')
 $runtimeHasVisualGate = $runtime.Contains('; TRACE response visual gate: do not paint an open exit while response sentries live.')
 $runtimeCallsResponse = ([regex]::Matches($runtime, 'call StartTerminalTraceResponse')).Count -eq 2

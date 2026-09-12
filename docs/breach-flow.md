@@ -21,6 +21,7 @@ The new live-player economy is deliberately simple:
 5. Every four collected data shards recover one pulse.
 6. Completing any relay/key objective recovers one pulse if there is room in the reserve.
 7. Taking shield damage clears partial kill/shard recharge progress.
+8. Recharge opportunities are not banked while already at the five-pulse cap; the player has to spend to benefit from later recovery.
 
 The loop becomes:
 
@@ -42,9 +43,13 @@ Two kills return one pulse. Charge, hazards, and flame therefore feed the same c
 
 Four shards return a pulse, so taking a richer line through the district can restore offensive capacity. Shards are no longer only a gate tax.
 
-### Objectives create recovery beats
+### Successful breaches refund the tool
 
-Relays and keys restore one pulse without replacing their existing objective message. Finishing progression under pressure therefore gives the player a small second wind.
+A relay normally requires flame, so it spends a pulse and its objective completion can immediately restore one. That is intentional: a successful hack refunds the resource used to execute it, while panic shots and missed positioning still drain the reserve. Keys also provide a small second wind when collected.
+
+### The cap prevents pre-banking
+
+Recovery progress is consumed when its threshold is reached even if the reserve is already full. This is deliberate anti-hoarding behavior: the economy rewards spending and continuing the run rather than stockpiling invisible future refills behind a full HUD.
 
 ### Damage breaks momentum without adding damage
 
@@ -88,7 +93,8 @@ The normal stage-two build remains the decisive byte-budget gate. Because the pr
 - Are three starting flame shots enough to create tension without feeling stingy?
 - Is two kills per pulse fast enough that aggressive play feels self-sustaining?
 - Does four shards per pulse make optional routing attractive without encouraging tedious collection?
-- Do objective pulse restores feel like a useful second wind?
+- Does the relay refund read naturally as a reward for a successful breach?
+- Does the non-banked five-pulse cap encourage spending, or does it feel wasteful?
 - Does losing partial recharge progress on damage feel legible rather than arbitrary?
 - With Subgrid restored to 12 required shards, does the player naturally choose routes instead of clearing the map mechanically?
 

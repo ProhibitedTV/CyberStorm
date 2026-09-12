@@ -10,6 +10,8 @@
 ; - Flow decays after a district-specific inactivity window.
 ; - Sustained flow grants a small kill-score bonus.
 ; - Max flow converts into one pulse recharge, then falls back to the bonus tier.
+; - Objective progress feeds Breach Response, which turns campaign milestones
+;   into authored pressure beats using the existing hunter vocabulary.
 ; - Demo/replay runs bypass this layer so existing deterministic oracle scripts
 ;   continue to exercise the historical reference path unchanged.
 
@@ -95,6 +97,7 @@ breach_flow_post_input:
     mov byte ptr [breach_flow_flash_mode], BREACH_FLOW_FLASH_NONE
 
 breach_flow_flash_tick_done:
+    call breach_response_tick
     call breach_flow_credit_kills
     call breach_flow_credit_data
     call breach_flow_credit_objectives
@@ -128,6 +131,7 @@ breach_flow_post_track:
 
 breach_flow_post_not_playing:
     mov byte ptr [breach_flow_initialized], 0
+    call breach_response_reset
     ret
 
 ; -----------------------------------------------------------------------------
@@ -161,6 +165,7 @@ breach_flow_sync_reset:
     mov byte ptr [breach_flow_decay_timer], 0
     mov byte ptr [breach_flow_flash_timer], 0
     mov byte ptr [breach_flow_flash_mode], BREACH_FLOW_FLASH_NONE
+    call breach_response_reset
     call breach_flow_capture_runtime_state
     ret
 
@@ -216,6 +221,14 @@ breach_flow_credit_objectives:
     mov al, [adventure_objectives_done]
     sub al, [breach_flow_last_objectives]
     jz breach_flow_credit_objectives_done
+
+    ; Preserve the progress delta across the response-wave hook. The response
+    ; chooses composition from the district and current objective count, while
+    ; FLOW still receives its normal per-objective gain.
+    push ax
+    call breach_response_objective_advanced
+    pop ax
+
     mov bl, BREACH_FLOW_PROGRESS_GAIN
     mul bl
     call breach_flow_add_al
@@ -295,7 +308,7 @@ IF DEBUG_LEGACY_GAMEPLAY EQ 0
     jne breach_flow_render_done
 
     ; Render helpers are allowed to borrow DS/ES. Reassert the stage-two tiny
-    ; model contracts before drawing the post-pass overlay.
+    ; model contracts before drawing the post-pass overlays.
     push cs
     pop ds
     mov ax, BACKBUFFER_SEG
@@ -303,6 +316,7 @@ IF DEBUG_LEGACY_GAMEPLAY EQ 0
 
     call breach_flow_sync_run_state
     call draw_breach_flow_overlay
+    call draw_breach_response_overlay
 breach_flow_render_done:
 ENDIF
     ret

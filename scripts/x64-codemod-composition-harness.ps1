@@ -67,6 +67,8 @@ function Assert-PatchedRuntime {
         ThreatHudCalls = ($threatCalls -eq 2)
         TracePrompt = $text.Contains("LevelObjectiveExitLine db 'BREAK TRACE / REACH EXIT',0")
         IntegrityHud = $text.Contains("LevelStatusLine db 'SHOTS 0000 HITS 0000 INT 3',0")
+        RankHud = $text.Contains("LevelRankLine db 'RANK C',0")
+        RankLogic = ($text.Contains('format_rank_a_check:') -and $text.Contains('format_rank_b_check:'))
         TraceGate = $text.Contains('; TRACE response gate: extraction stays locked until both rebooted sentries are down.')
         IntegrityFail = $text.Contains('pressure_integrity_fail:')
     }
@@ -122,7 +124,7 @@ foreach ($result in $results) {
     $lines.Add(('[{0}] {1} - traceCalls={2} pressureCalls={3} threatHudCalls={4} failed={5}' -f $status, $result.Order, $result.TraceCalls, $result.PressureCalls, $result.ThreatCalls, $result.Failed))
 }
 $lines.Add('')
-$lines.Add('Summary: TRACE and integrity codemods compose in both orders and remain idempotent on reapplication.')
+$lines.Add('Summary: TRACE and integrity/rank codemods compose in both orders and remain idempotent on reapplication.')
 $lines | Set-Content -Encoding UTF8 -LiteralPath $ReportPath
 $lines | ForEach-Object { Write-Host $_ }
 

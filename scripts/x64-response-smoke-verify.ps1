@@ -8,7 +8,7 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 if ([string]::IsNullOrWhiteSpace($ScreenshotPath)) {
-    $ScreenshotPath = Join-Path $RepoRoot 'build\cyberstorm-x64-vbox-live.png'
+    $ScreenshotPath = Join-Path $RepoRoot 'build\cyberstorm-x64-vm-smoke-title.png'
 }
 if ([string]::IsNullOrWhiteSpace($ReportPath)) {
     $ReportPath = Join-Path $RepoRoot 'build\cyberstorm-x64-trace-smoke-report.txt'
@@ -108,17 +108,8 @@ $traceClear = [System.Drawing.Bitmap]::FromFile((Resolve-Path -LiteralPath $trac
 $complete = [System.Drawing.Bitmap]::FromFile((Resolve-Path -LiteralPath $completePath).Path)
 
 try {
-    # State 2 with live response sentries must look different from state 2 after
-    # those sentries die. The right-side exit volume is the most important gate:
-    # locked/muted during TRACE, open once TRACE is broken.
     $exitTransition = Compare-InternalRegion -A $trace -B $traceClear -X0 468 -Y0 268 -X1 584 -Y1 392 -Step 3
-
-    # Clearing TRACE and completing extraction must also be visibly distinct.
-    # Compare the broad upper HUD/objective region where state text changes.
     $completionTransition = Compare-InternalRegion -A $traceClear -B $complete -X0 150 -Y0 54 -X1 520 -Y1 172 -Step 3
-
-    # Broad guard against a stale frame/capture pipeline even if a local region
-    # happens to be noisy enough to pass.
     $wholeTraceToClear = Compare-InternalRegion -A $trace -B $traceClear -X0 0 -Y0 0 -X1 640 -Y1 480 -Step 8
     $wholeClearToComplete = Compare-InternalRegion -A $traceClear -B $complete -X0 0 -Y0 0 -X1 640 -Y1 480 -Step 8
 

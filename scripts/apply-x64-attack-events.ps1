@@ -69,12 +69,12 @@ if ($null -eq $warden -or $null -eq $left -or $null -eq $right) {
     throw 'Attack-event source set must contain warden, sentry-left, and sentry-right.'
 }
 
-$constantOld = 'ATTACK_WARDEN_X               equ '
-$constantIndex = $text.IndexOf($constantOld, [System.StringComparison]::Ordinal)
+$constantAnchor = 'ATTACK_WARDEN_X               equ '
+$constantIndex = $text.IndexOf($constantAnchor, [System.StringComparison]::Ordinal)
 if ($constantIndex -lt 0) {
     throw 'Attack-event constants require the hostile-presentation constants to be present.'
 }
-$constantNew = @"
+$eventConstants = @"
 ATTACK_EVENT_NONE             equ 0
 ATTACK_EVENT_WARDEN           equ $([int]$warden.SourceId)
 ATTACK_EVENT_LEFT             equ $([int]$left.SourceId)
@@ -82,9 +82,8 @@ ATTACK_EVENT_RIGHT            equ $([int]$right.SourceId)
 ATTACK_EVENT_TRACE_TICKS      equ $([int]$events.TraceTicks)
 ATTACK_EVENT_TRACE_COLOR      equ $(Format-MasmHex -Value ([int]$events.TraceColor))
 ATTACK_EVENT_MUZZLE_HALF      equ $([int]$events.MuzzleHalfSize)
-ATTACK_WARDEN_X               equ 
 "@
-$text = $text.Substring(0, $constantIndex) + $constantNew + $text.Substring($constantIndex + $constantOld.Length)
+$text = $text.Substring(0, $constantIndex) + $eventConstants + $text.Substring($constantIndex)
 Write-Host 'Prepared: hostile attack-event constants'
 
 $resetOld = @'
@@ -210,6 +209,8 @@ attack_source_cursor_ready:
 SelectHostileAttackSource ENDP
 
 DrawHostileAttackEvent PROC
+    push r12
+    push r13
     sub rsp, 20h
 
     cmp dword ptr [AttackEventTicks], 0
@@ -240,12 +241,12 @@ hostile_attack_event_right:
 
 hostile_attack_event_project:
     call ProjectLevelPoint3D
-    mov r10d, eax
-    mov r11d, edx
+    mov r12d, eax
+    mov r13d, edx
 
     ; Brief yellow-white trace identifies the actor that actually owned the hit.
-    mov ecx, r10d
-    mov edx, r11d
+    mov ecx, r12d
+    mov edx, r13d
     mov r8d, ATTACK_LOCK_TARGET_X
     mov r9d, ATTACK_LOCK_TARGET_Y
     mov eax, ATTACK_EVENT_TRACE_COLOR
@@ -253,25 +254,27 @@ hostile_attack_event_project:
 
     ; Small muzzle cross keeps the source readable even when the trace overlaps
     ; one of the magenta acquisition beams.
-    mov ecx, r10d
+    mov ecx, r12d
     sub ecx, ATTACK_EVENT_MUZZLE_HALF
-    mov edx, r11d
-    mov r8d, r10d
+    mov edx, r13d
+    mov r8d, r12d
     add r8d, ATTACK_EVENT_MUZZLE_HALF
-    mov r9d, r11d
+    mov r9d, r13d
     mov eax, ATTACK_EVENT_TRACE_COLOR
     call DrawGopLine
-    mov ecx, r10d
-    mov edx, r11d
+    mov ecx, r12d
+    mov edx, r13d
     sub edx, ATTACK_EVENT_MUZZLE_HALF
-    mov r8d, r10d
-    mov r9d, r11d
+    mov r8d, r12d
+    mov r9d, r13d
     add r9d, ATTACK_EVENT_MUZZLE_HALF
     mov eax, ATTACK_EVENT_TRACE_COLOR
     call DrawGopLine
 
 hostile_attack_event_done:
     add rsp, 20h
+    pop r13
+    pop r12
     ret
 DrawHostileAttackEvent ENDP
 

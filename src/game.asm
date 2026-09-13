@@ -14,8 +14,15 @@ include generated_presentation_content.inc
 include game\audio.asm
 include game\feedback.asm
 include game\input.asm
+
+; The adventure pulse economy is wrapped around the existing live input path.
+; Keep the stock implementation intact under a private text-macro name so this
+; costs one compact extension module instead of invasive gameplay edits.
+process_play_input TEXTEQU <breach_flow_process_play_input>
 include game\main.asm
+process_play_input TEXTEQU <breach_flow_stock_process_play_input>
 include game\gameplay.asm
+
 include game\render\framebuffer.asm
 include game\render\machine_kernels.asm
 include game\render\primitives.asm
@@ -31,6 +38,7 @@ include game\render\hud.asm
 include game\render\tiles.asm
 include game\render\entities.asm
 include game\render\effects.asm
+include game\flow.asm
 include game\state.asm
 include game\art.asm
 include game\render\enhanced_present.asm

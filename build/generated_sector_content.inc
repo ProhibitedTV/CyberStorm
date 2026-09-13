@@ -13,7 +13,7 @@ campaign_district_start_y_table db 12, 13, 13, 13
 campaign_district_exit_x_table db 24, 24, 24, 23
 campaign_district_exit_y_table db 2, 1, 1, 1
 campaign_district_next_table db 2, 3, 4, 0
-campaign_district_required_gems_table db 20, 12, 14, 14
+campaign_district_required_gems_table db 12, 12, 14, 14
 campaign_district_gem_count_table db 24, 16, 16, 16
 campaign_district_switch_count_table db 1, 2, 2, 2
 campaign_district_key_count_table db 1, 1, 1, 1

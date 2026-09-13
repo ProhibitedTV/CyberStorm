@@ -211,7 +211,7 @@ SelectHostileAttackSource ENDP
 DrawHostileAttackEvent PROC
     push r12
     push r13
-    sub rsp, 20h
+    sub rsp, 28h
 
     cmp dword ptr [AttackEventTicks], 0
     je hostile_attack_event_done
@@ -272,7 +272,7 @@ hostile_attack_event_project:
     call DrawGopLine
 
 hostile_attack_event_done:
-    add rsp, 20h
+    add rsp, 28h
     pop r13
     pop r12
     ret

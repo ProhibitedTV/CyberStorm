@@ -13,11 +13,13 @@ if ([string]::IsNullOrWhiteSpace($ReportPath)) {
 $runtimeSource = Join-Path $RepoRoot 'src\bootx64.asm'
 $combatSpec = Join-Path $RepoRoot 'assets\x64_combat.psd1'
 $attackSpec = Join-Path $RepoRoot 'assets\x64_attack_presentation.psd1'
+$eventSpec = Join-Path $RepoRoot 'assets\x64_attack_events.psd1'
 $tracePatch = Join-Path $RepoRoot 'scripts\apply-x64-breach-response.ps1'
 $integrityPatch = Join-Path $RepoRoot 'scripts\apply-x64-integrity-pressure.ps1'
 $attackPatch = Join-Path $RepoRoot 'scripts\apply-x64-attack-presentation.ps1'
+$eventPatch = Join-Path $RepoRoot 'scripts\apply-x64-attack-events.ps1'
 
-foreach ($required in @($runtimeSource, $combatSpec, $attackSpec, $tracePatch, $integrityPatch, $attackPatch)) {
+foreach ($required in @($runtimeSource, $combatSpec, $attackSpec, $eventSpec, $tracePatch, $integrityPatch, $attackPatch, $eventPatch)) {
     if (-not (Test-Path -LiteralPath $required)) {
         throw "Missing hostile attack codemod input: $required"
     }
@@ -34,19 +36,22 @@ New-Item -ItemType Directory -Force -Path $assetDir | Out-Null
 Copy-Item -LiteralPath $runtimeSource -Destination (Join-Path $srcDir 'bootx64.asm') -Force
 Copy-Item -LiteralPath $combatSpec -Destination (Join-Path $assetDir 'x64_combat.psd1') -Force
 Copy-Item -LiteralPath $attackSpec -Destination (Join-Path $assetDir 'x64_attack_presentation.psd1') -Force
+Copy-Item -LiteralPath $eventSpec -Destination (Join-Path $assetDir 'x64_attack_events.psd1') -Force
 
 function Invoke-Codemod {
     param([string]$ScriptPath)
     & powershell -ExecutionPolicy Bypass -File $ScriptPath -RepoRoot $workRoot -SkipHarness
     if ($LASTEXITCODE -ne 0) {
-        throw "Codemod failed in attack-presentation sandbox: $ScriptPath exit=$LASTEXITCODE"
+        throw "Codemod failed in hostile-attack sandbox: $ScriptPath exit=$LASTEXITCODE"
     }
 }
 
-# Use the standard production ordering first.
+# Production dependency order: encounter response -> integrity/rank -> lock/impact
+# presentation -> attributed hostile shot events.
 Invoke-Codemod -ScriptPath $tracePatch
 Invoke-Codemod -ScriptPath $integrityPatch
 Invoke-Codemod -ScriptPath $attackPatch
+Invoke-Codemod -ScriptPath $eventPatch
 
 $patchedPath = Join-Path $srcDir 'bootx64.asm'
 $text = Get-Content -Raw -LiteralPath $patchedPath
@@ -54,11 +59,17 @@ $text = Get-Content -Raw -LiteralPath $patchedPath
 $checks = [ordered]@{
     TraceHelper = $text.Contains('terminal_trace_response:')
     IntegrityHelper = $text.Contains('UpdateHostilePressure PROC')
-    AttackHelper = $text.Contains('DrawHostileAttackPresentation PROC')
-    AttackHook = (([regex]::Matches($text, 'call DrawHostileAttackPresentation')).Count -eq 1)
+    AttackPresentationHelper = $text.Contains('DrawHostileAttackPresentation PROC')
+    AttackPresentationHook = (([regex]::Matches($text, 'call DrawHostileAttackPresentation')).Count -eq 1)
+    AttackSourceSelector = $text.Contains('SelectHostileAttackSource PROC')
+    AttackEventRenderer = $text.Contains('DrawHostileAttackEvent PROC')
+    AttackSourceCall = (([regex]::Matches($text, 'call SelectHostileAttackSource')).Count -eq 1)
+    AttackEventDrawCall = (([regex]::Matches($text, 'call DrawHostileAttackEvent')).Count -eq 1)
     WardenProjection = $text.Contains('ATTACK_WARDEN_X')
     LeftProjection = $text.Contains('ATTACK_LEFT_X')
     RightProjection = $text.Contains('ATTACK_RIGHT_X')
+    EventState = ($text.Contains('LastAttackSource dd 0') -and $text.Contains('AttackEventTicks dd 0'))
+    EventStackAlignment = $text.Contains("DrawHostileAttackEvent PROC`n    push r12`n    push r13`n    sub rsp, 28h")
     ImpactPath = $text.Contains('hostile_attack_draw_impact:')
     RankStillPresent = $text.Contains("LevelRankLine db 'RANK C',0")
     TraceStillPresent = $text.Contains("LevelObjectiveExitLine db 'BREAK TRACE / REACH EXIT',0")
@@ -70,10 +81,11 @@ if ($failed.Count -gt 0) {
 
 $firstHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $patchedPath).Hash
 Invoke-Codemod -ScriptPath $attackPatch
+Invoke-Codemod -ScriptPath $eventPatch
 $secondHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $patchedPath).Hash
 $idempotent = $firstHash -eq $secondHash
 if (-not $idempotent) {
-    throw 'Reapplying the hostile attack presentation codemod changed bootx64.asm.'
+    throw 'Reapplying hostile attack presentation/events changed bootx64.asm.'
 }
 
 $reportDir = Split-Path -Parent $ReportPath
@@ -89,9 +101,9 @@ foreach ($entry in $checks.GetEnumerator()) {
     $status = if ($entry.Value) { 'PASS' } else { 'FAIL' }
     $lines.Add(('[{0}] {1}' -f $status, $entry.Key))
 }
-$lines.Add(('[{0}] AttackPresentationIdempotent - before={1} after={2}' -f $(if ($idempotent) { 'PASS' } else { 'FAIL' }), $firstHash, $secondHash))
+$lines.Add(('[{0}] AttackPresentationAndEventsIdempotent - before={1} after={2}' -f $(if ($idempotent) { 'PASS' } else { 'FAIL' }), $firstHash, $secondHash))
 $lines.Add('')
-$lines.Add('Summary: TRACE + integrity/rank + hostile attack presentation compose in production order, and the presentation codemod is idempotent.')
+$lines.Add('Summary: TRACE + integrity/rank + hostile attack presentation + attributed shot events compose in production order, and both downstream attack codemods are idempotent.')
 $lines | Set-Content -Encoding UTF8 -LiteralPath $ReportPath
 $lines | ForEach-Object { Write-Host $_ }
 
